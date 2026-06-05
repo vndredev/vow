@@ -11,11 +11,13 @@ vow is young. The core mechanism on these pages works end-to-end; the surface (U
 A _vow_ is a promise about your app's behaviour. Instead of hand-writing a codebase, you write the **intent** and the **proof** — and vow keeps the promise:
 
 ```
-app/<slug>.vow.md      your truth — intent, shape, proof   (visible, versioned)
-     │  vow() Vite plugin
-.generated/            the generated code                  (hidden, gitignored, never the source)
-     │  tsgo / vue-tsc
-your app               + a scenario-coverage gate that proves every claim
+app/<slug>.vow.md     your truth — visible, versioned
+    │
+    ▼  vow() Vite plugin generates
+.generated/           the code — hidden, never edited
+    │
+    ▼  tsgo / vue-tsc type-checks
+your app              proven by scenario-coverage
 ```
 
 The visible `app/` folder holds the vows. The generated `.vue` / `.ts` lives in `.generated/`, which you can inspect but never edit — it is regenerated, so it can't drift from the truth.
