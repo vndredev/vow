@@ -16,7 +16,7 @@ app/<slug>.vow.md     your truth — visible, versioned
     ▼  vow() Vite plugin generates
 .generated/           the code — hidden, never edited
     │
-    ▼  tsgo / vue-tsc type-checks
+    ▼  tsgo type-checks
 your app              proven by scenario-coverage
 ```
 
@@ -26,6 +26,6 @@ The visible `app/` folder holds the vows. The generated `.vue` / `.ts` lives in 
 
 - **No drift.** What can be generated is never the source. The vow is the single truth; the code is a projection.
 - **Governed.** Every promise carries a proof; an unproven claim can't go green (see [proof](/guide/proof)).
-- **Yours.** vow is a generator, not a runtime — the output is plain Vue on the VoidZero/Cloudflare stack.
+- **Yours.** vow is a generator, not a runtime — the output is plain Vue, yours to keep.
 
 Next: [the Vow primitive →](/guide/vow)

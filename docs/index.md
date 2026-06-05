@@ -12,7 +12,7 @@ features:
   - title: Vows, not a codebase
     details: You write <slug>.vow.md — intent, shape, proof. The visible app/ folder is your truth; generated code lives hidden in .generated/ and is never the source.
   - title: emit or bind
-    details: Generated where it's deterministic (Vue components, entities); your own typed code where it isn't — both verified by tsgo.
+    details: Generated where it's deterministic (Vue components, entities); your own typed code where it isn't — both checked by the compiler.
   - title: Proven, not claimed
     details: Every promised scenario must have a green test. The scenario-coverage gate turns an unproven claim red.
 ---

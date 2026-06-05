@@ -1,6 +1,6 @@
 # The Vow primitive
 
-Everything is one recursive node — a **Vow**. A `vow` itself and every app are the same shape, so there's no separate "spec" vocabulary to learn.
+Everything is one recursive node — a **Vow**. The same shape describes a single leaf and a whole app, so there's no separate "spec" vocabulary to learn.
 
 A vow lives as a `<slug>.vow.md` file — the filename _is_ the slug. It's plain Markdown:
 

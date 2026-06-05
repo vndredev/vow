@@ -1,6 +1,6 @@
 # bind — hand-written
 
-For the 10% that is real, eigenwillige logic — a calculation, a workflow, an integration — you don't generate it. You write it, and vow verifies the seam. This is the deliberate escape hatch: vow never tries to express imperative logic in Markdown.
+For the 10% that is genuinely custom logic — a calculation, a workflow, an integration — you don't generate it. You write it, and vow verifies the seam. This is the deliberate escape hatch: vow never tries to express imperative logic in Markdown.
 
 ```markdown
 ---
@@ -19,6 +19,11 @@ fulfills: bind ./logic/invoice-total.ts#computeTotal
 The hand-written code lives **visibly** in `app/logic/` — it is the truth, not generated:
 
 ```ts
+export interface InvoiceInput {
+  qty: number;
+  unit: number;
+}
+
 export function computeTotal(input: InvoiceInput): number {
   const gross = input.qty * input.unit;
   return input.qty >= 10 ? gross * 0.95 : gross;

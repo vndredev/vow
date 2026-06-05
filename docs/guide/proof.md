@@ -15,7 +15,7 @@ A vow's `## proves` are its contract: the scenarios that must hold. The **scenar
 3. check      →  a scenario with no matching test  →  uncovered  →  gate red
 ```
 
-A claim that contains a test of the same name is _covered_; anything else is an unproven promise.
+A claim is _covered_ when some test's name contains it; anything else is an unproven promise.
 
 ## Status is derived, never set
 
