@@ -74,6 +74,20 @@ export function vow(options: VowOptions = {}): Plugin {
       vowDir = isAbsolute(dirOpt) ? dirOpt : join(config.root, dirOpt);
       regenerate();
     },
+    configureServer(server) {
+      // Watch the `.vow/` source (not in the module graph) → regenerate the `.vue` on change.
+      // Rewriting the .vue then triggers plugin-vue's HMR; a full reload covers added/removed vows.
+      server.watcher.add(vowDir);
+      const onVowChange = (file: string): void => {
+        if (file.startsWith(vowDir) && file.endsWith(".md")) {
+          regenerate();
+          server.ws.send({ type: "full-reload" });
+        }
+      };
+      server.watcher.on("add", onVowChange);
+      server.watcher.on("change", onVowChange);
+      server.watcher.on("unlink", onVowChange);
+    },
     resolveId: (id) => resolveVowId(id),
     load: (id) => loadVowModule(id, vows),
   };
