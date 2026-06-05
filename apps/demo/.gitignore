@@ -1,2 +1,2 @@
-# Generated vow output — regenerated from .vow/*.vow.md, never the source, never committed.
-.vow/generated/
+# Generated vow output — regenerated from app/**/vow.md, never the source, never committed.
+.generated/

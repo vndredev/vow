@@ -1,13 +1,10 @@
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { defineConfig } from "vite-plus";
 import vue from "@vitejs/plugin-vue";
 import { vow } from "@vow/vite-plugin";
 
-// Source of truth = ./.vow/ (folder-tree of vow.md). vow() generates real .vue into .vow/generated/;
-// plugin-vue compiles them. The app is the live projection — the .vue files are never the source.
-const root = dirname(fileURLToPath(import.meta.url));
-
+// Source of truth = ./app/ (visible folder-tree of vow.md — "your app, as MDs"). vow() generates
+// real .vue into ./.generated/ (hidden, gitignored); plugin-vue compiles them. The app is the live
+// projection — the generated .vue are inspectable but never the source.
 export default defineConfig({
-  plugins: [vue(), vow({ dir: join(root, ".vow") })],
+  plugins: [vue(), vow()],
 });

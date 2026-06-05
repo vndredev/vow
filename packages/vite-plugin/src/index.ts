@@ -7,18 +7,20 @@ import { emitVueSfc } from "@vow/emit-vue";
 /**
  * vow as a Vite plugin — the heart of the closed cap.
  *
- * Source of truth = the `.vow/` folder-tree of `vow.md`. The plugin loads it and writes real
- * `.vue` files into `.vow/generated/` (gitignored, regenerated) — so vue-tsc, Volar and plugin-vue
- * see them (the hard gate + inspectability), but they're never the source and can't drift.
- * Plus `virtual:vow/tree` exposes the forest as data for observability.
+ * Source of truth = the visible `app/` folder-tree of `vow.md` ("here lives your app, as MDs").
+ * The plugin loads it and writes real `.vue` files into the hidden `.generated/` (gitignored,
+ * regenerated) — so vue-tsc, Volar and plugin-vue see them (the hard gate + inspectability), but
+ * they're never the source and can't drift. Plus `virtual:vow/tree` exposes the forest as data.
  */
 
 export const VIRTUAL_TREE = "virtual:vow/tree";
 const NUL = "\0";
 
 export interface VowOptions {
-  /** The `.vow/` directory (default: ".vow"). */
+  /** The visible folder-tree of `vow.md` — your app (default: "app"). */
   readonly dir?: string;
+  /** The hidden directory for generated `.vue` — machine output (default: ".generated"). */
+  readonly outDir?: string;
   /** Inline vows, bypassing `dir` — for tests. */
   readonly vows?: readonly VowNode[];
 }
@@ -57,25 +59,28 @@ export function loadVowModule(id: string, vows: readonly VowNode[]): string | un
   return id === NUL + VIRTUAL_TREE ? vowTreeModule(vows) : undefined;
 }
 
-/** vow as a Vite plugin: load `.vow/`, generate real `.vue` into `.vow/generated/`, expose the tree. */
+/** vow as a Vite plugin: load `app/`, generate real `.vue` into `.generated/`, expose the tree. */
 export function vow(options: VowOptions = {}): Plugin {
-  const dirOpt = options.dir ?? ".vow";
+  const dirOpt = options.dir ?? "app";
+  const outOpt = options.outDir ?? ".generated";
   let vows: readonly VowNode[] = options.vows ?? [];
   let vowDir = dirOpt;
+  let genDir = outOpt;
 
   const regenerate = (): void => {
     vows = options.vows ?? loadVowForest(vowDir);
-    generateVueFiles(vows, join(vowDir, "generated"));
+    generateVueFiles(vows, genDir);
   };
 
   return {
     name: "vow",
     configResolved(config) {
       vowDir = isAbsolute(dirOpt) ? dirOpt : join(config.root, dirOpt);
+      genDir = isAbsolute(outOpt) ? outOpt : join(config.root, outOpt);
       regenerate();
     },
     configureServer(server) {
-      // Watch the `.vow/` source (not in the module graph) → regenerate the `.vue` on change.
+      // Watch the `app/` source (not in the module graph) → regenerate the `.vue` on change.
       // Rewriting the .vue then triggers plugin-vue's HMR; a full reload covers added/removed vows.
       server.watcher.add(vowDir);
       const onVowChange = (file: string): void => {
