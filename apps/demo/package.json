@@ -1,0 +1,20 @@
+{
+  "name": "@vow/demo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A live demo: a Vue app whose component is emitted from a vow, file-free.",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vow/core": "workspace:*",
+    "@vow/vite-plugin": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

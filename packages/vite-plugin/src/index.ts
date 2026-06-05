@@ -1,13 +1,13 @@
 import type { Plugin } from "vite-plus";
 import { Vow, type Vow as VowNode } from "@vow/core";
-import { emitVueSfc } from "@vow/emit-vue";
+import { emitVueModule } from "@vow/emit-vue";
 
 /**
  * vow as a Vite plugin — the heart of the closed cap.
  *
  * Two virtual modules, both generated in-memory (no file ever touches disk):
  *  - `virtual:vow/tree`             → the whole vow tree as data (observability)
- *  - `virtual:vow/component/<slug>` → a REAL Vue SFC, emitted live from that vow's `emit` fulfilment
+ *  - `virtual:vow/component/<slug>` → a runnable Vue component, emitted live from that vow's `emit`
  *
  * The app's source IS the vow tree, projected on load. Nothing editable sits between plan and
  * app → nothing can drift.
@@ -43,14 +43,14 @@ export function resolveVowId(id: string): string | undefined {
   return undefined;
 }
 
-/** Load a vow virtual module: the tree as data, or a vow's `emit` fulfilment as a real Vue SFC. */
+/** Load a vow virtual module: the tree as data, or a vow's `emit` fulfilment as a Vue component. */
 export function loadVowModule(id: string, tree: VowNode): string | undefined {
   if (id === NUL + VIRTUAL_TREE) return vowTreeModule(tree);
   if (id.startsWith(NUL + COMPONENT_PREFIX)) {
-    const slug = id.slice((NUL + COMPONENT_PREFIX).length);
+    const slug = id.slice((NUL + COMPONENT_PREFIX).length).replace(/\.vue$/, "");
     const vow = findVow(tree, slug);
     if (vow === undefined) throw new Error(`vow component not found for slug: ${slug}`);
-    return emitVueSfc(vow);
+    return emitVueModule(vow);
   }
   return undefined;
 }

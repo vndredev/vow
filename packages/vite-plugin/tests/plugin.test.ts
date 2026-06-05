@@ -38,13 +38,12 @@ test("loading the tree id yields the vow tree as a live module — no file", () 
   expect(code).toContain("demo-app");
 });
 
-test("a component virtual id loads a REAL Vue SFC emitted from the emit vow (plan → app, live)", () => {
-  const id = "virtual:vow/component/welcome-card";
+test("a component virtual id loads a runnable Vue component from the emit vow (plan → app, live)", () => {
+  const id = "virtual:vow/component/welcome-card.vue";
   expect(resolveVowId(id)).toBe(NUL + id);
-  const sfc = loadVowModule(NUL + id, tree);
-  expect(sfc).toContain("<script setup");
-  expect(sfc).toContain("<template>");
-  expect(sfc).toContain("Welcome to vow"); // the vow's intent, rendered as a component
+  const mod = loadVowModule(NUL + id, tree);
+  expect(mod).toContain("defineComponent");
+  expect(mod).toContain("Welcome to vow"); // the vow's intent, rendered as a component
 });
 
 test("findVow locates a vow by slug, depth-first", () => {

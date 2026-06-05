@@ -3,9 +3,12 @@ import type { Vow } from "@vow/core";
 /**
  * vow's Vue emitter — the `emit` fulfilment made real.
  *
- * Turns an `emit` vow into a Vue SFC string. Minimal but genuinely valid Vue: a component that
- * renders the vow's intent. This is what `virtual:vow/component/<slug>` serves — generated on
- * load, never written to disk. Richer emission (props, children, Reka components) grows from here.
+ *  - `emitVueModule` → a runnable, compiled Vue component module (what the virtual module serves,
+ *    runs as-is through Vite/Rolldown — vow owns the whole pipeline, no plugin-vue in the path).
+ *  - `emitVueSfc`    → the readable Vue SFC (for `vow eject` / human-owned output).
+ *
+ * Both are generated on load, never written to disk. Richer emission (props, children, Reka
+ * components) grows from here.
  */
 
 const escapeHtml = (s: string): string =>
@@ -18,11 +21,33 @@ const pascalCase = (slug: string): string =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join("");
 
-/** Emit a Vue SFC from an `emit` vow. Fails fast if the vow isn't an `emit` fulfilment. */
-export function emitVueSfc(vow: Vow): string {
+function ensureEmit(vow: Vow): void {
   if (vow.fulfills?.kind !== "emit") {
-    throw new Error(`emitVueSfc: vow "${vow.slug}" has no \`emit\` fulfilment`);
+    throw new Error(`emit-vue: vow "${vow.slug}" has no \`emit\` fulfilment`);
   }
+}
+
+/** A runnable Vue component module emitted from an `emit` vow — the compiled form, runs as-is. */
+export function emitVueModule(vow: Vow): string {
+  ensureEmit(vow);
+  const name = pascalCase(vow.slug);
+  const cls = JSON.stringify(`vow-${vow.slug}`);
+  return [
+    `import { defineComponent, h } from "vue";`,
+    ``,
+    `export default defineComponent({`,
+    `  name: ${JSON.stringify(name)},`,
+    `  render() {`,
+    `    return h("section", { class: ${cls} }, [h("p", ${JSON.stringify(vow.intent)})]);`,
+    `  },`,
+    `});`,
+    ``,
+  ].join("\n");
+}
+
+/** The readable Vue SFC for `vow eject` — human-owned output, never in the live path. */
+export function emitVueSfc(vow: Vow): string {
+  ensureEmit(vow);
   const name = pascalCase(vow.slug);
   return [
     `<script setup lang="ts">`,
