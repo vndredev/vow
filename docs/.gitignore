@@ -1,0 +1,3 @@
+# VitePress build output + cache — generated, never committed.
+.vitepress/dist/
+.vitepress/cache/
