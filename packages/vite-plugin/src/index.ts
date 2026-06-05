@@ -1,7 +1,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import { loadVowForest, type Vow as VowNode } from "@vow/core";
+import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { emitVueSfc } from "@vow/emit-vue";
 
@@ -36,27 +37,41 @@ export function vowTreeModule(vows: readonly VowNode[]): string {
   return `export const tree = ${JSON.stringify(vows)};\nexport default tree;`;
 }
 
+/** Resolve a vow's bind module to a specifier the anchor (sitting in outDir) can import. */
+function bindSpecifier(module: string, outDir: string, srcDir: string): string {
+  if (!module.startsWith(".") && !module.startsWith("/")) return module; // bare package
+  const rel = relative(outDir, resolve(srcDir, module));
+  return rel.startsWith(".") ? rel : `./${rel}`;
+}
+
 /**
- * Write the real files per `emit` vow into outDir, by target:
+ * Write the real files per fulfilled vow into outDir, by target:
  *   `emit vue`    → `<slug>.vue`
  *   `emit entity` → `<slug>.ts` (interface + factory) + `<slug>.test.ts` (derived proof)
+ *   `bind`        → `<slug>.bind.ts` (re-export anchor; tsgo verifies the bound export exists)
+ * `srcDir` is where the vows + hand-written bind code live (to resolve relative bind modules).
  * Returns the written paths.
  */
-export function generateFiles(vows: readonly VowNode[], outDir: string): string[] {
+export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: string): string[] {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
   for (const v of allVows(vows)) {
-    if (v.fulfills?.kind !== "emit") continue;
-    if (v.fulfills.as === "vue") {
+    const f = v.fulfills;
+    if (!f) continue;
+    if (f.kind === "emit" && f.as === "vue") {
       const file = join(outDir, `${v.slug}.vue`);
       writeFileSync(file, emitVueSfc(v), "utf8");
       written.push(file);
-    } else if (v.fulfills.as === "entity") {
+    } else if (f.kind === "emit" && f.as === "entity") {
       const mod = join(outDir, `${v.slug}.ts`);
       const test = join(outDir, `${v.slug}.test.ts`);
       writeFileSync(mod, emitEntityModule(v), "utf8");
       writeFileSync(test, emitEntityTest(v), "utf8");
       written.push(mod, test);
+    } else if (f.kind === "bind") {
+      const file = join(outDir, `${v.slug}.bind.ts`);
+      writeFileSync(file, emitBindAnchor(v, bindSpecifier(f.module, outDir, srcDir)), "utf8");
+      written.push(file);
     }
   }
   return written;
@@ -82,7 +97,7 @@ export function vow(options: VowOptions = {}): Plugin {
 
   const regenerate = (): void => {
     vows = options.vows ?? loadVowForest(vowDir);
-    generateFiles(vows, genDir);
+    generateFiles(vows, genDir, vowDir);
   };
 
   return {

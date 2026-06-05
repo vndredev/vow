@@ -1,0 +1,20 @@
+{
+  "name": "@vow/emit-bind",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's bind verifier — anchors a hand-written export so tsgo checks the seam.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vow/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vow/core": "workspace:*",
+    "@vow/emit-bind": "workspace:*",
     "@vow/emit-entity": "workspace:*",
     "@vow/emit-vue": "workspace:*"
   },
