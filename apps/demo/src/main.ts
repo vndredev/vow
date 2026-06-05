@@ -1,6 +1,13 @@
 import { createApp } from "vue";
-// A real .vue file — generated from app/welcome-card/vow.md into .generated/ (hidden, gitignored,
-// regenerated, vue-tsc-checked). Inspectable, but never the source: the vow.md is the truth.
-import WelcomeCard from "../.generated/welcome-card.vue";
+// The Tasks view — generated from app/tasks.vow.md (emit view of `task`) into .generated/tasks.vue.
+// Seed rows go through the entity's own createTask factory — entity + view, end to end.
+import Tasks from "../.generated/tasks.vue";
+import { createTask } from "../.generated/task.ts";
 
-createApp(WelcomeCard).mount("#app");
+const items = [
+  createTask({ title: "Einkaufen gehen" }),
+  createTask({ title: "Steuer erledigen", done: true }),
+  createTask({ title: "vow dokumentieren" }),
+];
+
+createApp(Tasks, { items }).mount("#app");

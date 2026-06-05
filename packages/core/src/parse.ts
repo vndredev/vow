@@ -75,6 +75,7 @@ export function parseVowMd(slug: string, content: string): VowNode {
     slug,
     intent,
     kind: frontmatter["kind"],
+    of: frontmatter["of"],
     fulfills: parseFulfills(frontmatter["fulfills"]),
     fields: [...itemsUnder(body, "fields")].map(parseFieldLine),
     proof: [...itemsUnder(body, "proves")].map((claim) => ({ claim })),

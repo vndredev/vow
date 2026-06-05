@@ -4,6 +4,7 @@ import type { Plugin } from "vite-plus";
 import { loadVowForest, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
+import { emitViewSfc } from "@vow/emit-view";
 import { emitVueSfc } from "@vow/emit-vue";
 
 /**
@@ -48,6 +49,7 @@ function bindSpecifier(module: string, outDir: string, srcDir: string): string {
  * Write the real files per fulfilled vow into outDir, by target:
  *   `emit vue`    → `<slug>.vue`
  *   `emit entity` → `<slug>.ts` (interface + factory) + `<slug>.test.ts` (derived proof)
+ *   `emit view`   → `<slug>.vue` (typed list over the `of:` entity)
  *   `bind`        → `<slug>.bind.ts` (re-export anchor; tsgo verifies the bound export exists)
  * `srcDir` is where the vows + hand-written bind code live (to resolve relative bind modules).
  * Returns the written paths.
@@ -68,6 +70,18 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(mod, emitEntityModule(v), "utf8");
       writeFileSync(test, emitEntityTest(v), "utf8");
       written.push(mod, test);
+    } else if (f.kind === "emit" && f.as === "view") {
+      const entity = allVows(vows).find(
+        (e) => e.slug === v.of && e.fulfills?.kind === "emit" && e.fulfills.as === "entity",
+      );
+      if (!entity) {
+        throw new Error(
+          `vow "${v.slug}": emit view references unknown entity (of: ${v.of ?? "—"})`,
+        );
+      }
+      const file = join(outDir, `${v.slug}.vue`);
+      writeFileSync(file, emitViewSfc(v, entity), "utf8");
+      written.push(file);
     } else if (f.kind === "bind") {
       const file = join(outDir, `${v.slug}.bind.ts`);
       writeFileSync(file, emitBindAnchor(v, bindSpecifier(f.module, outDir, srcDir)), "utf8");

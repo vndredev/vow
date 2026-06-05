@@ -38,4 +38,20 @@ fulfills: emit entity
 
 The proof falls out of the declaration — no one writes that test. The test names _are_ the proven scenarios (see [proof](/guide/proof)).
 
+## emit view
+
+A view renders a list of an entity. It points at the entity with `of:` and is read-only for now:
+
+```markdown
+---
+id: vow_tasks
+fulfills: emit view
+of: task
+---
+
+# Aufgaben verwalten
+```
+
+→ a typed `.vue` in `.generated/`: it imports the entity's `Task` type, takes an `items: Task[]` prop, and renders one row per item (text fields as-is, booleans as ✓ / –) — plain HTML, no headless primitive needed. Interaction (create, toggle, delete) grows from here.
+
 Next: [bind →](/guide/bind)
