@@ -12,6 +12,7 @@ catalog:
   vitest: npm:@voidzero-dev/vite-plus-test@latest
   vite-plus: latest
   "@typescript/native-preview": 7.0.0-dev.20260509.2
+  "@vitejs/plugin-vue": ^6.0.7
 overrides:
   vite: "catalog:"
   vitest: "catalog:"

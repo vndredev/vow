@@ -1,5 +1,6 @@
 import { createApp } from "vue";
-// This component exists nowhere on disk — it is emitted from a vow, live, by @vow/vite-plugin.
-import WelcomeCard from "virtual:vow/component/welcome-card";
+// A real .vue file — generated from .vow/welcome-card/vow.md into .vow/generated/ (gitignored,
+// regenerated, vue-tsc-checked). Inspectable, but never the source: the vow.md is the truth.
+import WelcomeCard from "../.vow/generated/welcome-card.vue";
 
 createApp(WelcomeCard).mount("#app");

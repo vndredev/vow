@@ -12,6 +12,7 @@
     "vue": "^3.5.13"
   },
   "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:",
     "@vow/core": "workspace:*",
     "@vow/vite-plugin": "workspace:*",
     "vite": "catalog:",

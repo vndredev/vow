@@ -1,68 +1,79 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { isAbsolute, join } from "node:path";
 import type { Plugin } from "vite-plus";
 import { loadVowForest, type Vow as VowNode } from "@vow/core";
-import { emitVueModule } from "@vow/emit-vue";
+import { emitVueSfc } from "@vow/emit-vue";
 
 /**
  * vow as a Vite plugin — the heart of the closed cap.
  *
- * Source of truth = the `.vow/` directory (a folder-tree of `vow.md`). The plugin loads it and
- * projects it as virtual modules, generated in-memory (no file on disk):
- *  - `virtual:vow/tree`             → the whole vow forest as data (observability)
- *  - `virtual:vow/component/<slug>` → a runnable Vue component, emitted from that vow's `emit`
- *
- * Nothing editable sits between plan and app → nothing can drift.
+ * Source of truth = the `.vow/` folder-tree of `vow.md`. The plugin loads it and writes real
+ * `.vue` files into `.vow/generated/` (gitignored, regenerated) — so vue-tsc, Volar and plugin-vue
+ * see them (the hard gate + inspectability), but they're never the source and can't drift.
+ * Plus `virtual:vow/tree` exposes the forest as data for observability.
  */
 
 export const VIRTUAL_TREE = "virtual:vow/tree";
-const COMPONENT_PREFIX = "virtual:vow/component/";
-/** Vite convention: a resolved virtual id is NUL-prefixed so other plugins leave it alone. */
 const NUL = "\0";
 
 export interface VowOptions {
-  /** The `.vow/` directory to load the vow forest from (default: ".vow"). */
+  /** The `.vow/` directory (default: ".vow"). */
   readonly dir?: string;
   /** Inline vows, bypassing `dir` — for tests. */
   readonly vows?: readonly VowNode[];
 }
 
-/** The vow forest as a live ES-module source. */
+/** Flatten the forest into every vow, depth-first. */
+export function allVows(vows: readonly VowNode[]): VowNode[] {
+  return vows.flatMap((v) => [v, ...allVows(v.children)]);
+}
+
+/** The vow forest as a live ES-module source (observability). */
 export function vowTreeModule(vows: readonly VowNode[]): string {
   return `export const tree = ${JSON.stringify(vows)};\nexport default tree;`;
 }
 
-/** Depth-first lookup of a vow by slug across the forest. */
-export function findVow(vows: readonly VowNode[], slug: string): VowNode | undefined {
-  for (const vow of vows) {
-    if (vow.slug === slug) return vow;
-    const found = findVow(vow.children, slug);
-    if (found !== undefined) return found;
+/** Write a real `.vue` per `emit` vow into outDir. Returns the written paths. */
+export function generateVueFiles(vows: readonly VowNode[], outDir: string): string[] {
+  mkdirSync(outDir, { recursive: true });
+  const written: string[] = [];
+  for (const v of allVows(vows)) {
+    if (v.fulfills?.kind === "emit") {
+      const file = join(outDir, `${v.slug}.vue`);
+      writeFileSync(file, emitVueSfc(v), "utf8");
+      written.push(file);
+    }
   }
-  return undefined;
+  return written;
 }
 
-/** Resolve a public vow virtual id to its internal NUL-prefixed form; ignore everything else. */
+/** Resolve the tree virtual id to its NUL-prefixed form; ignore everything else. */
 export function resolveVowId(id: string): string | undefined {
-  if (id === VIRTUAL_TREE || id.startsWith(COMPONENT_PREFIX)) return NUL + id;
-  return undefined;
+  return id === VIRTUAL_TREE ? NUL + id : undefined;
 }
 
-/** Load a vow virtual module: the forest as data, or a vow's `emit` fulfilment as a Vue component. */
+/** Load the tree virtual module (the forest as data); ignore everything else. */
 export function loadVowModule(id: string, vows: readonly VowNode[]): string | undefined {
-  if (id === NUL + VIRTUAL_TREE) return vowTreeModule(vows);
-  if (id.startsWith(NUL + COMPONENT_PREFIX)) {
-    const slug = id.slice((NUL + COMPONENT_PREFIX).length).replace(/\.vue$/, "");
-    const vow = findVow(vows, slug);
-    if (vow === undefined) throw new Error(`vow component not found for slug: ${slug}`);
-    return emitVueModule(vow);
-  }
-  return undefined;
+  return id === NUL + VIRTUAL_TREE ? vowTreeModule(vows) : undefined;
 }
 
-/** vow as a Vite plugin: the `.vow/` forest, projected live and file-free. */
+/** vow as a Vite plugin: load `.vow/`, generate real `.vue` into `.vow/generated/`, expose the tree. */
 export function vow(options: VowOptions = {}): Plugin {
-  const vows = options.vows ?? loadVowForest(options.dir ?? ".vow");
+  const dirOpt = options.dir ?? ".vow";
+  let vows: readonly VowNode[] = options.vows ?? [];
+  let vowDir = dirOpt;
+
+  const regenerate = (): void => {
+    vows = options.vows ?? loadVowForest(vowDir);
+    generateVueFiles(vows, join(vowDir, "generated"));
+  };
+
   return {
     name: "vow",
+    configResolved(config) {
+      vowDir = isAbsolute(dirOpt) ? dirOpt : join(config.root, dirOpt);
+      regenerate();
+    },
     resolveId: (id) => resolveVowId(id),
     load: (id) => loadVowModule(id, vows),
   };
