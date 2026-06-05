@@ -1,0 +1,25 @@
+{
+  "name": "@vow/vite-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow as a Vite plugin — projects the vow tree into the app live (the closed cap).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vow/core": "workspace:*",
+    "@vow/emit-vue": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "vite": "*"
+  }
+}

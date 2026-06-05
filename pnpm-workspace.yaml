@@ -11,6 +11,7 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@latest
   vitest: npm:@voidzero-dev/vite-plus-test@latest
   vite-plus: latest
+  "@typescript/native-preview": 7.0.0-dev.20260509.2
 overrides:
   vite: "catalog:"
   vitest: "catalog:"

@@ -1,0 +1,65 @@
+import { z } from "zod";
+
+/**
+ * The one primitive: a **Vow** — a promise, recursively decomposed, fulfilled and proven.
+ *
+ * It collapses the old split — plan, code, test, and the two kinds of spec
+ * (governance vs. app) — into a single recursive node:
+ *
+ *   - `intent`   — what & why (the human/LLM-readable promise)
+ *   - `children` — the decomposition (sub-vows; empty = a leaf)
+ *   - `fulfills` — HOW it's redeemed: `emit` (generated) or `bind` (hand-written, type-bound)
+ *   - `proof`    — testable claims (scenarios)
+ *   - status     — NEVER stored; derived from children + fulfilment + proof (see rollup.ts)
+ *
+ * vow itself is a Vow tree; a generated app is a Vow tree — same grammar, different fulfilment.
+ * What can be derived is never stored → drift-free by construction.
+ */
+
+export const Status = z.enum(["planned", "active", "done", "blocked"]);
+export type Status = z.infer<typeof Status>;
+
+/** Immutable reference key — `<prefix>_<suffix>`. References always point at the id, never the slug. */
+const Id = z.string().regex(/^[a-z]+_[a-z0-9]+$/, "id must be <prefix>_<suffix>");
+/** Renamable label, kebab-case. */
+const Slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "must be kebab-case");
+const Line = z.string().trim().min(3).max(200);
+
+/**
+ * How a Vow is redeemed — both type-verified, never via comment anchors:
+ *  - `emit`: a generated artifact (Vue SFC, types) → verified by `vp build` / `vp check` (tsgo)
+ *  - `bind`: hand-written code, structurally bound through the TS API → verified by tsgo
+ */
+export const Fulfillment = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("emit"), as: Line }),
+  z.object({ kind: z.literal("bind"), module: Line, export: Line, signature: Line.optional() }),
+]);
+export type Fulfillment = z.infer<typeof Fulfillment>;
+
+/** A testable claim. A Vow's "tested-ness" is DERIVED (scenario green), never hand-set. */
+export const Scenario = z.object({ claim: Line });
+export type Scenario = z.infer<typeof Scenario>;
+
+export interface Vow {
+  readonly id: string;
+  readonly slug: string;
+  readonly intent: string;
+  /** Optional lens (epic | feature | …) — a view over the tree, not a separate type. */
+  readonly kind?: string;
+  readonly children: readonly Vow[];
+  /** Absent = pure composition (a vow that only groups children). */
+  readonly fulfills?: Fulfillment;
+  readonly proof: readonly Scenario[];
+}
+
+export const Vow: z.ZodType<Vow> = z.lazy(() =>
+  z.object({
+    id: Id,
+    slug: Slug,
+    intent: Line,
+    kind: z.string().optional(),
+    children: z.array(Vow).default([]),
+    fulfills: Fulfillment.optional(),
+    proof: z.array(Scenario).default([]),
+  }),
+);

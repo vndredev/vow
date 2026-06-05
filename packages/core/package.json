@@ -1,0 +1,20 @@
+{
+  "name": "@vow/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow core — the stack-neutral vow model + validation.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}
