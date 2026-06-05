@@ -4,10 +4,11 @@ import type { Field, Vow } from "@vow/core";
  * vow's entity emitter — the `emit entity` fulfilment made real.
  *
  *  - `emitEntityModule` → a typed module: a `<Name>` interface + a validating `create<Name>` factory.
- *  - `emitEntityTest`   → a Vitest suite DERIVED from the fields (happy path + one reject per required
- *    field). No one writes these — the proof of an `emit` vow falls out of its declaration.
+ *  - `entityProves`     → the scenarios this entity proves, DERIVED from its fields (the contract).
+ *  - `emitEntityTest`   → a Vitest suite whose test names ARE those proven scenarios. No one writes
+ *    these — for `emit`, the proof (claim + body) falls out of the declaration.
  *
- * Both are written into `.generated/` by the Vite plugin, compiled/run by Vite+ — never the source.
+ * Both files are written into `.generated/` by the Vite plugin, compiled/run by Vite+ — never source.
  */
 
 const TS_TYPE: Record<Field["type"], string> = {
@@ -29,6 +30,16 @@ function ensureEntity(vow: Vow): void {
   if (vow.fulfills?.kind !== "emit" || vow.fulfills.as !== "entity") {
     throw new Error(`emit-entity: vow "${vow.slug}" is not an \`emit entity\``);
   }
+}
+
+/** The scenarios an `emit entity` vow proves, derived from its fields — these ARE the test names. */
+function entityScenarios(vow: Vow): { claim: string; missing?: Field }[] {
+  const name = pascalCase(vow.slug);
+  const required = vow.fields.filter((f) => f.required);
+  return [
+    { claim: `Eine gültige ${name} entsteht aus ihren Pflichtfeldern` },
+    ...required.map((f) => ({ claim: `Eine ${name} ohne '${f.name}' wird abgelehnt`, missing: f })),
+  ];
 }
 
 /** A typed module emitted from an `emit entity` vow: an interface + a validating factory. */
@@ -57,7 +68,13 @@ export function emitEntityModule(vow: Vow): string {
   return out.join("\n");
 }
 
-/** A Vitest suite derived from the fields — happy path + one reject per required field. */
+/** The proven scenarios (claims) of an `emit entity` vow — what the scenario-coverage gate checks. */
+export function entityProves(vow: Vow): string[] {
+  ensureEntity(vow);
+  return entityScenarios(vow).map((s) => s.claim);
+}
+
+/** A Vitest suite whose test names ARE the proven scenarios; bodies derived from the fields. */
 export function emitEntityTest(vow: Vow): string {
   ensureEntity(vow);
   const name = pascalCase(vow.slug);
@@ -72,20 +89,18 @@ export function emitEntityTest(vow: Vow): string {
     `import { expect, test } from "vite-plus/test";`,
     `import { create${name} } from "./${vow.slug}.ts";`,
     ``,
-    `// Generated from the fields of vow "${vow.slug}" — proof that falls out of the declaration.`,
-    `test(${JSON.stringify(`${vow.slug}: a valid ${name} is created`)}, () => {`,
-    `  const value = create${name}({ ${validEntries()} });`,
+    `// Generated from vow "${vow.slug}". Each test name IS a proven scenario — do not edit.`,
   ];
-  for (const f of required) out.push(`  expect(value.${f.name}).toBe(${SAMPLE[f.type]});`);
-  out.push(`});`, ``);
-
-  for (const f of required) {
-    out.push(
-      `test(${JSON.stringify(`${vow.slug}: rejects a ${name} missing the required '${f.name}'`)}, () => {`,
-      `  expect(() => create${name}({ ${validEntries(f.name)} })).toThrow();`,
-      `});`,
-      ``,
-    );
+  for (const s of entityScenarios(vow)) {
+    out.push(``, `test(${JSON.stringify(s.claim)}, () => {`);
+    if (s.missing) {
+      out.push(`  expect(() => create${name}({ ${validEntries(s.missing.name)} })).toThrow();`);
+    } else {
+      out.push(`  const value = create${name}({ ${validEntries()} });`);
+      for (const f of required) out.push(`  expect(value.${f.name}).toBe(${SAMPLE[f.type]});`);
+    }
+    out.push(`});`);
   }
+  out.push(``);
   return out.join("\n");
 }

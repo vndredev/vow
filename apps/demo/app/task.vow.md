@@ -10,8 +10,3 @@ kind: entity
 
 - title: text, required
 - done: boolean
-
-## proves
-
-- eine gültige Aufgabe entsteht aus ihren Pflichtfeldern
-- eine Aufgabe ohne Titel wird abgelehnt

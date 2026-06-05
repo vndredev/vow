@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
-import { type Vow as VowNode } from "@vow/core";
-import { emitEntityModule, emitEntityTest } from "../src/index.ts";
+import { type Vow as VowNode, uncoveredScenarios } from "@vow/core";
+import { emitEntityModule, emitEntityTest, entityProves } from "../src/index.ts";
 
 const task: VowNode = {
   id: "vow_task",
@@ -24,12 +24,24 @@ test("emitEntityModule generates an interface and a validating factory", () => {
   expect(code).toContain("'title' is required");
 });
 
-test("emitEntityTest derives a suite from the fields — happy path + reject-per-required", () => {
+test("entityProves derives the proven scenarios from the fields (happy + reject-per-required)", () => {
+  expect(entityProves(task)).toEqual([
+    "Eine gültige Task entsteht aus ihren Pflichtfeldern",
+    "Eine Task ohne 'title' wird abgelehnt",
+  ]);
+});
+
+test("emitEntityTest names each generated test after its proven scenario", () => {
   const code = emitEntityTest(task);
-  expect(code).toContain('import { createTask } from "./task.ts";');
-  expect(code).toContain("a valid Task is created");
-  expect(code).toContain("rejects a Task missing the required 'title'");
+  expect(code).toContain('test("Eine gültige Task entsteht aus ihren Pflichtfeldern"');
+  expect(code).toContain("test(\"Eine Task ohne 'title' wird abgelehnt\"");
   expect(code).toContain("toThrow()");
+});
+
+test("scenario-coverage: every derived prove has a matching generated test", () => {
+  const code = emitEntityTest(task);
+  const testNames = [...code.matchAll(/test\("([^"]+)"/g)].map((m) => m[1] ?? "");
+  expect(uncoveredScenarios(entityProves(task), testNames)).toEqual([]);
 });
 
 test("the entity emitters fail fast on a non-entity vow", () => {
