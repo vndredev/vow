@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 import type { Plugin } from "vite-plus";
 import { loadVowForest, type Vow as VowNode } from "@vow/core";
+import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { emitVueSfc } from "@vow/emit-vue";
 
 /**
@@ -35,15 +36,27 @@ export function vowTreeModule(vows: readonly VowNode[]): string {
   return `export const tree = ${JSON.stringify(vows)};\nexport default tree;`;
 }
 
-/** Write a real `.vue` per `emit` vow into outDir. Returns the written paths. */
-export function generateVueFiles(vows: readonly VowNode[], outDir: string): string[] {
+/**
+ * Write the real files per `emit` vow into outDir, by target:
+ *   `emit vue`    → `<slug>.vue`
+ *   `emit entity` → `<slug>.ts` (interface + factory) + `<slug>.test.ts` (derived proof)
+ * Returns the written paths.
+ */
+export function generateFiles(vows: readonly VowNode[], outDir: string): string[] {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
   for (const v of allVows(vows)) {
-    if (v.fulfills?.kind === "emit") {
+    if (v.fulfills?.kind !== "emit") continue;
+    if (v.fulfills.as === "vue") {
       const file = join(outDir, `${v.slug}.vue`);
       writeFileSync(file, emitVueSfc(v), "utf8");
       written.push(file);
+    } else if (v.fulfills.as === "entity") {
+      const mod = join(outDir, `${v.slug}.ts`);
+      const test = join(outDir, `${v.slug}.test.ts`);
+      writeFileSync(mod, emitEntityModule(v), "utf8");
+      writeFileSync(test, emitEntityTest(v), "utf8");
+      written.push(mod, test);
     }
   }
   return written;
@@ -69,7 +82,7 @@ export function vow(options: VowOptions = {}): Plugin {
 
   const regenerate = (): void => {
     vows = options.vows ?? loadVowForest(vowDir);
-    generateVueFiles(vows, genDir);
+    generateFiles(vows, genDir);
   };
 
   return {

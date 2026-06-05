@@ -72,6 +72,16 @@ importers:
         specifier: 'catalog:'
         version: 0.1.24(@types/node@24.13.0)(jiti@2.7.0)(typescript@6.0.3)(vite@8.0.16(@types/node@24.13.0)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
 
+  packages/emit-entity:
+    dependencies:
+      '@vow/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
+
   packages/emit-vue:
     dependencies:
       '@vow/core':
@@ -87,6 +97,9 @@ importers:
       '@vow/core':
         specifier: workspace:*
         version: link:../core
+      '@vow/emit-entity':
+        specifier: workspace:*
+        version: link:../emit-entity
       '@vow/emit-vue':
         specifier: workspace:*
         version: link:../emit-vue

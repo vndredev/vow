@@ -1,0 +1,20 @@
+{
+  "name": "@vow/emit-entity",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's entity emitter — turns an `emit entity` vow into a typed module + a generated test suite.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vow/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}

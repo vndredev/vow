@@ -7,6 +7,7 @@ const emitVow: VowNode = {
   slug: "welcome-card",
   intent: "Welcome to vow",
   children: [],
+  fields: [],
   proof: [],
   fulfills: { kind: "emit", as: "vue" },
 };
@@ -15,6 +16,7 @@ const bindVow: VowNode = {
   slug: "rollup",
   intent: "Status roll-up",
   children: [],
+  fields: [],
   proof: [],
   fulfills: { kind: "bind", module: "@vow/core", export: "rollup" },
 };

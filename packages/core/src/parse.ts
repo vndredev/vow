@@ -2,14 +2,16 @@ import { parse as parseYaml } from "yaml";
 import { Vow, type Fulfillment, type Vow as VowNode } from "./vow.ts";
 
 /**
- * Parse a `vow.md` — plain Markdown, no invented DSL:
+ * Parse a `<slug>.vow.md` — plain Markdown, no invented DSL:
  *   - YAML frontmatter for the non-prosaic truth (`id`, `fulfills`, `kind`)
  *   - `# …`        → the intent (the promise)
+ *   - `## fields`  → the data shape (for `emit entity`): `- <name>: <type>[, required]`
  *   - `## proves`  → the proof scenarios (one per list item)
- *   - the slug comes from the folder name, not the file
+ *   - the slug comes from the filename, not the file content
  *
  * `fulfills` uses a compact value convention (still standard YAML strings, trivial to read/write):
  *   `emit vue`              → { kind: "emit", as: "vue" }
+ *   `emit entity`           → { kind: "emit", as: "entity" }
  *   `bind @vow/core#rollup` → { kind: "bind", module: "@vow/core", export: "rollup" }
  */
 
@@ -29,26 +31,40 @@ function parseFulfills(raw: unknown): Fulfillment | undefined {
   );
 }
 
-/** Collect the `- …` items under a `## proves` heading, until the next heading or EOF. */
-function parseProves(body: string): { claim: string }[] {
-  const claims: { claim: string }[] = [];
-  let inProves = false;
+/** Yield each `- …` item under a `## <heading>` section, until the next heading or EOF. */
+function* itemsUnder(body: string, heading: string): Generator<string> {
+  const headingRe = new RegExp(`^##\\s+${heading}\\s*$`, "i");
+  let active = false;
   for (const line of body.split("\n")) {
-    if (/^##\s+proves\s*$/i.test(line)) {
-      inProves = true;
+    if (headingRe.test(line)) {
+      active = true;
       continue;
     }
     if (/^#{1,6}\s/.test(line)) {
-      inProves = false;
+      active = false;
       continue;
     }
     const item = /^-\s+(.+)$/.exec(line.trim());
-    if (inProves && item?.[1]) claims.push({ claim: item[1].trim() });
+    if (active && item?.[1]) yield item[1].trim();
   }
-  return claims;
 }
 
-/** Parse one `vow.md` into a validated Vow. `slug` is supplied by the loader (the folder name). */
+/** Parse one `## fields` line: `title: text, required` → { name, type, required }. */
+function parseFieldLine(item: string): { name: string; type: string; required: boolean } {
+  const colon = item.indexOf(":");
+  if (colon < 0) {
+    throw new Error(`vow: field "${item}" must be "<name>: <type>[, required]"`);
+  }
+  const name = item.slice(0, colon).trim();
+  const attrs = item
+    .slice(colon + 1)
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return { name, type: attrs[0] ?? "", required: attrs.slice(1).includes("required") };
+}
+
+/** Parse one `<slug>.vow.md` into a validated Vow. `slug` is supplied by the loader (the filename). */
 export function parseVowMd(slug: string, content: string): VowNode {
   const fm = FRONTMATTER.exec(content);
   const frontmatter = (fm ? parseYaml(fm[1] ?? "") : {}) as Record<string, unknown>;
@@ -60,6 +76,7 @@ export function parseVowMd(slug: string, content: string): VowNode {
     intent,
     kind: frontmatter["kind"],
     fulfills: parseFulfills(frontmatter["fulfills"]),
-    proof: parseProves(body),
+    fields: [...itemsUnder(body, "fields")].map(parseFieldLine),
+    proof: [...itemsUnder(body, "proves")].map((claim) => ({ claim })),
   });
 }

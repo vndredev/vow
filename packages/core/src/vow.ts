@@ -40,6 +40,21 @@ export type Fulfillment = z.infer<typeof Fulfillment>;
 export const Scenario = z.object({ claim: Line });
 export type Scenario = z.infer<typeof Scenario>;
 
+/** The primitive types a field can take — the seam the entity emitter turns into TS + validation. */
+export const FieldType = z.enum(["text", "number", "boolean"]);
+export type FieldType = z.infer<typeof FieldType>;
+
+/** A field on an `entity` vow: a camelCase name, a type, and whether it's required. */
+const FieldName = z
+  .string()
+  .regex(/^[a-z][a-zA-Z0-9]*$/, "field name must be a camelCase identifier");
+export const Field = z.object({
+  name: FieldName,
+  type: FieldType,
+  required: z.boolean().default(false),
+});
+export type Field = z.infer<typeof Field>;
+
 export interface Vow {
   readonly id: string;
   readonly slug: string;
@@ -49,6 +64,8 @@ export interface Vow {
   readonly children: readonly Vow[];
   /** Absent = pure composition (a vow that only groups children). */
   readonly fulfills?: Fulfillment;
+  /** Data shape for `emit entity` vows — empty for everything else. */
+  readonly fields: readonly Field[];
   readonly proof: readonly Scenario[];
 }
 
@@ -60,6 +77,7 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     kind: z.string().optional(),
     children: z.array(Vow).default([]),
     fulfills: Fulfillment.optional(),
+    fields: z.array(Field).default([]),
     proof: z.array(Scenario).default([]),
   }),
 );

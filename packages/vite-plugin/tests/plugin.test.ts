@@ -16,10 +16,18 @@ const card: VowNode = {
   slug: "welcome-card",
   intent: "Welcome to vow",
   children: [],
+  fields: [],
   proof: [],
   fulfills: { kind: "emit", as: "vue" },
 };
-const root: VowNode = { id: "vow_root", slug: "app", intent: "Root", children: [card], proof: [] };
+const root: VowNode = {
+  id: "vow_root",
+  slug: "app",
+  intent: "Root",
+  children: [card],
+  fields: [],
+  proof: [],
+};
 const forest: VowNode[] = [root];
 
 test("the tree virtual id resolves; foreign ids are ignored", () => {
