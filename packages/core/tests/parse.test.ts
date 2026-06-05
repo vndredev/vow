@@ -1,0 +1,44 @@
+import { expect, test } from "vite-plus/test";
+import { parseVowMd } from "../src/index.ts";
+
+// The exact vow.md syntax we settled on — plain Markdown, no invented DSL.
+const welcomeCard = `---
+id: vow_card
+fulfills: emit vue
+---
+# Welcome to vow
+
+Rendert sein Versprechen als Komponente.
+
+## proves
+- der intent erscheint
+- HTML im Text wird escaped
+`;
+
+test("parseVowMd reads a vow from Markdown: frontmatter + # intent + ## proves", () => {
+  const vow = parseVowMd("welcome-card", welcomeCard);
+  expect(vow.id).toBe("vow_card");
+  expect(vow.slug).toBe("welcome-card"); // from the folder, not the file
+  expect(vow.intent).toBe("Welcome to vow"); // the H1
+  expect(vow.fulfills).toEqual({ kind: "emit", as: "vue" });
+  expect(vow.proof).toHaveLength(2);
+  expect(vow.proof[0]?.claim).toBe("der intent erscheint");
+  expect(vow.proof[1]?.claim).toBe("HTML im Text wird escaped");
+});
+
+test("`fulfills: bind <module>#<export>` parses to a bind fulfilment", () => {
+  const md = `---\nid: vow_r\nfulfills: bind @vow/core#rollup\n---\n# Status roll-up\n`;
+  const vow = parseVowMd("rollup", md);
+  expect(vow.fulfills).toEqual({ kind: "bind", module: "@vow/core", export: "rollup" });
+});
+
+test("a pure-composition vow needs no fulfilment and no proof", () => {
+  const vow = parseVowMd("epic", `---\nid: vow_e\nkind: epic\n---\n# A grouping epic\n`);
+  expect(vow.kind).toBe("epic");
+  expect(vow.fulfills).toBeUndefined();
+  expect(vow.proof).toEqual([]);
+});
+
+test("an invalid vow (no id) fails fast", () => {
+  expect(() => parseVowMd("broken", `# No id here\n`)).toThrow();
+});
