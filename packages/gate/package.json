@@ -1,0 +1,22 @@
+{
+  "name": "@vow/gate",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's scenario-coverage gate — every promised scenario must have a matching test.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vow/core": "workspace:*",
+    "@vow/emit-entity": "workspace:*",
+    "@vow/vite-plugin": "workspace:*"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}

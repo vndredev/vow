@@ -46,6 +46,9 @@ importers:
       '@vow/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@vow/gate':
+        specifier: workspace:*
+        version: link:../../packages/gate
       '@vow/vite-plugin':
         specifier: workspace:*
         version: link:../../packages/vite-plugin
@@ -97,6 +100,22 @@ importers:
       '@vow/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
+
+  packages/gate:
+    dependencies:
+      '@vow/core':
+        specifier: workspace:*
+        version: link:../core
+      '@vow/emit-entity':
+        specifier: workspace:*
+        version: link:../emit-entity
+      '@vow/vite-plugin':
+        specifier: workspace:*
+        version: link:../vite-plugin
     devDependencies:
       vite-plus:
         specifier: 'catalog:'
