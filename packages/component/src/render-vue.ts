@@ -1,4 +1,4 @@
-import type { Attr, Component, TextNode, UiNode } from "./model.ts";
+import type { Attr, Component, UiNode } from "./model.ts";
 
 /**
  * The Vue adapter — render a canonical `Component` into a Vue SFC string. The first of many adapters
@@ -33,22 +33,31 @@ function renderAttr(attr: Attr): string {
 const renderAttrs = (attrs: readonly Attr[]): string =>
   attrs.map((a) => ` ${renderAttr(a)}`).join("");
 
-/** A text node's inline content: interpolation if `expr`, else an escaped literal. */
-const renderText = (node: TextNode): string =>
-  node.expr !== undefined ? `{{ ${node.expr} }}` : escapeHtml(node.text ?? "");
-
-/** Render a UiNode at the given indent depth (in INDENT units). Inline if all children are text. */
+/** Render a UiNode at the given indent depth (in INDENT units). Inline if all children are text/interp. */
 function renderNode(node: UiNode, depth: number): string {
   const pad = INDENT.repeat(depth);
-  if (node.kind === "text") return pad + renderText(node);
-  const open = node.kind === "component" ? node.name : node.tag;
-  const tag = `<${open}${renderAttrs(node.attrs)}>`;
-  if (node.children.every((c) => c.kind === "text")) {
-    const inner = node.children.map((c) => (c.kind === "text" ? renderText(c) : "")).join("");
-    return `${pad}${tag}${inner}</${open}>`;
+  switch (node.kind) {
+    case "text":
+      return pad + escapeHtml(node.text);
+    case "interp":
+      return `${pad}{{ ${node.expr} }}`;
+    case "element":
+    case "component": {
+      const open = node.kind === "component" ? node.name : node.tag;
+      const tag = `<${open}${renderAttrs(node.attrs)}>`;
+      // inline (no indent) if every child is text/interp; one child per line otherwise
+      if (node.children.every((c) => c.kind === "text" || c.kind === "interp")) {
+        const inner = node.children.map((c) => renderNode(c, 0)).join("");
+        return `${pad}${tag}${inner}</${open}>`;
+      }
+      const inner = node.children.map((c) => renderNode(c, depth + 1)).join("\n");
+      return `${pad}${tag}\n${inner}\n${pad}</${open}>`;
+    }
+    default: {
+      const _exhaustive: never = node;
+      return _exhaustive;
+    }
   }
-  const inner = node.children.map((c) => renderNode(c, depth + 1)).join("\n");
-  return `${pad}${tag}\n${inner}\n${pad}</${open}>`;
 }
 
 /** The `<script setup>` body lines — head (doc+imports), declarations (props+emits), setup; a blank line between non-empty sections. */

@@ -1,6 +1,6 @@
 # The component model
 
-Vue, React and Solid are **three dialects of the same essence**: a component has props, state, events, slots, and a tree of markup. vow captures that essence **once** as plain data — the `Component` model — and a per-framework **adapter** renders it. Today there is one adapter (`renderVueSfc`); React/Solid are later additions over the _same_ model, not a rewrite.
+Vue, React and Solid are **three dialects of the same essence**: a component has props, events, and a tree of markup. vow captures that essence **once** as plain data — the `Component` model — and a per-framework **adapter** renders it. Today there is one adapter (`renderVueSfc`); React/Solid are later additions over the _same_ model, not a rewrite.
 
 This is why the emitters don't hand-write Vue strings: an `emit view` or a primitive builds a `Component`, and the adapter turns it into an SFC. One model, many targets.
 
@@ -22,7 +22,8 @@ interface Component {
 type UiNode =
   | { kind: "element"; tag: string; attrs: Attr[]; children: UiNode[] }
   | { kind: "component"; name: string; attrs: Attr[]; children: UiNode[] }
-  | { kind: "text"; text?: string; expr?: string }; // text=escaped literal · expr=interpolation
+  | { kind: "text"; text: string } // an escaped literal
+  | { kind: "interp"; expr: string }; // an interpolated expression
 ```
 
 ## The agnostic seam: bindings are expression strings
@@ -43,5 +44,5 @@ The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _w
 `renderVueSfc(component): string` is the Vue adapter — an exhaustive walk over the discriminated unions (a missing node kind is a type error, so drift is a red build). Its output is **byte-stable**, pinned by an equality test against the original hand-written SFC. Adding React later means writing `renderReact(component)` over the same `Component` — no model change.
 
 ::: warning Foundation status
-The model and the Vue adapter exist and are proven (`renderVueSfc` reproduces the checkbox SFC byte-for-byte). The emitters are being moved onto the model **one at a time** — see the [roadmap](/guide/roadmap). React/Solid adapters are later.
+The model and the Vue adapter exist and are proven (`renderVueSfc` reproduces the checkbox SFC byte-for-byte). The emitters are being moved onto the model **one at a time** — see the [roadmap](/guide/roadmap). `state`, named slots, loops and event handlers grow with the step that first needs them; React/Solid adapters are later.
 :::

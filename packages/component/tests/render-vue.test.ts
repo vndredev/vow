@@ -42,7 +42,7 @@ const checkbox: Component = {
           { kind: "bound", name: "aria-label", expr: "label" },
           { kind: "static", name: "class", value: "vow-checkbox__box" },
         ],
-        children: [{ kind: "text", expr: 'api.checked ? "✓" : ""' }],
+        children: [{ kind: "interp", expr: 'api.checked ? "✓" : ""' }],
       },
       {
         kind: "element",
@@ -51,7 +51,7 @@ const checkbox: Component = {
           { kind: "spread", expr: "api.labelProps" },
           { kind: "static", name: "class", value: "vow-checkbox__label" },
         ],
-        children: [{ kind: "text", expr: "label" }],
+        children: [{ kind: "interp", expr: "label" }],
       },
     ],
   },
