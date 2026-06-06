@@ -1,8 +1,8 @@
 {
-  "name": "@vow/emit-view",
+  "name": "@vow/component",
   "version": "0.0.0",
   "private": true,
-  "description": "vow's view emitter — turns an `emit view` vow into a typed Vue list over an entity.",
+  "description": "vow's canonical component model + Vue adapter — one model, many framework adapters.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -10,10 +10,6 @@
   "scripts": {
     "test": "vp test",
     "check": "vp check"
-  },
-  "dependencies": {
-    "@vow/component": "workspace:*",
-    "@vow/core": "workspace:*"
   },
   "devDependencies": {
     "vite-plus": "catalog:"

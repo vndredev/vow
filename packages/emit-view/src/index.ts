@@ -1,3 +1,4 @@
+import { pascalCase } from "@vow/component";
 import type { Vow } from "@vow/core";
 
 /**
@@ -12,13 +13,6 @@ import type { Vow } from "@vow/core";
 
 const escapeHtml = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-/** kebab-case slug → PascalCase type name (`task` → `Task`). */
-const pascalCase = (slug: string): string =>
-  slug
-    .split("-")
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join("");
 
 /** A Vue CRUD view over an entity: typed `items` into local state, create / toggle / delete. */
 export function emitViewSfc(view: Vow, entity: Vow): string {
