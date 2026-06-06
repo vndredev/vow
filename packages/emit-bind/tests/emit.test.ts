@@ -5,10 +5,10 @@ import { emitBindAnchor } from "../src/index.ts";
 const bind: VowNode = {
   id: "vow_total",
   slug: "invoice-total",
-  intent: "Rechnungssumme mit Rabatt",
+  intent: "Invoice total with a discount",
   children: [],
   fields: [],
-  proof: [{ claim: "ab 10 Stück greift der Rabatt" }],
+  proof: [{ claim: "a discount applies from 10 units" }],
   fulfills: { kind: "bind", module: "./logic/invoice-total.ts", export: "computeTotal" },
 };
 

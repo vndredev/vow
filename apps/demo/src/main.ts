@@ -8,9 +8,9 @@ import Task from "../.generated/Task.vue";
 import { createTask } from "../.generated/task.ts";
 
 const items = [
-  createTask({ title: "Einkaufen gehen" }),
-  createTask({ title: "Steuer erledigen", done: true }),
-  createTask({ title: "vow dokumentieren" }),
+  createTask({ title: "Buy groceries" }),
+  createTask({ title: "File taxes", done: true }),
+  createTask({ title: "Document vow" }),
 ];
 
 createApp(Task, { items }).mount("#app");

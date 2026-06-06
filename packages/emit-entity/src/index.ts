@@ -58,8 +58,8 @@ function entityScenarios(vow: Vow): { claim: string; missing?: Field }[] {
   const name = pascalCase(vow.slug);
   const required = vow.fields.filter((f) => f.required);
   return [
-    { claim: `Eine gültige ${name} entsteht aus ihren Pflichtfeldern` },
-    ...required.map((f) => ({ claim: `Eine ${name} ohne '${f.name}' wird abgelehnt`, missing: f })),
+    { claim: `A valid ${name} is built from its required fields` },
+    ...required.map((f) => ({ claim: `${name} without '${f.name}' is rejected`, missing: f })),
   ];
 }
 

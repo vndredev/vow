@@ -12,7 +12,7 @@ test("expectedScenarios derives for emit entity, reads ## proves otherwise", () 
     proof: [],
     fulfills: { kind: "emit", as: "entity" },
   };
-  expect(expectedScenarios(entity)).toContain("Eine Task ohne 'title' wird abgelehnt");
+  expect(expectedScenarios(entity)).toContain("Task without 'title' is rejected");
 
   const bind: VowNode = {
     id: "vow_b",

@@ -1,63 +1,66 @@
 # CLAUDE.md
 
-Dieses File leitet Claude Code (claude.ai/code) bei der Arbeit in diesem Repo an.
+This file guides Claude Code (claude.ai/code) when working in this repo.
 
-## Was das ist
+## What this is
 
-**vow** — ein **spec-driven, LLM-first Generator für Vue**. Du beschreibst die App als Baum von **Vows** (Versprechen) in `app/<slug>.vow.md`; vow generiert eine type-safe Vue-App nach `.generated/`, die dir gehört (kein Runtime-Lock-in). Voll auf dem **VoidZero**-Stack (Vite+, Vitest, oxlint/oxfmt, tsgo), Ziel-Backend Cloudflare. pnpm-Monorepo mit der `vp`-CLI.
+**vow** — a **spec-driven, LLM-first generator for Vue**. You describe the app as a tree of **vows** (promises) in `app/<slug>.vow.md`; vow generates a type-safe Vue app into `.generated/` that you own (no runtime lock-in). Fully on the **VoidZero** stack (Vite+, Vitest, oxlint/oxfmt, tsgo), target backend Cloudflare. A pnpm monorepo with the `vp` CLI.
 
-**Leitstern:** mit dem Core-Produkt eine komplette **Dashboard/Planungssystem-App** bauen — bedienbar von User **und** LLM. Vorgehen: slow, Element für Element, Function für Function.
+**Guiding star:** build a complete **dashboard / planning-system app** with the core product — operable by a user **and** an LLM. Approach: slow, element by element, function by function.
 
-## Befehle
+## Commands
 
-- `vp check` — fmt + lint + typecheck (tsgo) über alle Pakete. Muss grün sein.
-- **`pnpm -r test`** — Tests pro Paket (lokale `.bin`). **NICHT `vp test`** (Root): der globale `vp` findet projekt-lokale optionale peers wie `jsdom` nicht.
-- `vp build apps/demo` — generiert `.generated/` + baut das Bundle.
-- `vp dev apps/demo` — dev-Server (HMR: `app/*.vow.md` ändern → regeneriert + reload).
-- `pnpm --filter @vow/docs run docs:build` / `docs:dev` — die VitePress-Docs.
-- pre-commit (`vp staged`) läuft `vp check --fix`.
+- `vp check` — fmt + lint + typecheck (tsgo) across all packages. Must be green.
+- **`pnpm -r test`** — tests per package (local `.bin`). **NOT `vp test`** (root): the global `vp` can't resolve project-local optional peers like `jsdom`.
+- `vp build apps/demo` — generates `.generated/` + builds the bundle.
+- `vp dev apps/demo` — dev server (HMR: change `app/*.vow.md` → regenerates + reloads).
+- `pnpm --filter @vow/docs run docs:build` / `docs:dev` — the VitePress docs.
+- pre-commit (`vp staged`) runs `vp check --fix`.
 
-## Architektur (der Vertrag)
+## Architecture (the contract)
 
-**Das Vow-Primitiv** (`@vow/core`): EIN rekursiver Knoten `{ id, slug, intent, kind?, of?, fields, fulfills?, proof }`. **Status wird NIE gespeichert** (abgeleitet). `parse.ts` (vow.md → Vow), `load.ts` (Ordner-Baum → Wald), `coverage.ts` (scenario-coverage).
+**The Vow primitive** (`@vow/core`): ONE recursive node `{ id, slug, intent, kind?, of?, fields, fulfills?, proof }`. **Status is NEVER stored** (derived). `parse.ts` (vow.md → Vow), `load.ts` (folder tree → forest), `coverage.ts` (scenario-coverage).
 
-**Fulfilment — wie ein Vow eingelöst wird:**
+**Fulfilment — how a vow is redeemed:**
 
-- `emit entity` → `<slug>.ts` (Typ + validierende `create<Name>`-Factory) + `<slug>.test.ts` (aus `## fields` abgeleitet) + `<Name>.vue` (Default-CRUD-Liste). [`@vow/emit-entity`, `@vow/emit-view`]
-- `emit view` (`of: <entity>`) → zusätzliche `.vue`-Ansicht über derselben Entity. [`@vow/emit-view`]
-- `bind <modul>#<export>` → handgeschriebener Code; vow generiert nur einen `.bind.ts`-Anker, den **tsgo** verifiziert (die Naht kann nicht lügen). [`@vow/emit-bind`]
+- `emit entity` → `<slug>.ts` (type + validating `create<Name>` factory) + `<slug>.test.ts` (derived from `## fields`) + `<Name>.vue` (default CRUD list). [`@vow/emit-entity`, `@vow/emit-view`]
+- `emit view` (`of: <entity>`) → an additional `.vue` view over the same entity. [`@vow/emit-view`]
+- `bind <module>#<export>` → hand-written code; vow generates only a `.bind.ts` anchor that **tsgo** verifies (the seam can't lie). [`@vow/emit-bind`]
 
-**Primitive (headless, a11y):** `@vow/headless` = framework-agnostischer Kern (`checkbox(state,set)→api` — ARIA/Tastatur-Logik), dessen **a11y gegen die Plattform** getestet ist (Vanilla-DOM + axe, kein Framework). `@vow/emit-primitive` generiert den **unstyled** Vue-Adapter (nur `class` + `data-*`-Hooks). Nur bauen, was HTML nicht nativ kann — **kein Button** (`<button>` ist schon barrierefrei).
+**The component model** (`@vow/component`): the `.vue` emitters build a canonical, framework-agnostic `Component` (props/events/imports/setup + a `UiNode` view tree with adapter-neutral expression strings) and render it via `renderVueSfc`. React/Solid become further adapters over the same model — byte-stable output, pinned by tests.
 
-**Drei Zonen:** `app/` (Vows = Wahrheit, versioniert) ⟂ `.generated/` (Output, gitignored, NIE editiert) ⟂ `src/` (dünner Boot-Rahmen: `main.ts` + shims).
+**Primitives (headless, a11y):** `@vow/headless` = framework-agnostic core (`checkbox(state,set)→api` — ARIA/keyboard logic), whose **a11y is tested against the platform** (vanilla DOM + axe, no framework). `@vow/emit-primitive` generates the **unstyled** Vue adapter (only `class` + `data-*` hooks). Only build what HTML can't do natively — **no Button** (`<button>` is already accessible).
 
-**Styling:** `@vow/theme` = austauschbares `vow.css` über die `class`/`data-*`-Hooks. Adapter bleiben unstyled; Theme optional (oder durch vndre.dev-Tokens ersetzbar) — kein Komponenten-Eingriff.
+**Three zones:** `app/` (vows = truth, versioned) ⟂ `.generated/` (output, gitignored, NEVER edited) ⟂ `src/` (thin boot shell: `main.ts` + shims).
 
-**Gate:** `@vow/gate` (`runGate`) generiert zuerst, sammelt dann jede prove über den ganzen Wald + jeden Test-Namen im Korpus, und verlangt via `uncoveredScenarios`: **jede prove hat einen grünen Test** (sonst rot). Als App-Test verdrahtet.
+**Styling:** `@vow/theme` = swappable `vow.css` over the `class`/`data-*` hooks. Adapters stay unstyled; the theme is optional (or replaceable by vndre.dev tokens) — no component change.
 
-**Plugin:** `@vow/vite-plugin` (`vow()`) lädt `app/`, generiert `.generated/`, exponiert `virtual:vow/tree`, watcht `app/*.md` für HMR.
+**Gate:** `@vow/gate` (`runGate`) generates first, then collects every prove across the whole forest + every test name in the corpus, and requires via `uncoveredScenarios`: **every prove has a green test** (else red). A **docs-drift gate** also re-parses the docs' vow.md examples against the real core and checks type-drift (every `Attr`/`UiNode` kind in `components.md`, every `FieldType` in `emit.md`). Wired as an app test.
 
-## Konventionen & Fallstricke
+**Plugin:** `@vow/vite-plugin` (`vow()`) loads `app/`, generates `.generated/`, exposes `virtual:vow/tree`, watches `app/*.md` for HMR.
 
-- Vows als **`<slug>.vow.md`** (slug IM Dateinamen, kein „index.js-Trap"). Verschachtelung über gleichnamigen `<slug>/`-Ordner.
-- `id`: Regex `^[a-z]+_[a-z0-9]+$` — **genau EIN Unterstrich** (`vow_task`, nicht `vow_invoice_total`).
-- Tests **immer** via `pnpm -r test` (lokale bins, jsdom-peer). Der globale `vp test` bricht an `jsdom`.
-- **a11y gegen die Plattform** testen (Vanilla-DOM + axe), nicht ein Framework — die Wahrheit liegt im headless-Kern; der Adapter reicht nur durch.
-- VitePress (`docs/`) läuft auf eigenem **Upstream-Vite** (scoped override `"vitepress>vite"`), nicht Vite+ (Vite+ entfernte `transformWithEsbuild` zugunsten oxc). `allowBuilds: esbuild`.
-- Side-effect-Imports (`*.css`, `*.vue`) brauchen einen tsgo-shim (`src/env.d.ts`).
+## Conventions & pitfalls
 
-## Arbeitsweise (hart, von Andre)
+- vows as **`<slug>.vow.md`** (slug IN the filename, no "index.js trap"). Nesting via a same-named `<slug>/` folder.
+- `id`: regex `^[a-z]+_[a-z0-9]+$` — **exactly ONE underscore** (`vow_task`, not `vow_invoice_total`).
+- Run tests **always** via `pnpm -r test` (local bins, jsdom peer). The global `vp test` breaks on `jsdom`.
+- Test **a11y against the platform** (vanilla DOM + axe), not a framework — the truth lives in the headless core; the adapter only forwards.
+- **English only** across codebase + docs — enforced by a gate (no umlauts).
+- VitePress (`docs/`) runs on its own **upstream Vite** (scoped override `"vitepress>vite"`), not Vite+ (Vite+ dropped `transformWithEsbuild` for oxc). `allowBuilds: esbuild`.
+- Side-effect imports (`*.css`, `*.vue`) need a tsgo shim (`src/env.d.ts`).
 
-- **Slow, Element für Element, Function für Function.** Erst planen, dann umsetzen. Pro Element: Code → grün (`vp check` + `pnpm -r test`) → **Doc-Seite** → vorlegen → Andre approved → nächstes.
-- **Die Docs sind die nachvollziehbare Wahrheit** für User + LLM — der Ort, wo man alles versteht. Bei JEDEM Feature mitpflegen, **1:1 zum echten Stand**, kein Überversprechen, ehrlich (Foundation-phase markieren).
-- **commit when green.** Push macht Andre interaktiv.
-- Kein Mock als echte Daten ausgeben; Ursache statt Symptom lösen.
+## Way of working (hard rules, from Andre)
 
-## Roadmap (zwei Stränge → Dashboard/Planungs-App)
+- **Slow, element by element, function by function.** Plan first, then build. Per element: code → green (`vp check` + `pnpm -r test`) → **doc page** → present → Andre approves → next.
+- **The docs are the traceable truth** for user + LLM — the place where everything is understood. Maintain them with EVERY feature, **1:1 to the real state**, no overselling, honest (mark the Foundation phase).
+- **Commit when green.** Andre pushes interactively.
+- Don't present mocks as real data; fix the root cause, not the symptom.
 
-- **Generierung** (was vow ausgibt): mehr field-types (date/select/reference) + Relationen → Primitive-Leiter (Switch/Dialog/Tabs/Select/Combobox/Table; Komplexes via Zag/Ark wrappen) → Patterns (Form/Table/Detail/Board/Stats) → Layout/Shell/Routing → Daten-Adapter (memory → CF D1).
-- **Autoren-Schicht** (LLM-first): `serialize` (Vow → vow.md) → typed Mutations-API (`addEntity`/`addField`/…) → **vow-MCP-Server** (das LLM operiert vow über typed Tools).
-- **Referenz-Produkt:** ein Dashboard/Planungssystem (Entities + Board/Kanban + Stats + CRUD + Persistenz), bedienbar von User + LLM.
+## Roadmap (two strands → dashboard / planning app)
+
+- **Generation** (what vow emits): more field types (date/select/reference) + relations → primitive ladder (Switch/Dialog/Tabs/Select/Combobox/Table; wrap complex ones via Zag/Ark) → patterns (Form/Table/Detail/Board/Stats) → layout/shell/routing → data adapter (memory → CF D1).
+- **Author layer** (LLM-first): `serialize` (Vow → vow.md) → typed mutation API (`addEntity`/`addField`/…) → **vow MCP server** (the LLM operates vow via typed tools).
+- **Reference product:** a dashboard / planning system (entities + board/kanban + stats + CRUD + persistence), operable by user + LLM.
 
 <!--VITE PLUS START-->
 

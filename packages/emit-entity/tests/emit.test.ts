@@ -54,20 +54,20 @@ test("a date field is a string field (ISO-8601) with an ISO sample value", () =>
   expect(code).toContain("'starts' is required");
   const testCode = emitEntityTest(event);
   expect(testCode).toContain('starts: "2026-01-01"');
-  expect(testCode).toContain("Eine Event ohne 'starts' wird abgelehnt");
+  expect(testCode).toContain("Event without 'starts' is rejected");
 });
 
 test("entityProves derives the proven scenarios from the fields", () => {
   expect(entityProves(task)).toEqual([
-    "Eine gültige Task entsteht aus ihren Pflichtfeldern",
-    "Eine Task ohne 'title' wird abgelehnt",
+    "A valid Task is built from its required fields",
+    "Task without 'title' is rejected",
   ]);
 });
 
 test("emitEntityTest names each generated test after its proven scenario", () => {
   const code = emitEntityTest(task);
-  expect(code).toContain('test("Eine gültige Task entsteht aus ihren Pflichtfeldern"');
-  expect(code).toContain("test(\"Eine Task ohne 'title' wird abgelehnt\"");
+  expect(code).toContain('test("A valid Task is built from its required fields"');
+  expect(code).toContain("test(\"Task without 'title' is rejected\"");
   expect(code).toContain("toThrow()");
 });
 
