@@ -1,20 +1,22 @@
-import { pascalCase } from "@vow/component";
+import {
+  pascalCase,
+  renderVueSfc,
+  type Component,
+  type ImportDecl,
+  type UiNode,
+} from "@vow/component";
 import type { Vow } from "@vow/core";
 
 /**
  * vow's view emitter — `emit view` made real (CRUD over local state).
  *
- * A view renders a list of an entity's rows with create / toggle / delete, all on a local `ref`
- * (no persistence yet — a data adapter comes later). Text fields render as-is and feed the create
- * form; boolean fields render as the emitted, accessible <Checkbox>. Create/delete use native
- * <form>/<input>/<button> (no primitive needed). The view is **unstyled** — only class + data-*
- * hooks; styling lives in the swappable `@vow/theme`.
+ * The view is built as a canonical `Component` and rendered by the Vue adapter (`renderVueSfc`); the
+ * imperative glue (refs, add/remove) lives in `setup`. Boolean fields render as the emitted,
+ * accessible `<Checkbox>`. The view is **unstyled** — only class hooks; styling lives in the
+ * swappable `@vow/theme`. React/Solid would reuse the same Component via a different adapter.
  */
 
-const escapeHtml = (s: string): string =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-/** A Vue CRUD view over an entity: typed `items` into local state, create / toggle / delete. */
+/** A Vue CRUD view over an entity, expressed as a Component and rendered by renderVueSfc. */
 export function emitViewSfc(view: Vow, entity: Vow): string {
   if (view.fulfills?.kind !== "emit" || view.fulfills.as !== "view") {
     throw new Error(`emit-view: vow "${view.slug}" is not an \`emit view\``);
@@ -26,33 +28,13 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
   const hasBoolean = entity.fields.some((f) => f.type === "boolean");
   const inputFields = entity.fields.filter((f) => f.type !== "boolean");
 
-  const cells = entity.fields.map((f) =>
-    f.type === "boolean"
-      ? `        <Checkbox v-model="item.${f.name}" label="${f.name}" />`
-      : `        <span class="vow-view__field field-${f.name}">{{ item.${f.name} }}</span>`,
-  );
-  const inputs = inputFields.map((f) => {
-    if (f.type === "select") {
-      const opts = (f.options ?? []).map((o) => `<option value="${o}">${o}</option>`).join("");
-      return `      <select class="vow-view__input" v-model="draft.${f.name}" aria-label="${f.name}">${opts}</select>`;
-    }
-    if (f.type === "date") {
-      return `      <input class="vow-view__input" type="date" v-model="draft.${f.name}" aria-label="${f.name}" />`;
-    }
-    const model =
-      f.type === "number" ? `v-model.number="draft.${f.name}"` : `v-model="draft.${f.name}"`;
-    return `      <input class="vow-view__input" ${model} placeholder="${f.name}" aria-label="${f.name}" />`;
-  });
-
-  const head = [
-    `<script setup lang="ts">`,
-    `// Generated from vow "${view.slug}" (a view of "${entity.slug}"). The vow tree is the source — do not edit.`,
-    `import { ref } from "vue";`,
-    `import { create${type}, type ${type} } from "./${entity.slug}.ts";`,
+  const imports: ImportDecl[] = [
+    { from: "vue", names: ["ref"] },
+    { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
   ];
-  if (hasBoolean) head.push(`import Checkbox from "./Checkbox.vue";`);
-  head.push(
-    ``,
+  if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
+
+  const setup: string[] = [
     `const props = defineProps<{ items: ${type}[] }>();`,
     `const rows = ref<${type}[]>(props.items.map((item) => ({ ...item })));`,
     `const draft = ref<Partial<${type}>>({});`,
@@ -68,28 +50,151 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
     `function remove(index: number): void {`,
     `  rows.value.splice(index, 1);`,
     `}`,
-    `</script>`,
+  ];
+
+  // one display cell per field: boolean → <Checkbox>, everything else → a <span> with the value
+  const cells: UiNode[] = entity.fields.map(
+    (f): UiNode =>
+      f.type === "boolean"
+        ? {
+            kind: "component",
+            name: "Checkbox",
+            attrs: [
+              { kind: "model", expr: `item.${f.name}` },
+              { kind: "static", name: "label", value: f.name },
+            ],
+            children: [],
+          }
+        : {
+            kind: "element",
+            tag: "span",
+            attrs: [{ kind: "static", name: "class", value: `vow-view__field field-${f.name}` }],
+            children: [{ kind: "interp", expr: `item.${f.name}` }],
+          },
   );
-  return [
-    ...head,
-    ``,
-    `<template>`,
-    `  <section class="vow-view vow-view--${view.slug}">`,
-    `    <h1 class="vow-view__title">${escapeHtml(view.intent)}</h1>`,
-    `    <ul class="vow-view__list">`,
-    `      <li class="vow-view__row" v-for="(item, i) in rows" :key="i">`,
-    ...cells,
-    `        <button class="vow-view__delete" type="button" :aria-label="'Löschen: ' + item.${inputFields[0]?.name ?? "title"}" @click="remove(i)">✕</button>`,
-    `      </li>`,
-    `    </ul>`,
-    `    <form class="vow-view__create" @submit.prevent="add">`,
-    ...inputs,
-    `      <button class="vow-view__add" type="submit">+ Hinzufügen</button>`,
-    `    </form>`,
-    `  </section>`,
-    `</template>`,
-    ``,
-  ].join("\n");
+
+  const deleteButton: UiNode = {
+    kind: "element",
+    tag: "button",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-view__delete" },
+      { kind: "static", name: "type", value: "button" },
+      {
+        kind: "bound",
+        name: "aria-label",
+        expr: `'Löschen: ' + item.${inputFields[0]?.name ?? "title"}`,
+      },
+      { kind: "event", name: "click", expr: "remove(i)" },
+    ],
+    children: [{ kind: "text", text: "✕" }],
+  };
+
+  // one input per non-boolean field: select → inline options, date → date input, else text/number
+  const inputs: UiNode[] = inputFields.map((f): UiNode => {
+    if (f.type === "select") {
+      return {
+        kind: "element",
+        tag: "select",
+        inline: true,
+        attrs: [
+          { kind: "static", name: "class", value: "vow-view__input" },
+          { kind: "model", expr: `draft.${f.name}` },
+          { kind: "static", name: "aria-label", value: f.name },
+        ],
+        children: (f.options ?? []).map(
+          (o): UiNode => ({
+            kind: "element",
+            tag: "option",
+            attrs: [{ kind: "static", name: "value", value: o }],
+            children: [{ kind: "text", text: o }],
+          }),
+        ),
+      };
+    }
+    if (f.type === "date") {
+      return {
+        kind: "element",
+        tag: "input",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-view__input" },
+          { kind: "static", name: "type", value: "date" },
+          { kind: "model", expr: `draft.${f.name}` },
+          { kind: "static", name: "aria-label", value: f.name },
+        ],
+        children: [],
+      };
+    }
+    return {
+      kind: "element",
+      tag: "input",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-view__input" },
+        f.type === "number"
+          ? { kind: "model", expr: `draft.${f.name}`, modifiers: ["number"] }
+          : { kind: "model", expr: `draft.${f.name}` },
+        { kind: "static", name: "placeholder", value: f.name },
+        { kind: "static", name: "aria-label", value: f.name },
+      ],
+      children: [],
+    };
+  });
+
+  const addButton: UiNode = {
+    kind: "element",
+    tag: "button",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-view__add" },
+      { kind: "static", name: "type", value: "submit" },
+    ],
+    children: [{ kind: "text", text: "+ Hinzufügen" }],
+  };
+
+  const component: Component = {
+    name: type,
+    doc: [
+      `Generated from vow "${view.slug}" (a view of "${entity.slug}"). The vow tree is the source — do not edit.`,
+    ],
+    imports,
+    setup,
+    view: {
+      kind: "element",
+      tag: "section",
+      attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${view.slug}` }],
+      children: [
+        {
+          kind: "element",
+          tag: "h1",
+          attrs: [{ kind: "static", name: "class", value: "vow-view__title" }],
+          children: [{ kind: "text", text: view.intent }],
+        },
+        {
+          kind: "element",
+          tag: "ul",
+          attrs: [{ kind: "static", name: "class", value: "vow-view__list" }],
+          children: [
+            {
+              kind: "element",
+              tag: "li",
+              attrs: [{ kind: "static", name: "class", value: "vow-view__row" }],
+              for: { each: "rows", as: "item", index: "i", key: "i" },
+              children: [...cells, deleteButton],
+            },
+          ],
+        },
+        {
+          kind: "element",
+          tag: "form",
+          attrs: [
+            { kind: "static", name: "class", value: "vow-view__create" },
+            { kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] },
+          ],
+          children: [...inputs, addButton],
+        },
+      ],
+    },
+  };
+
+  return renderVueSfc(component);
 }
 
 /** The PascalCase component name for an entity's default view (`task` → `Task`). */

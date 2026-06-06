@@ -78,13 +78,16 @@ function renderNode(node: UiNode, depth: number): string {
     case "component": {
       const open = node.kind === "component" ? node.name : node.tag;
       const attrs = renderAttrs(node.attrs) + (node.for ? renderFor(node.for) : "");
-      // HTML void elements are self-closing: <input … />
-      if (node.kind === "element" && VOID_ELEMENTS.has(node.tag)) {
+      // self-closing: HTML void elements, or any node with no children (<input … />, <Checkbox … />)
+      if ((node.kind === "element" && VOID_ELEMENTS.has(node.tag)) || node.children.length === 0) {
         return `${pad}<${open}${attrs} />`;
       }
       const tag = `<${open}${attrs}>`;
-      // inline (no indent) if every child is text/interp; one child per line otherwise
-      if (node.children.every((c) => c.kind === "text" || c.kind === "interp")) {
+      // inline (no newlines) if explicitly marked or every child is text/interp; else one per line
+      const inline =
+        (node.kind === "element" && node.inline === true) ||
+        node.children.every((c) => c.kind === "text" || c.kind === "interp");
+      if (inline) {
         const inner = node.children.map((c) => renderNode(c, 0)).join("");
         return `${pad}${tag}${inner}</${open}>`;
       }
