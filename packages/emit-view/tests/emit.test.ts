@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow as VowNode } from "@vow/core";
-import { emitViewSfc } from "../src/index.ts";
+import { emitDefaultView, emitViewSfc, viewComponentName } from "../src/index.ts";
 
 const entity: VowNode = {
   id: "vow_task",
@@ -30,17 +30,22 @@ test("emitViewSfc renders an unstyled, hooked CRUD list over the entity", () => 
   expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
   expect(sfc).toContain("defineProps<{ items: Task[] }>()");
-  // read + update
   expect(sfc).toContain('v-for="(item, i) in rows"');
   expect(sfc).toContain("{{ item.title }}");
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
-  // create + delete on local state
   expect(sfc).toContain('v-model="draft.title"');
   expect(sfc).toContain('@submit.prevent="add"');
   expect(sfc).toContain("createTask(draft.value)");
   expect(sfc).toContain('@click="remove(i)"');
-  // unstyled
   expect(sfc).not.toContain("<style");
+});
+
+test("emitDefaultView renders a CRUD view straight from the entity — no separate view vow", () => {
+  expect(viewComponentName(entity)).toBe("Task");
+  const sfc = emitDefaultView(entity);
+  expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
+  expect(sfc).toContain('v-for="(item, i) in rows"');
+  expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
 });
 
 test("emitViewSfc fails fast when the target is not an emit view / entity", () => {

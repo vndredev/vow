@@ -90,3 +90,19 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
     ``,
   ].join("\n");
 }
+
+/** The PascalCase component name for an entity's default view (`task` → `Task`). */
+export function viewComponentName(entity: Vow): string {
+  return pascalCase(entity.slug);
+}
+
+/**
+ * The default list view over an entity — no separate view vow needed. The entity is treated as its
+ * own view, so a single `task.vow.md` yields the model AND its CRUD list.
+ */
+export function emitDefaultView(entity: Vow): string {
+  return emitViewSfc(
+    { ...entity, fulfills: { kind: "emit", as: "view" }, of: entity.slug },
+    entity,
+  );
+}

@@ -5,7 +5,7 @@ import { loadVowForest, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { emitCheckboxSfc } from "@vow/emit-primitive";
-import { emitViewSfc } from "@vow/emit-view";
+import { emitDefaultView, emitViewSfc, viewComponentName } from "@vow/emit-view";
 import { emitVueSfc } from "@vow/emit-vue";
 
 /**
@@ -71,6 +71,15 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(mod, emitEntityModule(v), "utf8");
       writeFileSync(test, emitEntityTest(v), "utf8");
       written.push(mod, test);
+      // the entity brings its own default list view (+ checkbox for any boolean field)
+      const viewFile = join(outDir, `${viewComponentName(v)}.vue`);
+      writeFileSync(viewFile, emitDefaultView(v), "utf8");
+      written.push(viewFile);
+      if (v.fields.some((fld) => fld.type === "boolean")) {
+        const cb = join(outDir, "Checkbox.vue");
+        writeFileSync(cb, emitCheckboxSfc(), "utf8");
+        written.push(cb);
+      }
     } else if (f.kind === "emit" && f.as === "view") {
       const entity = allVows(vows).find(
         (e) => e.slug === v.of && e.fulfills?.kind === "emit" && e.fulfills.as === "entity",
