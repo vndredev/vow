@@ -62,6 +62,17 @@ test("a select field renders as a <select> with options in the create form", () 
   expect(sfc).toContain('<option value="todo">todo</option>');
 });
 
+test("a date field renders as a native date input in the create form", () => {
+  const event: VowNode = {
+    ...entity,
+    id: "vow_event",
+    slug: "event",
+    fields: [{ name: "starts", type: "date", required: true }],
+  };
+  const sfc = emitDefaultView(event);
+  expect(sfc).toContain('<input class="vow-view__input" type="date" v-model="draft.starts"');
+});
+
 test("emitViewSfc fails fast when the target is not an emit view / entity", () => {
   expect(() => emitViewSfc(entity, entity)).toThrow();
   expect(() => emitViewSfc(view, view)).toThrow();
