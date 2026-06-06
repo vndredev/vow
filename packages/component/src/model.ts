@@ -22,10 +22,11 @@ export interface EventDef {
   readonly payload: string;
 }
 
-/** A module import: the named bindings pulled from a module specifier. */
+/** A module import: a default binding and/or named bindings from a module specifier. */
 export interface ImportDecl {
   readonly from: string;
-  readonly names: readonly string[];
+  readonly names?: readonly string[];
+  readonly default?: string;
 }
 
 /** A static attribute — a literal value written verbatim into the markup. */
