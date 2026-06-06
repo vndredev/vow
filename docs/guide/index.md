@@ -28,4 +28,4 @@ The visible `app/` folder holds the vows. The generated `.vue` / `.ts` lives in 
 - **Governed.** Every promise carries a proof; an unproven claim can't go green (see [proof](/guide/proof)).
 - **Yours.** vow is a generator, not a runtime — the output is plain Vue, yours to keep.
 
-Next: [the Vow primitive →](/guide/vow)
+Next: [Getting started →](/guide/getting-started)
