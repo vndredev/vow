@@ -23,6 +23,16 @@
   --vow-container-4: 71rem;
 }
 
+/* Layout primitives are structural (inline style only); Box gets a visible default so layout
+   composition (rows, grids) is legible, and the container carries the base font. */
+.vow-container {
+  font-family: system-ui, sans-serif;
+}
+.vow-box {
+  border: 1px solid #e3e3e3;
+  border-radius: 0.4rem;
+}
+
 .vow-view {
   font-family: system-ui, sans-serif;
   max-width: 32rem;

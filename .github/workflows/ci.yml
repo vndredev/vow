@@ -19,9 +19,9 @@ jobs:
       # so the `prepare` script (vp config) can run.
       - run: npm install -g vite-plus
       - run: pnpm install --frozen-lockfile
-      # Generate first: the demo imports from the gitignored .generated/, which only a
+      # Generate first: the showcase imports from the gitignored .generated/, which only a
       # Vite run materializes — so `vp check` (typecheck) needs it to exist beforehand.
-      - run: vp build apps/demo
+      - run: vp build apps/showcase
       - run: vp check
       - run: pnpm -r test
       - run: pnpm --filter @vow/docs run docs:build
