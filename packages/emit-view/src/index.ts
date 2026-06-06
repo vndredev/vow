@@ -42,6 +42,9 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
       const opts = (f.options ?? []).map((o) => `<option value="${o}">${o}</option>`).join("");
       return `      <select class="vow-view__input" v-model="draft.${f.name}" aria-label="${f.name}">${opts}</select>`;
     }
+    if (f.type === "date") {
+      return `      <input class="vow-view__input" type="date" v-model="draft.${f.name}" aria-label="${f.name}" />`;
+    }
     const model =
       f.type === "number" ? `v-model.number="draft.${f.name}"` : `v-model="draft.${f.name}"`;
     return `      <input class="vow-view__input" ${model} placeholder="${f.name}" aria-label="${f.name}" />`;

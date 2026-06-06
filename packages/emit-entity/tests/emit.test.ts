@@ -39,6 +39,24 @@ test("a select field becomes a string-literal union with a default", () => {
   expect(code).toContain('status: input.status ?? "todo"');
 });
 
+test("a date field is a string field (ISO-8601) with an ISO sample value", () => {
+  const event: VowNode = {
+    ...task,
+    id: "vow_event",
+    slug: "event",
+    fields: [
+      { name: "title", type: "text", required: true },
+      { name: "starts", type: "date", required: true },
+    ],
+  };
+  const code = emitEntityModule(event);
+  expect(code).toContain("starts: string;");
+  expect(code).toContain("'starts' is required");
+  const testCode = emitEntityTest(event);
+  expect(testCode).toContain('starts: "2026-01-01"');
+  expect(testCode).toContain("Eine Event ohne 'starts' wird abgelehnt");
+});
+
 test("entityProves derives the proven scenarios from the fields", () => {
   expect(entityProves(task)).toEqual([
     "Eine gültige Task entsteht aus ihren Pflichtfeldern",

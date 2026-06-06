@@ -7,24 +7,27 @@ import type { Field, Vow } from "@vow/core";
  *  - `entityProves`     → the scenarios this entity proves, DERIVED from its fields (the contract).
  *  - `emitEntityTest`   → a Vitest suite whose test names ARE those proven scenarios.
  *
- * Field types: text → string, number → number, boolean → boolean, select → a string-literal union
+ * Field types: text → string, number → number, boolean → boolean, date → string (ISO-8601), select → a string-literal union
  * of its options. Files are written into `.generated/` by the Vite plugin — never source.
  */
 
-const TS_TYPE: Record<"text" | "number" | "boolean", string> = {
+const TS_TYPE: Record<"text" | "number" | "boolean" | "date", string> = {
   text: "string",
   number: "number",
   boolean: "boolean",
+  date: "string", // ISO-8601 (YYYY-MM-DD) — string keeps it JSON- and adapter-neutral
 };
-const DEFAULT: Record<"text" | "number" | "boolean", string> = {
+const DEFAULT: Record<"text" | "number" | "boolean" | "date", string> = {
   text: '""',
   number: "0",
   boolean: "false",
+  date: '""',
 };
-const SAMPLE: Record<"text" | "number" | "boolean", string> = {
+const SAMPLE: Record<"text" | "number" | "boolean" | "date", string> = {
   text: '"x"',
   number: "1",
   boolean: "true",
+  date: '"2026-01-01"',
 };
 
 /** The TS type for a field — a string-literal union for `select`. */
@@ -79,7 +82,7 @@ export function emitEntityModule(vow: Vow): string {
   for (const f of vow.fields) out.push(`  ${f.name}: ${tsType(f)};`);
   out.push(`}`, ``, `export function create${name}(input: Partial<${name}>): ${name} {`);
   for (const f of required) {
-    const empty = f.type === "text" ? ` || input.${f.name} === ""` : "";
+    const empty = f.type === "text" || f.type === "date" ? ` || input.${f.name} === ""` : "";
     out.push(
       `  if (input.${f.name} === undefined${empty}) {`,
       `    throw new Error(${JSON.stringify(`${name}: '${f.name}' is required`)});`,
