@@ -42,3 +42,35 @@ test("a pure-composition vow needs no fulfilment and no proof", () => {
 test("an invalid vow (no id) fails fast", () => {
   expect(() => parseVowMd("broken", `# No id here\n`)).toThrow();
 });
+
+test("parseVowMd reads a ## tree into a single-root TreeNode (indentation = nesting)", () => {
+  const md = [
+    "---",
+    "id: vow_t",
+    "fulfills: emit view",
+    "---",
+    "# A laid-out view",
+    "",
+    "## tree",
+    "- Container(size=3)",
+    "  - Flex(direction=column, gap=4)",
+    "    - slot",
+  ].join("\n");
+  const vow = parseVowMd("shell", md);
+  expect(vow.tree?.component).toBe("Container");
+  expect(vow.tree?.props).toEqual({ size: "3" });
+  const flex = vow.tree?.children[0];
+  expect(flex?.component).toBe("Flex");
+  expect(flex?.props).toEqual({ direction: "column", gap: "4" });
+  expect(flex?.children[0]?.component).toBe("slot");
+});
+
+test("a vow without a ## tree has no tree", () => {
+  const vow = parseVowMd("task", `---\nid: vow_x\nfulfills: emit entity\n---\n# A task\n`);
+  expect(vow.tree).toBeUndefined();
+});
+
+test("a ## tree with more than one root fails fast", () => {
+  const md = `---\nid: vow_m\nfulfills: emit view\n---\n# Two roots\n\n## tree\n- Flex\n- Grid\n`;
+  expect(() => parseVowMd("bad", md)).toThrow();
+});
