@@ -66,14 +66,19 @@ export interface ComponentNode {
   readonly children: readonly UiNode[];
 }
 
-/** A text node — `expr` set → interpolation; otherwise `text` is an escaped literal. */
+/** A literal text node — escaped verbatim into the markup. */
 export interface TextNode {
   readonly kind: "text";
-  readonly text?: string;
-  readonly expr?: string;
+  readonly text: string;
 }
 
-export type UiNode = ElementNode | ComponentNode | TextNode;
+/** An interpolation node — an adapter-neutral expression rendered as the framework's interpolation. */
+export interface InterpNode {
+  readonly kind: "interp";
+  readonly expr: string;
+}
+
+export type UiNode = ElementNode | ComponentNode | TextNode | InterpNode;
 
 /** The canonical, framework-agnostic component. Grows field-by-field as each step earns it. */
 export interface Component {
