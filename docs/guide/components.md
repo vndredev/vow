@@ -34,7 +34,9 @@ An attribute is **static**, **bound**, or a **spread** — and a binding carries
 type Attr =
   | { kind: "static"; name: string; value: string } // class="vow-checkbox"
   | { kind: "bound"; name: string; expr: string } // :aria-label="label"
-  | { kind: "spread"; expr: string }; // v-bind="api.rootProps"
+  | { kind: "spread"; expr: string } // v-bind="api.rootProps"
+  | { kind: "event"; name: string; expr: string; modifiers?: string[] } // @submit.prevent="add"
+  | { kind: "model"; expr: string; modifiers?: string[] }; // v-model.number="draft.x"
 ```
 
 The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _what_ to bind, the adapter decides the _syntax_. Vue renders `:aria-label="label"`; a future React adapter renders `aria-label={label}`. The model never learns a Vue keyword.
