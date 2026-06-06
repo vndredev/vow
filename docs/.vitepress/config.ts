@@ -6,7 +6,10 @@ export default defineConfig({
   description: "The spec-driven framework for Vue — your app, as a promise.",
   cleanUrls: true,
   themeConfig: {
-    nav: [{ text: "Guide", link: "/guide/" }],
+    nav: [
+      { text: "Guide", link: "/guide/" },
+      { text: "Roadmap", link: "/guide/roadmap" },
+    ],
     sidebar: {
       "/guide/": [
         {
@@ -28,6 +31,10 @@ export default defineConfig({
         {
           text: "UI",
           items: [{ text: "Primitives", link: "/guide/primitives" }],
+        },
+        {
+          text: "Project",
+          items: [{ text: "Roadmap", link: "/guide/roadmap" }],
         },
       ],
     },
