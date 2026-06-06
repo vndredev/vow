@@ -10,3 +10,4 @@ kind: entity
 
 - title: text, required
 - done: boolean
+- status: select(todo|doing|done)

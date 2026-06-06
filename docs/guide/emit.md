@@ -24,6 +24,8 @@ fulfills: emit entity
 - **`task.test.ts`** — a Vitest suite **derived from the fields** (a happy path + one reject per required field). No one writes it; the test names _are_ the proven scenarios (see [proof](/guide/proof)).
 - **`Task.vue`** — a **default CRUD list** over the entity: read · create (inline form) · toggle · delete, on local component state. Boolean fields become the emitted, accessible [`<Checkbox>`](/guide/primitives).
 
+**Field types:** `text` · `number` · `boolean` · `select(a|b|c)` (a string-literal union, rendered as a `<select>`). More (date · reference) + relations are on the [roadmap](/guide/roadmap).
+
 One entity vow gives you the model **and** its UI — no separate view file for the common case.
 
 ## emit view

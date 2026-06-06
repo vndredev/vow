@@ -48,6 +48,20 @@ test("emitDefaultView renders a CRUD view straight from the entity — no separa
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
 });
 
+test("a select field renders as a <select> with options in the create form", () => {
+  const ticket: VowNode = {
+    ...entity,
+    id: "vow_ticket",
+    slug: "ticket",
+    fields: [
+      { name: "status", type: "select", required: false, options: ["todo", "doing", "done"] },
+    ],
+  };
+  const sfc = emitDefaultView(ticket);
+  expect(sfc).toContain('<select class="vow-view__input" v-model="draft.status"');
+  expect(sfc).toContain('<option value="todo">todo</option>');
+});
+
 test("emitViewSfc fails fast when the target is not an emit view / entity", () => {
   expect(() => emitViewSfc(entity, entity)).toThrow();
   expect(() => emitViewSfc(view, view)).toThrow();

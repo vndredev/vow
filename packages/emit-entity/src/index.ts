@@ -5,19 +5,43 @@ import type { Field, Vow } from "@vow/core";
  *
  *  - `emitEntityModule` → a typed module: a `<Name>` interface + a validating `create<Name>` factory.
  *  - `entityProves`     → the scenarios this entity proves, DERIVED from its fields (the contract).
- *  - `emitEntityTest`   → a Vitest suite whose test names ARE those proven scenarios. No one writes
- *    these — for `emit`, the proof (claim + body) falls out of the declaration.
+ *  - `emitEntityTest`   → a Vitest suite whose test names ARE those proven scenarios.
  *
- * Both files are written into `.generated/` by the Vite plugin, compiled/run by Vite+ — never source.
+ * Field types: text → string, number → number, boolean → boolean, select → a string-literal union
+ * of its options. Files are written into `.generated/` by the Vite plugin — never source.
  */
 
-const TS_TYPE: Record<Field["type"], string> = {
+const TS_TYPE: Record<"text" | "number" | "boolean", string> = {
   text: "string",
   number: "number",
   boolean: "boolean",
 };
-const DEFAULT: Record<Field["type"], string> = { text: '""', number: "0", boolean: "false" };
-const SAMPLE: Record<Field["type"], string> = { text: '"x"', number: "1", boolean: "true" };
+const DEFAULT: Record<"text" | "number" | "boolean", string> = {
+  text: '""',
+  number: "0",
+  boolean: "false",
+};
+const SAMPLE: Record<"text" | "number" | "boolean", string> = {
+  text: '"x"',
+  number: "1",
+  boolean: "true",
+};
+
+/** The TS type for a field — a string-literal union for `select`. */
+function tsType(f: Field): string {
+  if (f.type === "select") {
+    return (f.options ?? []).map((o) => JSON.stringify(o)).join(" | ") || "string";
+  }
+  return TS_TYPE[f.type];
+}
+/** A default-value expression for the factory. */
+function defaultExpr(f: Field): string {
+  return f.type === "select" ? JSON.stringify(f.options?.[0] ?? "") : DEFAULT[f.type];
+}
+/** A sample-value expression for the generated tests. */
+function sampleExpr(f: Field): string {
+  return f.type === "select" ? JSON.stringify(f.options?.[0] ?? "") : SAMPLE[f.type];
+}
 
 /** kebab-case slug → PascalCase type name (`task` → `Task`, `audit-log` → `AuditLog`). */
 const pascalCase = (slug: string): string =>
@@ -52,7 +76,7 @@ export function emitEntityModule(vow: Vow): string {
     ``,
     `export interface ${name} {`,
   ];
-  for (const f of vow.fields) out.push(`  ${f.name}: ${TS_TYPE[f.type]};`);
+  for (const f of vow.fields) out.push(`  ${f.name}: ${tsType(f)};`);
   out.push(`}`, ``, `export function create${name}(input: Partial<${name}>): ${name} {`);
   for (const f of required) {
     const empty = f.type === "text" ? ` || input.${f.name} === ""` : "";
@@ -63,7 +87,7 @@ export function emitEntityModule(vow: Vow): string {
     );
   }
   out.push(`  return {`);
-  for (const f of vow.fields) out.push(`    ${f.name}: input.${f.name} ?? ${DEFAULT[f.type]},`);
+  for (const f of vow.fields) out.push(`    ${f.name}: input.${f.name} ?? ${defaultExpr(f)},`);
   out.push(`  };`, `}`, ``);
   return out.join("\n");
 }
@@ -82,7 +106,7 @@ export function emitEntityTest(vow: Vow): string {
   const validEntries = (exclude?: string): string =>
     required
       .filter((f) => f.name !== exclude)
-      .map((f) => `${f.name}: ${SAMPLE[f.type]}`)
+      .map((f) => `${f.name}: ${sampleExpr(f)}`)
       .join(", ");
 
   const out: string[] = [
@@ -97,7 +121,7 @@ export function emitEntityTest(vow: Vow): string {
       out.push(`  expect(() => create${name}({ ${validEntries(s.missing.name)} })).toThrow();`);
     } else {
       out.push(`  const value = create${name}({ ${validEntries()} });`);
-      for (const f of required) out.push(`  expect(value.${f.name}).toBe(${SAMPLE[f.type]});`);
+      for (const f of required) out.push(`  expect(value.${f.name}).toBe(${sampleExpr(f)});`);
     }
     out.push(`});`);
   }

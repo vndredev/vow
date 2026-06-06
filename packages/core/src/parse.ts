@@ -49,8 +49,17 @@ function* itemsUnder(body: string, heading: string): Generator<string> {
   }
 }
 
-/** Parse one `## fields` line: `title: text, required` → { name, type, required }. */
-function parseFieldLine(item: string): { name: string; type: string; required: boolean } {
+/**
+ * Parse one `## fields` line:
+ *   `title: text, required`        → { name, type: "text", required: true }
+ *   `status: select(a|b|c)`        → { name, type: "select", options: ["a","b","c"] }
+ */
+function parseFieldLine(item: string): {
+  name: string;
+  type: string;
+  required: boolean;
+  options?: string[];
+} {
   const colon = item.indexOf(":");
   if (colon < 0) {
     throw new Error(`vow: field "${item}" must be "<name>: <type>[, required]"`);
@@ -61,7 +70,12 @@ function parseFieldLine(item: string): { name: string; type: string; required: b
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return { name, type: attrs[0] ?? "", required: attrs.slice(1).includes("required") };
+  const required = attrs.slice(1).includes("required");
+  const select = /^select\((.+)\)$/.exec(attrs[0] ?? "");
+  if (select?.[1]) {
+    return { name, type: "select", required, options: select[1].split("|").map((o) => o.trim()) };
+  }
+  return { name, type: attrs[0] ?? "", required };
 }
 
 /** Parse one `<slug>.vow.md` into a validated Vow. `slug` is supplied by the loader (the filename). */

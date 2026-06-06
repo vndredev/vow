@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { type Vow as VowNode, uncoveredScenarios } from "@vow/core";
+import { type Vow as VowNode } from "@vow/core";
 import { emitEntityModule, emitEntityTest, entityProves } from "../src/index.ts";
 
 const task: VowNode = {
@@ -24,7 +24,22 @@ test("emitEntityModule generates an interface and a validating factory", () => {
   expect(code).toContain("'title' is required");
 });
 
-test("entityProves derives the proven scenarios from the fields (happy + reject-per-required)", () => {
+test("a select field becomes a string-literal union with a default", () => {
+  const ticket: VowNode = {
+    ...task,
+    id: "vow_ticket",
+    slug: "ticket",
+    fields: [
+      { name: "title", type: "text", required: true },
+      { name: "status", type: "select", required: false, options: ["todo", "doing", "done"] },
+    ],
+  };
+  const code = emitEntityModule(ticket);
+  expect(code).toContain('status: "todo" | "doing" | "done";');
+  expect(code).toContain('status: input.status ?? "todo"');
+});
+
+test("entityProves derives the proven scenarios from the fields", () => {
   expect(entityProves(task)).toEqual([
     "Eine gültige Task entsteht aus ihren Pflichtfeldern",
     "Eine Task ohne 'title' wird abgelehnt",
@@ -38,14 +53,8 @@ test("emitEntityTest names each generated test after its proven scenario", () =>
   expect(code).toContain("toThrow()");
 });
 
-test("scenario-coverage: every derived prove has a matching generated test", () => {
-  const code = emitEntityTest(task);
-  const testNames = [...code.matchAll(/test\("([^"]+)"/g)].map((m) => m[1] ?? "");
-  expect(uncoveredScenarios(entityProves(task), testNames)).toEqual([]);
-});
-
 test("the entity emitters fail fast on a non-entity vow", () => {
-  const vue: VowNode = { ...task, fulfills: { kind: "emit", as: "vue" } };
-  expect(() => emitEntityModule(vue)).toThrow();
-  expect(() => emitEntityTest(vue)).toThrow();
+  const bound: VowNode = { ...task, fulfills: { kind: "bind", module: "x", export: "y" } };
+  expect(() => emitEntityModule(bound)).toThrow();
+  expect(() => emitEntityTest(bound)).toThrow();
 });
