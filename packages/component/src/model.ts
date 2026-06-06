@@ -66,12 +66,21 @@ export interface ModelAttr {
 
 export type Attr = StaticAttr | BoundAttr | SpreadAttr | EventAttr | ModelAttr;
 
+/** A loop over a node (Vue's `v-for`): the node renders once per item, with an optional `:key`. */
+export interface Loop {
+  readonly each: string; // the iterable expression, e.g. "rows"
+  readonly as: string; // the item binding, e.g. "item"
+  readonly index?: string; // the index binding, e.g. "i"
+  readonly key?: string; // the :key expression, e.g. "i"
+}
+
 /** An HTML element node. */
 export interface ElementNode {
   readonly kind: "element";
   readonly tag: string;
   readonly attrs: readonly Attr[];
   readonly children: readonly UiNode[];
+  readonly for?: Loop;
 }
 
 /** Another component, referenced by PascalCase name (e.g. `<Checkbox>`). */
@@ -80,6 +89,7 @@ export interface ComponentNode {
   readonly name: string;
   readonly attrs: readonly Attr[];
   readonly children: readonly UiNode[];
+  readonly for?: Loop;
 }
 
 /** A literal text node — escaped verbatim into the markup. */

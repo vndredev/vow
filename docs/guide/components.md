@@ -20,8 +20,8 @@ interface Component {
 }
 
 type UiNode =
-  | { kind: "element"; tag: string; attrs: Attr[]; children: UiNode[] }
-  | { kind: "component"; name: string; attrs: Attr[]; children: UiNode[] }
+  | { kind: "element"; tag: string; attrs: Attr[]; children: UiNode[]; for?: Loop } // for? = v-for
+  | { kind: "component"; name: string; attrs: Attr[]; children: UiNode[]; for?: Loop }
   | { kind: "text"; text: string } // an escaped literal
   | { kind: "interp"; expr: string }; // an interpolated expression
 ```
