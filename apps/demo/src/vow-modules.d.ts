@@ -4,3 +4,6 @@ declare module "*.vue" {
   const component: DefineComponent;
   export default component;
 }
+
+/** CSS side-effect imports (e.g. a theme) carry no types. */
+declare module "*.css";

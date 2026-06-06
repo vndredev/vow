@@ -25,17 +25,17 @@ const view: VowNode = {
   fulfills: { kind: "emit", as: "view" },
 };
 
-test("emitViewSfc renders a typed list; boolean fields become the emitted checkbox", () => {
+test("emitViewSfc renders an unstyled, hooked list; boolean fields become the emitted checkbox", () => {
   const sfc = emitViewSfc(view, entity);
   expect(sfc).toContain('import type { Task } from "./task.ts";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
   expect(sfc).toContain("defineProps<{ items: Task[] }>()");
   expect(sfc).toContain('v-for="(item, i) in rows"');
   expect(sfc).toContain("{{ item.title }}");
+  expect(sfc).toContain('class="vow-view__row"');
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
   expect(sfc).toContain("Aufgaben verwalten");
-  // ships minimal structural styles (readable list out of the box)
-  expect(sfc).toContain("<style scoped>");
+  expect(sfc).not.toContain("<style"); // unstyled — styling lives in @vow/theme
 });
 
 test("emitViewSfc fails fast when the target is not an emit view / entity", () => {
