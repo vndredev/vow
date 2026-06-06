@@ -5,7 +5,8 @@ import { loadVowForest, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { emitCheckboxSfc } from "@vow/emit-primitive";
-import { emitDefaultView, emitViewSfc, viewComponentName } from "@vow/emit-view";
+import { emitDefaultView, emitTreeView, emitViewSfc, viewComponentName } from "@vow/emit-view";
+import { layoutSfcs } from "@vow/layout";
 
 /**
  * vow as a Vite plugin — the heart of the closed cap.
@@ -56,6 +57,7 @@ function bindSpecifier(module: string, outDir: string, srcDir: string): string {
 export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: string): string[] {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
+  let needsLayout = false; // any `emit view` with a `## tree` pulls in the layout primitives
   for (const v of allVows(vows)) {
     const f = v.fulfills;
     if (!f) continue;
@@ -75,26 +77,42 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
         written.push(cb);
       }
     } else if (f.kind === "emit" && f.as === "view") {
-      const entity = allVows(vows).find(
-        (e) => e.slug === v.of && e.fulfills?.kind === "emit" && e.fulfills.as === "entity",
-      );
-      if (!entity) {
-        throw new Error(
-          `vow "${v.slug}": emit view references unknown entity (of: ${v.of ?? "—"})`,
-        );
-      }
       const file = join(outDir, `${v.slug}.vue`);
-      writeFileSync(file, emitViewSfc(v, entity), "utf8");
-      written.push(file);
-      // a boolean field renders as the emitted <Checkbox> → generate the adapter alongside it
-      if (entity.fields.some((fld) => fld.type === "boolean")) {
-        const cb = join(outDir, "Checkbox.vue");
-        writeFileSync(cb, emitCheckboxSfc(), "utf8");
-        written.push(cb);
+      if (v.tree) {
+        // a layout view: its `## tree` IS the component (composes primitives, no entity needed)
+        writeFileSync(file, emitTreeView(v), "utf8");
+        written.push(file);
+        needsLayout = true;
+      } else {
+        const entity = allVows(vows).find(
+          (e) => e.slug === v.of && e.fulfills?.kind === "emit" && e.fulfills.as === "entity",
+        );
+        if (!entity) {
+          throw new Error(
+            `vow "${v.slug}": emit view references unknown entity (of: ${v.of ?? "—"})`,
+          );
+        }
+        writeFileSync(file, emitViewSfc(v, entity), "utf8");
+        written.push(file);
+        // a boolean field renders as the emitted <Checkbox> → generate the adapter alongside it
+        if (entity.fields.some((fld) => fld.type === "boolean")) {
+          const cb = join(outDir, "Checkbox.vue");
+          writeFileSync(cb, emitCheckboxSfc(), "utf8");
+          written.push(cb);
+        }
       }
     } else if (f.kind === "bind") {
       const file = join(outDir, `${v.slug}.bind.ts`);
       writeFileSync(file, emitBindAnchor(v, bindSpecifier(f.module, outDir, srcDir)), "utf8");
+      written.push(file);
+    }
+  }
+  // A `## tree` view imports `./<Primitive>.vue`; emit the layout primitives so those resolve (and
+  // are themselves type-checked by `vp check`). Written wholesale — the unused ones are harmless.
+  if (needsLayout) {
+    for (const { name, sfc } of layoutSfcs()) {
+      const file = join(outDir, `${name}.vue`);
+      writeFileSync(file, sfc, "utf8");
       written.push(file);
     }
   }
