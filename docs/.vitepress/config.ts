@@ -24,6 +24,10 @@ export default defineConfig({
             { text: "proof — scenario-coverage", link: "/guide/proof" },
           ],
         },
+        {
+          text: "UI",
+          items: [{ text: "Primitives", link: "/guide/primitives" }],
+        },
       ],
     },
   },

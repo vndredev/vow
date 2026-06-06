@@ -25,13 +25,14 @@ const view: VowNode = {
   fulfills: { kind: "emit", as: "view" },
 };
 
-test("emitViewSfc renders a typed, read-only list over the entity", () => {
+test("emitViewSfc renders a typed list; boolean fields become the emitted checkbox", () => {
   const sfc = emitViewSfc(view, entity);
   expect(sfc).toContain('import type { Task } from "./task.ts";');
+  expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
   expect(sfc).toContain("defineProps<{ items: Task[] }>()");
-  expect(sfc).toContain('v-for="(item, i) in items"');
+  expect(sfc).toContain('v-for="(item, i) in rows"');
   expect(sfc).toContain("{{ item.title }}");
-  expect(sfc).toContain("item.done ? '✓' : '–'");
+  expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
   expect(sfc).toContain("Aufgaben verwalten");
 });
 

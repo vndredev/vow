@@ -12,7 +12,11 @@ function applyProps(el: HTMLElement, props: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(props)) {
     if (key.startsWith("on") && typeof value === "function") {
       el.addEventListener(key.slice(2).toLowerCase(), value as EventListener);
-    } else if (value !== undefined && typeof value !== "function") {
+    } else if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean"
+    ) {
       el.setAttribute(key, String(value));
     }
   }

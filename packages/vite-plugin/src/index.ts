@@ -4,6 +4,7 @@ import type { Plugin } from "vite-plus";
 import { loadVowForest, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
+import { emitCheckboxSfc } from "@vow/emit-primitive";
 import { emitViewSfc } from "@vow/emit-view";
 import { emitVueSfc } from "@vow/emit-vue";
 
@@ -82,6 +83,12 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       const file = join(outDir, `${v.slug}.vue`);
       writeFileSync(file, emitViewSfc(v, entity), "utf8");
       written.push(file);
+      // a boolean field renders as the emitted <Checkbox> → generate the adapter alongside it
+      if (entity.fields.some((fld) => fld.type === "boolean")) {
+        const cb = join(outDir, "Checkbox.vue");
+        writeFileSync(cb, emitCheckboxSfc(), "utf8");
+        written.push(cb);
+      }
     } else if (f.kind === "bind") {
       const file = join(outDir, `${v.slug}.bind.ts`);
       writeFileSync(file, emitBindAnchor(v, bindSpecifier(f.module, outDir, srcDir)), "utf8");

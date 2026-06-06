@@ -40,7 +40,7 @@ The proof falls out of the declaration — no one writes that test. The test nam
 
 ## emit view
 
-A view renders a list of an entity. It points at the entity with `of:` and is read-only for now:
+A view renders a list of an entity. It points at the entity with `of:`:
 
 ```markdown
 ---
@@ -52,6 +52,6 @@ of: task
 # Aufgaben verwalten
 ```
 
-→ a typed `.vue` in `.generated/`: it imports the entity's `Task` type, takes an `items: Task[]` prop, and renders one row per item (text fields as-is, booleans as ✓ / –) — plain HTML, no headless primitive needed. Interaction (create, toggle, delete) grows from here.
+→ a typed `.vue` in `.generated/`: it imports the entity's `Task` type, takes an `items: Task[]` prop into local state, and renders one row per item. **Text fields render as-is; boolean fields become the emitted, accessible `<Checkbox>`** — so the row is interactive. The checkbox adapter is generated alongside (`@vow/emit-primitive`) over the `@vow/headless` core, whose accessibility is proven framework-free (see [primitives](/guide/primitives)). Create / delete grow from here.
 
 Next: [bind →](/guide/bind)
