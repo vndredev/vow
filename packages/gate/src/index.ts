@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { loadVowForest, uncoveredScenarios, type Vow } from "@vow/core";
+import { loadVowForest, parseVowMd, uncoveredScenarios, type Vow } from "@vow/core";
 import { entityProves } from "@vow/emit-entity";
 import { allVows, generateFiles } from "@vow/vite-plugin";
 
@@ -59,4 +59,38 @@ export function runGate(opts: {
   const expected = allVows(vows).flatMap(expectedScenarios);
   const testNames = collectTestNames(opts.testRoots);
   return { expected, uncovered: uncoveredScenarios(expected, testNames) };
+}
+
+/**
+ * The docs-drift gate — the tor that keeps the prose honest.
+ *
+ * Every ```markdown fence in the docs/README that looks like a vow.md (has a `fulfills:` line) is a
+ * promise about how the format works. We re-parse each one through the *real* core, so a stale
+ * example — wrong id shape, dropped field syntax, a removed emit target — fails a test instead of
+ * silently misleading a reader. Drift becomes a red build, not a surprise.
+ */
+
+/** The emit targets the generator actually knows; an example naming any other has drifted. */
+const KNOWN_EMIT_TARGETS: readonly string[] = ["entity", "view"];
+
+/** Extract every fenced ```markdown block that looks like a vow.md (carries a `fulfills:` line). */
+export function vowExamplesIn(source: string): string[] {
+  return [...source.matchAll(/```markdown\n([\s\S]*?)```/g)]
+    .map((m) => m[1] ?? "")
+    .filter((block) => /^fulfills:/m.test(block));
+}
+
+/** Validate one doc example against the real core; returns a drift reason, or `null` if it holds. */
+export function checkVowExample(content: string): string | null {
+  let vow: Vow;
+  try {
+    vow = parseVowMd("example", content);
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  const f = vow.fulfills;
+  if (f?.kind === "emit" && !KNOWN_EMIT_TARGETS.includes(f.as)) {
+    return `unknown emit target "${f.as}" — known: ${KNOWN_EMIT_TARGETS.join(", ")}`;
+  }
+  return null;
 }
