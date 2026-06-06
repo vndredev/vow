@@ -7,7 +7,7 @@ Some UI can't be plain HTML — a custom checkbox, a dialog, a menu need ARIA, f
 A primitive is split in two:
 
 - **`@vow/headless`** — the logic, framework-free. `checkbox(state, set)` returns the DOM props (`role`, `aria-checked`, key handlers) for each part. No Vue, no React.
-- **the generated adapter** — `@vow/emit-primitive` emits a tiny Vue SFC that binds reactivity and spreads those props. A React adapter would do the same — same core, different binding.
+- **the generated adapter** — `@vow/emit-primitive` describes the checkbox as a [`Component`](/guide/components) and renders it via the Vue adapter (`renderVueSfc`): it binds reactivity and spreads those props. A React adapter is just a different adapter over the same model.
 
 `emit view` drops the generated `<Checkbox>` into a list for every boolean field; you never hand-write it.
 

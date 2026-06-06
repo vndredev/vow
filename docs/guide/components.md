@@ -28,7 +28,7 @@ type UiNode =
 
 ## The agnostic seam: bindings are expression strings
 
-An attribute is **static**, **bound**, or a **spread** — and a binding carries an adapter-neutral _expression_, never framework syntax:
+An attribute is **static**, **bound**, a **spread**, an **event** handler, or a **model** binding — and a dynamic one carries an adapter-neutral _expression_, never framework syntax:
 
 ```ts
 type Attr =
@@ -46,5 +46,5 @@ The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _w
 `renderVueSfc(component): string` is the Vue adapter — an exhaustive walk over the discriminated unions (a missing node kind is a type error, so drift is a red build). Its output is **byte-stable**, pinned by an equality test against the original hand-written SFC. Adding React later means writing `renderReact(component)` over the same `Component` — no model change.
 
 ::: warning Foundation status
-The model and the Vue adapter exist and are proven (`renderVueSfc` reproduces the checkbox SFC byte-for-byte). The emitters are being moved onto the model **one at a time** — see the [roadmap](/guide/roadmap). `state`, named slots, loops and event handlers grow with the step that first needs them; React/Solid adapters are later.
+Both string emitters now build on this model: `emit-primitive` (the checkbox) and `emit-view` (the CRUD list) describe a `Component` and render it via `renderVueSfc` — byte-for-byte identical to the old hand-written output. Today there is **one** adapter (Vue); React/Solid are later additions over the same model. `state` and named slots will grow with the step that first needs them.
 :::

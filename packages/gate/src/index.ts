@@ -94,3 +94,35 @@ export function checkVowExample(content: string): string | null {
   }
   return null;
 }
+
+/**
+ * The type-drift gate — keeps the docs' type examples honest against the real code.
+ *
+ * `components.md` documents the `Attr`/`UiNode` discriminant kinds and `emit.md` lists the field
+ * types — both are claims about the code. We read the real kinds off the Vue adapter's `switch` arms
+ * and the field types off the core's `FieldType` enum, then check the docs mention each one. So adding
+ * a kind or a field type without updating the prose fails a test instead of drifting silently.
+ */
+
+/** The discriminant kinds the Vue adapter handles — read off its `case "<kind>":` switch arms. */
+export function adapterKinds(renderVueSource: string): string[] {
+  return [...renderVueSource.matchAll(/case "([a-z]+)":/g)].map((m) => m[1] ?? "");
+}
+
+/** Adapter kinds not mentioned (as `"<kind>"`) in the component-model doc — drift. */
+export function undocumentedKinds(renderVueSource: string, docSource: string): string[] {
+  return adapterKinds(renderVueSource).filter((k) => !docSource.includes(`"${k}"`));
+}
+
+/** The field types the core enumerates — read off `FieldType = z.enum([...])`. */
+export function coreFieldTypes(coreSource: string): string[] {
+  const m = /FieldType = z\.enum\(\[([^\]]+)\]\)/.exec(coreSource);
+  return m?.[1] ? [...m[1].matchAll(/"([a-z]+)"/g)].map((x) => x[1] ?? "") : [];
+}
+
+/** Field types not mentioned (as `` `<type>` `` or `<type>(`) in the emit doc — drift. */
+export function undocumentedFieldTypes(coreSource: string, docSource: string): string[] {
+  return coreFieldTypes(coreSource).filter(
+    (t) => !docSource.includes(`\`${t}\``) && !docSource.includes(`${t}(`),
+  );
+}
