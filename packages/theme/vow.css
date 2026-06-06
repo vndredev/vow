@@ -2,14 +2,35 @@
    Import it to style the generated UI; omit it for fully unstyled output. Replace it with your own
    (e.g. the vndre.dev design tokens) — same hooks, different CSS, no component changes. */
 
+:root {
+  /* Spacing scale — the steps the layout primitives map onto (Flex/Grid `gap`, Box `p`).
+     A `gap=4` resolves to `var(--vow-space-4)`; swap these values to re-space the whole UI. */
+  --vow-space-0: 0;
+  --vow-space-1: 0.25rem;
+  --vow-space-2: 0.5rem;
+  --vow-space-3: 0.75rem;
+  --vow-space-4: 1rem;
+  --vow-space-5: 1.5rem;
+  --vow-space-6: 2rem;
+  --vow-space-7: 2.5rem;
+  --vow-space-8: 3rem;
+  --vow-space-9: 4rem;
+
+  /* Container max-width steps — the `size` of the Container primitive (`size=3` → `--vow-container-3`). */
+  --vow-container-1: 28rem;
+  --vow-container-2: 43rem;
+  --vow-container-3: 55rem;
+  --vow-container-4: 71rem;
+}
+
 .vow-view {
   font-family: system-ui, sans-serif;
   max-width: 32rem;
-  margin: 2rem auto;
+  margin: var(--vow-space-6) auto;
 }
 .vow-view__title {
   font-size: 1.4rem;
-  margin-bottom: 1rem;
+  margin-bottom: var(--vow-space-4);
 }
 .vow-view__list {
   list-style: none;
@@ -17,12 +38,12 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--vow-space-2);
 }
 .vow-view__row {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--vow-space-4);
   padding: 0.6rem 0.85rem;
   border: 1px solid #e3e3e3;
   border-radius: 0.5rem;
@@ -43,8 +64,8 @@
 }
 .vow-view__create {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: var(--vow-space-2);
+  margin-top: var(--vow-space-4);
 }
 .vow-view__input {
   flex: 1;
