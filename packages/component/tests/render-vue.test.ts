@@ -126,3 +126,32 @@ test("a default import renders as `import X from …`", () => {
   };
   expect(renderVueSfc(c)).toContain('import Checkbox from "./Checkbox.vue";');
 });
+
+test("event and model attributes render with modifiers", () => {
+  const c: Component = {
+    name: "Form",
+    view: {
+      kind: "element",
+      tag: "form",
+      attrs: [{ kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] }],
+      children: [
+        {
+          kind: "element",
+          tag: "input",
+          attrs: [{ kind: "model", expr: "draft.count", modifiers: ["number"] }],
+          children: [],
+        },
+        {
+          kind: "element",
+          tag: "button",
+          attrs: [{ kind: "event", name: "click", expr: "remove(i)" }],
+          children: [{ kind: "text", text: "x" }],
+        },
+      ],
+    },
+  };
+  const sfc = renderVueSfc(c);
+  expect(sfc).toContain('<form @submit.prevent="add">');
+  expect(sfc).toContain('<input v-model.number="draft.count" />');
+  expect(sfc).toContain('<button @click="remove(i)">x</button>');
+});

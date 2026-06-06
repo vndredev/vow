@@ -49,7 +49,22 @@ export interface SpreadAttr {
   readonly expr: string;
 }
 
-export type Attr = StaticAttr | BoundAttr | SpreadAttr;
+/** An event handler — an expression run on a DOM/component event, with optional modifiers. */
+export interface EventAttr {
+  readonly kind: "event";
+  readonly name: string;
+  readonly expr: string;
+  readonly modifiers?: readonly string[];
+}
+
+/** A two-way binding (Vue's v-model), with optional modifiers (e.g. `number`). */
+export interface ModelAttr {
+  readonly kind: "model";
+  readonly expr: string;
+  readonly modifiers?: readonly string[];
+}
+
+export type Attr = StaticAttr | BoundAttr | SpreadAttr | EventAttr | ModelAttr;
 
 /** An HTML element node. */
 export interface ElementNode {

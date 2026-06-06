@@ -31,6 +31,10 @@ const VOID_ELEMENTS = new Set([
 const escapeHtml = (s: string): string =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/** Vue modifier suffix: `.prevent`, `.number`, … in array order. */
+const renderModifiers = (mods?: readonly string[]): string =>
+  (mods ?? []).map((m) => `.${m}`).join("");
+
 /** Render one attribute in Vue syntax. */
 function renderAttr(attr: Attr): string {
   switch (attr.kind) {
@@ -40,6 +44,10 @@ function renderAttr(attr: Attr): string {
       return `:${attr.name}="${attr.expr}"`;
     case "spread":
       return `v-bind="${attr.expr}"`;
+    case "event":
+      return `@${attr.name}${renderModifiers(attr.modifiers)}="${attr.expr}"`;
+    case "model":
+      return `v-model${renderModifiers(attr.modifiers)}="${attr.expr}"`;
     default: {
       const _exhaustive: never = attr;
       return _exhaustive;
