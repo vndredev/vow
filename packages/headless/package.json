@@ -1,0 +1,17 @@
+{
+  "name": "@vow/headless",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's headless primitives — framework-agnostic UI logic (only what HTML can't do natively).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}
