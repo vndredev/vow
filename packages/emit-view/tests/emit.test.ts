@@ -25,17 +25,22 @@ const view: VowNode = {
   fulfills: { kind: "emit", as: "view" },
 };
 
-test("emitViewSfc renders an unstyled, hooked list; boolean fields become the emitted checkbox", () => {
+test("emitViewSfc renders an unstyled, hooked CRUD list over the entity", () => {
   const sfc = emitViewSfc(view, entity);
-  expect(sfc).toContain('import type { Task } from "./task.ts";');
+  expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
   expect(sfc).toContain("defineProps<{ items: Task[] }>()");
+  // read + update
   expect(sfc).toContain('v-for="(item, i) in rows"');
   expect(sfc).toContain("{{ item.title }}");
-  expect(sfc).toContain('class="vow-view__row"');
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
-  expect(sfc).toContain("Aufgaben verwalten");
-  expect(sfc).not.toContain("<style"); // unstyled — styling lives in @vow/theme
+  // create + delete on local state
+  expect(sfc).toContain('v-model="draft.title"');
+  expect(sfc).toContain('@submit.prevent="add"');
+  expect(sfc).toContain("createTask(draft.value)");
+  expect(sfc).toContain('@click="remove(i)"');
+  // unstyled
+  expect(sfc).not.toContain("<style");
 });
 
 test("emitViewSfc fails fast when the target is not an emit view / entity", () => {

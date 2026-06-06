@@ -22,11 +22,45 @@
 .vow-view__row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   padding: 0.6rem 0.85rem;
   border: 1px solid #e3e3e3;
   border-radius: 0.5rem;
+}
+.vow-view__field {
+  flex: 1;
+}
+.vow-view__delete {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #999;
+  font-size: 1rem;
+  line-height: 1;
+}
+.vow-view__delete:hover {
+  color: #c00;
+}
+.vow-view__create {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.vow-view__input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+.vow-view__add {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #111;
+  border-radius: 0.4rem;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
 }
 
 .vow-checkbox {
