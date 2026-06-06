@@ -178,3 +178,48 @@ test("a looped element renders v-for with key", () => {
     '<li class="vow-view__row" v-for="(item, i) in rows" :key="i">{{ item.title }}</li>',
   );
 });
+
+test("an empty component renders self-closing (<Checkbox … />)", () => {
+  const c: Component = {
+    name: "Host",
+    view: {
+      kind: "component",
+      name: "Checkbox",
+      attrs: [
+        { kind: "model", expr: "item.done" },
+        { kind: "static", name: "label", value: "done" },
+      ],
+      children: [],
+    },
+  };
+  expect(renderVueSfc(c)).toContain('<Checkbox v-model="item.done" label="done" />');
+});
+
+test("an inline element keeps children on one line (select with options)", () => {
+  const c: Component = {
+    name: "Picker",
+    view: {
+      kind: "element",
+      tag: "select",
+      attrs: [{ kind: "model", expr: "draft.status" }],
+      inline: true,
+      children: [
+        {
+          kind: "element",
+          tag: "option",
+          attrs: [{ kind: "static", name: "value", value: "a" }],
+          children: [{ kind: "text", text: "a" }],
+        },
+        {
+          kind: "element",
+          tag: "option",
+          attrs: [{ kind: "static", name: "value", value: "b" }],
+          children: [{ kind: "text", text: "b" }],
+        },
+      ],
+    },
+  };
+  expect(renderVueSfc(c)).toContain(
+    '<select v-model="draft.status"><option value="a">a</option><option value="b">b</option></select>',
+  );
+});

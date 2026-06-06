@@ -74,13 +74,14 @@ export interface Loop {
   readonly key?: string; // the :key expression, e.g. "i"
 }
 
-/** An HTML element node. */
+/** An HTML element node. `inline` keeps children on one line (e.g. `<select>` with `<option>`s). */
 export interface ElementNode {
   readonly kind: "element";
   readonly tag: string;
   readonly attrs: readonly Attr[];
   readonly children: readonly UiNode[];
   readonly for?: Loop;
+  readonly inline?: boolean;
 }
 
 /** Another component, referenced by PascalCase name (e.g. `<Checkbox>`). */
