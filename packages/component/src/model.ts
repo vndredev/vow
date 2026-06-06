@@ -14,6 +14,8 @@ export interface PropDef {
   readonly name: string;
   readonly tsType: string;
   readonly optional?: boolean;
+  /** A default value expression (verbatim TS, e.g. "4" or "'row'") — rendered via `withDefaults`. */
+  readonly default?: string;
 }
 
 /** An emitted event: a name + its payload tuple inner (e.g. payload "boolean" → `[boolean]`). */
@@ -105,7 +107,14 @@ export interface InterpNode {
   readonly expr: string;
 }
 
-export type UiNode = ElementNode | ComponentNode | TextNode | InterpNode;
+/** A slot outlet (Vue's `<slot>`). `name` absent = the default slot; `children` = fallback content. */
+export interface SlotNode {
+  readonly kind: "slot";
+  readonly name?: string;
+  readonly children: readonly UiNode[];
+}
+
+export type UiNode = ElementNode | ComponentNode | TextNode | InterpNode | SlotNode;
 
 /** The canonical, framework-agnostic component. Grows field-by-field as each step earns it. */
 export interface Component {

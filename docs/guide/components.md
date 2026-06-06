@@ -13,7 +13,7 @@ interface Component {
   name: string;
   doc?: string[]; // leading comment lines
   imports?: ImportDecl[]; // { from, names?, default? }
-  props?: PropDef[]; // { name, tsType, optional? }
+  props?: PropDef[]; // { name, tsType, optional?, default? }
   events?: EventDef[]; // { name, payload }
   setup?: string[]; // framework-glue escape hatch (e.g. the headless computed(...))
   view: UiNode; // the markup tree
@@ -23,8 +23,11 @@ type UiNode =
   | { kind: "element"; tag: string; attrs: Attr[]; children: UiNode[]; for?: Loop } // for? = v-for
   | { kind: "component"; name: string; attrs: Attr[]; children: UiNode[]; for?: Loop }
   | { kind: "text"; text: string } // an escaped literal
-  | { kind: "interp"; expr: string }; // an interpolated expression
+  | { kind: "interp"; expr: string } // an interpolated expression
+  | { kind: "slot"; name?: string; children: UiNode[] }; // a <slot> outlet; children = fallback
 ```
+
+A prop may carry a `default` (a verbatim TS expression); when any prop has one, the adapter emits `withDefaults(defineProps<…>(), { … })` instead of the bare `defineProps`. A `"slot"` node is a slot outlet — `<slot />`, `<slot name="x" />`, or `<slot>fallback</slot>` — the seam a layout shell uses to receive content.
 
 ## The agnostic seam: bindings are expression strings
 
@@ -46,5 +49,5 @@ The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _w
 `renderVueSfc(component): string` is the Vue adapter — an exhaustive walk over the discriminated unions (a missing node kind is a type error, so drift is a red build). Its output is **byte-stable**, pinned by an equality test against the original hand-written SFC. Adding React later means writing `renderReact(component)` over the same `Component` — no model change.
 
 ::: warning Foundation status
-Both string emitters now build on this model: `emit-primitive` (the checkbox) and `emit-view` (the CRUD list) describe a `Component` and render it via `renderVueSfc` — byte-for-byte identical to the old hand-written output. Today there is **one** adapter (Vue); React/Solid are later additions over the same model. `state` and named slots will grow with the step that first needs them.
+Both string emitters now build on this model: `emit-primitive` (the checkbox) and `emit-view` (the CRUD list) describe a `Component` and render it via `renderVueSfc` — byte-for-byte identical to the old hand-written output. Today there is **one** adapter (Vue); React/Solid are later additions over the same model. Named slots and prop defaults (`withDefaults`) arrived with the layout step; `state` will grow when first needed.
 :::
