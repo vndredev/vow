@@ -136,6 +136,10 @@ importers:
         version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
 
   packages/emit-primitive:
+    dependencies:
+      '@vow/component':
+        specifier: workspace:*
+        version: link:../component
     devDependencies:
       vite-plus:
         specifier: 'catalog:'
