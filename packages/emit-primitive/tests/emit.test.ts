@@ -14,4 +14,7 @@ test("emitCheckboxSfc generates a Vue adapter that forwards the headless checkbo
   expect(sfc).toContain('v-bind="api.controlProps"');
   expect(sfc).toContain('v-bind="api.rootProps"');
   expect(sfc).toContain(':aria-label="label"');
+  // ships minimal structural styles so it's usable out of the box
+  expect(sfc).toContain("<style scoped>");
+  expect(sfc).toContain(".vow-checkbox__box");
 });

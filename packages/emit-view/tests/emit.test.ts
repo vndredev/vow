@@ -34,6 +34,8 @@ test("emitViewSfc renders a typed list; boolean fields become the emitted checkb
   expect(sfc).toContain("{{ item.title }}");
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
   expect(sfc).toContain("Aufgaben verwalten");
+  // ships minimal structural styles (readable list out of the box)
+  expect(sfc).toContain("<style scoped>");
 });
 
 test("emitViewSfc fails fast when the target is not an emit view / entity", () => {
