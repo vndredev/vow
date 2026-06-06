@@ -59,3 +59,15 @@ test("emitTreeView rejects an unknown tree component", () => {
   const bad: Vow = { ...shell, tree: { component: "Flx", props: {}, children: [] } };
   expect(() => emitTreeView(bad)).toThrow(/unknown tree component/);
 });
+
+test("a text node renders as escaped markup text inside its parent", () => {
+  const captioned: Vow = {
+    ...shell,
+    tree: {
+      component: "Box",
+      props: {},
+      children: [{ component: "text", props: { value: "Hello world" }, children: [] }],
+    },
+  };
+  expect(emitTreeView(captioned)).toContain("<Box>Hello world</Box>");
+});

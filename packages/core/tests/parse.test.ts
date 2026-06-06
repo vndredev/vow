@@ -74,3 +74,20 @@ test("a ## tree with more than one root fails fast", () => {
   const md = `---\nid: vow_m\nfulfills: emit view\n---\n# Two roots\n\n## tree\n- Flex\n- Grid\n`;
   expect(() => parseVowMd("bad", md)).toThrow();
 });
+
+test("a quoted tree line parses as a text node", () => {
+  const md = [
+    "---",
+    "id: vow_s",
+    "fulfills: emit view",
+    "---",
+    "# A captioned box",
+    "",
+    "## tree",
+    "- Box",
+    '  - "Hello world"',
+  ].join("\n");
+  const text = parseVowMd("captioned", md).tree?.children[0];
+  expect(text?.component).toBe("text");
+  expect(text?.props).toEqual({ value: "Hello world" });
+});

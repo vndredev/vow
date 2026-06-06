@@ -30,7 +30,9 @@ fulfills: emit view
 
 A numeric prop is passed as a number (`gap=4` → `:gap="4"`), anything else as a string
 (`direction=column` → `:direction="'column'"`); `slot` becomes a `<slot>` outlet (`slot(name=x)` a
-named one). The referenced primitives are emitted alongside the view, so their imports resolve.
+named one). A **quoted line** (`- "Some heading"`) is a text node — escaped literal content for
+headings and labels. The referenced primitives are emitted alongside the view, so their imports
+resolve.
 
 ## Not primitives in the accessibility sense
 
