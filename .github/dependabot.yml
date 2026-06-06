@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      voidzero:
+        patterns:
+          - "vite-plus"
+          - "@voidzero-dev/*"
+          - "@typescript/native-preview"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
