@@ -30,7 +30,10 @@ export default defineConfig({
         },
         {
           text: "UI",
-          items: [{ text: "Primitives", link: "/guide/primitives" }],
+          items: [
+            { text: "The component model", link: "/guide/components" },
+            { text: "Primitives", link: "/guide/primitives" },
+          ],
         },
         {
           text: "Project",

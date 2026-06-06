@@ -1,3 +1,4 @@
+import { pascalCase } from "@vow/component";
 import type { Field, Vow } from "@vow/core";
 
 /**
@@ -45,13 +46,6 @@ function defaultExpr(f: Field): string {
 function sampleExpr(f: Field): string {
   return f.type === "select" ? JSON.stringify(f.options?.[0] ?? "") : SAMPLE[f.type];
 }
-
-/** kebab-case slug → PascalCase type name (`task` → `Task`, `audit-log` → `AuditLog`). */
-const pascalCase = (slug: string): string =>
-  slug
-    .split("-")
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join("");
 
 function ensureEntity(vow: Vow): void {
   if (vow.fulfills?.kind !== "emit" || vow.fulfills.as !== "entity") {

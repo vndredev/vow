@@ -20,6 +20,7 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [x] `bind` — hand-written logic, tsgo-verified seam
 - [x] checkbox primitive — agnostic core + emitted adapter, a11y proven
 - [x] swappable theme
+- [x] component model + Vue adapter — one agnostic model, many framework adapters
 - [x] field types: `text` · `number` · `boolean` · `select` · `date`
 - [ ] `reference` field + relations (entity → entity)
 - [ ] multi-value fields (e.g. `labels`)
