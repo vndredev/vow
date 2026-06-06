@@ -5,7 +5,8 @@ import {
   type ImportDecl,
   type UiNode,
 } from "@vow/component";
-import type { Vow } from "@vow/core";
+import type { TreeNode, Vow } from "@vow/core";
+import { LAYOUT_PRIMITIVES } from "@vow/layout";
 
 /**
  * vow's view emitter — `emit view` made real (CRUD over local state).
@@ -211,4 +212,67 @@ export function emitDefaultView(entity: Vow): string {
     { ...entity, fulfills: { kind: "emit", as: "view" }, of: entity.slug },
     entity,
   );
+}
+
+/**
+ * The vow-native layout path — `emit view` from a `## tree`.
+ *
+ * The core parses the tree UI-agnostically (`TreeNode`); here it becomes a `UiNode`: a `slot` node is
+ * an outlet, every other node is a layout primitive (`Flex`/`Grid`/…) rendered as a `<Component>`.
+ * Raw string props become bound attrs with the right JS literal — a numeric value is a `number`
+ * (`:gap="4"`), anything else a string (`:direction="'column'"`) — so the primitive receives the
+ * typed prop, not a stringified one. This is the seam that lets a `.vow.md` express layout itself.
+ */
+
+/** Map a parsed `TreeNode` to a `UiNode`. `slot` → outlet; a known primitive → `<Component>`. */
+function treeToUiNode(node: TreeNode): UiNode {
+  if (node.component === "slot") {
+    const name = node.props["name"];
+    return {
+      kind: "slot",
+      ...(name !== undefined ? { name } : {}),
+      children: node.children.map(treeToUiNode),
+    };
+  }
+  if (!LAYOUT_PRIMITIVES.includes(node.component)) {
+    throw new Error(
+      `emit-view: unknown tree component "${node.component}" (known: ${LAYOUT_PRIMITIVES.join(", ")}, slot)`,
+    );
+  }
+  return {
+    kind: "component",
+    name: node.component,
+    attrs: Object.entries(node.props).map(([name, value]) => ({
+      kind: "bound",
+      name,
+      // a number stays a number; everything else is a quoted string literal
+      expr: /^-?\d+(?:\.\d+)?$/.test(value) ? value : `'${value.replace(/'/g, "\\'")}'`,
+    })),
+    children: node.children.map(treeToUiNode),
+  };
+}
+
+/** The distinct layout primitives referenced by a tree (for the SFC's imports). */
+function primitivesInTree(node: TreeNode, acc: Set<string> = new Set()): Set<string> {
+  if (node.component !== "slot") acc.add(node.component);
+  for (const child of node.children) primitivesInTree(child, acc);
+  return acc;
+}
+
+/** A view whose layout is its `## tree` — composed from layout primitives, rendered to a Vue SFC. */
+export function emitTreeView(view: Vow): string {
+  if (!view.tree) throw new Error(`emit-view: vow "${view.slug}" has no \`## tree\``);
+  const root = treeToUiNode(view.tree); // validates every node up front
+  const imports: ImportDecl[] = [...primitivesInTree(view.tree)]
+    .filter((name) => LAYOUT_PRIMITIVES.includes(name))
+    .map((name) => ({ from: `./${name}.vue`, default: name }));
+  const component: Component = {
+    name: pascalCase(view.slug),
+    doc: [
+      `Generated from vow "${view.slug}" (a \`## tree\` layout). The vow is the source — do not edit.`,
+    ],
+    imports,
+    view: root,
+  };
+  return renderVueSfc(component);
 }

@@ -153,6 +153,9 @@ importers:
       '@vow/core':
         specifier: workspace:*
         version: link:../core
+      '@vow/layout':
+        specifier: workspace:*
+        version: link:../layout
     devDependencies:
       vite-plus:
         specifier: 'catalog:'
