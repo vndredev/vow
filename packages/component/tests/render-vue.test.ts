@@ -155,3 +155,26 @@ test("event and model attributes render with modifiers", () => {
   expect(sfc).toContain('<input v-model.number="draft.count" />');
   expect(sfc).toContain('<button @click="remove(i)">x</button>');
 });
+
+test("a looped element renders v-for with key", () => {
+  const c: Component = {
+    name: "List",
+    view: {
+      kind: "element",
+      tag: "ul",
+      attrs: [],
+      children: [
+        {
+          kind: "element",
+          tag: "li",
+          attrs: [{ kind: "static", name: "class", value: "vow-view__row" }],
+          for: { each: "rows", as: "item", index: "i", key: "i" },
+          children: [{ kind: "interp", expr: "item.title" }],
+        },
+      ],
+    },
+  };
+  expect(renderVueSfc(c)).toContain(
+    '<li class="vow-view__row" v-for="(item, i) in rows" :key="i">{{ item.title }}</li>',
+  );
+});

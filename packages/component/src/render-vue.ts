@@ -1,4 +1,4 @@
-import type { Attr, Component, ImportDecl, UiNode } from "./model.ts";
+import type { Attr, Component, ImportDecl, Loop, UiNode } from "./model.ts";
 
 /**
  * The Vue adapter — render a canonical `Component` into a Vue SFC string. The first of many adapters
@@ -59,6 +59,13 @@ function renderAttr(attr: Attr): string {
 const renderAttrs = (attrs: readonly Attr[]): string =>
   attrs.map((a) => ` ${renderAttr(a)}`).join("");
 
+/** Render a `v-for` (+ optional `:key`) for a looped node. */
+function renderFor(loop: Loop): string {
+  const binding = loop.index !== undefined ? `(${loop.as}, ${loop.index})` : loop.as;
+  const key = loop.key !== undefined ? ` :key="${loop.key}"` : "";
+  return ` v-for="${binding} in ${loop.each}"${key}`;
+}
+
 /** Render a UiNode at the given indent depth (in INDENT units). Inline if all children are text/interp. */
 function renderNode(node: UiNode, depth: number): string {
   const pad = INDENT.repeat(depth);
@@ -70,7 +77,7 @@ function renderNode(node: UiNode, depth: number): string {
     case "element":
     case "component": {
       const open = node.kind === "component" ? node.name : node.tag;
-      const attrs = renderAttrs(node.attrs);
+      const attrs = renderAttrs(node.attrs) + (node.for ? renderFor(node.for) : "");
       // HTML void elements are self-closing: <input … />
       if (node.kind === "element" && VOID_ELEMENTS.has(node.tag)) {
         return `${pad}<${open}${attrs} />`;
