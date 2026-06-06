@@ -223,3 +223,63 @@ test("an inline element keeps children on one line (select with options)", () =>
     '<select v-model="draft.status"><option value="a">a</option><option value="b">b</option></select>',
   );
 });
+
+test("a default slot renders as <slot />", () => {
+  const c: Component = {
+    name: "Box",
+    view: { kind: "element", tag: "div", attrs: [], children: [{ kind: "slot", children: [] }] },
+  };
+  expect(renderVueSfc(c)).toContain("    <slot />");
+});
+
+test("a named slot renders as <slot name=… />", () => {
+  const c: Component = { name: "Shell", view: { kind: "slot", name: "header", children: [] } };
+  expect(renderVueSfc(c)).toContain('  <slot name="header" />');
+});
+
+test("a slot with inline fallback renders open/close on one line", () => {
+  const c: Component = {
+    name: "Empty",
+    view: { kind: "slot", children: [{ kind: "text", text: "Nothing here" }] },
+  };
+  expect(renderVueSfc(c)).toContain("  <slot>Nothing here</slot>");
+});
+
+test("a named slot with element fallback renders open/close over lines", () => {
+  const c: Component = {
+    name: "Footer",
+    view: {
+      kind: "slot",
+      name: "footer",
+      children: [{ kind: "element", tag: "p", attrs: [], children: [{ kind: "text", text: "x" }] }],
+    },
+  };
+  expect(renderVueSfc(c)).toContain(
+    ['  <slot name="footer">', "    <p>x</p>", "  </slot>"].join("\n"),
+  );
+});
+
+test("props with defaults render via withDefaults(...)", () => {
+  const c: Component = {
+    name: "Flex",
+    props: [
+      { name: "direction", tsType: "string", optional: true, default: "'row'" },
+      { name: "gap", tsType: "number", optional: true, default: "0" },
+    ],
+    view: { kind: "element", tag: "div", attrs: [], children: [{ kind: "slot", children: [] }] },
+  };
+  expect(renderVueSfc(c)).toContain(
+    "const props = withDefaults(defineProps<{ direction?: string; gap?: number }>(), { direction: 'row', gap: 0 });",
+  );
+});
+
+test("props without defaults still render as plain defineProps (byte-stable, no withDefaults)", () => {
+  const c: Component = {
+    name: "Field",
+    props: [{ name: "label", tsType: "string" }],
+    view: { kind: "element", tag: "div", attrs: [], children: [] },
+  };
+  const sfc = renderVueSfc(c);
+  expect(sfc).toContain("const props = defineProps<{ label: string }>();");
+  expect(sfc).not.toContain("withDefaults");
+});

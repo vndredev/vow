@@ -74,6 +74,19 @@ function renderNode(node: UiNode, depth: number): string {
       return pad + escapeHtml(node.text);
     case "interp":
       return `${pad}{{ ${node.expr} }}`;
+    case "slot": {
+      // `<slot />` / `<slot name="x" />`; with fallback children → `<slot>…</slot>`. Own arm because
+      // the element path's attrs/for and `</tag>` close don't fit a slot's name-only, fixed close.
+      const open = node.name !== undefined ? `slot name="${node.name}"` : "slot";
+      if (node.children.length === 0) return `${pad}<${open} />`;
+      const inline = node.children.every((c) => c.kind === "text" || c.kind === "interp");
+      if (inline) {
+        const inner = node.children.map((c) => renderNode(c, 0)).join("");
+        return `${pad}<${open}>${inner}</slot>`;
+      }
+      const inner = node.children.map((c) => renderNode(c, depth + 1)).join("\n");
+      return `${pad}<${open}>\n${inner}\n${pad}</slot>`;
+    }
     case "element":
     case "component": {
       const open = node.kind === "component" ? node.name : node.tag;
@@ -118,7 +131,14 @@ function renderScript(c: Component): string[] {
   const decls: string[] = [];
   if (c.props && c.props.length > 0) {
     const fields = c.props.map((p) => `${p.name}${p.optional ? "?" : ""}: ${p.tsType}`).join("; ");
-    decls.push(`const props = defineProps<{ ${fields} }>();`);
+    // withDefaults only when some prop carries a default; otherwise the exact legacy line (byte-stable).
+    const withDefaults = c.props.filter((p) => p.default !== undefined);
+    if (withDefaults.length > 0) {
+      const defaults = withDefaults.map((p) => `${p.name}: ${p.default}`).join(", ");
+      decls.push(`const props = withDefaults(defineProps<{ ${fields} }>(), { ${defaults} });`);
+    } else {
+      decls.push(`const props = defineProps<{ ${fields} }>();`);
+    }
   }
   if (c.events && c.events.length > 0) {
     const fields = c.events.map((e) => `${JSON.stringify(e.name)}: [${e.payload}]`).join("; ");
