@@ -66,3 +66,22 @@ content with auto horizontal margins.
 
 Default: `size=3`. Stack-style vertical layout is just `Flex` with `direction=column`, so there is no
 separate Stack primitive.
+
+## Spacing & sizing tokens
+
+The numeric props don't take raw lengths — they index a scale defined in `@vow/theme` (`vow.css`),
+so the whole UI re-spaces from one place. A `gap`/`p` of `n` resolves to `var(--vow-space-<n>)`; a
+Container `size` of `n` resolves to `var(--vow-container-<n>)`.
+
+| Token               | Value     | Token               | Value    |
+| ------------------- | --------- | ------------------- | -------- |
+| `--vow-space-0`     | `0`       | `--vow-space-5`     | `1.5rem` |
+| `--vow-space-1`     | `0.25rem` | `--vow-space-6`     | `2rem`   |
+| `--vow-space-2`     | `0.5rem`  | `--vow-space-7`     | `2.5rem` |
+| `--vow-space-3`     | `0.75rem` | `--vow-space-8`     | `3rem`   |
+| `--vow-space-4`     | `1rem`    | `--vow-space-9`     | `4rem`   |
+| `--vow-container-1` | `28rem`   | `--vow-container-3` | `55rem`  |
+| `--vow-container-2` | `43rem`   | `--vow-container-4` | `71rem`  |
+
+The tokens are undefined only if you drop `@vow/theme` — then the primitives fall back to no gap /
+no max-width (bare), and your own stylesheet supplies the scale.
