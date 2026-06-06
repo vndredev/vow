@@ -26,7 +26,7 @@ fulfills: emit entity
 kind: entity
 ---
 
-# Eine Aufgabe, die jemand erledigen muss
+# A task someone must do
 
 ## fields
 

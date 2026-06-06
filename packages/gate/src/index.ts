@@ -126,3 +126,22 @@ export function undocumentedFieldTypes(coreSource: string, docSource: string): s
     (t) => !docSource.includes(`\`${t}\``) && !docSource.includes(`${t}(`),
   );
 }
+
+/**
+ * The language gate — the codebase and docs are English-only.
+ *
+ * Returns the distinct German-language markers (umlauts and the sharp-s) in a source. They are an
+ * unambiguous "not English" signal and don't collide with the intentional glyphs (check/cross) or
+ * em-dashes the emitters use. The character class is written with unicode escapes so this file
+ * itself stays ASCII and passes its own gate.
+ */
+/** Char codes for the German umlauts + sharp-s — listed as numbers so this file stays ASCII. */
+const GERMAN_MARKER_CODES = new Set([228, 246, 252, 223, 196, 214, 220]);
+
+export function germanMarkers(source: string): string[] {
+  const found = new Set<string>();
+  for (let i = 0; i < source.length; i += 1) {
+    if (GERMAN_MARKER_CODES.has(source.charCodeAt(i))) found.add(source.charAt(i));
+  }
+  return [...found];
+}

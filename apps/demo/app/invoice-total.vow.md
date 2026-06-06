@@ -3,9 +3,9 @@ id: vow_invoicetotal
 fulfills: bind ./logic/invoice-total.ts#computeTotal
 ---
 
-# Rechnungssumme mit 5% Staffelrabatt ab 10 Stück
+# Invoice total with a 5% staggered discount from 10 units
 
 ## proves
 
-- ab 10 Stück greift der Rabatt
-- unter 10 Stück gibt es keinen Rabatt
+- a discount applies from 10 units
+- under 10 units there is no discount

@@ -82,7 +82,7 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
       {
         kind: "bound",
         name: "aria-label",
-        expr: `'Löschen: ' + item.${inputFields[0]?.name ?? "title"}`,
+        expr: `'Delete: ' + item.${inputFields[0]?.name ?? "title"}`,
       },
       { kind: "event", name: "click", expr: "remove(i)" },
     ],
@@ -146,7 +146,7 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
       { kind: "static", name: "class", value: "vow-view__add" },
       { kind: "static", name: "type", value: "submit" },
     ],
-    children: [{ kind: "text", text: "+ Hinzufügen" }],
+    children: [{ kind: "text", text: "+ Add" }],
   };
 
   const component: Component = {

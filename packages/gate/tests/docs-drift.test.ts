@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { expect, test } from "vite-plus/test";
 import {
   checkVowExample,
+  germanMarkers,
   undocumentedFieldTypes,
   undocumentedKinds,
   vowExamplesIn,
@@ -27,6 +28,27 @@ function mdFilesUnder(dir: string): string[] {
       const p = join(d, name);
       if (statSync(p).isDirectory()) walk(p);
       else if (name.endsWith(".md")) out.push(p);
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+/** Every `.ts`/`.md`/`.vue` under a dir, recursively — skipping node_modules, dotfolders, dist. */
+function sourceFilesUnder(dir: string): string[] {
+  const out: string[] = [];
+  const walk = (d: string): void => {
+    let children: string[];
+    try {
+      children = readdirSync(d);
+    } catch {
+      return;
+    }
+    for (const name of children) {
+      if (name === "node_modules" || name === "dist" || name.startsWith(".")) continue;
+      const p = join(d, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (/\.(ts|md|vue)$/.test(name)) out.push(p);
     }
   };
   walk(dir);
@@ -110,4 +132,19 @@ test("every core field type is documented in emit.md", () => {
   const core = readFileSync(join(root, "packages/core/src/vow.ts"), "utf8");
   const doc = readFileSync(join(root, "docs/guide/emit.md"), "utf8");
   expect(undocumentedFieldTypes(core, doc)).toEqual([]);
+});
+
+test("the codebase and docs are English-only (no German umlauts)", () => {
+  const scanned = [
+    ...sourceFilesUnder(join(root, "packages")),
+    ...sourceFilesUnder(join(root, "apps")),
+    ...sourceFilesUnder(join(root, "docs/guide")),
+    join(root, "CLAUDE.md"),
+    join(root, "README.md"),
+  ];
+  const offenders = scanned
+    .map((file) => ({ file, markers: germanMarkers(readFileSync(file, "utf8")) }))
+    .filter((o) => o.markers.length > 0)
+    .map((o) => `${o.file.slice(root.length + 1)}: ${o.markers.join(" ")}`);
+  expect(offenders).toEqual([]);
 });
