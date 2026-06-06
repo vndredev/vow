@@ -12,6 +12,8 @@
     "check": "vp check"
   },
   "devDependencies": {
+    "axe-core": "catalog:",
+    "jsdom": "catalog:",
     "vite-plus": "catalog:"
   }
 }
