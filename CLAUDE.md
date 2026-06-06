@@ -12,8 +12,8 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 
 - `vp check` — fmt + lint + typecheck (tsgo) across all packages. Must be green.
 - **`pnpm -r test`** — tests per package (local `.bin`). **NOT `vp test`** (root): the global `vp` can't resolve project-local optional peers like `jsdom`.
-- `vp build apps/demo` — generates `.generated/` + builds the bundle.
-- `vp dev apps/demo` — dev server (HMR: change `app/*.vow.md` → regenerates + reloads).
+- `vp build apps/showcase` — generates `.generated/` + builds the bundle.
+- `vp dev apps/showcase` — dev server (HMR: change `app/*.vow.md` → regenerates + reloads).
 - `pnpm --filter @vow/docs run docs:build` / `docs:dev` — the VitePress docs.
 - pre-commit (`vp staged`) runs `vp check --fix`.
 

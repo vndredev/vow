@@ -1,23 +1,23 @@
 # Getting started
 
 ::: warning Foundation phase
-vow isn't on npm yet — there's no `npm create vow`, and the `@vow/*` packages are workspace-internal. The way to **experience** vow today is to run the demo app in the repo and watch a vow become a running UI. A standalone install (published packages + a scaffold) is on the [roadmap](/guide/roadmap).
+vow isn't on npm yet — there's no `npm create vow`, and the `@vow/*` packages are workspace-internal. The way to **experience** vow today is to run the showcase app in the repo and watch vows become a running UI. A standalone install (published packages + a `vow create` scaffold) is on the [roadmap](/guide/roadmap).
 :::
 
-## Run the demo
+## Run the showcase
 
 ```bash
 git clone https://github.com/vndredev/vow.git
 cd vow
-vp install          # install the workspace (or: pnpm install)
-vp dev apps/demo    # start the dev server
+vp install             # install the workspace (or: pnpm install)
+vp dev apps/showcase   # start the dev server
 ```
 
-Open the printed URL. You see a task list — and you never wrote a `.vue` file. It was generated from a single vow.
+Open the printed URL. You see a layout page — a row of boxes, a three-column grid, then a task list — and you never wrote a `.vue` file. Every component is generated from vows: the layout from a [`## tree`](/guide/layout), the list from an entity.
 
 ## Watch the promise keep itself
 
-The whole demo is one file, `apps/demo/app/task.vow.md`:
+The task list is generated from one file, `apps/showcase/app/task.vow.md`:
 
 ```markdown
 ---

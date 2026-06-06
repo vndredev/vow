@@ -6,7 +6,7 @@ vow is built **slowly** — element by element, function by function. Every chan
 
 ```bash
 pnpm install            # vp config runs the git hooks setup
-vp dev apps/demo        # the demo app
+vp dev apps/showcase        # the showcase app
 ```
 
 `vp` is the global [Vite+](https://viteplus.dev/) CLI (the toolchain). vow is a pnpm monorepo of `@vow/*` packages.
@@ -17,7 +17,7 @@ vp dev apps/demo        # the demo app
 vp check                # format (oxfmt) · lint (oxlint) · typecheck (tsgo)
 pnpm -r test            # tests, per package — NOT `vp test` (the global vp can't
                         # resolve project-local optional peers like jsdom)
-vp build apps/demo      # generate .generated/ + build
+vp build apps/showcase      # generate .generated/ + build
 pnpm --filter @vow/docs run docs:build
 ```
 
