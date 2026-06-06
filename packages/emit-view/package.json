@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@vow/component": "workspace:*",
-    "@vow/core": "workspace:*"
+    "@vow/core": "workspace:*",
+    "@vow/layout": "workspace:*"
   },
   "devDependencies": {
     "vite-plus": "catalog:"
