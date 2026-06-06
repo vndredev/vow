@@ -1,8 +1,36 @@
 # Layout
 
 Layout primitives — `Flex`, `Grid`, `Box`, `Container` — are structural Vue components for arranging
-UI. They are the **vocabulary** a view composes. Authoring layout _inside_ a `.vow.md` (a view's
-`## tree`) lands in its own step; this page documents the primitives that step will draw on.
+UI. They are the **vocabulary**; a view's [`## tree`](#the-tree) composes them. Layout is authored
+_inside_ the `.vow.md`, so the spec stays the single source of truth — no hand-edited component the
+spec can't reach.
+
+## The `## tree`
+
+A view can carry a `## tree` section: an indented list where each `- Name(prop=value)` is a layout
+primitive (or `slot`), and indentation is nesting. The generator turns it into a Vue SFC — a view
+**with** a tree needs no `of:` entity (its tree _is_ the component); **without** one it stays the
+default entity list.
+
+```markdown
+---
+id: vow_shell
+fulfills: emit view
+---
+
+# The app shell
+
+## tree
+
+- Container(size=2)
+  - Flex(direction=column, gap=5)
+    - slot(name=header)
+    - slot
+```
+
+A numeric prop is passed as a number (`gap=4` → `:gap="4"`), anything else as a string
+(`direction=column` → `:direction="'column'"`); `slot` becomes a `<slot>` outlet (`slot(name=x)` a
+named one). The referenced primitives are emitted alongside the view, so their imports resolve.
 
 ## Not primitives in the accessibility sense
 
