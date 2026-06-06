@@ -58,7 +58,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 
 ## Roadmap (two strands → dashboard / planning app)
 
-- **Generation** (what vow emits): more field types (date/select/reference) + relations → primitive ladder (Switch/Dialog/Tabs/Select/Combobox/Table; wrap complex ones via Zag/Ark) → patterns (Form/Table/Detail/Board/Stats) → layout/shell/routing → data adapter (memory → CF D1).
+- **Generation** (what vow emits): layout (primitives Flex/Grid/Box/Container + view `## tree` + theme tokens) ✓ → more field types (reference) + relations → primitive ladder (Switch/Dialog/Tabs/Select/Combobox/Table; wrap complex ones via Zag/Ark) → patterns (Form/Table/Detail/Board/Stats) → routing → data adapter (memory → CF D1).
 - **Author layer** (LLM-first): `serialize` (Vow → vow.md) → typed mutation API (`addEntity`/`addField`/…) → **vow MCP server** (the LLM operates vow via typed tools).
 - **Reference product:** a dashboard / planning system (entities + board/kanban + stats + CRUD + persistence), operable by user + LLM.
 
