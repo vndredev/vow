@@ -16,6 +16,7 @@ export default defineConfig({
           text: "Introduction",
           items: [
             { text: "What is vow?", link: "/guide/" },
+            { text: "Getting started", link: "/guide/getting-started" },
             { text: "The Vow primitive", link: "/guide/vow" },
             { text: "App structure", link: "/guide/structure" },
           ],
