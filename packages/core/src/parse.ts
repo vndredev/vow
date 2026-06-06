@@ -79,11 +79,14 @@ function parseFieldLine(item: string): {
   return { name, type: attrs[0] ?? "", required };
 }
 
-/** Parse a `Name(prop=value, ...)` tree head into a component name + raw string props. */
+/** Parse a tree head: `Name(prop=value, ...)`, or a quoted `"literal"` → a text node. */
 function parseTreeHead(head: string): { component: string; props: Record<string, string> } {
+  // a quoted head is a text node: `- "Some heading"`
+  const text = /^"(.*)"$/.exec(head);
+  if (text) return { component: "text", props: { value: text[1] ?? "" } };
   const m = /^([A-Za-z][A-Za-z0-9]*)\s*(?:\(([^)]*)\))?$/.exec(head);
   if (!m?.[1]) {
-    throw new Error(`vow: tree node "${head}" must be "Name" or "Name(prop=value, ...)"`);
+    throw new Error(`vow: tree node "${head}" must be "Name", "Name(prop=value, ...)" or "text"`);
   }
   const props: Record<string, string> = {};
   const inner = m[2]?.trim();

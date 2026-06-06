@@ -234,9 +234,12 @@ function treeToUiNode(node: TreeNode): UiNode {
       children: node.children.map(treeToUiNode),
     };
   }
+  if (node.component === "text") {
+    return { kind: "text", text: node.props["value"] ?? "" };
+  }
   if (!LAYOUT_PRIMITIVES.includes(node.component)) {
     throw new Error(
-      `emit-view: unknown tree component "${node.component}" (known: ${LAYOUT_PRIMITIVES.join(", ")}, slot)`,
+      `emit-view: unknown tree component "${node.component}" (known: ${LAYOUT_PRIMITIVES.join(", ")}, slot, text)`,
     );
   }
   return {
@@ -254,7 +257,7 @@ function treeToUiNode(node: TreeNode): UiNode {
 
 /** The distinct layout primitives referenced by a tree (for the SFC's imports). */
 function primitivesInTree(node: TreeNode, acc: Set<string> = new Set()): Set<string> {
-  if (node.component !== "slot") acc.add(node.component);
+  if (node.component !== "slot" && node.component !== "text") acc.add(node.component);
   for (const child of node.children) primitivesInTree(child, acc);
   return acc;
 }
