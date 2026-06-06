@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      # Vite+ provides the toolchain (vp); install it globally before pnpm install
+      # so the `prepare` script (vp config) can run.
+      - run: npm install -g vite-plus
+      - run: pnpm install --frozen-lockfile
+      - run: vp check
+      - run: pnpm -r test
+      - run: vp build apps/demo
+      - run: pnpm --filter @vow/docs run docs:build
