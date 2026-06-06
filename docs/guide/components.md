@@ -12,7 +12,7 @@ A `Component` is plain data (`@vow/component`):
 interface Component {
   name: string;
   doc?: string[]; // leading comment lines
-  imports?: ImportDecl[]; // { from, names }
+  imports?: ImportDecl[]; // { from, names?, default? }
   props?: PropDef[]; // { name, tsType, optional? }
   events?: EventDef[]; // { name, payload }
   setup?: string[]; // framework-glue escape hatch (e.g. the headless computed(...))

@@ -1,4 +1,4 @@
-import type { Attr, Component, UiNode } from "./model.ts";
+import type { Attr, Component, ImportDecl, UiNode } from "./model.ts";
 
 /**
  * The Vue adapter — render a canonical `Component` into a Vue SFC string. The first of many adapters
@@ -8,6 +8,24 @@ import type { Attr, Component, UiNode } from "./model.ts";
  */
 
 const INDENT = "  ";
+
+/** HTML void elements — rendered self-closing (`<input … />`), never as an open/close pair. */
+const VOID_ELEMENTS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
 
 /** `& < >` escaping for literal text nodes — exactly matching the emitters' escapeHtml. */
 const escapeHtml = (s: string): string =>
@@ -44,7 +62,12 @@ function renderNode(node: UiNode, depth: number): string {
     case "element":
     case "component": {
       const open = node.kind === "component" ? node.name : node.tag;
-      const tag = `<${open}${renderAttrs(node.attrs)}>`;
+      const attrs = renderAttrs(node.attrs);
+      // HTML void elements are self-closing: <input … />
+      if (node.kind === "element" && VOID_ELEMENTS.has(node.tag)) {
+        return `${pad}<${open}${attrs} />`;
+      }
+      const tag = `<${open}${attrs}>`;
       // inline (no indent) if every child is text/interp; one child per line otherwise
       if (node.children.every((c) => c.kind === "text" || c.kind === "interp")) {
         const inner = node.children.map((c) => renderNode(c, 0)).join("");
@@ -60,11 +83,19 @@ function renderNode(node: UiNode, depth: number): string {
   }
 }
 
+/** Render one import: a default binding, named bindings, or both. */
+function renderImport(i: ImportDecl): string {
+  const parts: string[] = [];
+  if (i.default !== undefined) parts.push(i.default);
+  if (i.names && i.names.length > 0) parts.push(`{ ${i.names.join(", ")} }`);
+  return `import ${parts.join(", ")} from "${i.from}";`;
+}
+
 /** The `<script setup>` body lines — head (doc+imports), declarations (props+emits), setup; a blank line between non-empty sections. */
 function renderScript(c: Component): string[] {
   const head: string[] = [
     ...(c.doc ?? []).map((d) => `// ${d}`),
-    ...(c.imports ?? []).map((i) => `import { ${i.names.join(", ")} } from "${i.from}";`),
+    ...(c.imports ?? []).map(renderImport),
   ];
   const decls: string[] = [];
   if (c.props && c.props.length > 0) {

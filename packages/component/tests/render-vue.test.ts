@@ -101,3 +101,28 @@ test("a literal text node is HTML-escaped (& < > in order)", () => {
   };
   expect(renderVueSfc(c)).toContain("<h1>a &lt; b &amp; c</h1>");
 });
+
+test("a void element renders self-closing (<input … />)", () => {
+  const c: Component = {
+    name: "Field",
+    view: {
+      kind: "element",
+      tag: "input",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-view__input" },
+        { kind: "bound", name: "value", expr: "draft.x" },
+      ],
+      children: [],
+    },
+  };
+  expect(renderVueSfc(c)).toContain('<input class="vow-view__input" :value="draft.x" />');
+});
+
+test("a default import renders as `import X from …`", () => {
+  const c: Component = {
+    name: "Host",
+    imports: [{ from: "./Checkbox.vue", default: "Checkbox" }],
+    view: { kind: "element", tag: "div", attrs: [], children: [] },
+  };
+  expect(renderVueSfc(c)).toContain('import Checkbox from "./Checkbox.vue";');
+});
