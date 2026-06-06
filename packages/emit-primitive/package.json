@@ -1,0 +1,17 @@
+{
+  "name": "@vow/emit-primitive",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's primitive emitter — generates the thin framework adapter over a @vow/headless primitive.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}
