@@ -4,6 +4,10 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    # Let releases age past Vite+'s minimum-release-age supply-chain policy before
+    # proposing them, so dependency PRs don't fail the lockfile age check.
+    cooldown:
+      default-days: 7
     groups:
       voidzero:
         patterns:
@@ -14,3 +18,5 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
