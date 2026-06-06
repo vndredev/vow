@@ -16,7 +16,8 @@
     "@vow/emit-bind": "workspace:*",
     "@vow/emit-entity": "workspace:*",
     "@vow/emit-primitive": "workspace:*",
-    "@vow/emit-view": "workspace:*"
+    "@vow/emit-view": "workspace:*",
+    "@vow/layout": "workspace:*"
   },
   "devDependencies": {
     "vite": "catalog:",
