@@ -2,7 +2,12 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vite-plus/test";
-import { checkVowExample, vowExamplesIn } from "../src/index.ts";
+import {
+  checkVowExample,
+  undocumentedFieldTypes,
+  undocumentedKinds,
+  vowExamplesIn,
+} from "../src/index.ts";
 
 // packages/gate/tests → repo root
 const root = join(import.meta.dirname, "..", "..", "..");
@@ -93,4 +98,16 @@ test("checkVowExample holds for a valid example", () => {
     "- done: boolean",
   ].join("\n");
   expect(checkVowExample(content)).toBeNull();
+});
+
+test("every node/attr kind the Vue adapter handles is documented in components.md", () => {
+  const render = readFileSync(join(root, "packages/component/src/render-vue.ts"), "utf8");
+  const doc = readFileSync(join(root, "docs/guide/components.md"), "utf8");
+  expect(undocumentedKinds(render, doc)).toEqual([]);
+});
+
+test("every core field type is documented in emit.md", () => {
+  const core = readFileSync(join(root, "packages/core/src/vow.ts"), "utf8");
+  const doc = readFileSync(join(root, "docs/guide/emit.md"), "utf8");
+  expect(undocumentedFieldTypes(core, doc)).toEqual([]);
 });
