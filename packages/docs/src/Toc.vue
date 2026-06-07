@@ -17,6 +17,9 @@ function update(): void {
     const el = document.getElementById(item.slug);
     if (el && el.getBoundingClientRect().top <= OFFSET) current = item.slug;
   }
+  // at the page bottom the last sections are all on screen (never above the offset) — mark the last one
+  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+  if (atBottom) current = props.items[props.items.length - 1]?.slug ?? current;
   active.value = current;
 }
 
