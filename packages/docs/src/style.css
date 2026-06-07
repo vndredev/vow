@@ -154,6 +154,9 @@ body {
 .vow-callout > :last-child {
   margin-bottom: 0;
 }
+.vow-callout[data-kind="tip"] {
+  --callout-color: var(--vow-color-success);
+}
 .vow-callout[data-kind="info"] {
   --callout-color: var(--vow-color-muted);
 }
@@ -490,6 +493,17 @@ body {
   }
   .vow-nav__menu {
     display: inline-flex;
+  }
+  /* collapse the nav: the hamburger drawer carries navigation; search shrinks to its icon */
+  .vow-nav__links a {
+    display: none;
+  }
+  .vow-nav__search span,
+  .vow-nav__kbd {
+    display: none;
+  }
+  .vow-nav__search {
+    padding: var(--vow-space-1) var(--vow-space-2);
   }
 }
 
