@@ -58,6 +58,10 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
   let needsLayout = false; // any `emit view` with a `## tree` pulls in the layout primitives
+  // the generated view components a `## tree` may reference (e.g. `- Task`) — one per entity
+  const knownViews = allVows(vows)
+    .filter((e) => e.fulfills?.kind === "emit" && e.fulfills.as === "entity")
+    .map(viewComponentName);
   for (const v of allVows(vows)) {
     const f = v.fulfills;
     if (!f) continue;
@@ -79,8 +83,8 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
     } else if (f.kind === "emit" && f.as === "view") {
       const file = join(outDir, `${v.slug}.vue`);
       if (v.tree) {
-        // a layout view: its `## tree` IS the component (composes primitives, no entity needed)
-        writeFileSync(file, emitTreeView(v), "utf8");
+        // a layout view: its `## tree` IS the component (composes primitives + generated views)
+        writeFileSync(file, emitTreeView(v, knownViews), "utf8");
         written.push(file);
         needsLayout = true;
       } else {

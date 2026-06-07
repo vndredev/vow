@@ -36,7 +36,8 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
   if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
 
   const setup: string[] = [
-    `const props = defineProps<{ items: ${type}[] }>();`,
+    // items is optional (default empty) so the view drops into a `## tree` as `- <Name>` with no props
+    `const props = withDefaults(defineProps<{ items?: ${type}[] }>(), { items: () => [] });`,
     `const rows = ref<${type}[]>(props.items.map((item) => ({ ...item })));`,
     `const draft = ref<Partial<${type}>>({});`,
     ``,
@@ -227,14 +228,23 @@ export function emitDefaultView(entity: Vow): string {
 /** Plain text-bearing HTML elements a tree may use directly (headings, paragraphs, inline). */
 const TEXT_TAGS: readonly string[] = ["h1", "h2", "h3", "p", "span"];
 
-/** Map a parsed `TreeNode` to a `UiNode`. `slot` → outlet; a known primitive → `<Component>`. */
-function treeToUiNode(node: TreeNode): UiNode {
+/** True for tree nodes that are markup, not a referenced component (`slot`, `text`, a text tag). */
+function isReserved(component: string): boolean {
+  return component === "slot" || component === "text" || TEXT_TAGS.includes(component);
+}
+
+/**
+ * Map a parsed `TreeNode` to a `UiNode`. `slot` → outlet; `text`/a text tag → markup; a layout
+ * primitive OR a known generated view (e.g. `- Task`) → `<Component>`. `knownViews` are the generated
+ * view component names the tree is allowed to reference.
+ */
+function treeToUiNode(node: TreeNode, knownViews: readonly string[]): UiNode {
   if (node.component === "slot") {
     const name = node.props["name"];
     return {
       kind: "slot",
       ...(name !== undefined ? { name } : {}),
-      children: node.children.map(treeToUiNode),
+      children: node.children.map((c) => treeToUiNode(c, knownViews)),
     };
   }
   if (node.component === "text") {
@@ -246,12 +256,12 @@ function treeToUiNode(node: TreeNode): UiNode {
       kind: "element",
       tag: node.component,
       attrs: [],
-      children: node.children.map(treeToUiNode),
+      children: node.children.map((c) => treeToUiNode(c, knownViews)),
     };
   }
-  if (!LAYOUT_PRIMITIVES.includes(node.component)) {
+  if (!LAYOUT_PRIMITIVES.includes(node.component) && !knownViews.includes(node.component)) {
     throw new Error(
-      `emit-view: unknown tree component "${node.component}" (known: ${LAYOUT_PRIMITIVES.join(", ")}, ${TEXT_TAGS.join(", ")}, slot, text)`,
+      `emit-view: unknown tree component "${node.component}" (known: ${[...LAYOUT_PRIMITIVES, ...knownViews].join(", ")}, ${TEXT_TAGS.join(", ")}, slot, text)`,
     );
   }
   return {
@@ -263,24 +273,29 @@ function treeToUiNode(node: TreeNode): UiNode {
       // a number stays a number; everything else is a quoted string literal
       expr: /^-?\d+(?:\.\d+)?$/.test(value) ? value : `'${value.replace(/'/g, "\\'")}'`,
     })),
-    children: node.children.map(treeToUiNode),
+    children: node.children.map((c) => treeToUiNode(c, knownViews)),
   };
 }
 
-/** The distinct layout primitives referenced by a tree (for the SFC's imports). */
-function primitivesInTree(node: TreeNode, acc: Set<string> = new Set()): Set<string> {
-  if (LAYOUT_PRIMITIVES.includes(node.component)) acc.add(node.component);
-  for (const child of node.children) primitivesInTree(child, acc);
+/** Every component a tree references (layout primitives + generated views) — each imported from ./<Name>.vue. */
+function componentsInTree(node: TreeNode, acc: Set<string> = new Set()): Set<string> {
+  if (!isReserved(node.component)) acc.add(node.component);
+  for (const child of node.children) componentsInTree(child, acc);
   return acc;
 }
 
-/** A view whose layout is its `## tree` — composed from layout primitives, rendered to a Vue SFC. */
-export function emitTreeView(view: Vow): string {
+/**
+ * A view whose layout is its `## tree` — composed from layout primitives, text, and generated views
+ * (e.g. `- Task`), rendered to a Vue SFC. `knownViews` lists the generated view component names the
+ * tree may reference; each referenced component is imported from its `.generated/` `.vue`.
+ */
+export function emitTreeView(view: Vow, knownViews: readonly string[] = []): string {
   if (!view.tree) throw new Error(`emit-view: vow "${view.slug}" has no \`## tree\``);
-  const root = treeToUiNode(view.tree); // validates every node up front
-  const imports: ImportDecl[] = [...primitivesInTree(view.tree)]
-    .filter((name) => LAYOUT_PRIMITIVES.includes(name))
-    .map((name) => ({ from: `./${name}.vue`, default: name }));
+  const root = treeToUiNode(view.tree, knownViews); // validates every node up front
+  const imports: ImportDecl[] = [...componentsInTree(view.tree)].map((name) => ({
+    from: `./${name}.vue`,
+    default: name,
+  }));
   const component: Component = {
     name: pascalCase(view.slug),
     doc: [
