@@ -3,10 +3,11 @@
    default; refine against a side-by-side during migration. Tokens come from @vow/theme (vow.css). */
 
 :root {
-  --studio-nav-height: 56px;
-  --studio-sidebar-width: 252px;
-  --studio-toc-width: 232px;
-  --studio-content-max: 720px;
+  /* Layout dimensions — values learned from the VitePress default for a 1:1 frame. */
+  --studio-nav-height: 64px;
+  --studio-sidebar-width: 272px;
+  --studio-toc-width: 224px;
+  --studio-content-max: 688px;
 }
 
 html,
@@ -271,17 +272,20 @@ body {
   padding-left: var(--vow-space-5);
 }
 
-/* Callouts (::: warning|tip|info|danger) */
+/* Callouts (::: tip|info|warning|danger) — one accent var per kind, all from vow tokens (no hardcodes). */
 .vow-callout {
+  --callout-color: var(--vow-color-accent);
   margin: var(--vow-space-5) 0;
   padding: var(--vow-space-3) var(--vow-space-4);
-  border-radius: var(--vow-radius-3);
   border: var(--vow-border) solid var(--vow-color-border);
+  border-left: 3px solid var(--callout-color);
+  border-radius: var(--vow-radius-2);
   background: var(--vow-color-surface);
 }
 .vow-callout__title {
   margin: 0 0 var(--vow-space-1);
   font-weight: var(--vow-weight-bold);
+  color: var(--callout-color);
 }
 .vow-callout__body > :first-child {
   margin-top: 0;
@@ -289,15 +293,14 @@ body {
 .vow-callout__body > :last-child {
   margin-bottom: 0;
 }
+.vow-callout[data-kind="info"] {
+  --callout-color: var(--vow-color-muted);
+}
 .vow-callout[data-kind="warning"] {
-  border-color: #e0b050;
-  background: #fbf3e0;
+  --callout-color: var(--vow-color-warning);
 }
 .vow-callout[data-kind="danger"] {
-  border-color: var(--vow-color-danger);
-}
-.vow-callout[data-kind="tip"] {
-  border-color: var(--vow-color-accent);
+  --callout-color: var(--vow-color-danger);
 }
 
 /* Responsive: drop the TOC, then the sidebar, on narrower viewports. */
