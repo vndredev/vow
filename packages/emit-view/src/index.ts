@@ -415,10 +415,11 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
   if (theme) lines.push(`import "${theme}";`);
   lines.push(
     ``,
-    `// Optional docs routes + chrome, written by @vow/docs — empty maps when there are none.`,
-    `const docs = import.meta.glob<{ routes?: Route[] }>("./vow-docs-routes.ts", { eager: true });`,
-    `const docRoutes = Object.values(docs).flatMap((m) => m.routes ?? []);`,
-    `const layouts = import.meta.glob<{ default: Component }>("./vow-docs-layout.vue", { eager: true });`,
+    `// Optional routes + chrome an extension (e.g. @vow/docs) may contribute, by the *.routes.ts /`,
+    `// *.layout.vue convention — empty maps when there are none. The boot names no specific extension.`,
+    `const fragments = import.meta.glob<{ routes?: Route[] }>("./*.routes.ts", { eager: true });`,
+    `const docRoutes = Object.values(fragments).flatMap((m) => m.routes ?? []);`,
+    `const layouts = import.meta.glob<{ default: Component }>("./*.layout.vue", { eager: true });`,
     `const layout = Object.values(layouts)[0]?.default;`,
     ``,
     `const routes: Route[] = [`,

@@ -271,7 +271,7 @@ export function generateDocs(
     });
   }
   const config: DocsConfig = { title: opts.title ?? "Docs", nav: opts.nav ?? [] };
-  const manifest = join(outDir, "vow-docs-routes.ts");
+  const manifest = join(outDir, "vow-docs.routes.ts");
   writeFileSync(
     manifest,
     manifestModule(pages, buildSidebar(pages, opts.groups), config, tocByPath, search),
@@ -281,7 +281,7 @@ export function generateDocs(
 
   // The generated chrome: wires @vow/docs's Layout to the sidebar data. The boot picks it up via
   // import.meta.glob and passes it to the router as the layout around every page.
-  const layout = join(outDir, "vow-docs-layout.vue");
+  const layout = join(outDir, "vow-docs.layout.vue");
   writeFileSync(layout, LAYOUT_SFC, "utf8");
   written.push(layout);
 
@@ -334,7 +334,7 @@ function collectComponents(nodes: readonly unknown[], acc: Set<string>): void {
 const LAYOUT_SFC = [
   `<script setup lang="ts">`,
   `import Layout from "@vow/docs/Layout.vue";`,
-  `import { config, search, sidebar, tocByPath } from "./vow-docs-routes.ts";`,
+  `import { config, search, sidebar, tocByPath } from "./vow-docs.routes.ts";`,
   `import "@vow/docs/style.css";`,
   `defineProps<{ path: string }>();`,
   `</script>`,
