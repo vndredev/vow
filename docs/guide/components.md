@@ -31,7 +31,7 @@ A prop may carry a `default` (a verbatim TS expression); when any prop has one, 
 
 ## The agnostic seam: bindings are expression strings
 
-An attribute is **static**, **bound**, a **spread**, an **event** handler, or a **model** binding — and a dynamic one carries an adapter-neutral _expression_, never framework syntax:
+An attribute is **static**, **bound**, a **spread**, an **event** handler, a **model** binding, or a **conditional** (`v-if`/`v-show`) — and a dynamic one carries an adapter-neutral _expression_, never framework syntax:
 
 ```ts
 type Attr =
@@ -39,7 +39,8 @@ type Attr =
   | { kind: "bound"; name: string; expr: string } // :aria-label="label"
   | { kind: "spread"; expr: string } // v-bind="api.rootProps"
   | { kind: "event"; name: string; expr: string; modifiers?: string[] } // @submit.prevent="add"
-  | { kind: "model"; expr: string; modifiers?: string[] }; // v-model.number="draft.x"
+  | { kind: "model"; expr: string; modifiers?: string[] } // v-model.number="draft.x"
+  | { kind: "cond"; type: "if" | "show"; expr: string }; // v-if="open" / v-show="open"
 ```
 
 The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _what_ to bind, the adapter decides the _syntax_. Vue renders `:aria-label="label"`; a future React adapter renders `aria-label={label}`. The model never learns a Vue keyword.

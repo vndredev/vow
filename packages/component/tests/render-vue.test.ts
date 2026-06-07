@@ -168,6 +168,30 @@ test("event and model attributes render with modifiers", () => {
   expect(sfc).toContain('<button @click="remove(i)">x</button>');
 });
 
+test("a cond attr renders v-if (mount/unmount) and v-show (visibility)", () => {
+  const ifNode: Component = {
+    name: "Maybe",
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "cond", type: "if", expr: "api.open" }],
+      children: [],
+    },
+  };
+  expect(renderVueSfc(ifNode)).toContain('<div v-if="api.open" />');
+
+  const showNode: Component = {
+    name: "Maybe",
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "cond", type: "show", expr: "api.open" }],
+      children: [],
+    },
+  };
+  expect(renderVueSfc(showNode)).toContain('<div v-show="api.open" />');
+});
+
 test("a looped element renders v-for with key", () => {
   const c: Component = {
     name: "List",

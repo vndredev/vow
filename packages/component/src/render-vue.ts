@@ -48,6 +48,8 @@ function renderAttr(attr: Attr): string {
       return `@${attr.name}${renderModifiers(attr.modifiers)}="${attr.expr}"`;
     case "model":
       return `v-model${renderModifiers(attr.modifiers)}="${attr.expr}"`;
+    case "cond":
+      return `v-${attr.type}="${attr.expr}"`;
     default: {
       const _exhaustive: never = attr;
       return _exhaustive;
