@@ -6,6 +6,8 @@ import FrameworkSwitcher from "./FrameworkSwitcher.vue";
 // vow's primitives are headless (Reka-style) but ship with vow's own base look: the same vow.css that
 // dresses generated apps, here dressing the live primitive demos. Swap this import to re-skin at once.
 import "@vow/theme/vow.css";
+// Docs-only: neutralise VitePress prose CSS leaking into list-based primitive demos (e.g. the select).
+import "./docs.css";
 
 // vow targets many frameworks from one spec (Vue today; React/Solid planned). A header switcher picks
 // the target; FrameworkBlock shows framework-specific output (and an honest roadmap banner for the
