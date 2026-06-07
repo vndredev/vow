@@ -6,10 +6,12 @@ import { type Component, createApp, h, nextTick, shallowRef } from "vue";
  * `location.pathname`, intercepting internal links so navigation never full-reloads.
  */
 
-/** A route: a path and a lazy loader for its page component (a `.vue` default export). */
+/** A route: a path, a lazy loader for its page component (a `.vue` default export), and an optional
+ *  document title to set on navigation. */
 export interface Route {
   readonly path: string;
   readonly load: () => Promise<{ default: Component }>;
+  readonly title?: string;
 }
 
 /** The route for a path: an exact match (trailing slash ignored), else the `/404` route, else null. */
@@ -55,6 +57,7 @@ export function createRouter(routes: readonly Route[], options: RouterOptions = 
     if (pathname === path.value && page.value) return;
     path.value = pathname;
     const route = matchRoute(routes, pathname);
+    if (route?.title) document.title = route.title;
     page.value = route ? (await route.load()).default : null;
   };
 
@@ -72,8 +75,10 @@ export function createRouter(routes: readonly Route[], options: RouterOptions = 
         const anchor = (event.target as HTMLElement | null)?.closest?.("a");
         const href = anchor?.getAttribute("href");
         if (!anchor || !href || !href.startsWith("/") || anchor.target === "_blank") return;
-        event.preventDefault();
         const url = new URL(href, window.location.origin);
+        // protocol-relative ("//host") or otherwise cross-origin → let the browser handle it
+        if (url.origin !== window.location.origin) return;
+        event.preventDefault();
         window.history.pushState(null, "", href);
         void load(url.pathname).then(() => scrollTo(url.hash));
       });

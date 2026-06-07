@@ -202,7 +202,8 @@ function manifestModule(
     ``,
     `export const routes: Route[] = [`,
     ...pages.map(
-      (p) => `  { path: ${JSON.stringify(p.path)}, load: () => import("./${p.file}") },`,
+      (p) =>
+        `  { path: ${JSON.stringify(p.path)}, title: ${JSON.stringify(`${p.title} · ${config.title}`)}, load: () => import("./${p.file}") },`,
     ),
     `];`,
     ``,
