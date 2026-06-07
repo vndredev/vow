@@ -30,9 +30,18 @@ fulfills: emit view
 
 A numeric prop is passed as a number (`gap=4` → `:gap="4"`), anything else as a string
 (`direction=column` → `:direction="'column'"`); `slot` becomes a `<slot>` outlet (`slot(name=x)` a
-named one). A **quoted line** (`- "Some heading"`) is a text node — escaped literal content for
-headings and labels. The referenced primitives are emitted alongside the view, so their imports
-resolve.
+named one). A **quoted line** (`- "Some heading"`) is a text node — escaped literal content. A
+**text tag** (`h1` · `h2` · `h3` · `p` · `span`) wraps its quoted child in that element, for real
+headings and copy:
+
+```markdown
+- h1
+  - "The spec-driven framework for Vue"
+- p
+  - "Your app is a promise — a vow."
+```
+
+The referenced primitives are emitted alongside the view, so their imports resolve.
 
 ## Not primitives in the accessibility sense
 

@@ -71,3 +71,30 @@ test("a text node renders as escaped markup text inside its parent", () => {
   };
   expect(emitTreeView(captioned)).toContain("<Box>Hello world</Box>");
 });
+
+test("a text tag (h1/p) renders as that element wrapping its text", () => {
+  const landing: Vow = {
+    ...shell,
+    tree: {
+      component: "Container",
+      props: {},
+      children: [
+        {
+          component: "h1",
+          props: {},
+          children: [{ component: "text", props: { value: "The framework" }, children: [] }],
+        },
+        {
+          component: "p",
+          props: {},
+          children: [
+            { component: "text", props: { value: "Your app is a promise" }, children: [] },
+          ],
+        },
+      ],
+    },
+  };
+  const sfc = emitTreeView(landing);
+  expect(sfc).toContain("<h1>The framework</h1>");
+  expect(sfc).toContain("<p>Your app is a promise</p>");
+});
