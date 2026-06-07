@@ -520,7 +520,7 @@
   max-height: 16rem;
   overflow: auto;
   margin: 0;
-  padding: var(--vow-space-1);
+  padding: var(--vow-space-2);
   list-style: none;
   background: var(--vow-color-bg);
   border: var(--vow-border) solid var(--vow-color-border);
