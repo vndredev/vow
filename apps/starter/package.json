@@ -1,8 +1,8 @@
 {
-  "name": "@vow/showcase",
+  "name": "@vow/starter",
   "version": "0.0.0",
   "private": true,
-  "description": "The layout showcase: a Vue app, generated from vows, that shows the layout primitives in use.",
+  "description": "The vow starter: a Vue app generated from vows — a landing page plus a generated view.",
   "type": "module",
   "scripts": {
     "dev": "vp dev",

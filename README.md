@@ -40,7 +40,7 @@ Vite+ · Vitest · Rolldown · Oxc · tsgo (VoidZero) · Vue 3 · Cloudflare (ta
 
 ```bash
 pnpm install
-vp dev apps/showcase        # the showcase app
+vp dev apps/starter        # the starter app
 vp check                # format · lint · typecheck
 pnpm -r test            # tests (per package)
 pnpm --filter @vow/docs run docs:dev   # the docs

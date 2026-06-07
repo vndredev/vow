@@ -7,24 +7,28 @@ A vow app lives in **three zones**: you work in `app/`, vow writes `.generated/`
 ```
 my-app/
 ├─ app/                     YOUR TRUTH — the app as vows (visible, versioned)
-│  ├─ task.vow.md           entity  → model + factory + tests + default CRUD list
-│  ├─ invoice.vow.md        entity
-│  ├─ invoice/              children of "invoice" (a folder = nesting)
-│  │  └─ total.vow.md       bind  → fulfills: bind ./logic/total.ts#computeTotal
-│  └─ logic/                the 10% — hand-written bind code (+ tests)
-│     └─ total.ts
+│  ├─ landing.vow.md        view   → a ## tree layout (hero + feature grid)
+│  ├─ task.vow.md           entity → model + factory + tests + default CRUD list
+│  ├─ invoice-total.vow.md  bind   → fulfills: bind ./invoice-total.ts#computeTotal
+│  ├─ invoice-total.ts      the 10% — hand-written code, right beside its vow
+│  └─ invoice-total.test.ts its proof (the test names ARE the vow's ## proves)
 ├─ .generated/             MACHINE OUTPUT (hidden · gitignored · never edited)
 │  ├─ task.ts  task.test.ts  Task.vue
 │  ├─ Checkbox.vue          emitted primitive adapters (over @vow/headless)
+│  ├─ landing.vue           the layout view + Flex/Grid/Box/Container primitives
 │  └─ invoice-total.bind.ts bind anchor (tsgo verifies the seam)
 ├─ src/                     thin, stable shell (set up once)
 │  ├─ main.ts               boots the generated app + imports the theme
-│  └─ env.d.ts              *.vue / *.css shims
+│  └─ vow-modules.d.ts      *.vue / *.css shims
 ├─ index.html
 ├─ vite.config.ts           plugins: [vue(), vow()]
 ├─ tsconfig.json            include: ["src", "app", ".generated"]
 └─ package.json             @vow/headless · @vow/theme · vue
 ```
+
+The 10 % of hand-written code lives **co-located** — `invoice-total.ts` sits right next to the
+`invoice-total.vow.md` that binds it, not in a separate `lib/`. The unit is "a feature = its vow + its
+own code". There is no `components/` or `views/` folder by design: those are generated, never written.
 
 ## The three zones
 
