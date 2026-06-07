@@ -47,6 +47,7 @@ onBeforeUnmount(() => {
         v-bind="api.contentProps"
         class="vow-mobile-nav__drawer"
         aria-label="Navigation"
+        :aria-labelledby="undefined"
       >
         <Sidebar :groups="groups" :path="path" />
       </div>

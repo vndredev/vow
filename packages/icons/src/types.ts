@@ -5,6 +5,7 @@ export type IconName =
   | "search"
   | "sun"
   | "moon"
+  | "monitor"
   | "chevron-down"
   | "chevron-right"
   | "check"

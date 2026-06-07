@@ -1,32 +1,38 @@
 <script setup lang="ts">
 import Icon from "@vow/icons/Icon.vue";
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { DocsConfig } from "./index.ts";
 
-// The top nav — site title (links home) + configured links + a dark-mode toggle. A native button is
-// accessible on its own (no Switch primitive needed). The theme class is set before first paint by the
-// index.html boot script; here we sync the ref, persist a user toggle, and follow the OS while the user
-// hasn't overridden it (true auto). On mobile a hamburger emits `toggleSidebar` (the Layout opens it).
+// The top nav — site title + links + a tri-state theme button that CYCLES system → light → dark. The
+// theme class is set before first paint by index.html; an explicit choice persists in localStorage,
+// and "system" clears it (so you can always get auto back) and follows the OS live.
 defineProps<{ config: DocsConfig; sidebarOpen?: boolean }>();
 const emit = defineEmits<{ toggleSidebar: []; openSearch: [] }>();
 
-const dark = ref(false);
+type Theme = "system" | "light" | "dark";
+const theme = ref<Theme>("system");
 const media = window.matchMedia("(prefers-color-scheme: dark)");
+const themeIcon = computed(() =>
+  theme.value === "system" ? "monitor" : theme.value === "dark" ? "moon" : "sun",
+);
 
-function setClass(value: boolean): void {
-  dark.value = value;
-  document.documentElement.classList.toggle("dark", value);
+function apply(next: Theme): void {
+  theme.value = next;
+  const isDark = next === "system" ? media.matches : next === "dark";
+  document.documentElement.classList.toggle("dark", isDark);
+  if (next === "system") localStorage.removeItem("vow-theme");
+  else localStorage.setItem("vow-theme", next);
 }
-function toggle(): void {
-  setClass(!dark.value);
-  localStorage.setItem("vow-theme", dark.value ? "dark" : "light"); // an explicit choice persists
+function cycleTheme(): void {
+  apply(theme.value === "system" ? "light" : theme.value === "light" ? "dark" : "system");
 }
 function onSystemChange(event: MediaQueryListEvent): void {
-  if (!localStorage.getItem("vow-theme")) setClass(event.matches); // follow the OS until overridden
+  if (theme.value === "system") document.documentElement.classList.toggle("dark", event.matches);
 }
 
 onMounted(() => {
-  dark.value = document.documentElement.classList.contains("dark"); // the boot script already set it
+  const stored = localStorage.getItem("vow-theme");
+  theme.value = stored === "light" || stored === "dark" ? stored : "system";
   media.addEventListener("change", onSystemChange);
 });
 onBeforeUnmount(() => media.removeEventListener("change", onSystemChange));
@@ -60,11 +66,11 @@ onBeforeUnmount(() => media.removeEventListener("change", onSystemChange));
         <button
           type="button"
           class="vow-nav__dark"
-          :aria-pressed="dark"
-          aria-label="Toggle dark mode"
-          @click="toggle"
+          :aria-label="`Theme: ${theme} (click to change)`"
+          :title="`Theme: ${theme}`"
+          @click="cycleTheme"
         >
-          <Icon :name="dark ? 'sun' : 'moon'" />
+          <Icon :name="themeIcon" />
         </button>
       </nav>
     </div>

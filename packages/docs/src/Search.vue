@@ -79,6 +79,7 @@ function onKeydown(event: KeyboardEvent): void {
         v-bind="api.contentProps"
         class="vow-search__panel"
         aria-label="Search"
+        :aria-labelledby="undefined"
         @keydown="onKeydown"
       >
         <input
@@ -90,7 +91,7 @@ function onKeydown(event: KeyboardEvent): void {
           aria-label="Search the docs"
           placeholder="Search the docs"
           aria-autocomplete="list"
-          aria-controls="search-listbox"
+          :aria-controls="results.length > 0 ? 'search-listbox' : undefined"
           :aria-expanded="results.length > 0"
           :aria-activedescendant="activeId"
         />
@@ -106,6 +107,7 @@ function onKeydown(event: KeyboardEvent): void {
               :href="item.path"
               class="vow-search__result"
               role="option"
+              tabindex="-1"
               :aria-selected="i === active"
               :class="{ 'is-active': i === active }"
               @click.prevent="go(item)"
@@ -116,7 +118,10 @@ function onKeydown(event: KeyboardEvent): void {
             </a>
           </li>
         </ul>
-        <div v-else-if="query !== ''" class="vow-search__empty" role="status">No results</div>
+        <div v-else-if="query !== ''" class="vow-search__empty">No results</div>
+        <div class="vow-sr-only" role="status" aria-live="polite">
+          {{ query === "" ? "" : results.length > 0 ? `${results.length} results` : "No results" }}
+        </div>
       </div>
     </div>
   </Teleport>
