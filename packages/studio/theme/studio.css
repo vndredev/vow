@@ -221,21 +221,23 @@ body {
   background: var(--vow-color-surface);
 }
 
-/* Code blocks (Shiki dual-theme: switch the CSS variables on .dark) */
+/* Code blocks — a surface card (like VitePress), with Shiki driving only the token colors per theme. */
 .vow-doc .shiki {
   margin: var(--vow-space-5) 0;
   padding: var(--vow-space-4) var(--vow-space-5);
+  border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-3);
   overflow-x: auto;
+  font-family: var(--vow-font-mono);
   font-size: var(--vow-text-sm);
-  background: var(--shiki-light-bg);
+  line-height: var(--vow-leading-relaxed);
+  background: var(--vow-color-surface);
+  color: var(--shiki-light);
 }
 .vow-doc .shiki span {
   color: var(--shiki-light);
 }
-.dark .vow-doc .shiki {
-  background: var(--shiki-dark-bg);
-}
+.dark .vow-doc .shiki,
 .dark .vow-doc .shiki span {
   color: var(--shiki-dark);
 }

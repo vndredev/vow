@@ -23,6 +23,9 @@ export function highlight(highlighter: Highlighter, code: string, lang: string):
   return highlighter.codeToHtml(code, {
     lang: known ? lang : "text",
     themes: THEMES,
+    // Emit per-theme CSS vars (--shiki-light/-dark) for token colors instead of an inline default,
+    // so the theme drives both modes and the block background is the theme's card (not Shiki's white).
+    defaultColor: false,
     transformers: [
       {
         pre(node) {

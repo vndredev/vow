@@ -24,6 +24,7 @@
 
   /* Type — one font stack, a size scale, weights, line-heights, tracking. */
   --vow-font-sans: system-ui, -apple-system, "Segoe UI", roboto, helvetica, arial, sans-serif;
+  --vow-font-mono: ui-monospace, "Menlo", "Monaco", "Consolas", "Liberation Mono", monospace;
   --vow-text-xs: 0.8rem;
   --vow-text-sm: 0.9rem;
   --vow-text-base: 1rem;
