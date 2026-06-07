@@ -15,8 +15,8 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 
 **Generation** — what vow emits:
 
-- [x] `entity` — model + factory + derived tests + default CRUD list
-- [x] `view` — additional views over an entity
+- [x] `entity` — a model: type + factory + derived tests (no UI by itself)
+- [x] `view` — a page from a `## view`; `list:` renders an entity's CRUD list
 - [x] `bind` — hand-written logic, tsgo-verified seam
 - [x] checkbox primitive — agnostic core + emitted adapter, a11y proven
 - [x] swappable theme
