@@ -412,7 +412,9 @@ body {
 }
 .vow-toc__list a {
   display: block;
+  margin-left: -1px; /* the link's left border sits on the guide line (like the sidebar) */
   padding: var(--vow-space-1) var(--vow-space-3);
+  border-left: 1px solid transparent;
   color: var(--vow-color-muted);
   text-decoration: none;
 }
@@ -420,8 +422,9 @@ body {
   color: var(--vow-color-text);
 }
 .vow-toc__list a.is-active {
-  /* colour only — no weight change, so the active row never reflows (no jump on click) */
+  /* accent left bar on the guide line + accent text; no weight change → no reflow/jump */
   color: var(--vow-color-accent);
+  border-left-color: var(--vow-color-accent);
 }
 .vow-toc__item--l3 a {
   padding-left: var(--vow-space-5);
