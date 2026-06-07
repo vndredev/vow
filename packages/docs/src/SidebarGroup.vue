@@ -25,6 +25,17 @@ const api = computed(() =>
           :aria-current="item.path === path ? 'page' : undefined"
           >{{ item.title }}</a
         >
+        <ul v-if="item.items && item.items.length > 0" class="vow-sidebar__items vow-sidebar__sub">
+          <li v-for="sub in item.items" :key="sub.path">
+            <a
+              :href="sub.path"
+              class="vow-sidebar__link"
+              :class="{ 'is-active': sub.path === path }"
+              :aria-current="sub.path === path ? 'page' : undefined"
+              >{{ sub.title }}</a
+            >
+          </li>
+        </ul>
       </li>
     </ul>
   </div>

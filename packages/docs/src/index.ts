@@ -49,10 +49,11 @@ export interface VowDocsOptions {
   readonly base?: string;
 }
 
-/** A page in the sidebar — its title and clean URL. */
+/** A page in the sidebar — its title, clean URL, and any nested child pages. */
 export interface SidebarItem {
   readonly title: string;
   readonly path: string;
+  readonly items?: readonly SidebarItem[];
 }
 
 /** A sidebar section — a `group` and its ordered pages. */
@@ -135,10 +136,33 @@ export function buildSidebar(
     .filter((g) => byGroup.has(g))
     .map((g) => ({
       title: g,
-      items: [...(byGroup.get(g) ?? [])]
-        .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
-        .map((p) => ({ title: p.title, path: p.path })),
+      items: nestItems(
+        [...(byGroup.get(g) ?? [])].sort(
+          (a, b) => a.order - b.order || a.title.localeCompare(b.title),
+        ),
+      ),
     }));
+}
+
+/** Nest pages whose path is under another's (e.g. `/guide/primitives/checkbox` under `/guide/primitives`). */
+function nestItems(pages: readonly PageMeta[]): SidebarItem[] {
+  interface Node {
+    title: string;
+    path: string;
+    items: Node[];
+  }
+  const roots: Node[] = [];
+  for (const p of pages) {
+    const node: Node = { title: p.title, path: p.path, items: [] };
+    const parent = roots.find((r) => p.path.startsWith(`${r.path}/`));
+    if (parent) parent.items.push(node);
+    else roots.push(node);
+  }
+  const toItem = (n: Node): SidebarItem =>
+    n.items.length > 0
+      ? { title: n.title, path: n.path, items: n.items.map(toItem) }
+      : { title: n.title, path: n.path };
+  return roots.map(toItem);
 }
 
 /** The generated manifest — `@vow/docs`'s routes (boot) + sidebar + config + per-page TOC (the layout). */

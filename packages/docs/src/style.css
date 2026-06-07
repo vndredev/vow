@@ -1,10 +1,32 @@
 /* @vow/docs — the docs layer's own stylesheet. The docs CHROME (nav, sidebar, layout, TOC)
    + prose (.vow-doc) + the markdown extensions it renders (callouts, code-group). Built on @vow/theme
    tokens (--vow-*); loaded by the generated docs layout. Kept OUT of vow.css (the shared design system). */
+/* Base reset for the docs app — the font/colour come from @vow/theme tokens (without this the page
+   falls back to the browser's serif default). */
+html,
+body {
+  margin: 0;
+}
+body {
+  font-family: var(--vow-font-sans);
+  line-height: var(--vow-leading-normal);
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
+}
+* {
+  box-sizing: border-box;
+}
+
 /* Prose — a generated doc page (.vow-doc, from emitProse). Token-driven; reads like VitePress. */
 .vow-doc {
   max-width: 44rem;
   min-width: 0;
+}
+/* anchor jumps (TOC) clear the sticky nav */
+.vow-doc h1,
+.vow-doc h2,
+.vow-doc h3 {
+  scroll-margin-top: calc(var(--vow-nav-h) + var(--vow-space-4));
 }
 .vow-doc > :first-child {
   margin-top: 0;
@@ -258,6 +280,10 @@
   list-style: none;
   /* the left vertical guide line that leads the nested items (VitePress-style) */
   border-left: 1px solid var(--vow-color-border);
+}
+/* a nested page list (e.g. the primitive subpages under Primitives) — indented under its parent */
+.vow-sidebar__sub {
+  margin-left: var(--vow-space-4);
 }
 .vow-sidebar__link {
   display: block;

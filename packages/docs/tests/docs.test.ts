@@ -29,6 +29,25 @@ test("routePath gives a clean URL, collapsing index to its folder", () => {
   expect(routePath("guide/index")).toBe("/guide");
 });
 
+test("buildSidebar nests pages under a parent path (subpages under their section)", () => {
+  const sidebar = buildSidebar(
+    [
+      { path: "/guide/primitives", file: "p.vue", group: "UI", order: 1, title: "Primitives" },
+      {
+        path: "/guide/primitives/checkbox",
+        file: "c.vue",
+        group: "UI",
+        order: 1.1,
+        title: "Checkbox",
+      },
+    ],
+    ["UI"],
+  );
+  const primitives = sidebar[0]?.items[0];
+  expect(primitives?.title).toBe("Primitives");
+  expect(primitives?.items?.map((i) => i.title)).toEqual(["Checkbox"]);
+});
+
 test("generateDocs renders each .md into a prose .vue + a routes manifest", () => {
   const content = mkdtempSync(join(tmpdir(), "vow-docs-content-"));
   writeFileSync(
