@@ -14,9 +14,9 @@ export interface Route {
   readonly title?: string;
 }
 
-/** The route for a path: an exact match (trailing slash ignored), else the `/404` route, else null. */
+/** The route for a path: an exact match (trailing slashes ignored), else the `/404` route, else null. */
 export function matchRoute(routes: readonly Route[], path: string): Route | null {
-  const norm = path.length > 1 ? path.replace(/\/$/, "") : path;
+  const norm = path.replace(/\/+$/, "") || "/";
   return routes.find((r) => r.path === norm) ?? routes.find((r) => r.path === "/404") ?? null;
 }
 
@@ -51,13 +51,14 @@ async function scrollTo(hash: string): Promise<void> {
 export function createRouter(routes: readonly Route[], options: RouterOptions = {}): Router {
   const page = shallowRef<Component | null>(null);
   const path = shallowRef("/");
+  const baseTitle = document.title; // the index.html title — the fallback for routes without one (home)
 
   // Load the page for a pathname (the hash is matched separately — `/guide/x#y` must not 404).
   const load = async (pathname: string): Promise<void> => {
     if (pathname === path.value && page.value) return;
     path.value = pathname;
     const route = matchRoute(routes, pathname);
-    if (route?.title) document.title = route.title;
+    document.title = route?.title ?? baseTitle;
     page.value = route ? (await route.load()).default : null;
   };
 

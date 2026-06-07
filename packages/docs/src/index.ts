@@ -112,8 +112,8 @@ function parseFrontmatter(src: string): { data: Record<string, string>; body: st
 
 /** The first `# heading` of a markdown body — the page title fallback. */
 const firstH1 = (body: string): string | undefined =>
-  // strip fenced code first, so a `# comment` inside a code block isn't mistaken for the title
-  /^#\s+(.+)$/m.exec(body.replace(/```[\s\S]*?```/g, ""))?.[1]?.trim();
+  // strip fenced code (``` or ~~~) first, so a `# comment` inside a code block isn't taken as the title
+  /^#\s+(.+)$/m.exec(body.replace(/(```|~~~)[\s\S]*?\1/g, ""))?.[1]?.trim();
 
 /** A content file's path under the root, `.md` stripped, forward-slashed (e.g. "guide/emit"). */
 const relNoExt = (contentDir: string, file: string): string =>
@@ -241,6 +241,11 @@ export function generateDocs(
       throw new Error(`@vow/docs: two content files map to the same generated file "${slug}.vue".`);
     }
     seenSlug.add(slug);
+    const path = routePath(relNoExt(contentDir, file), opts.base);
+    if (seenPath.has(path)) {
+      throw new Error(`@vow/docs: two content files map to the same route "${path}".`);
+    }
+    seenPath.add(path);
     const { data, body } = parseFrontmatter(readFileSync(file, "utf8"));
     const dir = dirname(file);
     const toc: TocEntry[] = [];
@@ -262,11 +267,6 @@ export function generateDocs(
     const out = join(outDir, `${slug}.vue`);
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);
-    const path = routePath(relNoExt(contentDir, file), opts.base);
-    if (seenPath.has(path)) {
-      throw new Error(`@vow/docs: two content files map to the same route "${path}".`);
-    }
-    seenPath.add(path);
     const title = data["title"] ?? firstH1(body) ?? path;
     tocByPath[path] = toc;
     search.push({ label: title, path });

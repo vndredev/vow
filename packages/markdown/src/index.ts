@@ -145,12 +145,13 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]
   const sink = (): UiNode[] => stack[stack.length - 1]?.kids ?? root;
   // a per-page slug counter — empty (e.g. non-Latin) headings fall back to "section", and a repeated
   // slug gets a -1/-2 suffix, so heading ids (and the TOC/search anchors) stay unique.
-  const seen = new Map<string, number>();
+  const usedSlugs = new Set<string>();
   const uniqueSlug = (text: string): string => {
     const base = slug(text) || "section";
-    const n = seen.get(base) ?? 0;
-    seen.set(base, n + 1);
-    return n === 0 ? base : `${base}-${n}`;
+    let candidate = base;
+    for (let i = 1; usedSlugs.has(candidate); i += 1) candidate = `${base}-${i}`;
+    usedSlugs.add(candidate);
+    return candidate;
   };
   for (const t of tokens) {
     // tight-list items wrap their content in a hidden <p> — drop it so the inline content sits directly
