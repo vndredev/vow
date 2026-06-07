@@ -8,6 +8,7 @@
   --studio-sidebar-width: 272px;
   --studio-toc-width: 224px;
   --studio-content-max: 688px;
+  --studio-max-width: 1440px;
 }
 
 html,
@@ -40,7 +41,7 @@ body {
   justify-content: space-between;
   gap: var(--vow-space-4);
   height: 100%;
-  max-width: 1440px;
+  max-width: var(--studio-max-width);
   margin: 0 auto;
   padding: 0 var(--vow-space-6);
 }
@@ -78,7 +79,7 @@ body {
   display: grid;
   grid-template-columns: var(--studio-sidebar-width) minmax(0, 1fr) var(--studio-toc-width);
   gap: var(--vow-space-7);
-  max-width: 1440px;
+  max-width: var(--studio-max-width);
   margin: 0 auto;
   padding: calc(var(--studio-nav-height) + var(--vow-space-6)) var(--vow-space-6) var(--vow-space-9);
 }
