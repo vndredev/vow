@@ -3,6 +3,10 @@
    tokens (--vow-*); loaded by the generated docs layout. Kept OUT of vow.css (the shared design system). */
 /* Base reset for the docs app — the font/colour come from @vow/theme tokens (without this the page
    falls back to the browser's serif default). */
+html {
+  /* always reserve the scrollbar gutter — collapsing content must not reflow the page width */
+  scrollbar-gutter: stable;
+}
 html,
 body {
   margin: 0;
@@ -184,7 +188,7 @@ body {
 
 /* Docs chrome — the nav + sidebar + layout (@vow/docs). All here, none in the components. */
 .vow-docs {
-  --vow-nav-h: 56px;
+  --vow-nav-h: 64px;
 }
 .vow-nav {
   position: sticky;
@@ -226,11 +230,11 @@ body {
 }
 .vow-docs-layout {
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr) 13rem;
+  grid-template-columns: 17rem minmax(0, 1fr) 13rem;
   gap: var(--vow-space-7);
   max-width: 84rem;
   margin: 0 auto;
-  padding: var(--vow-space-7) var(--vow-space-6);
+  padding: var(--vow-space-8) var(--vow-space-6);
 }
 .vow-docs-content {
   min-width: 0;
