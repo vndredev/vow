@@ -519,6 +519,9 @@
   width: 100%;
   max-height: 16rem;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
   margin: 0;
   padding: var(--vow-space-2);
   list-style: none;
