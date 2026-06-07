@@ -82,7 +82,9 @@ test("generateDocs renders each .md into a prose .vue + a routes manifest", () =
   expect(vue).not.toContain("group: Intro"); // frontmatter stripped
 
   const manifest = readFileSync(join(out, "vow-docs.routes.ts"), "utf8");
-  expect(manifest).toContain('{ path: "/intro", load: () => import("./doc-intro.vue") }');
+  expect(manifest).toContain('path: "/intro"');
+  expect(manifest).toContain('import("./doc-intro.vue")');
+  expect(manifest).toContain('title: "Intro · Docs"'); // "<page> · <site>"
   expect(manifest).toContain("export const sidebar: SidebarGroup[]");
   expect(manifest).toContain('"title": "Intro"'); // group from frontmatter, in the sidebar
 });
