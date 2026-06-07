@@ -17,6 +17,16 @@ export function matchRoute(routes: readonly Route[], path: string): Route | null
   return routes.find((r) => r.path === path) ?? routes.find((r) => r.path === "/404") ?? null;
 }
 
+/** The built-in fallback shown when no route (and no `/404`) matches — a minimal "not found" page. */
+const NotFound: Component = {
+  render: () =>
+    h("div", { class: "vow-doc" }, [
+      h("h1", "404"),
+      h("p", "This page could not be found."),
+      h("p", [h("a", { href: "/" }, "Go home")]),
+    ]),
+};
+
 export interface RouterOptions {
   /** A chrome component wrapping every page — it receives a `path` prop and the page in its slot. */
   readonly layout?: Component;
@@ -41,7 +51,7 @@ export function createRouter(routes: readonly Route[], options: RouterOptions = 
   return {
     async mount(selector) {
       await load(window.location.pathname);
-      const outlet = () => (page.value ? h(page.value) : null);
+      const outlet = () => h(page.value ?? NotFound);
       const render = (): ReturnType<typeof h> | null =>
         options.layout ? h(options.layout, { path: path.value }, { default: outlet }) : outlet();
       createApp({ render }).mount(selector);

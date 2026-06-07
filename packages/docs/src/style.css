@@ -247,3 +247,27 @@
   color: var(--vow-color-accent);
   font-weight: var(--vow-weight-medium);
 }
+
+/* The dark-mode toggle button in the nav. */
+.vow-nav__dark {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-base);
+  line-height: 1;
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.vow-nav__dark:hover {
+  color: var(--vow-color-text);
+}
+
+/* The home page wrapper — full-width (no sidebar), centered. */
+.vow-docs-home {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: var(--vow-space-7) var(--vow-space-6);
+}
