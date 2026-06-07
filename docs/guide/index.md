@@ -1,3 +1,8 @@
+---
+group: Introduction
+order: 0
+---
+
 # What is vow?
 
 vow is a **spec-driven, LLM-first** layer on top of the [VoidZero](https://voidzero.dev/) toolchain (Vite+, Vitest, oxlint). You describe your app as a tree of **vows** — promises — and vow generates a type-safe Vue app that you own. No runtime lock-in: the generated code is plain Vue.

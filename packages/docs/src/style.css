@@ -1,0 +1,656 @@
+@import "@fontsource-variable/inter";
+
+/* @vow/docs — the docs layer's own stylesheet. The docs CHROME (nav, sidebar, layout, TOC)
+   + prose (.vow-doc) + the markdown extensions it renders (callouts, code-group). Built on @vow/theme
+   tokens (--vow-*); loaded by the generated docs layout. Kept OUT of vow.css (the shared design system).
+   Self-hosts Inter (above) so the docs read 1:1 with the VitePress default. */
+/* The docs opt into Inter (self-hosted, loaded by the generated layout) — overriding the shared
+   --vow-font-sans token just for the docs; other vow apps keep the base system-ui stack. */
+:root {
+  --vow-font-sans:
+    "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", roboto, sans-serif;
+}
+
+/* Base reset for the docs app — the font/colour come from @vow/theme tokens (without this the page
+   falls back to the browser's serif default). */
+html {
+  /* always reserve the scrollbar gutter — collapsing content must not reflow the page width */
+  scrollbar-gutter: stable;
+  /* block the rubber-band / overscroll bounce at the top and bottom */
+  overscroll-behavior: none;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  font-family: var(--vow-font-sans);
+  line-height: var(--vow-leading-normal);
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
+}
+* {
+  box-sizing: border-box;
+}
+
+/* Prose — a generated doc page (.vow-doc, from emitProse). Token-driven; reads like VitePress. */
+.vow-doc {
+  max-width: 44rem;
+  min-width: 0;
+}
+/* Prose targets only class-less markdown elements — primitive markup rendered inside a page (demos,
+   callouts, code-group, the select listbox) carries vow classes and keeps its own styling. */
+/* anchor jumps (TOC) clear the sticky nav */
+.vow-doc h1:not([class]),
+.vow-doc h2:not([class]),
+.vow-doc h3:not([class]) {
+  scroll-margin-top: calc(var(--vow-nav-h) + var(--vow-space-4));
+}
+.vow-doc > :first-child {
+  margin-top: 0;
+}
+.vow-doc h1:not([class]) {
+  margin: 0 0 var(--vow-space-5);
+  font-size: var(--vow-text-3xl);
+  font-weight: var(--vow-weight-display);
+  line-height: var(--vow-leading-tight);
+  letter-spacing: var(--vow-tracking-tight);
+}
+.vow-doc h2:not([class]) {
+  margin: var(--vow-space-8) 0 var(--vow-space-4);
+  padding-top: var(--vow-space-5);
+  font-size: var(--vow-text-2xl);
+  font-weight: var(--vow-weight-bold);
+  line-height: var(--vow-leading-tight);
+  border-top: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-doc h3:not([class]) {
+  margin: var(--vow-space-6) 0 var(--vow-space-3);
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-semibold);
+}
+.vow-doc p:not([class]),
+.vow-doc li:not([class]) {
+  line-height: var(--vow-leading-relaxed);
+}
+.vow-doc p:not([class]) {
+  margin: var(--vow-space-4) 0;
+}
+.vow-doc a:not([class]) {
+  color: var(--vow-color-accent);
+  font-weight: var(--vow-weight-medium);
+  text-decoration: none;
+}
+.vow-doc a:not([class]):hover {
+  text-decoration: underline;
+}
+.vow-doc ul:not([class]),
+.vow-doc ol:not([class]) {
+  margin: var(--vow-space-4) 0;
+  padding-left: var(--vow-space-6);
+}
+.vow-doc li:not([class]) {
+  margin: var(--vow-space-2) 0;
+}
+.vow-doc :not(pre) > code:not([class]) {
+  padding: 0.15em 0.4em;
+  font-family: var(--vow-font-mono);
+  font-size: 0.85em;
+  background: var(--vow-color-surface);
+  border-radius: var(--vow-radius-1);
+}
+.vow-doc table:not([class]) {
+  width: 100%;
+  margin: var(--vow-space-5) 0;
+  font-size: var(--vow-text-sm);
+  border-collapse: collapse;
+}
+.vow-doc table:not([class]) th,
+.vow-doc table:not([class]) td {
+  padding: var(--vow-space-2) var(--vow-space-3);
+  text-align: left;
+  border: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-doc table:not([class]) th {
+  background: var(--vow-color-surface);
+}
+.vow-doc .shiki {
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-4) var(--vow-space-5);
+  overflow-x: auto;
+  font-family: var(--vow-font-mono);
+  font-size: var(--vow-text-sm);
+  line-height: var(--vow-leading-relaxed);
+  color: var(--shiki-light);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-doc .shiki span {
+  color: var(--shiki-light);
+}
+.dark .vow-doc .shiki,
+.dark .vow-doc .shiki span {
+  color: var(--shiki-dark);
+}
+
+/* Callouts (::: tip|info|warning|danger) — a per-kind accent, all from vow tokens. */
+.vow-callout {
+  --callout-color: var(--vow-color-accent);
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-3) var(--vow-space-4);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-left: 3px solid var(--callout-color);
+  border-radius: var(--vow-radius-2);
+}
+.vow-callout__title {
+  margin: 0 0 var(--vow-space-1);
+  font-weight: var(--vow-weight-bold);
+  color: var(--callout-color);
+}
+.vow-callout > :first-child {
+  margin-top: 0;
+}
+.vow-callout > :last-child {
+  margin-bottom: 0;
+}
+.vow-callout[data-kind="tip"] {
+  --callout-color: var(--vow-color-success);
+}
+.vow-callout[data-kind="info"] {
+  --callout-color: var(--vow-color-muted);
+}
+.vow-callout[data-kind="warning"] {
+  --callout-color: var(--vow-color-warning);
+}
+.vow-callout[data-kind="danger"] {
+  --callout-color: var(--vow-color-danger);
+}
+
+/* A code-group — a tablist over its code panels (the CodeGroup component). */
+.vow-code-group {
+  margin: var(--vow-space-5) 0;
+  overflow: hidden;
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-code-group__tabs {
+  display: flex;
+  gap: var(--vow-space-1);
+  padding: 0 var(--vow-space-2);
+  background: var(--vow-color-surface);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-code-group__tab {
+  padding: var(--vow-space-2) var(--vow-space-3);
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.vow-code-group__tab.is-active {
+  color: var(--vow-color-text);
+  border-bottom-color: var(--vow-color-accent);
+}
+.vow-code-group .shiki {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+/* Docs chrome — the nav + sidebar + layout (@vow/docs). All here, none in the components. */
+.vow-docs {
+  --vow-nav-h: 64px;
+}
+.vow-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--vow-nav-h);
+  background: var(--vow-color-bg);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vow-space-4);
+  height: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 var(--vow-space-6);
+}
+.vow-nav__title {
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+  text-decoration: none;
+}
+.vow-nav__links {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-5);
+}
+.vow-nav__links a {
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-nav__links a:hover {
+  color: var(--vow-color-text);
+}
+.vow-docs-layout {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr) 13rem;
+  gap: var(--vow-space-7);
+  max-width: 84rem;
+  margin: 0 auto;
+  /* top padding matches the sidebar/TOC sticky offset (nav-h + space-6) so they don't shift on scroll */
+  padding: var(--vow-space-6) var(--vow-space-6) var(--vow-space-9);
+}
+.vow-docs-content {
+  min-width: 0;
+}
+.vow-sidebar {
+  position: sticky;
+  top: calc(var(--vow-nav-h) + var(--vow-space-6));
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-5);
+}
+.vow-sidebar__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  width: 100%;
+  margin: 0 0 var(--vow-space-2);
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+/* the collapse caret (a chevron Icon) — shared by the section heading and the nested-entry toggle */
+.vow-sidebar__caret {
+  flex: none;
+  font-size: 1.1em;
+  color: var(--vow-color-muted);
+  transition: transform 0.15s ease;
+}
+.vow-sidebar__heading .vow-sidebar__caret {
+  margin-left: auto;
+}
+.vow-sidebar__heading[data-state="closed"] .vow-sidebar__caret,
+.vow-sidebar__toggle[data-state="closed"] .vow-sidebar__caret {
+  transform: rotate(-90deg);
+}
+.vow-sidebar__items {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  /* the left vertical guide line that leads the nested items (VitePress-style) */
+  border-left: 1px solid var(--vow-color-border);
+}
+/* a nested page list (e.g. the primitive subpages under Primitives) — indented under its parent */
+.vow-sidebar__sub {
+  margin-left: var(--vow-space-4);
+}
+/* an entry that has children — its link + a collapse caret */
+.vow-sidebar__row {
+  display: flex;
+  align-items: center;
+}
+.vow-sidebar__row .vow-sidebar__link {
+  flex: 1;
+}
+.vow-sidebar__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.6em;
+  height: 1.6em;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.vow-sidebar__link {
+  display: block;
+  margin-left: -1px; /* the link's left border sits on the guide line */
+  padding: var(--vow-space-1) 0 var(--vow-space-1) var(--vow-space-4);
+  border-left: 1px solid transparent;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-sidebar__link:hover {
+  color: var(--vow-color-text);
+}
+.vow-sidebar__link.is-active {
+  color: var(--vow-color-accent);
+  border-left-color: var(--vow-color-accent); /* the active indicator bar on the guide line */
+}
+
+/* The dark-mode toggle button in the nav. */
+.vow-icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+.vow-nav__dark {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-xl);
+  line-height: 1;
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.vow-nav__dark:hover {
+  color: var(--vow-color-text);
+}
+
+/* The home page wrapper — full-width (no sidebar), centered. */
+.vow-docs-home {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: var(--vow-space-7) var(--vow-space-6);
+}
+/* the home content fills the same width as the nav (the wrapper owns the bounds, not the inner app) */
+.vow-docs-home .vow-app {
+  max-width: none;
+  padding: 0;
+}
+
+/* A live primitive demo (::: demo <x>) — a bordered box around the running component. */
+.vow-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-3);
+  /* block primitives (collapsible/tabs/select) stretch to a stable width — open/close must not jump */
+  align-items: stretch;
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-5);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+/* compact controls stay their own size (not full width) — only collapsible/tabs stretch */
+.vow-demo > .vow-checkbox,
+.vow-demo > .vow-select,
+.vow-demo__trigger {
+  align-self: flex-start;
+}
+.vow-demo__trigger {
+  padding: var(--vow-space-2) var(--vow-space-4);
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-on-accent);
+  background: var(--vow-color-accent);
+  border: none;
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}
+
+/* The "on this page" TOC rail. */
+.vow-toc {
+  position: sticky;
+  top: calc(var(--vow-nav-h) + var(--vow-space-6));
+  align-self: start;
+  font-size: var(--vow-text-sm);
+}
+.vow-toc__title {
+  margin-bottom: var(--vow-space-2);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+}
+.vow-toc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-toc__list a {
+  display: block;
+  margin-left: -1px; /* the link's left border sits on the guide line (like the sidebar) */
+  padding: var(--vow-space-1) var(--vow-space-3);
+  border-left: 1px solid transparent;
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-toc__list a:hover {
+  color: var(--vow-color-text);
+}
+.vow-toc__list a.is-active {
+  /* accent left bar on the guide line + accent text; no weight change → no reflow/jump */
+  color: var(--vow-color-accent);
+  border-left-color: var(--vow-color-accent);
+}
+.vow-toc__item--l3 a {
+  padding-left: var(--vow-space-5);
+}
+
+/* Mobile nav — a hamburger (shown only on narrow screens) that opens the sidebar in a drawer. */
+.vow-nav__menu {
+  display: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-xl);
+  line-height: 1;
+  color: var(--vow-color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.vow-mobile-nav {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.vow-mobile-nav__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--vow-color-scrim);
+}
+.vow-mobile-nav__drawer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18rem;
+  max-width: 80vw;
+  overflow-y: auto;
+  padding: var(--vow-space-6);
+  background: var(--vow-color-bg);
+  border-right: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-mobile-nav__drawer:focus-visible {
+  outline: none;
+}
+.vow-mobile-nav__drawer .vow-sidebar {
+  position: static;
+  top: auto;
+}
+
+@media (max-width: 960px) {
+  .vow-docs-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vow-docs-layout .vow-sidebar,
+  .vow-toc {
+    display: none;
+  }
+  .vow-nav__menu {
+    display: inline-flex;
+  }
+  /* collapse the nav: the hamburger drawer carries navigation; search shrinks to its icon */
+  .vow-nav__links a {
+    display: none;
+  }
+  .vow-nav__search span,
+  .vow-nav__kbd {
+    display: none;
+  }
+  /* extra class to outrank the base .vow-nav__search padding that comes later in the file */
+  .vow-nav__links .vow-nav__search {
+    padding: var(--vow-space-1) var(--vow-space-2);
+  }
+}
+
+/* Search trigger in the nav (⌘K) */
+.vow-nav__search {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vow-space-3);
+  padding: var(--vow-space-1) var(--vow-space-2) var(--vow-space-1) var(--vow-space-3);
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
+  cursor: pointer;
+}
+.vow-nav__search:hover {
+  border-color: var(--vow-color-border-hover);
+}
+.vow-nav__kbd {
+  font-family: var(--vow-font-mono);
+  font-size: var(--vow-text-xs);
+  color: var(--vow-color-muted);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-1);
+  padding: 0 var(--vow-space-1);
+}
+
+/* Search modal (⌘K) — a dialog over an overlay, dogfooding the dialog primitive */
+.vow-search {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: center;
+  padding: 12vh var(--vow-space-4) var(--vow-space-4);
+}
+.vow-search__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--vow-color-scrim);
+}
+.vow-search__panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 36rem;
+  max-height: 70vh;
+  overflow: hidden;
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+  box-shadow: var(--vow-shadow-popover);
+}
+.vow-search__panel:focus-visible {
+  outline: none;
+}
+.vow-search__input {
+  padding: var(--vow-space-4) var(--vow-space-5);
+  font: inherit;
+  font-size: var(--vow-text-lg);
+  color: var(--vow-color-text);
+  background: none;
+  border: none;
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+  outline: none;
+}
+.vow-search__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
+  margin: 0;
+  padding: var(--vow-space-2);
+  overflow-y: auto;
+  list-style: none;
+}
+.vow-search__result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--vow-space-2) var(--vow-space-3);
+  color: var(--vow-color-text);
+  text-decoration: none;
+  border-radius: var(--vow-radius-2);
+}
+.vow-search__result.is-active {
+  background: var(--vow-color-surface);
+}
+.vow-search__label {
+  font-weight: var(--vow-weight-medium);
+}
+.vow-search__section {
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+}
+.vow-search__empty {
+  padding: var(--vow-space-6);
+  color: var(--vow-color-muted);
+  text-align: center;
+}
+
+/* A markdown task list (- [x] / - [ ]) renders vow's Checkbox primitive per item — dogfooded in prose. */
+.vow-doc ul:has(> .vow-task) {
+  padding-left: 0;
+}
+.vow-task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vow-space-2);
+  list-style: none;
+}
+.vow-task > .vow-checkbox {
+  flex: none;
+  margin-top: 0.15em;
+}
+.vow-task__label {
+  min-width: 0;
+}
+/* the items are read-only status, not inputs — keep the disabled box crisp (not the dimmed look) */
+.vow-task > .vow-checkbox[data-disabled] {
+  opacity: 1;
+  cursor: default;
+}
+.vow-task p {
+  margin: 0;
+}
+
+/* visually hidden, still announced (the search live region) */
+.vow-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,3 +1,8 @@
+---
+group: Fulfilment
+order: 1
+---
+
 # bind — hand-written
 
 For the 10% that is genuinely custom logic — a calculation, a workflow, an integration — you don't generate it. You write it, and vow verifies the seam. This is the deliberate escape hatch: vow never tries to express imperative logic in Markdown.

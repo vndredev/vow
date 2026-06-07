@@ -1,0 +1,28 @@
+{
+  "name": "@vow/docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reusable docs for any vow app — scans a markdown folder into generated prose pages, vow-native.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./Layout.vue": "./src/Layout.vue",
+    "./style.css": "./src/style.css"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.0.0",
+    "@vow/emit-primitive": "workspace:*",
+    "@vow/emit-view": "workspace:*",
+    "@vow/headless": "workspace:*",
+    "@vow/icons": "workspace:*",
+    "@vow/markdown": "workspace:*",
+    "@vow/router": "workspace:*",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}

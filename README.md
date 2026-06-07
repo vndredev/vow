@@ -43,7 +43,7 @@ pnpm install
 vp dev apps/starter        # the starter app
 vp check                # format · lint · typecheck
 pnpm -r test            # tests (per package)
-pnpm --filter @vow/docs run docs:dev   # the docs
+vp dev apps/docs        # the docs
 ```
 
 ## Docs

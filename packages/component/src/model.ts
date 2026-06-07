@@ -66,7 +66,19 @@ export interface ModelAttr {
   readonly modifiers?: readonly string[];
 }
 
-export type Attr = StaticAttr | BoundAttr | SpreadAttr | EventAttr | ModelAttr;
+/**
+ * A conditional render: the node is present only when `expr` is truthy. `if` mounts/unmounts the node
+ * (Vue's `v-if`, gone from the DOM + tab order when false); `show` only toggles visibility (`v-show`,
+ * `display:none` but kept mounted). The agnostic seam holds — a React adapter maps `if` to
+ * `{expr && (…)}` and `show` to a `style.display` toggle.
+ */
+export interface ConditionalAttr {
+  readonly kind: "cond";
+  readonly type: "if" | "show";
+  readonly expr: string;
+}
+
+export type Attr = StaticAttr | BoundAttr | SpreadAttr | EventAttr | ModelAttr | ConditionalAttr;
 
 /** A loop over a node (Vue's `v-for`): the node renders once per item, with an optional `:key`. */
 export interface Loop {
@@ -111,10 +123,23 @@ export interface InterpNode {
 export interface SlotNode {
   readonly kind: "slot";
   readonly name?: string;
+  /** A dynamic slot name expression (Vue `:name="<expr>"`) — e.g. a `v-for` of named panels. */
+  readonly nameExpr?: string;
   readonly children: readonly UiNode[];
 }
 
-export type UiNode = ElementNode | ComponentNode | TextNode | InterpNode | SlotNode;
+/**
+ * A raw HTML escape hatch — `html` is emitted verbatim into the markup (no escaping, no parsing). For
+ * build-time-trusted, already-rendered HTML with no structured-node equivalent: syntax-highlighted code
+ * (Shiki), an embedded SVG. Deterministic in → byte-stable out. A React adapter maps it to
+ * `dangerouslySetInnerHTML`. The escape hatch for prose, kept rare on purpose.
+ */
+export interface RawNode {
+  readonly kind: "raw";
+  readonly html: string;
+}
+
+export type UiNode = ElementNode | ComponentNode | TextNode | InterpNode | SlotNode | RawNode;
 
 /** The canonical, framework-agnostic component. Grows field-by-field as each step earns it. */
 export interface Component {

@@ -4,12 +4,15 @@ import { renderVueSfc, type Component } from "@vow/component";
  * vow's primitive emitter — generates the thin framework adapter over a `@vow/headless` primitive.
  *
  * The logic AND the a11y are proven in the core (tested against the DOM, framework-free). The adapter
- * binds the framework's reactivity and spreads the props — and is **unstyled**: it only carries
- * `class` + the core's `data-*` hooks. Styling lives in a swappable theme (`@vow/theme`), so the
- * component runs bare (Zag-style) and the design system layers on without touching it.
+ * binds the framework's reactivity and spreads the props — it carries only `class` + the core's
+ * `data-*` state hooks, no logic of its own. vow's own base look lives in a swappable theme
+ * (`@vow/theme`) that targets those hooks, so the look can be re-skinned without touching the adapter.
  *
  * The adapter is described as a canonical `Component` and rendered by the Vue adapter (`renderVueSfc`),
  * so React/Solid become further adapters over the same model — see `@vow/component`.
+ *
+ * Shape follows Reka UI: a `<button role="checkbox">` control wrapping an indicator part, with state
+ * exposed as `data-state` on each part for the theme to hook.
  */
 
 /** The checkbox adapter as a canonical Component: props + headless glue (setup) + the markup tree. */
@@ -17,7 +20,7 @@ const checkbox: Component = {
   name: "Checkbox",
   doc: [
     "Generated checkbox adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
-    "Unstyled: class + data-* hooks only; styling lives in @vow/theme (swappable).",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
   ],
   imports: [
     { from: "vue", names: ["computed"] },
@@ -38,7 +41,7 @@ const checkbox: Component = {
   ],
   view: {
     kind: "element",
-    tag: "label",
+    tag: "span",
     attrs: [
       { kind: "spread", expr: "api.rootProps" },
       { kind: "static", name: "class", value: "vow-checkbox" },
@@ -46,13 +49,23 @@ const checkbox: Component = {
     children: [
       {
         kind: "element",
-        tag: "span",
+        tag: "button",
         attrs: [
           { kind: "spread", expr: "api.controlProps" },
           { kind: "bound", name: "aria-label", expr: "label" },
-          { kind: "static", name: "class", value: "vow-checkbox__box" },
+          { kind: "static", name: "class", value: "vow-checkbox__control" },
         ],
-        children: [{ kind: "interp", expr: 'api.checked ? "✓" : ""' }],
+        children: [
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [
+              { kind: "spread", expr: "api.indicatorProps" },
+              { kind: "static", name: "class", value: "vow-checkbox__indicator" },
+            ],
+            children: [{ kind: "text", text: "✓" }],
+          },
+        ],
       },
       {
         kind: "element",
@@ -70,4 +83,354 @@ const checkbox: Component = {
 /** Generate the Vue checkbox adapter (over @vow/headless), rendered from the canonical model. */
 export function emitCheckboxSfc(): string {
   return renderVueSfc(checkbox);
+}
+
+/** The collapsible (disclosure) adapter as a canonical Component: a button trigger + a v-show region. */
+const collapsible: Component = {
+  name: "Collapsible",
+  doc: [
+    "Generated collapsible adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed", "useId"] },
+    { from: "@vow/headless", names: ["collapsible"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "boolean" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "boolean" }],
+  setup: [
+    "const uid = useId();",
+    "const api = computed(() =>",
+    "  collapsible({ open: props.modelValue, id: uid, disabled: props.disabled }, (next) =>",
+    '    emit("update:modelValue", next.open),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "class", value: "vow-collapsible" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.triggerProps" },
+          { kind: "static", name: "class", value: "vow-collapsible__trigger" },
+        ],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "spread", expr: "api.contentProps" },
+          { kind: "cond", type: "show", expr: "api.open" },
+          { kind: "static", name: "class", value: "vow-collapsible__content" },
+        ],
+        children: [{ kind: "slot", children: [] }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue collapsible adapter (over @vow/headless), rendered from the canonical model. */
+export function emitCollapsibleSfc(): string {
+  return renderVueSfc(collapsible);
+}
+
+/** The tabs adapter as a canonical Component: a roving tablist + v-show panels with per-item slots. */
+const tabs: Component = {
+  name: "Tabs",
+  doc: [
+    "Generated tabs adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed", "useId"] },
+    { from: "@vow/headless", names: ["tabs"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "string" },
+    { name: "items", tsType: "string[]" },
+  ],
+  events: [{ name: "update:modelValue", payload: "string" }],
+  setup: [
+    "const uid = useId();",
+    "const api = computed(() =>",
+    "  tabs({ value: props.modelValue, items: props.items, id: uid }, (next) =>",
+    '    emit("update:modelValue", next.value),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "class", value: "vow-tabs" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "spread", expr: "api.listProps" },
+          { kind: "static", name: "class", value: "vow-tabs__list" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "button",
+            attrs: [
+              { kind: "spread", expr: "api.tabProps(item)" },
+              { kind: "static", name: "class", value: "vow-tabs__tab" },
+            ],
+            for: { each: "items", as: "item", key: "item" },
+            children: [{ kind: "interp", expr: "item" }],
+          },
+        ],
+      },
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "spread", expr: "api.panelProps(item)" },
+          { kind: "cond", type: "show", expr: "item === modelValue" },
+          { kind: "static", name: "class", value: "vow-tabs__panel" },
+        ],
+        for: { each: "items", as: "item", key: "item" },
+        children: [{ kind: "slot", nameExpr: "item", children: [] }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue tabs adapter (over @vow/headless), rendered from the canonical model. */
+export function emitTabsSfc(): string {
+  return renderVueSfc(tabs);
+}
+
+/**
+ * The dialog (modal) adapter: a Teleported, v-if'd overlay + content. The ARIA contract, Escape and
+ * the Tab focus-trap come from the core; the `setup` glue reacts to the open state — moving focus into
+ * the content on open, restoring it on close, and locking body scroll (the parts that touch document).
+ */
+const dialogComponent: Component = {
+  name: "Dialog",
+  doc: [
+    "Generated dialog adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed", "nextTick", "ref", "useId", "watch"] },
+    { from: "@vow/headless", names: ["dialog"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "boolean" },
+    { name: "title", tsType: "string" },
+  ],
+  events: [{ name: "update:modelValue", payload: "boolean" }],
+  setup: [
+    "const uid = useId();",
+    "const content = ref<HTMLElement>();",
+    "let restore: HTMLElement | null = null;",
+    "const api = computed(() =>",
+    "  dialog({ open: props.modelValue, id: uid }, (next) =>",
+    '    emit("update:modelValue", next.open),',
+    "  ),",
+    ");",
+    "watch(",
+    "  () => props.modelValue,",
+    "  async (open) => {",
+    "    if (open) {",
+    "      restore = document.activeElement as HTMLElement | null;",
+    '      document.body.style.overflow = "hidden";',
+    "      await nextTick();",
+    "      content.value?.focus();",
+    "    } else {",
+    '      document.body.style.overflow = "";',
+    "      restore?.focus();",
+    "    }",
+    "  },",
+    ");",
+  ],
+  view: {
+    kind: "component",
+    name: "Teleport",
+    attrs: [{ kind: "static", name: "to", value: "body" }],
+    children: [
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "cond", type: "if", expr: "api.open" },
+          { kind: "static", name: "class", value: "vow-dialog" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "div",
+            attrs: [
+              { kind: "spread", expr: "api.overlayProps" },
+              { kind: "static", name: "class", value: "vow-dialog__overlay" },
+            ],
+            children: [],
+          },
+          {
+            kind: "element",
+            tag: "div",
+            attrs: [
+              { kind: "spread", expr: "api.contentProps" },
+              { kind: "static", name: "ref", value: "content" },
+              { kind: "static", name: "class", value: "vow-dialog__content" },
+            ],
+            children: [
+              {
+                kind: "element",
+                tag: "h2",
+                attrs: [
+                  { kind: "spread", expr: "api.titleProps" },
+                  { kind: "static", name: "class", value: "vow-dialog__title" },
+                ],
+                children: [{ kind: "interp", expr: "title" }],
+              },
+              { kind: "slot", children: [] },
+              {
+                kind: "element",
+                tag: "button",
+                attrs: [
+                  { kind: "spread", expr: "api.closeProps" },
+                  { kind: "static", name: "class", value: "vow-dialog__close" },
+                ],
+                children: [{ kind: "text", text: "×" }],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue dialog adapter (over @vow/headless), rendered from the canonical model. */
+export function emitDialogSfc(): string {
+  return renderVueSfc(dialogComponent);
+}
+
+/**
+ * The select (listbox) adapter: a combobox trigger + a v-if'd listbox of options. Keyboard + the ARIA
+ * contract come from the core; the `setup` glue closes on an outside pointer and scrolls the active
+ * option into view (the parts that touch document). A `label` names the combobox (combobox roles take
+ * their name from a label, not their contents).
+ */
+const selectComponent: Component = {
+  name: "Select",
+  doc: [
+    "Generated select adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    {
+      from: "vue",
+      names: ["computed", "nextTick", "onBeforeUnmount", "onMounted", "ref", "useId", "watch"],
+    },
+    { from: "@vow/headless", names: ["select"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "string" },
+    { name: "options", tsType: "{ value: string; label: string }[]" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "string" }],
+  setup: [
+    "const uid = useId();",
+    "const open = ref(false);",
+    "const active = ref(props.modelValue);",
+    "const root = ref<HTMLElement>();",
+    "const api = computed(() =>",
+    "  select(",
+    "    {",
+    "      value: props.modelValue,",
+    "      options: props.options,",
+    "      open: open.value,",
+    "      active: active.value,",
+    "      id: uid,",
+    "      disabled: props.disabled,",
+    "    },",
+    "    (next) => {",
+    '      if (next.value !== props.modelValue) emit("update:modelValue", next.value);',
+    "      open.value = next.open;",
+    "      active.value = next.active;",
+    "    },",
+    "  ),",
+    ");",
+    "function onPointer(event: MouseEvent): void {",
+    "  if (open.value && root.value && !root.value.contains(event.target as Node)) {",
+    "    open.value = false;",
+    "  }",
+    "}",
+    "watch(active, async () => {",
+    "  if (!open.value) return;",
+    "  await nextTick();",
+    '  root.value?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });',
+    "});",
+    'onMounted(() => document.addEventListener("pointerdown", onPointer));',
+    'onBeforeUnmount(() => document.removeEventListener("pointerdown", onPointer));',
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "ref", value: "root" },
+      { kind: "static", name: "class", value: "vow-select" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.triggerProps" },
+          { kind: "bound", name: "aria-label", expr: "label" },
+          { kind: "static", name: "class", value: "vow-select__trigger" },
+        ],
+        children: [{ kind: "interp", expr: "api.selectedLabel" }],
+      },
+      {
+        kind: "element",
+        tag: "ul",
+        attrs: [
+          { kind: "spread", expr: "api.listboxProps" },
+          { kind: "cond", type: "if", expr: "api.open" },
+          { kind: "static", name: "class", value: "vow-select__listbox" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "li",
+            attrs: [
+              { kind: "spread", expr: "api.optionProps(option)" },
+              { kind: "static", name: "class", value: "vow-select__option" },
+            ],
+            for: { each: "options", as: "option", key: "option.value" },
+            children: [{ kind: "interp", expr: "option.label" }],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue select adapter (over @vow/headless), rendered from the canonical model. */
+export function emitSelectSfc(): string {
+  return renderVueSfc(selectComponent);
 }

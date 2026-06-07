@@ -7,19 +7,25 @@
    token block (e.g. the vndre.dev design tokens) for a different look over the same hooks. */
 
 :root {
-  /* Color — semantic roles, not raw swatches. Swap these to re-skin everything. */
+  /* Color — semantic roles, not raw swatches. Values learned from the VitePress default palette so the
+     whole vow UI reads that way; the names stay vow's. Dark is the `.dark` class block below. */
   --vow-color-bg: #ffffff; /* page background */
-  --vow-color-surface: #fafafa; /* raised surfaces: cards, boxes */
-  --vow-color-text: #1a1a1a; /* primary text */
-  --vow-color-muted: #565656; /* secondary text */
-  --vow-color-accent: #3b5bdb; /* brand: links, eyebrow, focus ring */
-  --vow-color-ink: #111418; /* solid dark fills: primary button, checked box */
+  --vow-color-surface: #f6f6f7; /* raised surfaces: cards, boxes, code */
+  --vow-color-text: #3c3c43; /* primary text */
+  --vow-color-muted: #67676c; /* secondary text */
+  --vow-color-accent: #3451b2; /* brand: links, eyebrow, focus ring */
+  --vow-color-ink: #213547; /* solid dark fills: primary button, checked box */
   --vow-color-on-accent: #ffffff; /* text/icon on an accent or ink fill */
-  --vow-color-border: #e6e6e6; /* hairlines, input + card borders */
-  --vow-color-danger: #cc1f1f; /* destructive affordances (delete) */
+  --vow-color-border: #e2e2e3; /* hairlines, input + card borders */
+  --vow-color-border-hover: #c2c2c4; /* input/control border on hover */
+  --vow-color-danger: #b8272c; /* destructive affordances (delete) */
+  --vow-color-warning: #915930; /* caution callouts */
+  --vow-color-success: #18794e; /* success callouts */
+  --vow-color-scrim: rgb(0 0 0 / 0.6); /* modal/overlay backdrop */
 
   /* Type — one font stack, a size scale, weights, line-heights, tracking. */
   --vow-font-sans: system-ui, -apple-system, "Segoe UI", roboto, helvetica, arial, sans-serif;
+  --vow-font-mono: ui-monospace, "Menlo", "Monaco", "Consolas", "Liberation Mono", monospace;
   --vow-text-xs: 0.8rem;
   --vow-text-sm: 0.9rem;
   --vow-text-base: 1rem;
@@ -62,21 +68,28 @@
   --vow-radius-2: 0.5rem; /* list rows */
   --vow-radius-3: 0.75rem; /* cards, boxes */
   --vow-border: 1px;
+
+  /* Elevation — the one shadow floating popovers use (the select listbox). */
+  --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.12);
 }
 
-/* The token block is the whole theme; a host that prefers dark only re-declares the colors. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --vow-color-bg: #0f1115;
-    --vow-color-surface: #181b21;
-    --vow-color-text: #f3f4f6;
-    --vow-color-muted: #a4abb8;
-    --vow-color-accent: #8ea2ff;
-    --vow-color-ink: #f3f4f6;
-    --vow-color-on-accent: #0f1115;
-    --vow-color-border: #2a2f3a;
-    --vow-color-danger: #ff6b6b;
-  }
+/* Dark theme — re-declare only the colors, on the `.dark` class (toggled on <html>). Values learned
+   from the VitePress dark palette. A host can map `.dark` to a media query if it wants OS-driven dark. */
+.dark {
+  --vow-color-bg: #1b1b1f;
+  --vow-color-surface: #202127;
+  --vow-color-text: #dfdfd6;
+  --vow-color-muted: #98989f;
+  --vow-color-accent: #a8b1ff;
+  --vow-color-ink: #dfdfd6;
+  --vow-color-on-accent: #1b1b1f;
+  --vow-color-border: #2e2e32;
+  --vow-color-border-hover: #414853;
+  --vow-color-danger: #f66f81;
+  --vow-color-warning: #f9b44e;
+  --vow-color-success: #3dd68c;
+  --vow-color-scrim: rgb(0 0 0 / 0.7);
+  --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.45);
 }
 
 .vow-app,
@@ -208,32 +221,328 @@
   font-weight: var(--vow-weight-medium);
 }
 
-/* The accessible checkbox primitive (a boolean field). State is the `data-checked` hook. */
+/* The accessible checkbox primitive (a boolean field), Reka-style: a `<button role="checkbox">`
+   control wrapping an indicator part. State is the `data-state` / `data-disabled` hooks the headless
+   core emits on each part — nothing is stored here, the theme only reacts to the hooks. The control
+   sizes in `em` off the row's text so it scales with context; `--vow-radius-1` then reads as a rounded
+   square (not a circle) at that size. This is vow's base look — swap the tokens to re-skin it. */
 .vow-checkbox {
   display: inline-flex;
   align-items: center;
   gap: var(--vow-space-2);
   cursor: pointer;
+  font-size: var(--vow-text-base);
 }
-.vow-checkbox__box {
+.vow-checkbox__control {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.15em;
-  height: 1.15em;
-  border: var(--vow-border) solid currentColor;
-  border-radius: var(--vow-radius-1);
-  font-size: var(--vow-text-xs);
-  line-height: 1;
-}
-.vow-checkbox[data-checked] .vow-checkbox__box {
-  background: var(--vow-color-ink);
+  flex: none;
+  box-sizing: border-box;
+  width: 1.3em;
+  height: 1.3em;
+  margin: 0;
+  padding: 0;
+  font: inherit;
   color: var(--vow-color-on-accent);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-1);
+  cursor: inherit;
+  appearance: none;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
-.vow-checkbox__box:focus-visible {
+.vow-checkbox__control[data-state="checked"] {
+  background: var(--vow-color-ink);
+  border-color: var(--vow-color-ink);
+}
+.vow-checkbox__control[data-state="unchecked"]:hover {
+  border-color: var(--vow-color-border-hover);
+}
+.vow-checkbox__control:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 2px;
 }
+.vow-checkbox[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vow-checkbox__indicator {
+  display: inline-flex;
+  font-size: 0.8em;
+  line-height: 1;
+  opacity: 0;
+}
+.vow-checkbox__indicator[data-state="checked"] {
+  opacity: 1;
+}
 .vow-checkbox__label {
   user-select: none;
+}
+
+/* The collapsible (disclosure) primitive — a `<button>` trigger over a content region. State is the
+   `data-state="open|closed"` / `data-disabled` hooks the headless core emits; the content's show/hide
+   is the adapter's `v-show`. The chevron is a pure CSS `::after` that rotates from ▸ (closed) to ▾ (open). */
+.vow-collapsible {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+}
+.vow-collapsible__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-3);
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: var(--vow-space-3) var(--vow-space-4);
+  font: inherit;
+  font-weight: var(--vow-weight-medium);
+  text-align: left;
+  color: inherit;
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
+  cursor: pointer;
+}
+.vow-collapsible__trigger::after {
+  content: "";
+  flex: none;
+  margin-left: auto;
+  width: 0.5em;
+  height: 0.5em;
+  border-right: 2px solid var(--vow-color-muted);
+  border-bottom: 2px solid var(--vow-color-muted);
+  transform: rotate(-45deg); /* ▸ when closed */
+  transition: transform 0.15s ease;
+}
+.vow-collapsible__trigger[data-state="open"]::after {
+  transform: rotate(45deg); /* ▾ when open */
+}
+.vow-collapsible__trigger:hover {
+  border-color: var(--vow-color-border-hover);
+}
+.vow-collapsible__trigger:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+.vow-collapsible[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vow-collapsible__content {
+  padding: var(--vow-space-3) var(--vow-space-4);
+  color: var(--vow-color-muted);
+  line-height: var(--vow-leading-relaxed);
+}
+
+/* The tabs primitive — a tablist of tab buttons over `v-show` panels. State is the
+   `data-state="active|inactive"` hook per part; the active tab gets an accent underline. */
+.vow-tabs {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+}
+.vow-tabs__list {
+  display: flex;
+  gap: var(--vow-space-1);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-tabs__tab {
+  margin: 0 0 calc(-1 * var(--vow-border));
+  padding: var(--vow-space-2) var(--vow-space-4);
+  font: inherit;
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.vow-tabs__tab:hover {
+  color: var(--vow-color-text);
+}
+.vow-tabs__tab[data-state="active"] {
+  color: var(--vow-color-text);
+  border-bottom-color: var(--vow-color-accent);
+}
+.vow-tabs__tab:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: -2px;
+}
+.vow-tabs__panel {
+  padding: var(--vow-space-4) 0;
+  color: var(--vow-color-muted);
+  line-height: var(--vow-leading-relaxed);
+}
+.vow-tabs__panel:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+.vow-tabs[data-orientation="vertical"] {
+  flex-direction: row;
+  gap: var(--vow-space-4);
+}
+.vow-tabs[data-orientation="vertical"] .vow-tabs__list {
+  flex-direction: column;
+  border-bottom: none;
+  border-right: var(--vow-border) solid var(--vow-color-border);
+}
+
+/* The dialog (modal) primitive — a fixed, full-screen container centering the content box over a
+   dismiss overlay (the whole thing Teleported to <body> and shown only when open). */
+.vow-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vow-space-4);
+}
+.vow-dialog__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--vow-color-scrim);
+}
+.vow-dialog__content {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--vow-container-1);
+  max-height: calc(100vh - var(--vow-space-8));
+  overflow: auto;
+  padding: var(--vow-space-6);
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-dialog__content:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+.vow-dialog__title {
+  margin: 0;
+  font-size: var(--vow-text-xl);
+  font-weight: var(--vow-weight-bold);
+  line-height: var(--vow-leading-tight);
+}
+.vow-dialog__close {
+  position: absolute;
+  top: var(--vow-space-4);
+  right: var(--vow-space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-lg);
+  line-height: 1;
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}
+.vow-dialog__close:hover {
+  color: var(--vow-color-text);
+}
+.vow-dialog__close:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+
+/* The select (listbox) primitive — a combobox trigger over a popover listbox. State is the
+   `data-state` / `data-active` hooks; the highlighted row keys off `[data-active]`, the chevron flips. */
+.vow-select {
+  position: relative;
+  display: inline-flex;
+  font-family: var(--vow-font-sans);
+}
+.vow-select__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vow-space-3);
+  box-sizing: border-box;
+  min-width: 10rem;
+  margin: 0;
+  padding: var(--vow-space-2) var(--vow-space-3);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}
+.vow-select__trigger::after {
+  content: "";
+  flex: none;
+  margin-left: auto;
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid var(--vow-color-muted);
+  border-bottom: 2px solid var(--vow-color-muted);
+  transform: translateY(-0.15em) rotate(45deg); /* ▾ when closed */
+  transition: transform 0.15s ease;
+}
+.vow-select__trigger[data-state="open"]::after {
+  transform: translateY(0.1em) rotate(-135deg); /* ▴ when open */
+}
+.vow-select__trigger:hover {
+  border-color: var(--vow-color-border-hover);
+}
+.vow-select__trigger:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+.vow-select[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vow-select__listbox {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  top: calc(100% + var(--vow-space-1));
+  width: 100%;
+  max-height: 16rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
+  margin: 0;
+  padding: var(--vow-space-2);
+  list-style: none;
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
+  box-shadow: var(--vow-shadow-popover);
+}
+.vow-select__option {
+  display: flex;
+  align-items: center;
+  padding: var(--vow-space-2) var(--vow-space-3);
+  border-radius: var(--vow-radius-1);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.vow-select__option:hover,
+.vow-select__option[data-active] {
+  background: var(--vow-color-surface);
+}
+.vow-select__option[data-state="checked"] {
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-accent);
 }

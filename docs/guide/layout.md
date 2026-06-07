@@ -1,3 +1,8 @@
+---
+group: UI
+order: 2
+---
+
 # Views
 
 A view is a **`## view`** section — a YAML list of components. Each item is one component, keyed by

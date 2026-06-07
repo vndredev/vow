@@ -350,6 +350,34 @@ export function emitView(view: Vow, entities: readonly string[] = []): string {
 }
 
 /**
+ * A prose page from already-rendered markdown nodes (see `@vow/markdown` `markdownToNodesSync`). The
+ * nodes are wrapped in a `vow-doc` container; any embedded `<Component>` is imported from its generated
+ * `.vue`. The markdown file is the source — this is generated. Lets the docs be a vow app whose content
+ * stays as plain `.md` (scanned by the plugin), rendered through the core, not a parallel doc-system.
+ */
+export function emitProse(slug: string, nodes: readonly UiNode[]): string {
+  const root: UiNode = {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-doc" }],
+    children: [...nodes],
+  };
+  const imports: ImportDecl[] = [...componentsIn(root)].map((name) => ({
+    from: `./${name}.vue`,
+    default: name,
+  }));
+  const component: Component = {
+    name: pascalCase(slug),
+    doc: [
+      `Generated prose page "${slug}" (from markdown). The markdown is the source — do not edit.`,
+    ],
+    imports,
+    view: root,
+  };
+  return renderVueSfc(component);
+}
+
+/**
  * Every entity slug a view references via `list:` — recursing into primitive `children`. The plugin
  * uses this to emit each referenced entity's list on demand (the entity itself stays a pure model).
  */
@@ -380,13 +408,26 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
   const name = pascalCase(rootSlug);
   const lines = [
     `// Generated boot for the root vow "${rootSlug}". The vow is the source — do not edit.`,
-    `import { createApp } from "vue";`,
+    `import type { Component } from "vue";`,
+    `import { createRouter, type Route } from "@vow/router";`,
+    `import ${name} from "./${rootSlug}.vue";`,
   ];
   if (theme) lines.push(`import "${theme}";`);
   lines.push(
-    `import ${name} from "./${rootSlug}.vue";`,
     ``,
-    `createApp(${name}).mount("#app");`,
+    `// Optional routes + chrome an extension (e.g. @vow/docs) may contribute, by the *.routes.ts /`,
+    `// *.layout.vue convention — empty maps when there are none. The boot names no specific extension.`,
+    `const fragments = import.meta.glob<{ routes?: Route[] }>("./*.routes.ts", { eager: true });`,
+    `const docRoutes = Object.values(fragments).flatMap((m) => m.routes ?? []);`,
+    `const layouts = import.meta.glob<{ default: Component }>("./*.layout.vue", { eager: true });`,
+    `const layout = Object.values(layouts)[0]?.default;`,
+    ``,
+    `const routes: Route[] = [`,
+    `  { path: "/", load: async () => ({ default: ${name} }) },`,
+    `  ...docRoutes,`,
+    `];`,
+    ``,
+    `createRouter(routes, { layout }).mount("#app");`,
     ``,
   );
   return lines.join("\n");
@@ -394,6 +435,7 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
 
 /** Ambient `*.vue` / `*.css` shims the generated boot needs for tsgo — written into `.generated/`. */
 export const VOW_ENV_DTS = [
+  `/// <reference types="vite/client" />`,
   `/** SFC + CSS shims so tsgo accepts .vue / .css imports (Volar/vue-tsc give the deep check). */`,
   `declare module "*.vue" {`,
   `  import type { DefineComponent } from "vue";`,

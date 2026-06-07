@@ -7,7 +7,7 @@ const checkbox: Component = {
   name: "Checkbox",
   doc: [
     "Generated checkbox adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
-    "Unstyled: class + data-* hooks only; styling lives in @vow/theme (swappable).",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
   ],
   imports: [
     { from: "vue", names: ["computed"] },
@@ -28,7 +28,7 @@ const checkbox: Component = {
   ],
   view: {
     kind: "element",
-    tag: "label",
+    tag: "span",
     attrs: [
       { kind: "spread", expr: "api.rootProps" },
       { kind: "static", name: "class", value: "vow-checkbox" },
@@ -36,13 +36,23 @@ const checkbox: Component = {
     children: [
       {
         kind: "element",
-        tag: "span",
+        tag: "button",
         attrs: [
           { kind: "spread", expr: "api.controlProps" },
           { kind: "bound", name: "aria-label", expr: "label" },
-          { kind: "static", name: "class", value: "vow-checkbox__box" },
+          { kind: "static", name: "class", value: "vow-checkbox__control" },
         ],
-        children: [{ kind: "interp", expr: 'api.checked ? "✓" : ""' }],
+        children: [
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [
+              { kind: "spread", expr: "api.indicatorProps" },
+              { kind: "static", name: "class", value: "vow-checkbox__indicator" },
+            ],
+            children: [{ kind: "text", text: "✓" }],
+          },
+        ],
       },
       {
         kind: "element",
@@ -62,7 +72,7 @@ const checkbox: Component = {
 const EXPECTED_CHECKBOX = [
   `<script setup lang="ts">`,
   `// Generated checkbox adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
-  `// Unstyled: class + data-* hooks only; styling lives in @vow/theme (swappable).`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
   `import { computed } from "vue";`,
   `import { checkbox } from "@vow/headless";`,
   ``,
@@ -77,10 +87,12 @@ const EXPECTED_CHECKBOX = [
   `</script>`,
   ``,
   `<template>`,
-  `  <label v-bind="api.rootProps" class="vow-checkbox">`,
-  `    <span v-bind="api.controlProps" :aria-label="label" class="vow-checkbox__box">{{ api.checked ? "✓" : "" }}</span>`,
+  `  <span v-bind="api.rootProps" class="vow-checkbox">`,
+  `    <button v-bind="api.controlProps" :aria-label="label" class="vow-checkbox__control">`,
+  `      <span v-bind="api.indicatorProps" class="vow-checkbox__indicator">✓</span>`,
+  `    </button>`,
   `    <span v-bind="api.labelProps" class="vow-checkbox__label">{{ label }}</span>`,
-  `  </label>`,
+  `  </span>`,
   `</template>`,
   ``,
 ].join("\n");
@@ -100,6 +112,21 @@ test("a literal text node is HTML-escaped (& < > in order)", () => {
     },
   };
   expect(renderVueSfc(c)).toContain("<h1>a &lt; b &amp; c</h1>");
+});
+
+test("a raw node emits its HTML verbatim (no escaping) — the prose escape hatch", () => {
+  const c: Component = {
+    name: "Code",
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [],
+      children: [{ kind: "raw", html: '<pre class="shiki"><span>a &lt; b</span></pre>' }],
+    },
+  };
+  const out = renderVueSfc(c);
+  expect(out).toContain('<pre class="shiki"><span>a &lt; b</span></pre>');
+  expect(out).not.toContain("&amp;lt;"); // not double-escaped
 });
 
 test("a void element renders self-closing (<input … />)", () => {
@@ -156,6 +183,30 @@ test("event and model attributes render with modifiers", () => {
   expect(sfc).toContain('<button @click="remove(i)">x</button>');
 });
 
+test("a cond attr renders v-if (mount/unmount) and v-show (visibility)", () => {
+  const ifNode: Component = {
+    name: "Maybe",
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "cond", type: "if", expr: "api.open" }],
+      children: [],
+    },
+  };
+  expect(renderVueSfc(ifNode)).toContain('<div v-if="api.open" />');
+
+  const showNode: Component = {
+    name: "Maybe",
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "cond", type: "show", expr: "api.open" }],
+      children: [],
+    },
+  };
+  expect(renderVueSfc(showNode)).toContain('<div v-show="api.open" />');
+});
+
 test("a looped element renders v-for with key", () => {
   const c: Component = {
     name: "List",
@@ -177,6 +228,26 @@ test("a looped element renders v-for with key", () => {
   expect(renderVueSfc(c)).toContain(
     '<li class="vow-view__row" v-for="(item, i) in rows" :key="i">{{ item.title }}</li>',
   );
+});
+
+test("a slot renders a static, dynamic (:name), or default name", () => {
+  const named: Component = {
+    name: "Panel",
+    view: { kind: "slot", name: "header", children: [] },
+  };
+  expect(renderVueSfc(named)).toContain('<slot name="header" />');
+
+  const dynamic: Component = {
+    name: "Panel",
+    view: { kind: "slot", nameExpr: "item", children: [] },
+  };
+  expect(renderVueSfc(dynamic)).toContain('<slot :name="item" />');
+
+  const fallback: Component = {
+    name: "Panel",
+    view: { kind: "slot", children: [] },
+  };
+  expect(renderVueSfc(fallback)).toContain("<slot />");
 });
 
 test("an empty component renders self-closing (<Checkbox … />)", () => {

@@ -48,6 +48,8 @@ function renderAttr(attr: Attr): string {
       return `@${attr.name}${renderModifiers(attr.modifiers)}="${attr.expr}"`;
     case "model":
       return `v-model${renderModifiers(attr.modifiers)}="${attr.expr}"`;
+    case "cond":
+      return `v-${attr.type}="${attr.expr}"`;
     default: {
       const _exhaustive: never = attr;
       return _exhaustive;
@@ -74,10 +76,19 @@ function renderNode(node: UiNode, depth: number): string {
       return pad + escapeHtml(node.text);
     case "interp":
       return `${pad}{{ ${node.expr} }}`;
+    case "raw":
+      // Verbatim, trusted HTML (e.g. Shiki). Only the first line is indented; the rest is as-given.
+      return pad + node.html;
     case "slot": {
-      // `<slot />` / `<slot name="x" />`; with fallback children → `<slot>…</slot>`. Own arm because
-      // the element path's attrs/for and `</tag>` close don't fit a slot's name-only, fixed close.
-      const open = node.name !== undefined ? `slot name="${node.name}"` : "slot";
+      // `<slot />` / `<slot name="x" />` / `<slot :name="expr" />`; with fallback children →
+      // `<slot>…</slot>`. Own arm because the element path's attrs/for and `</tag>` close don't fit a
+      // slot's name-only, fixed close.
+      const open =
+        node.nameExpr !== undefined
+          ? `slot :name="${node.nameExpr}"`
+          : node.name !== undefined
+            ? `slot name="${node.name}"`
+            : "slot";
       if (node.children.length === 0) return `${pad}<${open} />`;
       const inline = node.children.every((c) => c.kind === "text" || c.kind === "interp");
       if (inline) {

@@ -14,7 +14,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 - **`pnpm -r test`** — tests per package (local `.bin`). **NOT `vp test`** (root): the global `vp` can't resolve project-local optional peers like `jsdom`.
 - `vp build apps/starter` — generates `.generated/` + builds the bundle.
 - `vp dev apps/starter` — dev server (HMR: change `app/*.vow.md` → regenerates + reloads).
-- `pnpm --filter @vow/docs run docs:build` / `docs:dev` — the VitePress docs.
+- `vp dev apps/docs` / `vp build apps/docs` — the docs: a **generated vow app** (content stays as plain `.md` in `/docs`, scanned by `@vow/docs`).
 - pre-commit (`vp staged`) runs `vp check --fix`.
 
 ## Architecture (the contract)
@@ -46,7 +46,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 - Run tests **always** via `pnpm -r test` (local bins, jsdom peer). The global `vp test` breaks on `jsdom`.
 - Test **a11y against the platform** (vanilla DOM + axe), not a framework — the truth lives in the headless core; the adapter only forwards.
 - **English only** across codebase + docs — enforced by a gate (no umlauts).
-- VitePress (`docs/`) runs on its own **upstream Vite** (scoped override `"vitepress>vite"`), not Vite+ (Vite+ dropped `transformWithEsbuild` for oxc). `allowBuilds: esbuild`.
+- The docs are a **generated vow app** (`apps/docs`): content stays as plain `.md` in `/docs` (not a package), scanned by **`@vow/docs`** (`vowDocs()`), rendered through the core — `@vow/markdown` (md→UiNode + Shiki) → `emitProse` → prose `.vue`, navigated by **`@vow/router`**, wrapped in a sidebar (`collapsible`-composed). No parallel doc-system; everything dogfooded. (VitePress + the old `@vow/studio` are both gone.)
 - Side-effect imports (`*.css`, `*.vue`) need a tsgo shim — generated into `.generated/vow-env.d.ts`.
 
 ## Way of working (hard rules, from Andre)
@@ -58,7 +58,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 
 ## Roadmap (two strands → dashboard / planning app)
 
-- **Generation** (what vow emits): views as YAML `## view` (semantic blocks `hero`/`features`/`list` + primitive escape `flex`/`grid`/`box`/text; layout primitives + theme tokens) ✓ → more field types (reference) + relations → more view blocks (table/cards/board/stats) → primitive ladder (Switch/Dialog/Tabs/…; wrap complex ones via Zag/Ark) → routing → data adapter (memory → CF D1).
+- **Generation** (what vow emits): DONE so far — entity/view/bind, field types (text/number/boolean/select/date), views as YAML `## view` (semantic blocks + layout primitives + tokens), **five primitives** (checkbox/collapsible/tabs/dialog/select), the **docs system** (`@vow/markdown`→`@vow/docs`; the docs are a generated vow app), `@vow/router` (boot-level, hash anchors, 404, title), docs chrome (⌘K search + mobile drawer on `dialog`, sidebar, TOC, dark toggle, Inter), `@vow/icons` (Lucide). NEXT → `reference` field + relations → more view blocks (table/cards/board/stats) → primitive ladder cont'd (switch/table; wrap complex via Zag/Ark) → multi-view nav **from vows** → data adapter (memory → CF D1).
 - **Author layer** (LLM-first): `serialize` (Vow → vow.md) → typed mutation API (`addEntity`/`addField`/…) → **vow MCP server** (the LLM operates vow via typed tools).
 - **Reference product:** a dashboard / planning system (entities + board/kanban + stats + CRUD + persistence), operable by user + LLM.
 
