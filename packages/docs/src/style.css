@@ -416,6 +416,10 @@ body {
 .vow-toc__list a:hover {
   color: var(--vow-color-text);
 }
+.vow-toc__list a.is-active {
+  /* colour only — no weight change, so the active row never reflows (no jump on click) */
+  color: var(--vow-color-accent);
+}
 .vow-toc__item--l3 a {
   padding-left: var(--vow-space-5);
 }

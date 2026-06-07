@@ -1,4 +1,4 @@
-import { type Component, createApp, h, shallowRef } from "vue";
+import { type Component, createApp, h, nextTick, shallowRef } from "vue";
 
 /**
  * @vow/router — a tiny client router for generated vow apps. One central server serves every route;
@@ -37,14 +37,23 @@ export interface Router {
   mount(selector: string): Promise<void>;
 }
 
+/** Scroll to an anchor (after the page rendered), else to the top. */
+async function scrollTo(hash: string): Promise<void> {
+  await nextTick();
+  if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  else window.scrollTo(0, 0);
+}
+
 /** Create a router over the given routes (browser-only — uses history + the DOM). */
 export function createRouter(routes: readonly Route[], options: RouterOptions = {}): Router {
   const page = shallowRef<Component | null>(null);
   const path = shallowRef("/");
 
-  const load = async (to: string): Promise<void> => {
-    path.value = to;
-    const route = matchRoute(routes, to);
+  // Load the page for a pathname (the hash is matched separately — `/guide/x#y` must not 404).
+  const load = async (pathname: string): Promise<void> => {
+    if (pathname === path.value && page.value) return;
+    path.value = pathname;
+    const route = matchRoute(routes, pathname);
     page.value = route ? (await route.load()).default : null;
   };
 
@@ -55,19 +64,20 @@ export function createRouter(routes: readonly Route[], options: RouterOptions = 
       const render = (): ReturnType<typeof h> | null =>
         options.layout ? h(options.layout, { path: path.value }, { default: outlet }) : outlet();
       createApp({ render }).mount(selector);
+      void scrollTo(window.location.hash);
 
       document.addEventListener("click", (event) => {
         const anchor = (event.target as HTMLElement | null)?.closest?.("a");
         const href = anchor?.getAttribute("href");
         if (!anchor || !href || !href.startsWith("/") || anchor.target === "_blank") return;
         event.preventDefault();
-        if (href !== window.location.pathname) {
-          window.history.pushState(null, "", href);
-          void load(href);
-          window.scrollTo(0, 0);
-        }
+        const url = new URL(href, window.location.origin);
+        window.history.pushState(null, "", href);
+        void load(url.pathname).then(() => scrollTo(url.hash));
       });
-      window.addEventListener("popstate", () => void load(window.location.pathname));
+      window.addEventListener("popstate", () => {
+        void load(window.location.pathname).then(() => scrollTo(window.location.hash));
+      });
     },
   };
 }
