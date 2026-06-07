@@ -17,6 +17,7 @@
   --vow-color-ink: #213547; /* solid dark fills: primary button, checked box */
   --vow-color-on-accent: #ffffff; /* text/icon on an accent or ink fill */
   --vow-color-border: #e2e2e3; /* hairlines, input + card borders */
+  --vow-color-border-hover: #c2c2c4; /* input/control border on hover */
   --vow-color-danger: #b8272c; /* destructive affordances (delete) */
   --vow-color-warning: #915930; /* caution callouts */
   --vow-color-success: #18794e; /* success callouts */
@@ -83,6 +84,7 @@
   --vow-color-ink: #dfdfd6;
   --vow-color-on-accent: #1b1b1f;
   --vow-color-border: #2e2e32;
+  --vow-color-border-hover: #414853;
   --vow-color-danger: #f66f81;
   --vow-color-warning: #f9b44e;
   --vow-color-success: #3dd68c;
@@ -256,6 +258,9 @@
   background: var(--vow-color-ink);
   border-color: var(--vow-color-ink);
 }
+.vow-checkbox__control[data-state="unchecked"]:hover {
+  border-color: var(--vow-color-border-hover);
+}
 .vow-checkbox__control:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 2px;
@@ -318,6 +323,9 @@
 .vow-collapsible__trigger[data-state="open"]::after {
   transform: rotate(45deg); /* ▾ when open */
 }
+.vow-collapsible__trigger:hover {
+  border-color: var(--vow-color-border-hover);
+}
 .vow-collapsible__trigger:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 2px;
@@ -355,6 +363,9 @@
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
+}
+.vow-tabs__tab:hover {
+  color: var(--vow-color-text);
 }
 .vow-tabs__tab[data-state="active"] {
   color: var(--vow-color-text);
@@ -489,6 +500,9 @@
 .vow-select__trigger[data-state="open"]::after {
   transform: translateY(0.1em) rotate(-135deg); /* ▴ when open */
 }
+.vow-select__trigger:hover {
+  border-color: var(--vow-color-border-hover);
+}
 .vow-select__trigger:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 2px;
@@ -521,6 +535,7 @@
   white-space: nowrap;
   cursor: pointer;
 }
+.vow-select__option:hover,
 .vow-select__option[data-active] {
   background: var(--vow-color-surface);
 }
