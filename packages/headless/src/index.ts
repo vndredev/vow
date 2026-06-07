@@ -313,3 +313,143 @@ export function dialog(state: DialogState, set: (next: DialogState) => void): Di
     close,
   };
 }
+
+export interface SelectOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+export interface SelectState {
+  readonly value: string;
+  readonly options: readonly SelectOption[];
+  readonly open: boolean;
+  /** The highlighted option value while open (drives aria-activedescendant + data-active). */
+  readonly active: string;
+  /** A stable base id to wire trigger ↔ listbox ↔ options. */
+  readonly id: string;
+  readonly disabled?: boolean;
+}
+
+export interface SelectApi {
+  readonly open: boolean;
+  /** The label of the selected option (empty if none selected). */
+  readonly selectedLabel: string;
+  /** Props for the outer wrapper (carries the state hooks for theming). */
+  readonly rootProps: Record<string, unknown>;
+  /** Props for the focusable trigger — a `<button role="combobox">`. */
+  readonly triggerProps: Record<string, unknown>;
+  /** Props for the popup listbox. */
+  readonly listboxProps: Record<string, unknown>;
+  /** Per-option props for the given option. */
+  optionProps(option: SelectOption): Record<string, unknown>;
+  select(value: string): void;
+  close(): void;
+}
+
+/** The next option value for an arrow step (wrapping), or `current` if there are no options. */
+function nextOptionValue(values: readonly string[], current: string, dir: 1 | -1): string {
+  if (values.length === 0) return current;
+  const i = values.indexOf(current);
+  const ni =
+    i === -1 ? (dir > 0 ? 0 : values.length - 1) : (i + dir + values.length) % values.length;
+  return values[ni] ?? current;
+}
+
+/**
+ * The select (listbox) primitive — WAI-ARIA APG combobox/listbox, Reka-style. A `role="combobox"`
+ * button toggles a `role="listbox"` of `role="option"`s. Focus stays on the trigger; the highlighted
+ * option is tracked with `aria-activedescendant` (no per-option DOM focus). Keyboard: Arrow/Home/End
+ * move the highlight, Enter/Space commit, Esc closes, Tab closes. `open` + `active` are transient UI
+ * state the host holds; `value` is the selection. State is mirrored as `data-state`/`data-active`.
+ */
+export function select(state: SelectState, set: (next: SelectState) => void): SelectApi {
+  const values = state.options.map((o) => o.value);
+  const firstValue = values[0] ?? "";
+  const lastValue = values[values.length - 1] ?? firstValue;
+  const triggerId = `${state.id}-trigger`;
+  const listboxId = `${state.id}-listbox`;
+  const optionId = (value: string): string => `${state.id}-option-${values.indexOf(value)}`;
+  const selected = state.options.find((o) => o.value === state.value);
+
+  const openWith = (): void => {
+    set({ ...state, open: true, active: values.includes(state.value) ? state.value : firstValue });
+  };
+  const close = (): void => {
+    if (state.open) set({ ...state, open: false });
+  };
+  const setActive = (value: string): void => set({ ...state, active: value });
+  const commit = (value: string): void => set({ ...state, value, open: false });
+
+  return {
+    open: state.open,
+    selectedLabel: selected?.label ?? "",
+    rootProps: {
+      "data-state": state.open ? "open" : "closed",
+      "data-disabled": state.disabled ? "" : undefined,
+    },
+    triggerProps: {
+      id: triggerId,
+      type: "button",
+      role: "combobox",
+      "aria-haspopup": "listbox",
+      "aria-expanded": state.open,
+      "aria-controls": listboxId,
+      "aria-activedescendant": state.open ? optionId(state.active) : undefined,
+      "data-state": state.open ? "open" : "closed",
+      disabled: state.disabled || undefined,
+      onClick: (): void => {
+        if (state.open) close();
+        else openWith();
+      },
+      onKeydown: (event: KeyboardEvent): void => {
+        if (state.disabled) return;
+        const key = event.key;
+        if (!state.open) {
+          if (key === "ArrowDown" || key === "ArrowUp" || key === "Enter" || key === " ") {
+            event.preventDefault();
+            openWith();
+          }
+          return;
+        }
+        if (key === "ArrowDown") {
+          event.preventDefault();
+          setActive(nextOptionValue(values, state.active, 1));
+        } else if (key === "ArrowUp") {
+          event.preventDefault();
+          setActive(nextOptionValue(values, state.active, -1));
+        } else if (key === "Home") {
+          event.preventDefault();
+          setActive(firstValue);
+        } else if (key === "End") {
+          event.preventDefault();
+          setActive(lastValue);
+        } else if (key === "Enter" || key === " ") {
+          event.preventDefault();
+          commit(state.active);
+        } else if (key === "Escape") {
+          event.preventDefault();
+          close();
+        } else if (key === "Tab") {
+          close();
+        }
+      },
+    },
+    listboxProps: {
+      id: listboxId,
+      role: "listbox",
+      "aria-labelledby": triggerId,
+    },
+    optionProps(option) {
+      return {
+        id: optionId(option.value),
+        role: "option",
+        "aria-selected": option.value === state.value,
+        "data-state": option.value === state.value ? "checked" : "unchecked",
+        "data-active": option.value === state.active ? "" : undefined,
+        onClick: (): void => commit(option.value),
+      };
+    },
+    select: (value: string): void => commit(value),
+    close,
+  };
+}

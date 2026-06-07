@@ -1,5 +1,11 @@
 import { expect, test } from "vite-plus/test";
-import { emitCheckboxSfc, emitCollapsibleSfc, emitDialogSfc, emitTabsSfc } from "../src/index.ts";
+import {
+  emitCheckboxSfc,
+  emitCollapsibleSfc,
+  emitDialogSfc,
+  emitSelectSfc,
+  emitTabsSfc,
+} from "../src/index.ts";
 
 test("emitCheckboxSfc generates a Vue adapter over the headless core with class + data hooks", () => {
   const sfc = emitCheckboxSfc();
@@ -144,4 +150,65 @@ const EXPECTED_DIALOG = [
 
 test("emitDialogSfc renders the dialog adapter byte-for-byte", () => {
   expect(emitDialogSfc()).toBe(EXPECTED_DIALOG);
+});
+
+// The byte-stable oracle for the select adapter: a combobox trigger + a v-if'd listbox of options.
+const EXPECTED_SELECT = [
+  `<script setup lang="ts">`,
+  `// Generated select adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";`,
+  `import { select } from "@vow/headless";`,
+  ``,
+  `const props = defineProps<{ modelValue: string; options: { value: string; label: string }[]; label: string; disabled?: boolean }>();`,
+  `const emit = defineEmits<{ "update:modelValue": [string] }>();`,
+  ``,
+  `const uid = useId();`,
+  `const open = ref(false);`,
+  `const active = ref(props.modelValue);`,
+  `const root = ref<HTMLElement>();`,
+  `const api = computed(() =>`,
+  `  select(`,
+  `    {`,
+  `      value: props.modelValue,`,
+  `      options: props.options,`,
+  `      open: open.value,`,
+  `      active: active.value,`,
+  `      id: uid,`,
+  `      disabled: props.disabled,`,
+  `    },`,
+  `    (next) => {`,
+  `      if (next.value !== props.modelValue) emit("update:modelValue", next.value);`,
+  `      open.value = next.open;`,
+  `      active.value = next.active;`,
+  `    },`,
+  `  ),`,
+  `);`,
+  `function onPointer(event: MouseEvent): void {`,
+  `  if (open.value && root.value && !root.value.contains(event.target as Node)) {`,
+  `    open.value = false;`,
+  `  }`,
+  `}`,
+  `watch(active, async () => {`,
+  `  if (!open.value) return;`,
+  `  await nextTick();`,
+  `  root.value?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });`,
+  `});`,
+  `onMounted(() => document.addEventListener("pointerdown", onPointer));`,
+  `onBeforeUnmount(() => document.removeEventListener("pointerdown", onPointer));`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div v-bind="api.rootProps" ref="root" class="vow-select">`,
+  `    <button v-bind="api.triggerProps" :aria-label="label" class="vow-select__trigger">{{ api.selectedLabel }}</button>`,
+  `    <ul v-bind="api.listboxProps" v-if="api.open" class="vow-select__listbox">`,
+  `      <li v-bind="api.optionProps(option)" class="vow-select__option" v-for="option in options" :key="option.value">{{ option.label }}</li>`,
+  `    </ul>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitSelectSfc renders the select adapter byte-for-byte", () => {
+  expect(emitSelectSfc()).toBe(EXPECTED_SELECT);
 });

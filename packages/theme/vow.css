@@ -63,6 +63,9 @@
   --vow-radius-2: 0.5rem; /* list rows */
   --vow-radius-3: 0.75rem; /* cards, boxes */
   --vow-border: 1px;
+
+  /* Elevation — the one shadow floating popovers use (the select listbox). */
+  --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.12);
 }
 
 /* The token block is the whole theme; a host that prefers dark only re-declares the colors. */
@@ -78,6 +81,7 @@
     --vow-color-border: #2a2f3a;
     --vow-color-danger: #ff6b6b;
     --vow-color-scrim: rgb(0 0 0 / 0.6);
+    --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.45);
   }
 }
 
@@ -440,4 +444,80 @@
 .vow-dialog__close:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 2px;
+}
+
+/* The select (listbox) primitive — a combobox trigger over a popover listbox. State is the
+   `data-state` / `data-active` hooks; the highlighted row keys off `[data-active]`, the chevron flips. */
+.vow-select {
+  position: relative;
+  display: inline-block;
+  font-family: var(--vow-font-sans);
+}
+.vow-select__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vow-space-3);
+  box-sizing: border-box;
+  min-width: 10rem;
+  margin: 0;
+  padding: var(--vow-space-2) var(--vow-space-3);
+  font: inherit;
+  text-align: left;
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}
+.vow-select__trigger::after {
+  content: "";
+  flex: none;
+  margin-left: auto;
+  width: 0.45em;
+  height: 0.45em;
+  border-right: 2px solid var(--vow-color-muted);
+  border-bottom: 2px solid var(--vow-color-muted);
+  transform: translateY(-0.15em) rotate(45deg); /* ▾ when closed */
+  transition: transform 0.15s ease;
+}
+.vow-select__trigger[data-state="open"]::after {
+  transform: translateY(0.1em) rotate(-135deg); /* ▴ when open */
+}
+.vow-select__trigger:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+.vow-select[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vow-select__listbox {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  top: calc(100% + var(--vow-space-1));
+  min-width: 100%;
+  max-height: 16rem;
+  overflow: auto;
+  margin: 0;
+  padding: var(--vow-space-1);
+  list-style: none;
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
+  box-shadow: var(--vow-shadow-popover);
+}
+.vow-select__option {
+  display: flex;
+  align-items: center;
+  padding: var(--vow-space-2) var(--vow-space-3);
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}
+.vow-select__option[data-active] {
+  background: var(--vow-color-surface);
+}
+.vow-select__option[data-state="checked"] {
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-accent);
 }

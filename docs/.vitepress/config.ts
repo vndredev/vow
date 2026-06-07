@@ -5,6 +5,7 @@ import {
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
+  emitSelectSfc,
   emitTabsSfc,
 } from "@vow/emit-primitive";
 import { defineConfig } from "vitepress";
@@ -24,6 +25,7 @@ function vowPrimitives() {
       writeFileSync(resolve(out, "Collapsible.vue"), emitCollapsibleSfc());
       writeFileSync(resolve(out, "Tabs.vue"), emitTabsSfc());
       writeFileSync(resolve(out, "Dialog.vue"), emitDialogSfc());
+      writeFileSync(resolve(out, "Select.vue"), emitSelectSfc());
     },
   };
 }
@@ -71,6 +73,7 @@ export default defineConfig({
                 { text: "Collapsible", link: "/guide/primitives/collapsible" },
                 { text: "Tabs", link: "/guide/primitives/tabs" },
                 { text: "Dialog", link: "/guide/primitives/dialog" },
+                { text: "Select", link: "/guide/primitives/select" },
               ],
             },
             { text: "Views", link: "/guide/layout" },

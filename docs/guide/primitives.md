@@ -40,5 +40,6 @@ Each primitive has its own page — the live demo, the contract, props & events,
 | [Collapsible](/guide/primitives/collapsible) | ✓ available | a disclosure / fold-out |
 | [Tabs](/guide/primitives/tabs)               | ✓ available | a tablist over panels   |
 | [Dialog](/guide/primitives/dialog)           | ✓ available | a modal / drawer        |
+| [Select](/guide/primitives/select)           | ✓ available | a listbox dropdown      |
 
-Climbing the ladder next — same headless-core + unstyled-adapter split, hand-rolled (no runtime lock-in): **Select**, … See the [Roadmap](/guide/roadmap).
+Same headless-core + unstyled-adapter split throughout, hand-rolled (no runtime lock-in). More climb the ladder as the dashboard/planning views need them — see the [Roadmap](/guide/roadmap).

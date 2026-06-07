@@ -324,3 +324,113 @@ const dialogComponent: Component = {
 export function emitDialogSfc(): string {
   return renderVueSfc(dialogComponent);
 }
+
+/**
+ * The select (listbox) adapter: a combobox trigger + a v-if'd listbox of options. Keyboard + the ARIA
+ * contract come from the core; the `setup` glue closes on an outside pointer and scrolls the active
+ * option into view (the parts that touch document). A `label` names the combobox (combobox roles take
+ * their name from a label, not their contents).
+ */
+const selectComponent: Component = {
+  name: "Select",
+  doc: [
+    "Generated select adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    {
+      from: "vue",
+      names: ["computed", "nextTick", "onBeforeUnmount", "onMounted", "ref", "useId", "watch"],
+    },
+    { from: "@vow/headless", names: ["select"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "string" },
+    { name: "options", tsType: "{ value: string; label: string }[]" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "string" }],
+  setup: [
+    "const uid = useId();",
+    "const open = ref(false);",
+    "const active = ref(props.modelValue);",
+    "const root = ref<HTMLElement>();",
+    "const api = computed(() =>",
+    "  select(",
+    "    {",
+    "      value: props.modelValue,",
+    "      options: props.options,",
+    "      open: open.value,",
+    "      active: active.value,",
+    "      id: uid,",
+    "      disabled: props.disabled,",
+    "    },",
+    "    (next) => {",
+    '      if (next.value !== props.modelValue) emit("update:modelValue", next.value);',
+    "      open.value = next.open;",
+    "      active.value = next.active;",
+    "    },",
+    "  ),",
+    ");",
+    "function onPointer(event: MouseEvent): void {",
+    "  if (open.value && root.value && !root.value.contains(event.target as Node)) {",
+    "    open.value = false;",
+    "  }",
+    "}",
+    "watch(active, async () => {",
+    "  if (!open.value) return;",
+    "  await nextTick();",
+    '  root.value?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });',
+    "});",
+    'onMounted(() => document.addEventListener("pointerdown", onPointer));',
+    'onBeforeUnmount(() => document.removeEventListener("pointerdown", onPointer));',
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "ref", value: "root" },
+      { kind: "static", name: "class", value: "vow-select" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.triggerProps" },
+          { kind: "bound", name: "aria-label", expr: "label" },
+          { kind: "static", name: "class", value: "vow-select__trigger" },
+        ],
+        children: [{ kind: "interp", expr: "api.selectedLabel" }],
+      },
+      {
+        kind: "element",
+        tag: "ul",
+        attrs: [
+          { kind: "spread", expr: "api.listboxProps" },
+          { kind: "cond", type: "if", expr: "api.open" },
+          { kind: "static", name: "class", value: "vow-select__listbox" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "li",
+            attrs: [
+              { kind: "spread", expr: "api.optionProps(option)" },
+              { kind: "static", name: "class", value: "vow-select__option" },
+            ],
+            for: { each: "options", as: "option", key: "option.value" },
+            children: [{ kind: "interp", expr: "option.label" }],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue select adapter (over @vow/headless), rendered from the canonical model. */
+export function emitSelectSfc(): string {
+  return renderVueSfc(selectComponent);
+}
