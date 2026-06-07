@@ -24,6 +24,12 @@ test("emitEntityModule generates an interface and a validating factory", () => {
   expect(code).toContain("'title' is required");
 });
 
+test("every entity gets an implicit auto-id the factory generates", () => {
+  const code = emitEntityModule(task);
+  expect(code).toContain("id: string;");
+  expect(code).toContain("id: input.id ?? crypto.randomUUID(),");
+});
+
 test("a select field becomes a string-literal union with a default", () => {
   const ticket: VowNode = {
     ...task,

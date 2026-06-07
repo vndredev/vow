@@ -77,6 +77,7 @@ export function emitEntityModule(vow: Vow): string {
     `// Generated from vow "${vow.slug}". The vow tree is the source — do not edit.`,
     ``,
     `export interface ${name} {`,
+    `  id: string; // a stable auto-id (referenced by reference fields); not a user field`,
   ];
   for (const f of vow.fields) out.push(`  ${f.name}: ${tsType(f)};`);
   out.push(`}`, ``, `export function create${name}(input: Partial<${name}>): ${name} {`);
@@ -89,6 +90,7 @@ export function emitEntityModule(vow: Vow): string {
     );
   }
   out.push(`  return {`);
+  out.push(`    id: input.id ?? crypto.randomUUID(),`);
   for (const f of vow.fields) out.push(`    ${f.name}: input.${f.name} ?? ${defaultExpr(f)},`);
   out.push(`  };`, `}`, ``);
   return out.join("\n");
