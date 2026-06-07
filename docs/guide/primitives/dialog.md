@@ -8,19 +8,19 @@ The dialog below is the **exact** generated adapter — `emitDialogSfc()` writte
 
 <script setup>
 import { ref } from "vue";
-import Dialog from "../../.vitepress/theme/generated/Dialog.vue";
+import Dialog from "../../.studio/generated/Dialog.vue";
 
 const open = ref(false);
 </script>
 
-<div :style="{ padding: '1.5rem', border: '1px solid var(--vp-c-divider)', borderRadius: '12px', margin: '1.25rem 0' }">
-  <button @click="open = true" :style="{ padding: '0.45rem 0.9rem', font: 'inherit', fontWeight: 500, color: 'var(--vp-c-bg)', background: 'var(--vp-c-text-1)', border: 'none', borderRadius: '8px', cursor: 'pointer' }">Open dialog</button>
+<div :style="{ padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
+  <button @click="open = true" :style="{ padding: '0.45rem 0.9rem', font: 'inherit', fontWeight: 500, color: 'var(--vow-color-bg)', background: 'var(--vow-color-text)', border: 'none', borderRadius: '8px', cursor: 'pointer' }">Open dialog</button>
   <Dialog v-model="open" title="A vow">
-    <p style="margin: 0.75rem 0 0; color: var(--vp-c-text-2)">A promise about your app's behaviour — an intent plus the proof that redeems it. Press Esc, click the backdrop, or use the close button to dismiss.</p>
+    <p style="margin: 0.75rem 0 0; color: var(--vow-color-muted)">A promise about your app's behaviour — an intent plus the proof that redeems it. Press Esc, click the backdrop, or use the close button to dismiss.</p>
   </Dialog>
 </div>
 
-<p style="color: var(--vp-c-text-2)">Live reactive state: <code>open = {{ open }}</code>. Opening is controlled by <code>v-model</code> — the dialog owns no trigger, so any button can open it.</p>
+<p style="color: var(--vow-color-muted)">Live reactive state: <code>open = {{ open }}</code>. Opening is controlled by <code>v-model</code> — the dialog owns no trigger, so any button can open it.</p>
 
 ## The contract
 
@@ -51,7 +51,7 @@ This is the file vow writes — nothing here is hand-edited. The overlay + conte
 
 <FrameworkBlock>
 
-<<< ../../.vitepress/theme/generated/Dialog.vue{vue}
+<<< ../../.studio/generated/Dialog.vue{vue}
 
 </FrameworkBlock>
 

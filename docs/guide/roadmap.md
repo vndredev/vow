@@ -1,3 +1,8 @@
+---
+group: Project
+order: 0
+---
+
 # Roadmap
 
 vow's goal: build a complete **dashboard / planning-system app** with the core product — operable by a human _and_ an LLM. We get there **slowly**, element by element, function by function; each element ships green and with its own doc page.

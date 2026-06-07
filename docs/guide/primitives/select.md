@@ -8,7 +8,7 @@ The select below is the **exact** generated adapter — `emitSelectSfc()` writte
 
 <script setup>
 import { ref } from "vue";
-import Select from "../../.vitepress/theme/generated/Select.vue";
+import Select from "../../.studio/generated/Select.vue";
 
 const fw = ref("vue");
 const options = [
@@ -18,11 +18,11 @@ const options = [
 ];
 </script>
 
-<div :style="{ padding: '1.5rem', border: '1px solid var(--vp-c-divider)', borderRadius: '12px', margin: '1.25rem 0' }">
+<div :style="{ padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
   <Select v-model="fw" :options="options" label="Framework" />
 </div>
 
-<p style="color: var(--vp-c-text-2)">Live reactive state: <code>fw = {{ fw }}</code>. Focus stays on the trigger; the highlighted option is tracked with <code>aria-activedescendant</code>.</p>
+<p style="color: var(--vow-color-muted)">Live reactive state: <code>fw = {{ fw }}</code>. Focus stays on the trigger; the highlighted option is tracked with <code>aria-activedescendant</code>.</p>
 
 ## The contract
 
@@ -53,7 +53,7 @@ This is the file vow writes — nothing here is hand-edited. The listbox renders
 
 <FrameworkBlock>
 
-<<< ../../.vitepress/theme/generated/Select.vue{vue}
+<<< ../../.studio/generated/Select.vue{vue}
 
 </FrameworkBlock>
 

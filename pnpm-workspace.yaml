@@ -22,9 +22,6 @@ catalog:
 overrides:
   vite: "catalog:"
   vitest: "catalog:"
-  # VitePress (the docs tool) is built for upstream Vite — it uses transformWithEsbuild, which Vite+
-  # dropped for oxc. Keep VitePress on its own real Vite; the vow packages stay on Vite+.
-  "vitepress>vite": "^6.0.0"
 peerDependencyRules:
   allowAny:
     - vite
@@ -32,5 +29,3 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
     vitest: "*"
-allowBuilds:
-  esbuild: true

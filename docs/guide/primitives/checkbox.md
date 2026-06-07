@@ -8,19 +8,19 @@ The boxes below are the **exact** generated adapter — `emitCheckboxSfc()` is w
 
 <script setup>
 import { ref } from "vue";
-import Checkbox from "../../.vitepress/theme/generated/Checkbox.vue";
+import Checkbox from "../../.studio/generated/Checkbox.vue";
 
 const done = ref(false);
 const subscribed = ref(true);
 </script>
 
-<div :style="{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem', border: '1px solid var(--vp-c-divider)', borderRadius: '12px', margin: '1.25rem 0' }">
+<div :style="{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
   <Checkbox v-model="done" label="Mark as done" />
   <Checkbox v-model="subscribed" label="Subscribe to updates" />
   <Checkbox :model-value="false" label="Locked (disabled)" disabled />
 </div>
 
-<p style="color: var(--vp-c-text-2)">Live reactive state: <code>done = {{ done }}</code> · <code>subscribed = {{ subscribed }}</code>. The disabled box ignores both click and Space — that rule lives in the core, not in the theme.</p>
+<p style="color: var(--vow-color-muted)">Live reactive state: <code>done = {{ done }}</code> · <code>subscribed = {{ subscribed }}</code>. The disabled box ignores both click and Space — that rule lives in the core, not in the theme.</p>
 
 ## The contract
 
@@ -51,7 +51,7 @@ This is the file vow writes — nothing here is hand-edited. The logic and the a
 
 <FrameworkBlock>
 
-<<< ../../.vitepress/theme/generated/Checkbox.vue{vue}
+<<< ../../.studio/generated/Checkbox.vue{vue}
 
 </FrameworkBlock>
 

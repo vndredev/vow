@@ -1,3 +1,8 @@
+---
+group: UI
+order: 0
+---
+
 # The component model
 
 Vue, React and Solid are **three dialects of the same essence**: a component has props, events, and a tree of markup. vow captures that essence **once** as plain data — the `Component` model — and a per-framework **adapter** renders it. Today there is one adapter (`renderVueSfc`); React/Solid are later additions over the _same_ model, not a rewrite.

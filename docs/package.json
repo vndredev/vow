@@ -2,20 +2,22 @@
   "name": "@vow/docs",
   "version": "0.0.0",
   "private": true,
-  "description": "vow's documentation — built with VitePress, kept in sync from day one.",
+  "description": "vow's documentation — built on @vow/studio (Vite+), kept in sync from day one.",
   "type": "module",
   "scripts": {
-    "docs:dev": "vitepress dev",
-    "docs:build": "vitepress build",
-    "docs:preview": "vitepress preview"
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview"
   },
   "dependencies": {
     "@vow/emit-primitive": "workspace:*",
     "@vow/headless": "workspace:*",
-    "@vow/theme": "workspace:*",
+    "@vow/studio": "workspace:*",
     "vue": "^3.5.13"
   },
   "devDependencies": {
-    "vitepress": "^1.6.3"
+    "@vitejs/plugin-vue": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   }
 }

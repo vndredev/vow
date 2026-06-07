@@ -1,3 +1,8 @@
+---
+group: Fulfilment
+order: 2
+---
+
 # proof — scenario-coverage
 
 A vow's `## proves` are its contract: the scenarios that must hold. The **scenario-coverage gate** makes sure none goes unproven — every promised scenario must have a matching test, or the gate is red.

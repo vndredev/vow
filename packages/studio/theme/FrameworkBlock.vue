@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { metaFor, useFramework } from "./useFramework";
+import { metaFor, useFramework } from "./useFramework.ts";
 
 // Wraps framework-specific content (mainly the generated adapter code). The slot holds today's real
 // output — Vue. When a *planned* framework is selected, the same Vue output stays visible but gets an
@@ -12,8 +12,8 @@ const planned = computed(() => meta.value.status === "planned");
 </script>
 
 <template>
-  <div class="fw-block">
-    <div v-if="planned" class="fw-block__notice">
+  <div class="vow-fw-block">
+    <div v-if="planned" class="vow-fw-block__notice" data-kind="warning">
       <strong>{{ meta.label }} adapter is on the roadmap.</strong>
       vow generates one component model into many framework adapters; only Vue ships today. Here's
       the current Vue output for reference — see the <a href="/guide/roadmap">Roadmap</a>.
@@ -23,17 +23,15 @@ const planned = computed(() => meta.value.status === "planned");
 </template>
 
 <style scoped>
-.fw-block__notice {
-  margin: 1rem 0 0.5rem;
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--vp-c-text-1);
-  background: var(--vp-c-warning-soft);
-  border: 1px solid var(--vp-c-warning-1);
-  border-radius: 8px;
-}
-.fw-block__notice strong {
-  color: var(--vp-c-warning-1);
+.vow-fw-block__notice {
+  margin: var(--vow-space-4) 0 var(--vow-space-2);
+  padding: var(--vow-space-3) var(--vow-space-4);
+  font-size: var(--vow-text-sm);
+  line-height: var(--vow-leading-relaxed);
+  color: var(--vow-color-text);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-left: 3px solid var(--vow-color-accent);
+  border-radius: var(--vow-radius-2);
 }
 </style>

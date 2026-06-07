@@ -1,3 +1,8 @@
+---
+group: Introduction
+order: 1
+---
+
 # Getting started
 
 ::: warning Foundation phase

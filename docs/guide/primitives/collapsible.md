@@ -8,25 +8,25 @@ The panels below are the **exact** generated adapter — `emitCollapsibleSfc()` 
 
 <script setup>
 import { ref } from "vue";
-import Collapsible from "../../.vitepress/theme/generated/Collapsible.vue";
+import Collapsible from "../../.studio/generated/Collapsible.vue";
 
 const what = ref(true);
 const how = ref(false);
 </script>
 
-<div :style="{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1.5rem', border: '1px solid var(--vp-c-divider)', borderRadius: '12px', margin: '1.25rem 0' }">
+<div :style="{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
   <Collapsible v-model="what" label="What is a vow?">
-    <p style="margin: 0; color: var(--vp-c-text-2)">A promise about your app's behaviour — an intent plus the proof that redeems it.</p>
+    <p style="margin: 0; color: var(--vow-color-muted)">A promise about your app's behaviour — an intent plus the proof that redeems it.</p>
   </Collapsible>
   <Collapsible v-model="how" label="How is its status known?">
-    <p style="margin: 0; color: var(--vp-c-text-2)">It's derived, never stored: a vow is fulfilled when its proof scenarios have green tests.</p>
+    <p style="margin: 0; color: var(--vow-color-muted)">It's derived, never stored: a vow is fulfilled when its proof scenarios have green tests.</p>
   </Collapsible>
   <Collapsible :model-value="false" label="Locked (disabled)" disabled>
-    <p style="margin: 0; color: var(--vp-c-text-2)">You can't open this one.</p>
+    <p style="margin: 0; color: var(--vow-color-muted)">You can't open this one.</p>
   </Collapsible>
 </div>
 
-<p style="color: var(--vp-c-text-2)">Live reactive state: <code>what = {{ what }}</code> · <code>how = {{ how }}</code>. The disabled header ignores click and Space — that rule lives in the core, not the theme.</p>
+<p style="color: var(--vow-color-muted)">Live reactive state: <code>what = {{ what }}</code> · <code>how = {{ how }}</code>. The disabled header ignores click and Space — that rule lives in the core, not the theme.</p>
 
 ## The contract
 
@@ -56,7 +56,7 @@ This is the file vow writes — nothing here is hand-edited. The content region 
 
 <FrameworkBlock>
 
-<<< ../../.vitepress/theme/generated/Collapsible.vue{vue}
+<<< ../../.studio/generated/Collapsible.vue{vue}
 
 </FrameworkBlock>
 

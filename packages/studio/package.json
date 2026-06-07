@@ -5,7 +5,10 @@
   "description": "vow's view system — renders markdown + the vow forest into a themed, navigable site on Vite+ (the VitePress replacement).",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./theme/entry-client": "./theme/entry-client.ts",
+    "./theme/entry-server": "./theme/entry-server.ts",
+    "./theme/studio.css": "./theme/studio.css"
   },
   "scripts": {
     "test": "vp test",

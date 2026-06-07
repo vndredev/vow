@@ -17,11 +17,15 @@ const props = defineProps<{
 
 const page = computed(() => props.router.page.value);
 const currentPath = computed(() => props.router.path.value);
+const isHome = computed(() => props.router.layout.value === "home");
 </script>
 
 <template>
   <Nav :config="config" />
-  <div class="vow-layout">
+  <div v-if="isHome" class="vow-home-wrap">
+    <component :is="page" v-if="page" />
+  </div>
+  <div v-else class="vow-layout">
     <Sidebar :groups="sidebar" :current-path="currentPath" />
     <main class="vow-doc">
       <component :is="page" v-if="page" />

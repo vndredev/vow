@@ -1,3 +1,8 @@
+---
+group: Introduction
+order: 2
+---
+
 # The Vow primitive
 
 Everything is one recursive node — a **Vow**. The same shape describes a single leaf and a whole app, so there's no separate "spec" vocabulary to learn.

@@ -28,6 +28,28 @@ export interface CompiledPage {
  */
 export async function compile(md: string, options: CompileOptions = {}): Promise<CompiledPage> {
   const { data, body } = splitFrontmatter(md);
+
+  // `layout: home` is the landing page — render the <Home> hero/features from frontmatter, not prose.
+  // A `frontmatter` export lets the router pick the full-width home layout (no sidebar/TOC).
+  if (data["layout"] === "home") {
+    const code = [
+      `<script lang="ts">`,
+      `export const frontmatter = { layout: "home" };`,
+      `</script>`,
+      ``,
+      `<script setup lang="ts">`,
+      `const hero = ${JSON.stringify(data["hero"] ?? {})};`,
+      `const features = ${JSON.stringify(data["features"] ?? [])};`,
+      `</script>`,
+      ``,
+      `<template>`,
+      `  <Home :hero="hero" :features="features" />`,
+      `</template>`,
+      ``,
+    ].join("\n");
+    return { code, data, toc: [] };
+  }
+
   const { body: dehoisted, blocks } = hoistBlocks(body);
   const withSnippets = options.readSnippet
     ? transformSnippets(dehoisted, options.readSnippet)

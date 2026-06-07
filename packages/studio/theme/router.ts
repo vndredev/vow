@@ -3,6 +3,8 @@ import { shallowRef, type Component, type ShallowRef } from "vue";
 /** A page module a route resolves to: the compiled `.md` SFC (its default export is the component). */
 export interface PageModule {
   readonly default: Component;
+  /** Optional page frontmatter the compiler exports (e.g. `{ layout: "home" }`). */
+  readonly frontmatter?: { readonly layout?: string };
 }
 
 export interface RouteDef {
@@ -13,6 +15,8 @@ export interface RouteDef {
 export interface StudioRouter {
   readonly path: ShallowRef<string>;
   readonly page: ShallowRef<Component | null>;
+  /** The current page's layout (e.g. "home"), from its frontmatter export. */
+  readonly layout: ShallowRef<string | undefined>;
   go(to: string): Promise<void>;
   load(to: string): Promise<void>;
 }
@@ -30,14 +34,17 @@ export function matchRoute(routes: readonly RouteDef[], path: string): RouteDef 
 export function createStudioRouter(routes: readonly RouteDef[], initial: string): StudioRouter {
   const path = shallowRef(initial);
   const page = shallowRef<Component | null>(null);
+  const layout = shallowRef<string | undefined>(undefined);
   const load = async (to: string): Promise<void> => {
     const route = matchRoute(routes, to);
-    page.value = route ? (await route.component()).default : null;
+    const mod = route ? await route.component() : null;
+    page.value = mod?.default ?? null;
+    layout.value = mod?.frontmatter?.layout;
   };
   const go = async (to: string): Promise<void> => {
     path.value = to;
     if (typeof history !== "undefined") history.pushState(null, "", to);
     await load(to);
   };
-  return { path, page, go, load };
+  return { path, page, layout, go, load };
 }

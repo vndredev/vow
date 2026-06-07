@@ -1,3 +1,8 @@
+---
+group: UI
+order: 1
+---
+
 # Primitives
 
 Some UI can't be plain HTML — a custom checkbox, a dialog, a menu need ARIA, focus handling and keyboard logic. vow builds a primitive **only where the browser can't do it natively**. A `<button>` is already accessible, so there is no Button primitive; a custom-styled checkbox isn't, so it earns one.

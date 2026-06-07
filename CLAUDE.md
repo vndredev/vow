@@ -14,7 +14,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 - **`pnpm -r test`** — tests per package (local `.bin`). **NOT `vp test`** (root): the global `vp` can't resolve project-local optional peers like `jsdom`.
 - `vp build apps/starter` — generates `.generated/` + builds the bundle.
 - `vp dev apps/starter` — dev server (HMR: change `app/*.vow.md` → regenerates + reloads).
-- `pnpm --filter @vow/docs run docs:build` / `docs:dev` — the VitePress docs.
+- `pnpm --filter @vow/docs run dev` / `build` — the docs, built on **`@vow/studio`** (vow's own Vite+ doc-system, not VitePress).
 - pre-commit (`vp staged`) runs `vp check --fix`.
 
 ## Architecture (the contract)
@@ -46,7 +46,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 - Run tests **always** via `pnpm -r test` (local bins, jsdom peer). The global `vp test` breaks on `jsdom`.
 - Test **a11y against the platform** (vanilla DOM + axe), not a framework — the truth lives in the headless core; the adapter only forwards.
 - **English only** across codebase + docs — enforced by a gate (no umlauts).
-- VitePress (`docs/`) runs on its own **upstream Vite** (scoped override `"vitepress>vite"`), not Vite+ (Vite+ dropped `transformWithEsbuild` for oxc). `allowBuilds: esbuild`.
+- The docs (`docs/`) run on **`@vow/studio`** — vow's own Vite+-native doc-system (markdown→Vue via studioDocs + the app shell), fully on the VoidZero stack. (VitePress is gone, along with its upstream-Vite override.)
 - Side-effect imports (`*.css`, `*.vue`) need a tsgo shim — generated into `.generated/vow-env.d.ts`.
 
 ## Way of working (hard rules, from Andre)

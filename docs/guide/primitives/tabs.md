@@ -8,20 +8,20 @@ The tabs below are the **exact** generated adapter — `emitTabsSfc()` written t
 
 <script setup>
 import { ref } from "vue";
-import Tabs from "../../.vitepress/theme/generated/Tabs.vue";
+import Tabs from "../../.studio/generated/Tabs.vue";
 
 const fw = ref("vue");
 </script>
 
-<div :style="{ padding: '1.5rem', border: '1px solid var(--vp-c-divider)', borderRadius: '12px', margin: '1.25rem 0' }">
+<div :style="{ padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
   <Tabs v-model="fw" :items="['vue', 'react', 'solid']">
-    <template #vue><p style="margin: 0; color: var(--vp-c-text-2)">Vue ships today — <code>renderVueSfc</code> turns the component model into an SFC.</p></template>
-    <template #react><p style="margin: 0; color: var(--vp-c-text-2)">React is planned — a second adapter over the same model.</p></template>
-    <template #solid><p style="margin: 0; color: var(--vp-c-text-2)">Solid is planned — another adapter, same headless cores.</p></template>
+    <template #vue><p style="margin: 0; color: var(--vow-color-muted)">Vue ships today — <code>renderVueSfc</code> turns the component model into an SFC.</p></template>
+    <template #react><p style="margin: 0; color: var(--vow-color-muted)">React is planned — a second adapter over the same model.</p></template>
+    <template #solid><p style="margin: 0; color: var(--vow-color-muted)">Solid is planned — another adapter, same headless cores.</p></template>
   </Tabs>
 </div>
 
-<p style="color: var(--vp-c-text-2)">Live reactive state: <code>fw = {{ fw }}</code>. Only the active tab is in the tab order; arrows roam the rest.</p>
+<p style="color: var(--vow-color-muted)">Live reactive state: <code>fw = {{ fw }}</code>. Only the active tab is in the tab order; arrows roam the rest.</p>
 
 ## The contract
 
@@ -51,7 +51,7 @@ This is the file vow writes — nothing here is hand-edited. The tabs are a `v-f
 
 <FrameworkBlock>
 
-<<< ../../.vitepress/theme/generated/Tabs.vue{vue}
+<<< ../../.studio/generated/Tabs.vue{vue}
 
 </FrameworkBlock>
 

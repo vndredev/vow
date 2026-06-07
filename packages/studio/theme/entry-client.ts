@@ -4,6 +4,8 @@ import { routes } from "virtual:vow-studio/routes";
 import { sidebar } from "virtual:vow-studio/sidebar";
 import App from "./App.vue";
 import Callout from "./Callout.vue";
+import FrameworkBlock from "./FrameworkBlock.vue";
+import Home from "./Home.vue";
 import { createStudioRouter } from "./router.ts";
 import "@vow/theme/vow.css";
 import "./studio.css";
@@ -14,6 +16,8 @@ void router.load(location.pathname);
 
 const app = createSSRApp({ render: () => h(App, { router, sidebar, config }) });
 app.component("Callout", Callout);
+app.component("FrameworkBlock", FrameworkBlock);
+app.component("Home", Home);
 app.mount("#app");
 
 // Intercept internal links so navigation doesn't full-reload.

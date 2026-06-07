@@ -317,3 +317,82 @@ body {
     display: none;
   }
 }
+
+/* Home (layout: home) — a full-width hero + feature grid, like the VitePress home. */
+.vow-home-wrap {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: calc(var(--studio-nav-height) + var(--vow-space-9)) var(--vow-space-6) var(--vow-space-9);
+}
+.vow-home__hero {
+  text-align: center;
+  padding: var(--vow-space-7) 0 var(--vow-space-9);
+}
+.vow-home__name {
+  margin: 0;
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: var(--vow-weight-display);
+  line-height: var(--vow-leading-tight);
+  letter-spacing: var(--vow-tracking-tight);
+  color: var(--vow-color-accent);
+}
+.vow-home__text {
+  margin: var(--vow-space-2) 0 0;
+  font-size: clamp(1.75rem, 5vw, 3rem);
+  font-weight: var(--vow-weight-display);
+  line-height: var(--vow-leading-tight);
+}
+.vow-home__tagline {
+  max-width: 640px;
+  margin: var(--vow-space-5) auto 0;
+  font-size: var(--vow-text-lg);
+  line-height: var(--vow-leading-relaxed);
+  color: var(--vow-color-muted);
+}
+.vow-home__actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--vow-space-3);
+  margin-top: var(--vow-space-7);
+}
+.vow-home__action {
+  display: inline-block;
+  padding: var(--vow-space-2) var(--vow-space-6);
+  font-weight: var(--vow-weight-semibold);
+  text-decoration: none;
+  border-radius: 999px;
+  transition: opacity 0.2s ease;
+}
+.vow-home__action--brand {
+  color: var(--vow-color-on-accent);
+  background: var(--vow-color-accent);
+}
+.vow-home__action--brand:hover {
+  opacity: 0.9;
+}
+.vow-home__action--alt {
+  color: var(--vow-color-text);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-home__features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--vow-space-5);
+}
+.vow-home__feature {
+  padding: var(--vow-space-6);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-home__feature-title {
+  margin: 0 0 var(--vow-space-2);
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-semibold);
+}
+.vow-home__feature-details {
+  margin: 0;
+  line-height: var(--vow-leading-relaxed);
+  color: var(--vow-color-muted);
+}
