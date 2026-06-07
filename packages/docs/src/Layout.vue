@@ -38,7 +38,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
     <Nav
       :config="config"
       :sidebar-open="mobileOpen"
-      @toggle-sidebar="mobileOpen = true"
+      @toggle-sidebar="mobileOpen = !mobileOpen"
       @open-search="searchOpen = true"
     />
     <div v-if="isDocPage" class="vow-docs-layout">

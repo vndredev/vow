@@ -44,7 +44,7 @@ onBeforeUnmount(() => media.removeEventListener("change", onSystemChange));
       <button
         type="button"
         class="vow-nav__menu"
-        aria-label="Open menu"
+        :aria-label="sidebarOpen ? 'Close menu' : 'Open menu'"
         :aria-expanded="sidebarOpen ?? false"
         @click="emit('toggleSidebar')"
       >

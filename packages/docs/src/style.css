@@ -508,7 +508,8 @@ body {
   .vow-nav__kbd {
     display: none;
   }
-  .vow-nav__search {
+  /* extra class to outrank the base .vow-nav__search padding that comes later in the file */
+  .vow-nav__links .vow-nav__search {
     padding: var(--vow-space-1) var(--vow-space-2);
   }
 }
