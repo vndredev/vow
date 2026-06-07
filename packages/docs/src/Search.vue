@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { dialog } from "@vow/headless";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import type { SearchItem } from "./index.ts";
 
 // Search (⌘K) — a dialog (vow's own primitive: Esc + tab-trap) with a substring filter over the page +
-// heading index. Arrow keys move the highlight, Enter navigates. Closes on overlay click or Esc.
+// heading index. A combobox + listbox: arrow keys move aria-activedescendant, Enter navigates. Restores
+// focus + body scroll on close. Closes on overlay click or Esc.
 const props = defineProps<{ items: SearchItem[]; open: boolean }>();
 const emit = defineEmits<{ "update:open": [boolean] }>();
 const query = ref("");
 const active = ref(0);
 const input = ref<HTMLInputElement>();
+let restore: HTMLElement | null = null;
 
 const api = computed(() =>
   dialog({ open: props.open, id: "search" }, (next) => emit("update:open", next.open)),
@@ -19,19 +21,34 @@ const results = computed<SearchItem[]>(() => {
   if (q === "") return [];
   return props.items.filter((item) => item.label.toLowerCase().includes(q)).slice(0, 12);
 });
+const optionId = (index: number): string => `search-opt-${index}`;
+const activeId = computed(() => (results.value.length > 0 ? optionId(active.value) : undefined));
 
 watch(
   () => props.open,
   (open) => {
     if (open) {
+      restore = document.activeElement as HTMLElement | null;
       query.value = "";
       active.value = 0;
+      document.body.style.overflow = "hidden";
       void nextTick(() => input.value?.focus());
+    } else {
+      document.body.style.overflow = "";
+      restore?.focus();
     }
   },
 );
 watch(results, () => {
   active.value = 0;
+});
+watch(active, () => {
+  void nextTick(() => {
+    document.getElementById(activeId.value ?? "")?.scrollIntoView({ block: "nearest" });
+  });
+});
+onBeforeUnmount(() => {
+  document.body.style.overflow = "";
 });
 
 function go(item: SearchItem | undefined): void {
@@ -58,20 +75,38 @@ function onKeydown(event: KeyboardEvent): void {
   <Teleport to="body">
     <div v-if="open" class="vow-search">
       <div v-bind="api.overlayProps" class="vow-search__overlay" />
-      <div v-bind="api.contentProps" class="vow-search__panel" @keydown="onKeydown">
+      <div
+        v-bind="api.contentProps"
+        class="vow-search__panel"
+        aria-label="Search"
+        @keydown="onKeydown"
+      >
         <input
           ref="input"
           v-model="query"
           class="vow-search__input"
           type="text"
+          role="combobox"
+          aria-label="Search the docs"
           placeholder="Search the docs"
-          aria-label="Search"
+          aria-autocomplete="list"
+          aria-controls="search-listbox"
+          :aria-expanded="results.length > 0"
+          :aria-activedescendant="activeId"
         />
-        <ul v-if="results.length > 0" class="vow-search__results">
+        <ul
+          v-if="results.length > 0"
+          id="search-listbox"
+          class="vow-search__results"
+          role="listbox"
+        >
           <li v-for="(item, i) in results" :key="item.path">
             <a
+              :id="optionId(i)"
               :href="item.path"
               class="vow-search__result"
+              role="option"
+              :aria-selected="i === active"
               :class="{ 'is-active': i === active }"
               @click.prevent="go(item)"
               @mousemove="active = i"
@@ -81,7 +116,7 @@ function onKeydown(event: KeyboardEvent): void {
             </a>
           </li>
         </ul>
-        <div v-else-if="query !== ''" class="vow-search__empty">No results</div>
+        <div v-else-if="query !== ''" class="vow-search__empty" role="status">No results</div>
       </div>
     </div>
   </Teleport>
