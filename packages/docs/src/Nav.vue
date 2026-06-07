@@ -3,8 +3,10 @@ import { onMounted, ref } from "vue";
 import type { DocsConfig } from "./index.ts";
 
 // The top nav — site title (links home) + configured links + a dark-mode toggle. A native button is
-// accessible on its own (no Switch primitive needed). State lives on `<html class="dark">`.
+// accessible on its own (no Switch primitive needed). State lives on `<html class="dark">`. On mobile
+// a hamburger emits `toggleSidebar` (the Layout opens the drawer).
 defineProps<{ config: DocsConfig }>();
+const emit = defineEmits<{ toggleSidebar: [] }>();
 
 const dark = ref(false);
 
@@ -23,6 +25,14 @@ onMounted(() => {
 <template>
   <header class="vow-nav">
     <div class="vow-nav__inner">
+      <button
+        type="button"
+        class="vow-nav__menu"
+        aria-label="Open menu"
+        @click="emit('toggleSidebar')"
+      >
+        ☰
+      </button>
       <a href="/" class="vow-nav__title">{{ config.title }}</a>
       <nav class="vow-nav__links" aria-label="Primary">
         <a v-for="link in config.nav" :key="link.link" :href="link.link">{{ link.text }}</a>

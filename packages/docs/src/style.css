@@ -426,3 +426,56 @@ body {
 .vow-toc__item--l3 a {
   padding-left: var(--vow-space-5);
 }
+
+/* Mobile nav — a hamburger (shown only on narrow screens) that opens the sidebar in a drawer. */
+.vow-nav__menu {
+  display: none;
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-xl);
+  line-height: 1;
+  color: var(--vow-color-text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.vow-mobile-nav {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.vow-mobile-nav__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--vow-color-scrim);
+}
+.vow-mobile-nav__drawer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18rem;
+  max-width: 80vw;
+  overflow-y: auto;
+  padding: var(--vow-space-6);
+  background: var(--vow-color-bg);
+  border-right: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-mobile-nav__drawer:focus-visible {
+  outline: none;
+}
+.vow-mobile-nav__drawer .vow-sidebar {
+  position: static;
+  top: auto;
+}
+
+@media (max-width: 960px) {
+  .vow-docs-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vow-docs-layout .vow-sidebar,
+  .vow-toc {
+    display: none;
+  }
+  .vow-nav__menu {
+    display: inline-flex;
+  }
+}
