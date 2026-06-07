@@ -6,6 +6,8 @@
 html {
   /* always reserve the scrollbar gutter — collapsing content must not reflow the page width */
   scrollbar-gutter: stable;
+  /* block the rubber-band / overscroll bounce at the top and bottom */
+  overscroll-behavior: none;
 }
 html,
 body {
@@ -234,7 +236,8 @@ body {
   gap: var(--vow-space-7);
   max-width: 84rem;
   margin: 0 auto;
-  padding: var(--vow-space-8) var(--vow-space-6);
+  /* top padding matches the sidebar/TOC sticky offset (nav-h + space-6) so they don't shift on scroll */
+  padding: var(--vow-space-6) var(--vow-space-6) var(--vow-space-9);
 }
 .vow-docs-content {
   min-width: 0;
