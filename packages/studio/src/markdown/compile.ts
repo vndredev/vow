@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import { transformCodeGroups } from "./code-group.ts";
 import { transformContainers } from "./containers.ts";
 import { splitFrontmatter } from "./frontmatter.ts";
 import { getHighlighter, highlight } from "./highlight.ts";
@@ -54,7 +55,8 @@ export async function compile(md: string, options: CompileOptions = {}): Promise
   const withSnippets = options.readSnippet
     ? transformSnippets(dehoisted, options.readSnippet)
     : dehoisted;
-  const withCallouts = transformContainers(withSnippets);
+  const withGroups = transformCodeGroups(withSnippets);
+  const withCallouts = transformContainers(withGroups);
 
   const highlighter = await getHighlighter();
   const toc: TocEntry[] = [];

@@ -32,6 +32,26 @@ test("an unknown fence language falls back to plain text (no throw)", async () =
   expect(code).toContain("plain content");
 });
 
+test("a ::: code-group becomes a <Tabs> with one highlighted panel per label", async () => {
+  const md = [
+    "::: code-group",
+    "```ts [config.ts]",
+    "export const a = 1;",
+    "```",
+    "```js [config.js]",
+    "module.exports = { a: 1 };",
+    "```",
+    ":::",
+    "",
+  ].join("\n");
+
+  const { code } = await compile(md);
+  expect(code).toContain("<Tabs :items=");
+  expect(code).toContain("config.ts");
+  expect(code).toContain("config.js");
+  expect(code).toContain("shiki"); // each panel is a highlighted code block
+});
+
 test("compiles hoisted script + callout + snippet + a TOC together", async () => {
   const md = [
     "<script setup>",

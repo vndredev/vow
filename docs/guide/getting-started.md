@@ -14,9 +14,28 @@ vow isn't on npm yet — there's no `npm create vow`, and the `@vow/*` packages 
 ```bash
 git clone https://github.com/vndredev/vow.git
 cd vow
-vp install            # install the workspace (or: pnpm install)
-vp dev apps/starter   # start the dev server
 ```
+
+Then install + run — pick your package manager:
+
+::: code-group
+
+```bash [pnpm]
+vp install
+vp dev apps/starter
+```
+
+```bash [npm]
+npm install
+npx vp dev apps/starter
+```
+
+```bash [yarn]
+yarn
+yarn vp dev apps/starter
+```
+
+:::
 
 Open the printed URL. You see a landing page — a hero and a three-card feature grid, then a generated task list — and you never wrote a `.vue` file. It's all from vows: the landing is a [`## view`](/guide/layout), and its `list: task` pulls in the task entity's CRUD list.
 

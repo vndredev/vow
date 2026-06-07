@@ -6,6 +6,7 @@ import App from "./App.vue";
 import Callout from "./Callout.vue";
 import FrameworkBlock from "./FrameworkBlock.vue";
 import Home from "./Home.vue";
+import Tabs from "./Tabs.vue";
 import { createStudioRouter } from "./router.ts";
 import "@vow/theme/vow.css";
 import "./studio.css";
@@ -18,6 +19,7 @@ const app = createSSRApp({ render: () => h(App, { router, sidebar, config }) });
 app.component("Callout", Callout);
 app.component("FrameworkBlock", FrameworkBlock);
 app.component("Home", Home);
+app.component("Tabs", Tabs);
 app.mount("#app");
 
 // Intercept internal links so navigation doesn't full-reload.

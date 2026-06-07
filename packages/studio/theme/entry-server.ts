@@ -7,6 +7,7 @@ import App from "./App.vue";
 import Callout from "./Callout.vue";
 import FrameworkBlock from "./FrameworkBlock.vue";
 import Home from "./Home.vue";
+import Tabs from "./Tabs.vue";
 import { createStudioRouter } from "./router.ts";
 
 /** Render a route to HTML for the SSG build (one call per route). */
@@ -17,5 +18,6 @@ export async function render(url: string): Promise<string> {
   app.component("Callout", Callout);
   app.component("FrameworkBlock", FrameworkBlock);
   app.component("Home", Home);
+  app.component("Tabs", Tabs);
   return renderToString(app);
 }
