@@ -23,14 +23,44 @@
   --vow-container-4: 71rem;
 }
 
-/* Layout primitives are structural (inline style only); Box gets a visible default so layout
-   composition (rows, grids) is legible, and the container carries the base font. */
+/* Layout primitives are structural (inline style only). The theme dresses a landing page built from
+   a `## tree`: a hero (eyebrow / title / lead) and feature-card boxes. Styled by tag *within* the
+   container so a tree of primitives + text reads like a real page; scoped to `.vow-container` so an
+   embedded `.vow-view` keeps its own look. */
 .vow-container {
   font-family: system-ui, sans-serif;
+  color: #1a1a1a;
+  padding: var(--vow-space-9) var(--vow-space-4);
+}
+.vow-container span {
+  color: #3b5bdb;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.vow-container h1 {
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.vow-container h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 var(--vow-space-2);
+}
+.vow-container p {
+  color: #555;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 42rem;
 }
 .vow-box {
-  border: 1px solid #e3e3e3;
-  border-radius: 0.4rem;
+  border: 1px solid #ececec;
+  border-radius: 0.6rem;
+  background: #fafafa;
 }
 
 .vow-view {
