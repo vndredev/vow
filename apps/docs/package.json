@@ -17,6 +17,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "catalog:",
     "@vow/core": "workspace:*",
+    "@vow/docs": "workspace:*",
     "@vow/gate": "workspace:*",
     "@vow/vite-plugin": "workspace:*",
     "vite": "catalog:",

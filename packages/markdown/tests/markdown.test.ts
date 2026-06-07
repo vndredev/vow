@@ -1,6 +1,13 @@
 import type { ElementNode, RawNode } from "@vow/component";
 import { expect, test } from "vite-plus/test";
-import { markdownToNodes } from "../src/index.ts";
+import { markdownToNodes, markdownToNodesSync } from "../src/index.ts";
+
+test("markdownToNodesSync without a highlighter renders code as a plain <pre><code>", () => {
+  const [code] = markdownToNodesSync("```ts\nconst a = 1;\n```");
+  expect(code).toMatchObject({ kind: "element", tag: "pre" });
+  const inner = (code as ElementNode).children[0] as ElementNode;
+  expect(inner.tag).toBe("code");
+});
 
 test("headings and paragraphs map to element nodes", async () => {
   const nodes = await markdownToNodes("# Title\n\nHello world.");

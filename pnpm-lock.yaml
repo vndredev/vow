@@ -70,6 +70,9 @@ importers:
       '@vow/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@vow/docs':
+        specifier: workspace:*
+        version: link:../../packages/docs
       '@vow/gate':
         specifier: workspace:*
         version: link:../../packages/gate
@@ -157,6 +160,19 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.1
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
+
+  packages/docs:
+    dependencies:
+      '@vow/emit-view':
+        specifier: workspace:*
+        version: link:../emit-view
+      '@vow/markdown':
+        specifier: workspace:*
+        version: link:../markdown
+    devDependencies:
       vite-plus:
         specifier: 'catalog:'
         version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)

@@ -49,8 +49,16 @@ function inlineToNodes(children: readonly Tok[]): UiNode[] {
   return root;
 }
 
-/** Block tokens → block UiNodes. Tag-driven opens (p/h2/ul/li/blockquote); fences → a raw Shiki node. */
-function blockToNodes(tokens: readonly Tok[], hl: Highlighter): UiNode[] {
+/** A fenced block → a raw Shiki node when a highlighter is given, else a plain `<pre><code>`. */
+function codeNode(content: string, info: string, hl?: Highlighter): UiNode {
+  const code = content.replace(/\n$/, "");
+  if (!hl) return el("pre", [el("code", [txt(code)])]);
+  const lang = info.trim().split(/\s+/)[0] ?? "";
+  return raw(highlight(hl, code, lang));
+}
+
+/** Block tokens → block UiNodes. Tag-driven opens (p/h2/ul/li/blockquote); fences → code node. */
+function blockToNodes(tokens: readonly Tok[], hl?: Highlighter): UiNode[] {
   const root: UiNode[] = [];
   const stack: Frame[] = [];
   const sink = (): UiNode[] => stack[stack.length - 1]?.kids ?? root;
@@ -58,8 +66,7 @@ function blockToNodes(tokens: readonly Tok[], hl: Highlighter): UiNode[] {
     if (t.type === "inline") {
       for (const node of inlineToNodes(t.children ?? [])) sink().push(node);
     } else if (t.type === "fence" || t.type === "code_block") {
-      const lang = t.info.trim().split(/\s+/)[0] ?? "";
-      sink().push(raw(highlight(hl, t.content.replace(/\n$/, ""), lang)));
+      sink().push(codeNode(t.content, t.info, hl));
     } else if (t.type === "hr") {
       sink().push(el("hr", []));
     } else if (t.type.endsWith("_open")) {
@@ -74,11 +81,18 @@ function blockToNodes(tokens: readonly Tok[], hl: Highlighter): UiNode[] {
 }
 
 /**
+ * Render markdown to vow's UiNode model with an already-loaded highlighter — the sync path the
+ * generator uses (Shiki is pre-warmed once). Without a highlighter, fenced code is a plain `<pre>`.
+ */
+export function markdownToNodesSync(source: string, hl?: Highlighter): UiNode[] {
+  return blockToNodes(md.parse(source, {}), hl);
+}
+
+/**
  * Render markdown to vow's UiNode model — the reusable prose engine. Headings/paragraphs/lists/inline
  * map to element + text nodes; fenced code becomes a raw, Shiki-highlighted node (the escape hatch).
  * Adapter-neutral: a React/Solid adapter renders the same nodes. Async because Shiki loads grammars.
  */
 export async function markdownToNodes(source: string): Promise<UiNode[]> {
-  const hl = await getHighlighter();
-  return blockToNodes(md.parse(source, {}), hl);
+  return markdownToNodesSync(source, await getHighlighter());
 }

@@ -350,6 +350,34 @@ export function emitView(view: Vow, entities: readonly string[] = []): string {
 }
 
 /**
+ * A prose page from already-rendered markdown nodes (see `@vow/markdown` `markdownToNodesSync`). The
+ * nodes are wrapped in a `vow-doc` container; any embedded `<Component>` is imported from its generated
+ * `.vue`. The markdown file is the source — this is generated. Lets the docs be a vow app whose content
+ * stays as plain `.md` (scanned by the plugin), rendered through the core, not a parallel doc-system.
+ */
+export function emitProse(slug: string, nodes: readonly UiNode[]): string {
+  const root: UiNode = {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-doc" }],
+    children: [...nodes],
+  };
+  const imports: ImportDecl[] = [...componentsIn(root)].map((name) => ({
+    from: `./${name}.vue`,
+    default: name,
+  }));
+  const component: Component = {
+    name: pascalCase(slug),
+    doc: [
+      `Generated prose page "${slug}" (from markdown). The markdown is the source — do not edit.`,
+    ],
+    imports,
+    view: root,
+  };
+  return renderVueSfc(component);
+}
+
+/**
  * Every entity slug a view references via `list:` — recursing into primitive `children`. The plugin
  * uses this to emit each referenced entity's list on demand (the entity itself stays a pure model).
  */
