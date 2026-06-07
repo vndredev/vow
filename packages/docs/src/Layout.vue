@@ -10,7 +10,7 @@ defineProps<{ groups: SidebarGroup[]; path: string }>();
 <template>
   <div class="vow-docs-layout">
     <Sidebar :groups="groups" :path="path" />
-    <main class="vow-doc"><slot /></main>
+    <main class="vow-docs-content"><slot /></main>
   </div>
 </template>
 
@@ -22,6 +22,9 @@ defineProps<{ groups: SidebarGroup[]; path: string }>();
   max-width: 80rem;
   margin: 0 auto;
   padding: var(--vow-space-7) var(--vow-space-6);
+}
+.vow-docs-content {
+  min-width: 0;
 }
 .vow-sidebar {
   position: sticky;
