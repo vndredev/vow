@@ -1,6 +1,16 @@
+@import "@fontsource-variable/inter";
+
 /* @vow/docs — the docs layer's own stylesheet. The docs CHROME (nav, sidebar, layout, TOC)
    + prose (.vow-doc) + the markdown extensions it renders (callouts, code-group). Built on @vow/theme
-   tokens (--vow-*); loaded by the generated docs layout. Kept OUT of vow.css (the shared design system). */
+   tokens (--vow-*); loaded by the generated docs layout. Kept OUT of vow.css (the shared design system).
+   Self-hosts Inter (above) so the docs read 1:1 with the VitePress default. */
+/* The docs opt into Inter (self-hosted, loaded by the generated layout) — overriding the shared
+   --vow-font-sans token just for the docs; other vow apps keep the base system-ui stack. */
+:root {
+  --vow-font-sans:
+    "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", roboto, sans-serif;
+}
+
 /* Base reset for the docs app — the font/colour come from @vow/theme tokens (without this the page
    falls back to the browser's serif default). */
 html {
