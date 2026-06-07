@@ -55,6 +55,15 @@ test("a ::: code-group container becomes a grouped code wrapper", async () => {
   expect(group.attrs).toContainEqual({ kind: "static", name: "class", value: "vow-code-group" });
 });
 
+test("a <<< snippet line includes the resolved file as a code block", () => {
+  const nodes = markdownToNodesSync("<<< ./adapter.ts{ts}", {
+    resolveSnippet: (path) => (path === "./adapter.ts" ? "export const a = 1;" : null),
+  });
+  const pre = nodes[0] as ElementNode;
+  expect(pre.tag).toBe("pre"); // no highlighter → plain <pre><code>
+  expect(JSON.stringify(pre)).toContain("export const a = 1;");
+});
+
 test("a bullet list maps to ul > li", async () => {
   const ul = (await markdownToNodes("- one\n- two"))[0] as ElementNode;
   expect(ul.tag).toBe("ul");

@@ -1,5 +1,5 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync } from "@vow/markdown";
@@ -171,7 +171,17 @@ export function generateDocs(
   for (const file of mdFilesUnder(contentDir)) {
     const slug = docSlug(contentDir, file);
     const { data, body } = parseFrontmatter(readFileSync(file, "utf8"));
-    const nodes = markdownToNodesSync(body, opts.highlighter);
+    const dir = dirname(file);
+    const nodes = markdownToNodesSync(body, {
+      highlighter: opts.highlighter,
+      resolveSnippet: (p) => {
+        try {
+          return readFileSync(resolve(dir, p), "utf8");
+        } catch {
+          return null;
+        }
+      },
+    });
     const out = join(outDir, `${slug}.vue`);
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);

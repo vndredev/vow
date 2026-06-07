@@ -105,12 +105,35 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter): UiNode[] {
   return root;
 }
 
+/** Options for the sync render path. */
+export interface MarkdownOptions {
+  /** A pre-warmed Shiki highlighter (else fenced code is a plain `<pre>`). */
+  readonly highlighter?: Highlighter;
+  /** Read a `<<< <path>` snippet's content (relative to the source file); null = not found. */
+  readonly resolveSnippet?: (path: string) => string | null;
+}
+
+/** A `<<< <path>` (optionally `{lang}`) line that includes a file as a fenced code block. */
+const SNIPPET = /^<<<\s+(\S+?)(?:\{(\w+)\})?[ \t]*$/gm;
+
+/** Expand `<<< <path>` lines into fenced code blocks (read via `resolve`), before markdown-it. */
+function expandSnippets(src: string, resolve: (path: string) => string | null): string {
+  return src.replace(SNIPPET, (_match, path: string, lang?: string) => {
+    const content = resolve(path);
+    if (content === null) return "```\n[snippet not found: " + path + "]\n```";
+    const lng = lang ?? path.split(".").pop() ?? "";
+    return "```" + lng + "\n" + content.replace(/\n$/, "") + "\n```";
+  });
+}
+
 /**
  * Render markdown to vow's UiNode model with an already-loaded highlighter — the sync path the
- * generator uses (Shiki is pre-warmed once). Without a highlighter, fenced code is a plain `<pre>`.
+ * generator uses (Shiki is pre-warmed once). Without a highlighter, fenced code is a plain `<pre>`;
+ * `resolveSnippet` enables `<<< <path>` file includes.
  */
-export function markdownToNodesSync(source: string, hl?: Highlighter): UiNode[] {
-  return blockToNodes(md.parse(source, {}), hl);
+export function markdownToNodesSync(source: string, opts: MarkdownOptions = {}): UiNode[] {
+  const src = opts.resolveSnippet ? expandSnippets(source, opts.resolveSnippet) : source;
+  return blockToNodes(md.parse(src, {}), opts.highlighter);
 }
 
 /**
@@ -119,5 +142,5 @@ export function markdownToNodesSync(source: string, hl?: Highlighter): UiNode[] 
  * Adapter-neutral: a React/Solid adapter renders the same nodes. Async because Shiki loads grammars.
  */
 export async function markdownToNodes(source: string): Promise<UiNode[]> {
-  return markdownToNodesSync(source, await getHighlighter());
+  return markdownToNodesSync(source, { highlighter: await getHighlighter() });
 }
