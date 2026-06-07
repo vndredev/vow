@@ -135,8 +135,9 @@ export function undocumentedFieldTypes(coreSource: string, docSource: string): s
  * em-dashes the emitters use. The character class is written with unicode escapes so this file
  * itself stays ASCII and passes its own gate.
  */
-/** Char codes for the German umlauts + sharp-s — listed as numbers so this file stays ASCII. */
-const GERMAN_MARKER_CODES = new Set([228, 246, 252, 223, 196, 214, 220]);
+/** Char codes for the German umlauts + sharp-s, plus the German low-9 opening quote (U+201E `„`,
+ *  distinctly German — English curly quotes are not flagged). Listed as numbers so this file stays ASCII. */
+const GERMAN_MARKER_CODES = new Set([228, 246, 252, 223, 196, 214, 220, 8222]);
 
 export function germanMarkers(source: string): string[] {
   const found = new Set<string>();

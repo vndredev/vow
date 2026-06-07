@@ -33,7 +33,7 @@ The core proves its own accessibility **in its own package**, framework-free. Th
 checkbox() → part-props → vanilla DOM → axe (0 violations) + Space toggles
 ```
 
-If the core is sound against the bare platform, every adapter that merely forwards the props is sound too — so the **app never re-tests a11y**. That's the point of „agnostic": the logic hangs on nothing, and its correctness is proven once, at the bottom.
+If the core is sound against the bare platform, every adapter that merely forwards the props is sound too — so the **app never re-tests a11y**. That's the point of "agnostic": the logic hangs on nothing, and its correctness is proven once, at the bottom.
 
 ## The primitives
 

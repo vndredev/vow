@@ -38,23 +38,25 @@ body {
   max-width: 44rem;
   min-width: 0;
 }
+/* Prose targets only class-less markdown elements — primitive markup rendered inside a page (demos,
+   callouts, code-group, the select listbox) carries vow classes and keeps its own styling. */
 /* anchor jumps (TOC) clear the sticky nav */
-.vow-doc h1,
-.vow-doc h2,
-.vow-doc h3 {
+.vow-doc h1:not([class]),
+.vow-doc h2:not([class]),
+.vow-doc h3:not([class]) {
   scroll-margin-top: calc(var(--vow-nav-h) + var(--vow-space-4));
 }
 .vow-doc > :first-child {
   margin-top: 0;
 }
-.vow-doc h1 {
+.vow-doc h1:not([class]) {
   margin: 0 0 var(--vow-space-5);
   font-size: var(--vow-text-3xl);
   font-weight: var(--vow-weight-display);
   line-height: var(--vow-leading-tight);
   letter-spacing: var(--vow-tracking-tight);
 }
-.vow-doc h2 {
+.vow-doc h2:not([class]) {
   margin: var(--vow-space-8) 0 var(--vow-space-4);
   padding-top: var(--vow-space-5);
   font-size: var(--vow-text-2xl);
@@ -62,27 +64,26 @@ body {
   line-height: var(--vow-leading-tight);
   border-top: var(--vow-border) solid var(--vow-color-border);
 }
-.vow-doc h3 {
+.vow-doc h3:not([class]) {
   margin: var(--vow-space-6) 0 var(--vow-space-3);
   font-size: var(--vow-text-lg);
   font-weight: var(--vow-weight-semibold);
 }
-.vow-doc p,
+.vow-doc p:not([class]),
 .vow-doc li:not([class]) {
   line-height: var(--vow-leading-relaxed);
 }
-.vow-doc p {
+.vow-doc p:not([class]) {
   margin: var(--vow-space-4) 0;
 }
-.vow-doc a {
+.vow-doc a:not([class]) {
   color: var(--vow-color-accent);
   font-weight: var(--vow-weight-medium);
   text-decoration: none;
 }
-.vow-doc a:hover {
+.vow-doc a:not([class]):hover {
   text-decoration: underline;
 }
-/* only markdown (class-less) lists get prose styling — primitive lists (e.g. the select listbox) keep theirs */
 .vow-doc ul:not([class]),
 .vow-doc ol:not([class]) {
   margin: var(--vow-space-4) 0;
@@ -91,26 +92,26 @@ body {
 .vow-doc li:not([class]) {
   margin: var(--vow-space-2) 0;
 }
-.vow-doc :not(pre) > code {
+.vow-doc :not(pre) > code:not([class]) {
   padding: 0.15em 0.4em;
   font-family: var(--vow-font-mono);
   font-size: 0.85em;
   background: var(--vow-color-surface);
   border-radius: var(--vow-radius-1);
 }
-.vow-doc table {
+.vow-doc table:not([class]) {
   width: 100%;
   margin: var(--vow-space-5) 0;
   font-size: var(--vow-text-sm);
   border-collapse: collapse;
 }
-.vow-doc th,
-.vow-doc td {
+.vow-doc table:not([class]) th,
+.vow-doc table:not([class]) td {
   padding: var(--vow-space-2) var(--vow-space-3);
   text-align: left;
   border: var(--vow-border) solid var(--vow-color-border);
 }
-.vow-doc th {
+.vow-doc table:not([class]) th {
   background: var(--vow-color-surface);
 }
 .vow-doc .shiki {
