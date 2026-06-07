@@ -1,3 +1,6 @@
 # VitePress build output + cache — generated, never committed.
 .vitepress/dist/
 .vitepress/cache/
+
+# vow's primitive adapters, emitted into the docs on dev/build — machine output, never committed.
+.vitepress/theme/generated/

@@ -1,10 +1,31 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { emitCheckboxSfc } from "@vow/emit-primitive";
 import { defineConfig } from "vitepress";
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+// Materialise vow's generated primitive adapters as real .vue files the docs import live. The docs
+// hand-write no demo component — they render the exact `emit` output, so a page is itself proof the
+// generated UI runs (and stays 1:1 with the emitter). Regenerated on every dev start + build.
+function vowPrimitives() {
+  return {
+    name: "vow:primitives",
+    buildStart() {
+      const out = resolve(here, "theme/generated");
+      mkdirSync(out, { recursive: true });
+      writeFileSync(resolve(out, "Checkbox.vue"), emitCheckboxSfc());
+    },
+  };
+}
 
 // vow's docs — built with VitePress (the Vue-team SSG, same VoidZero stack), kept in sync from day one.
 export default defineConfig({
   title: "vow",
   description: "The spec-driven framework for Vue — your app, as a promise.",
   cleanUrls: true,
+  vite: { plugins: [vowPrimitives()] },
   themeConfig: {
     nav: [
       { text: "Guide", link: "/guide/" },
@@ -33,7 +54,12 @@ export default defineConfig({
           text: "UI",
           items: [
             { text: "The component model", link: "/guide/components" },
-            { text: "Primitives", link: "/guide/primitives" },
+            {
+              text: "Primitives",
+              link: "/guide/primitives",
+              collapsed: false,
+              items: [{ text: "Checkbox", link: "/guide/primitives/checkbox" }],
+            },
             { text: "Views", link: "/guide/layout" },
           ],
         },

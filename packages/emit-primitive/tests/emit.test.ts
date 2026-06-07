@@ -1,7 +1,7 @@
 import { expect, test } from "vite-plus/test";
 import { emitCheckboxSfc } from "../src/index.ts";
 
-test("emitCheckboxSfc generates an unstyled Vue adapter with class + data hooks", () => {
+test("emitCheckboxSfc generates a Vue adapter over the headless core with class + data hooks", () => {
   const sfc = emitCheckboxSfc();
   // uses the agnostic core (logic + a11y live there)
   expect(sfc).toContain('import { checkbox } from "@vow/headless";');
@@ -9,10 +9,14 @@ test("emitCheckboxSfc generates an unstyled Vue adapter with class + data hooks"
     "defineProps<{ modelValue: boolean; label: string; disabled?: boolean }>()",
   );
   expect(sfc).toContain('emit("update:modelValue", next.checked)');
-  // spreads the core's part-props + class hooks; no logic, no styling of its own
+  // a <button role=checkbox> control (Reka-style) wrapping an indicator part; spreads the core's props
+  expect(sfc).toContain("<button ");
   expect(sfc).toContain('v-bind="api.controlProps"');
+  expect(sfc).toContain('v-bind="api.indicatorProps"');
   expect(sfc).toContain('class="vow-checkbox"');
-  expect(sfc).toContain('class="vow-checkbox__box"');
+  expect(sfc).toContain('class="vow-checkbox__control"');
+  expect(sfc).toContain('class="vow-checkbox__indicator"');
   expect(sfc).toContain(':aria-label="label"');
-  expect(sfc).not.toContain("<style"); // unstyled — styling lives in @vow/theme
+  // carries no styling of its own — vow's base look lives in @vow/theme (swappable)
+  expect(sfc).not.toContain("<style");
 });

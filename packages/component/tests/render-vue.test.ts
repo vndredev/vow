@@ -7,7 +7,7 @@ const checkbox: Component = {
   name: "Checkbox",
   doc: [
     "Generated checkbox adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
-    "Unstyled: class + data-* hooks only; styling lives in @vow/theme (swappable).",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
   ],
   imports: [
     { from: "vue", names: ["computed"] },
@@ -28,7 +28,7 @@ const checkbox: Component = {
   ],
   view: {
     kind: "element",
-    tag: "label",
+    tag: "span",
     attrs: [
       { kind: "spread", expr: "api.rootProps" },
       { kind: "static", name: "class", value: "vow-checkbox" },
@@ -36,13 +36,23 @@ const checkbox: Component = {
     children: [
       {
         kind: "element",
-        tag: "span",
+        tag: "button",
         attrs: [
           { kind: "spread", expr: "api.controlProps" },
           { kind: "bound", name: "aria-label", expr: "label" },
-          { kind: "static", name: "class", value: "vow-checkbox__box" },
+          { kind: "static", name: "class", value: "vow-checkbox__control" },
         ],
-        children: [{ kind: "interp", expr: 'api.checked ? "✓" : ""' }],
+        children: [
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [
+              { kind: "spread", expr: "api.indicatorProps" },
+              { kind: "static", name: "class", value: "vow-checkbox__indicator" },
+            ],
+            children: [{ kind: "text", text: "✓" }],
+          },
+        ],
       },
       {
         kind: "element",
@@ -62,7 +72,7 @@ const checkbox: Component = {
 const EXPECTED_CHECKBOX = [
   `<script setup lang="ts">`,
   `// Generated checkbox adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
-  `// Unstyled: class + data-* hooks only; styling lives in @vow/theme (swappable).`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
   `import { computed } from "vue";`,
   `import { checkbox } from "@vow/headless";`,
   ``,
@@ -77,10 +87,12 @@ const EXPECTED_CHECKBOX = [
   `</script>`,
   ``,
   `<template>`,
-  `  <label v-bind="api.rootProps" class="vow-checkbox">`,
-  `    <span v-bind="api.controlProps" :aria-label="label" class="vow-checkbox__box">{{ api.checked ? "✓" : "" }}</span>`,
+  `  <span v-bind="api.rootProps" class="vow-checkbox">`,
+  `    <button v-bind="api.controlProps" :aria-label="label" class="vow-checkbox__control">`,
+  `      <span v-bind="api.indicatorProps" class="vow-checkbox__indicator">✓</span>`,
+  `    </button>`,
   `    <span v-bind="api.labelProps" class="vow-checkbox__label">{{ label }}</span>`,
-  `  </label>`,
+  `  </span>`,
   `</template>`,
   ``,
 ].join("\n");

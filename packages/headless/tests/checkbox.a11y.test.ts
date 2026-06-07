@@ -24,7 +24,7 @@ function applyProps(el: HTMLElement, props: Record<string, unknown>): void {
 
 test("the checkbox control is accessible DOM (axe, no framework)", async () => {
   const api = checkbox({ checked: false }, () => {});
-  const control = document.createElement("span");
+  const control = document.createElement("button");
   applyProps(control, api.controlProps);
   control.setAttribute("aria-label", "Erledigt");
   document.body.appendChild(control);
@@ -39,7 +39,7 @@ test("a real Space keydown toggles through the control", () => {
   const api = checkbox(state, (next) => {
     state = next;
   });
-  const control = document.createElement("span");
+  const control = document.createElement("button");
   applyProps(control, api.controlProps);
 
   control.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));

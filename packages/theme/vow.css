@@ -208,31 +208,59 @@
   font-weight: var(--vow-weight-medium);
 }
 
-/* The accessible checkbox primitive (a boolean field). State is the `data-checked` hook. */
+/* The accessible checkbox primitive (a boolean field), Reka-style: a `<button role="checkbox">`
+   control wrapping an indicator part. State is the `data-state` / `data-disabled` hooks the headless
+   core emits on each part — nothing is stored here, the theme only reacts to the hooks. The control
+   sizes in `em` off the row's text so it scales with context; `--vow-radius-1` then reads as a rounded
+   square (not a circle) at that size. This is vow's base look — swap the tokens to re-skin it. */
 .vow-checkbox {
   display: inline-flex;
   align-items: center;
   gap: var(--vow-space-2);
   cursor: pointer;
+  font-size: var(--vow-text-base);
 }
-.vow-checkbox__box {
+.vow-checkbox__control {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.15em;
-  height: 1.15em;
-  border: var(--vow-border) solid currentColor;
-  border-radius: var(--vow-radius-1);
-  font-size: var(--vow-text-xs);
-  line-height: 1;
-}
-.vow-checkbox[data-checked] .vow-checkbox__box {
-  background: var(--vow-color-ink);
+  flex: none;
+  box-sizing: border-box;
+  width: 1.3em;
+  height: 1.3em;
+  margin: 0;
+  padding: 0;
+  font: inherit;
   color: var(--vow-color-on-accent);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-1);
+  cursor: inherit;
+  appearance: none;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
 }
-.vow-checkbox__box:focus-visible {
+.vow-checkbox__control[data-state="checked"] {
+  background: var(--vow-color-ink);
+  border-color: var(--vow-color-ink);
+}
+.vow-checkbox__control:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 2px;
+}
+.vow-checkbox[data-disabled] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vow-checkbox__indicator {
+  display: inline-flex;
+  font-size: 0.8em;
+  line-height: 1;
+  opacity: 0;
+}
+.vow-checkbox__indicator[data-state="checked"] {
+  opacity: 1;
 }
 .vow-checkbox__label {
   user-select: none;
