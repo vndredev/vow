@@ -111,7 +111,9 @@ function parseFrontmatter(src: string): { data: Record<string, string>; body: st
 }
 
 /** The first `# heading` of a markdown body — the page title fallback. */
-const firstH1 = (body: string): string | undefined => /^#\s+(.+)$/m.exec(body)?.[1]?.trim();
+const firstH1 = (body: string): string | undefined =>
+  // strip fenced code first, so a `# comment` inside a code block isn't mistaken for the title
+  /^#\s+(.+)$/m.exec(body.replace(/```[\s\S]*?```/g, ""))?.[1]?.trim();
 
 /** A content file's path under the root, `.md` stripped, forward-slashed (e.g. "guide/emit"). */
 const relNoExt = (contentDir: string, file: string): string =>
@@ -239,8 +241,11 @@ export function generateDocs(
       highlighter: opts.highlighter,
       toc,
       resolveSnippet: (p) => {
+        // contain `<<<` includes to the content tree — no absolute paths, no `../` escaping it
+        const full = resolve(dir, p);
+        if (isAbsolute(p) || relative(contentDir, full).startsWith("..")) return null;
         try {
-          return readFileSync(resolve(dir, p), "utf8");
+          return readFileSync(full, "utf8");
         } catch {
           return null;
         }

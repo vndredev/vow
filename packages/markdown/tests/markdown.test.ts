@@ -79,6 +79,12 @@ test("h2/h3 headings get slug ids and feed the toc", () => {
   expect(h2.attrs).toContainEqual({ kind: "static", name: "id", value: "run-the-starter" });
 });
 
+test("duplicate and non-Latin headings get unique, non-empty slug ids", () => {
+  const toc: { level: number; text: string; slug: string }[] = [];
+  markdownToNodesSync("## Usage\n\n## Usage\n\n## 日本語", { toc });
+  expect(toc.map((e) => e.slug)).toEqual(["usage", "usage-1", "section"]);
+});
+
 test("a bullet list maps to ul > li", async () => {
   const ul = (await markdownToNodes("- one\n- two"))[0] as ElementNode;
   expect(ul.tag).toBe("ul");

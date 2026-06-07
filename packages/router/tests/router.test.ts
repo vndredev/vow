@@ -16,3 +16,8 @@ test("matchRoute matches exactly, else falls back to /404", () => {
 test("matchRoute returns null with no match and no /404", () => {
   expect(matchRoute([{ path: "/", load: stub }], "/x")).toBeNull();
 });
+
+test("matchRoute ignores a trailing slash (but keeps root)", () => {
+  expect(matchRoute(routes, "/guide/emit/")?.path).toBe("/guide/emit");
+  expect(matchRoute(routes, "/")?.path).toBe("/");
+});

@@ -118,6 +118,15 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]
   const root: UiNode[] = [];
   const stack: Frame[] = [];
   const sink = (): UiNode[] => stack[stack.length - 1]?.kids ?? root;
+  // a per-page slug counter — empty (e.g. non-Latin) headings fall back to "section", and a repeated
+  // slug gets a -1/-2 suffix, so heading ids (and the TOC/search anchors) stay unique.
+  const seen = new Map<string, number>();
+  const uniqueSlug = (text: string): string => {
+    const base = slug(text) || "section";
+    const n = seen.get(base) ?? 0;
+    seen.set(base, n + 1);
+    return n === 0 ? base : `${base}-${n}`;
+  };
   for (const t of tokens) {
     if (t.type === "inline") {
       for (const node of inlineToNodes(t.children ?? [])) sink().push(node);
@@ -162,7 +171,7 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]
         build: (k) => {
           if (toc && (level === 2 || level === 3)) {
             const text = textOf(k);
-            const s = slug(text);
+            const s = uniqueSlug(text);
             toc.push({ level, text, slug: s });
             return el(tag, k, [sattr("id", s)]);
           }

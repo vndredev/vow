@@ -12,17 +12,18 @@ export interface Route {
   readonly load: () => Promise<{ default: Component }>;
 }
 
-/** The route for a path: an exact match, else the `/404` route, else null. */
+/** The route for a path: an exact match (trailing slash ignored), else the `/404` route, else null. */
 export function matchRoute(routes: readonly Route[], path: string): Route | null {
-  return routes.find((r) => r.path === path) ?? routes.find((r) => r.path === "/404") ?? null;
+  const norm = path.length > 1 ? path.replace(/\/$/, "") : path;
+  return routes.find((r) => r.path === norm) ?? routes.find((r) => r.path === "/404") ?? null;
 }
 
 /** The built-in fallback shown when no route (and no `/404`) matches — a minimal "not found" page. */
 const NotFound: Component = {
   render: () =>
     h("div", { class: "vow-doc" }, [
-      h("h1", "404"),
-      h("p", "This page could not be found."),
+      h("h1", "Page not found"),
+      h("p", "The page at this address could not be found (404)."),
       h("p", [h("a", { href: "/" }, "Go home")]),
     ]),
 };
