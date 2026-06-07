@@ -7,7 +7,7 @@ import { renderVueSfc, type Component } from "@vow/component";
  * the browser does natively — so these carry NO ARIA, no keyboard logic, no @vow/headless core.
  * They are pure structure: a canonical `Component` whose `view` is a styled element with a `<slot>`,
  * rendered by `renderVueSfc`. Riding the same model means a future React/Solid adapter renders them
- * too. They are the vocabulary a view's `## tree` composes (that grammar lands in its own step).
+ * too. They are the vocabulary a view's `## view` composes (that grammar lands in its own step).
  *
  * Styling is a computed inline `style` STRING (not an object) so the generated SFC type-checks
  * against Vue's `StyleValue` without depending on csstype's per-property unions. Spacing maps to
@@ -221,5 +221,5 @@ export function layoutSfcs(): { readonly name: string; readonly sfc: string }[] 
   ];
 }
 
-/** The component names vow provides as layout primitives — the `## tree` vocabulary. */
+/** The component names vow provides as layout primitives — the `## view` vocabulary. */
 export const LAYOUT_PRIMITIVES: readonly string[] = ["Flex", "Grid", "Box", "Container"];

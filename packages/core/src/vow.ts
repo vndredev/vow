@@ -58,27 +58,6 @@ export const Field = z.object({
 export type Field = z.infer<typeof Field>;
 
 /**
- * A node in a view's `## tree` — a layout primitive (or `slot`) with raw string props and children.
- * The format layer stays UI-agnostic: core parses the *shape* (a named node with props + children);
- * an emitter maps it to a `UiNode` and decides what each component means. Indentation sets nesting.
- */
-export interface TreeNode {
-  readonly component: string;
-  readonly props: Readonly<Record<string, string>>;
-  readonly children: readonly TreeNode[];
-}
-
-const ComponentName = z.string().regex(/^[A-Za-z][A-Za-z0-9]*$/, "must be a component name");
-
-export const TreeNode: z.ZodType<TreeNode> = z.lazy(() =>
-  z.object({
-    component: ComponentName,
-    props: z.record(z.string(), z.string()).default({}),
-    children: z.array(TreeNode).default([]),
-  }),
-);
-
-/**
  * A node in a view's `## view` (YAML): one component, keyed by name, with its raw value. The format
  * layer stays UI-agnostic — core only knows "a named component with some value" (`{ hero: {...} }`,
  * `{ list: "task" }`, `{ flex: { children: [...] } }`); the emitter decides what each component means.
@@ -104,8 +83,6 @@ export interface Vow {
   /** Data shape for `emit entity` vows — empty for everything else. */
   readonly fields: readonly Field[];
   readonly proof: readonly Scenario[];
-  /** Optional layout tree for a view (`## tree`) — composed from layout primitives. */
-  readonly tree?: TreeNode;
   /** Optional view (`## view`, YAML) — a list of components (semantic blocks + primitive escape). */
   readonly view?: readonly ViewNode[];
   /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
@@ -123,7 +100,6 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     fulfills: Fulfillment.optional(),
     fields: z.array(Field).default([]),
     proof: z.array(Scenario).default([]),
-    tree: TreeNode.optional(),
     view: z.array(ViewNode).optional(),
     root: z.boolean().optional(),
   }),

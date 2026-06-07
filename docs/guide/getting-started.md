@@ -13,7 +13,7 @@ vp install            # install the workspace (or: pnpm install)
 vp dev apps/starter   # start the dev server
 ```
 
-Open the printed URL. You see a landing page — a hero and a three-card feature grid, then a generated task list — and you never wrote a `.vue` file. Every component is generated from vows: the landing from a [`## tree`](/guide/layout), the list from an entity.
+Open the printed URL. You see a landing page — a hero and a three-card feature grid, then a generated task list — and you never wrote a `.vue` file. Every component is generated from vows: the landing from a [`## view`](/guide/layout), the list from an entity.
 
 ## Watch the promise keep itself
 

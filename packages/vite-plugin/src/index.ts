@@ -8,7 +8,7 @@ import { emitCheckboxSfc } from "@vow/emit-primitive";
 import {
   emitBoot,
   emitDefaultView,
-  emitTreeView,
+  emitView,
   emitViewSfc,
   VOW_ENV_DTS,
   viewComponentName,
@@ -64,11 +64,11 @@ function bindSpecifier(module: string, outDir: string, srcDir: string): string {
 export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: string): string[] {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
-  let needsLayout = false; // any `emit view` with a `## tree` pulls in the layout primitives
-  // the generated view components a `## tree` may reference (e.g. `- Task`) — one per entity
-  const knownViews = allVows(vows)
+  let needsLayout = false; // any `emit view` with a `## view` pulls in the layout primitives
+  // the entity slugs a `## view`'s `list:` may reference (e.g. `list: task`)
+  const entities = allVows(vows)
     .filter((e) => e.fulfills?.kind === "emit" && e.fulfills.as === "entity")
-    .map(viewComponentName);
+    .map((e) => e.slug);
   for (const v of allVows(vows)) {
     const f = v.fulfills;
     if (!f) continue;
@@ -89,9 +89,9 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       }
     } else if (f.kind === "emit" && f.as === "view") {
       const file = join(outDir, `${v.slug}.vue`);
-      if (v.tree) {
-        // a layout view: its `## tree` IS the component (composes primitives + generated views)
-        writeFileSync(file, emitTreeView(v, knownViews), "utf8");
+      if (v.view) {
+        // a `## view`: a list of components (semantic blocks + primitives + generated views)
+        writeFileSync(file, emitView(v, entities), "utf8");
         written.push(file);
         needsLayout = true;
       } else {
@@ -118,8 +118,8 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       written.push(file);
     }
   }
-  // A `## tree` view imports `./<Primitive>.vue`; emit the layout primitives so those resolve (and
-  // are themselves type-checked by `vp check`). Written wholesale — the unused ones are harmless.
+  // A `## view` imports `./<Primitive>.vue`; emit the layout primitives so those resolve (and are
+  // themselves type-checked by `vp check`). Written wholesale — the unused ones are harmless.
   if (needsLayout) {
     for (const { name, sfc } of layoutSfcs()) {
       const file = join(outDir, `${name}.vue`);
@@ -129,7 +129,7 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
   }
   // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
   // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.
-  const rootVow = allVows(vows).find((v) => v.root === true && v.tree);
+  const rootVow = allVows(vows).find((v) => v.root === true && v.view);
   if (rootVow) {
     const boot = join(outDir, "main.ts");
     const env = join(outDir, "vow-env.d.ts");

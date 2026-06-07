@@ -34,7 +34,7 @@ export default defineConfig({
           items: [
             { text: "The component model", link: "/guide/components" },
             { text: "Primitives", link: "/guide/primitives" },
-            { text: "Layout", link: "/guide/layout" },
+            { text: "Views", link: "/guide/layout" },
           ],
         },
         {

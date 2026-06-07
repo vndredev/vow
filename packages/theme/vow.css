@@ -23,35 +23,40 @@
   --vow-container-4: 71rem;
 }
 
-/* Layout primitives are structural (inline style only). The theme dresses a landing page built from
-   a `## tree`: a hero (eyebrow / title / lead) and feature-card boxes. Styled by tag *within* the
-   container so a tree of primitives + text reads like a real page; scoped to `.vow-container` so an
-   embedded `.vow-view` keeps its own look. */
-.vow-container {
+/* `.vow-app` wraps a `## view` — a centered, stacked page. Layout primitives are structural (inline
+   style only); the theme dresses the page's text by tag *within* `.vow-app` (so the hero/features
+   read as a real page), and gives Box a card look. Scoped to `.vow-app` so an embedded `.vow-view`
+   keeps its own style. */
+.vow-app {
   font-family: system-ui, sans-serif;
   color: #1a1a1a;
+  max-width: var(--vow-container-3);
+  margin: 0 auto;
   padding: var(--vow-space-9) var(--vow-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-7);
 }
-.vow-container span {
+.vow-app span {
   color: #3b5bdb;
   font-weight: 700;
   font-size: 0.9rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.vow-container h1 {
+.vow-app h1 {
   font-size: 2.75rem;
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
   margin: 0;
 }
-.vow-container h3 {
+.vow-app h3 {
   font-size: 1.05rem;
   font-weight: 700;
   margin: 0 0 var(--vow-space-2);
 }
-.vow-container p {
+.vow-app p {
   color: #555;
   line-height: 1.6;
   margin: 0;

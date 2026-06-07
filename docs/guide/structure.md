@@ -7,7 +7,7 @@ A vow app lives in **two zones**: you work in `app/`, and vow writes everything 
 ```
 my-app/
 ├─ app/                     YOUR TRUTH — the app as vows (visible, versioned)
-│  ├─ landing.vow.md        view → a ## tree (root: true) — the entry page
+│  ├─ landing.vow.md        view → a ## view (root: true) — the entry page
 │  ├─ task.vow.md           entity → model + factory + tests + default CRUD list
 │  ├─ invoice-total.vow.md  bind   → fulfills: bind ./invoice-total.ts#computeTotal
 │  ├─ invoice-total.ts      the 10% — hand-written code, right beside its vow

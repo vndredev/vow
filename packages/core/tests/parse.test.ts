@@ -43,60 +43,11 @@ test("an invalid vow (no id) fails fast", () => {
   expect(() => parseVowMd("broken", `# No id here\n`)).toThrow();
 });
 
-test("parseVowMd reads a ## tree into a single-root TreeNode (indentation = nesting)", () => {
-  const md = [
-    "---",
-    "id: vow_t",
-    "fulfills: emit view",
-    "---",
-    "# A laid-out view",
-    "",
-    "## tree",
-    "- Container(size=3)",
-    "  - Flex(direction=column, gap=4)",
-    "    - slot",
-  ].join("\n");
-  const vow = parseVowMd("shell", md);
-  expect(vow.tree?.component).toBe("Container");
-  expect(vow.tree?.props).toEqual({ size: "3" });
-  const flex = vow.tree?.children[0];
-  expect(flex?.component).toBe("Flex");
-  expect(flex?.props).toEqual({ direction: "column", gap: "4" });
-  expect(flex?.children[0]?.component).toBe("slot");
-});
-
-test("a vow without a ## tree has no tree", () => {
-  const vow = parseVowMd("task", `---\nid: vow_x\nfulfills: emit entity\n---\n# A task\n`);
-  expect(vow.tree).toBeUndefined();
-});
-
-test("a ## tree with more than one root fails fast", () => {
-  const md = `---\nid: vow_m\nfulfills: emit view\n---\n# Two roots\n\n## tree\n- Flex\n- Grid\n`;
-  expect(() => parseVowMd("bad", md)).toThrow();
-});
-
 test("root: true in the frontmatter marks the entry page", () => {
-  const md = `---\nid: vow_r\nfulfills: emit view\nroot: true\n---\n# Home\n\n## tree\n- Container\n`;
+  const md = `---\nid: vow_r\nfulfills: emit view\nroot: true\n---\n# Home\n`;
   expect(parseVowMd("home", md).root).toBe(true);
   const plain = parseVowMd("x", `---\nid: vow_x\nfulfills: emit entity\n---\n# A plain entity\n`);
   expect(plain.root).toBeUndefined();
-});
-
-test("a quoted tree line parses as a text node", () => {
-  const md = [
-    "---",
-    "id: vow_s",
-    "fulfills: emit view",
-    "---",
-    "# A captioned box",
-    "",
-    "## tree",
-    "- Box",
-    '  - "Hello world"',
-  ].join("\n");
-  const text = parseVowMd("captioned", md).tree?.children[0];
-  expect(text?.component).toBe("text");
-  expect(text?.props).toEqual({ value: "Hello world" });
 });
 
 test("parseVowMd reads a ## view YAML block into a list of components", () => {
