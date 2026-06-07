@@ -145,3 +145,50 @@ export function germanMarkers(source: string): string[] {
   }
   return [...found];
 }
+
+/**
+ * German prose slips through the umlaut scan when it has no umlauts ("ab 10 greift der Rabatt"). This
+ * is a curated set of German function words that effectively never appear as whole words in English
+ * source — deliberately conservative (no `die`/`war`/`den`/`mit`/`von`, which collide with English or
+ * acronyms) — so a German sentence is caught by its connective tissue without false positives.
+ */
+const GERMAN_WORDS = new Set([
+  "und",
+  "oder",
+  "nicht",
+  "eine",
+  "einen",
+  "einem",
+  "einer",
+  "wird",
+  "werden",
+  "wurde",
+  "sind",
+  "sein",
+  "haben",
+  "hatte",
+  "dass",
+  "weil",
+  "wenn",
+  "aber",
+  "auch",
+  "sich",
+  "noch",
+  "schon",
+  "nur",
+  "kann",
+  "muss",
+  "soll",
+  "durch",
+  "greift",
+  "rabatt",
+]);
+
+/** Distinct German words in a source (lowercased whole-word match) — a "not English" signal. */
+export function germanWords(source: string): string[] {
+  const found = new Set<string>();
+  for (const word of source.toLowerCase().match(/[a-z]+/g) ?? []) {
+    if (GERMAN_WORDS.has(word)) found.add(word);
+  }
+  return [...found];
+}

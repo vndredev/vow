@@ -4,15 +4,15 @@ import { parseVowMd } from "../src/index.ts";
 // The exact vow.md syntax we settled on — plain Markdown, no invented DSL.
 const welcomeCard = `---
 id: vow_card
-fulfills: emit vue
+fulfills: emit view
 ---
 # Welcome to vow
 
-Rendert sein Versprechen als Komponente.
+Renders its promise as a component.
 
 ## proves
-- der intent erscheint
-- HTML im Text wird escaped
+- the intent shows
+- HTML in the text is escaped
 `;
 
 test("parseVowMd reads a vow from Markdown: frontmatter + # intent + ## proves", () => {
@@ -20,10 +20,10 @@ test("parseVowMd reads a vow from Markdown: frontmatter + # intent + ## proves",
   expect(vow.id).toBe("vow_card");
   expect(vow.slug).toBe("welcome-card"); // from the folder, not the file
   expect(vow.intent).toBe("Welcome to vow"); // the H1
-  expect(vow.fulfills).toEqual({ kind: "emit", as: "vue" });
+  expect(vow.fulfills).toEqual({ kind: "emit", as: "view" });
   expect(vow.proof).toHaveLength(2);
-  expect(vow.proof[0]?.claim).toBe("der intent erscheint");
-  expect(vow.proof[1]?.claim).toBe("HTML im Text wird escaped");
+  expect(vow.proof[0]?.claim).toBe("the intent shows");
+  expect(vow.proof[1]?.claim).toBe("HTML in the text is escaped");
 });
 
 test("`fulfills: bind <module>#<export>` parses to a bind fulfilment", () => {

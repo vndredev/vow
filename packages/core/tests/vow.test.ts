@@ -26,7 +26,7 @@ test("fulfilment is emit OR bind — and nothing else", () => {
     id: "vow_v",
     slug: "kanban",
     intent: "A kanban view",
-    fulfills: { kind: "emit", as: "vue" },
+    fulfills: { kind: "emit", as: "view" },
   });
   expect(emit.success).toBe(true);
   const bind = Vow.safeParse({

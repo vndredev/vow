@@ -32,7 +32,7 @@ const Line = z.string().trim().min(3).max(200);
  */
 export const Fulfillment = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("emit"), as: Line }),
-  z.object({ kind: z.literal("bind"), module: Line, export: Line, signature: Line.optional() }),
+  z.object({ kind: z.literal("bind"), module: Line, export: Line }),
 ]);
 export type Fulfillment = z.infer<typeof Fulfillment>;
 
