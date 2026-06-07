@@ -41,7 +41,10 @@ headings and copy:
   - "Your app is a promise — a vow."
 ```
 
-The referenced primitives are emitted alongside the view, so their imports resolve.
+A tree can also reference a **generated view** by its component name — an entity's view is `- Task`
+(PascalCase of the entity slug). It renders as `<Task />` and is imported from `./Task.vue`, so a page
+shows its data views inline, in the vow itself — no hand-wiring in `main.ts`. The referenced
+primitives and views are emitted alongside the page, so their imports resolve.
 
 ## Not primitives in the accessibility sense
 

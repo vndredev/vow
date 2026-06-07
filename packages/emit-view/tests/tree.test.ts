@@ -98,3 +98,22 @@ test("a text tag (h1/p) renders as that element wrapping its text", () => {
   expect(sfc).toContain("<h1>The framework</h1>");
   expect(sfc).toContain("<p>Your app is a promise</p>");
 });
+
+test("a tree can reference a generated view — it renders as a component and is imported", () => {
+  const page: Vow = {
+    ...shell,
+    tree: {
+      component: "Container",
+      props: {},
+      children: [{ component: "Task", props: {}, children: [] }],
+    },
+  };
+  const sfc = emitTreeView(page, ["Task"]);
+  expect(sfc).toContain('import Task from "./Task.vue";');
+  expect(sfc).toContain("<Task />");
+});
+
+test("a tree referencing a view not in knownViews throws", () => {
+  const page: Vow = { ...shell, tree: { component: "Ghost", props: {}, children: [] } };
+  expect(() => emitTreeView(page, ["Task"])).toThrow(/unknown tree component/);
+});

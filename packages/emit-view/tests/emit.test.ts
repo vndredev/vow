@@ -29,7 +29,9 @@ test("emitViewSfc renders an unstyled, hooked CRUD list over the entity", () => 
   const sfc = emitViewSfc(view, entity);
   expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
-  expect(sfc).toContain("defineProps<{ items: Task[] }>()");
+  expect(sfc).toContain(
+    "const props = withDefaults(defineProps<{ items?: Task[] }>(), { items: () => [] });",
+  );
   expect(sfc).toContain('v-for="(item, i) in rows"');
   expect(sfc).toContain("{{ item.title }}");
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');

@@ -32,3 +32,6 @@ fulfills: emit view
           - "Proven, not claimed"
         - p
           - "Every promised scenario must have a green test. The scenario-coverage gate turns an unproven claim red."
+    - h3
+      - "Your tasks"
+    - Task
