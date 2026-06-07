@@ -1,4 +1,4 @@
-import type { ElementNode, RawNode } from "@vow/component";
+import type { ComponentNode, ElementNode, RawNode } from "@vow/component";
 import { expect, test } from "vite-plus/test";
 import { markdownToNodes, markdownToNodesSync } from "../src/index.ts";
 
@@ -48,11 +48,15 @@ test("a ::: warning container becomes a callout node (class + data-kind + title)
   expect(JSON.stringify(callout.children)).toContain("Heads up");
 });
 
-test("a ::: code-group container becomes a grouped code wrapper", async () => {
+test("a ::: code-group becomes a CodeGroup component carrying the fence labels", async () => {
   const group = (
-    await markdownToNodes("::: code-group\n```bash\nnpm i\n```\n:::")
-  )[0] as ElementNode;
-  expect(group.attrs).toContainEqual({ kind: "static", name: "class", value: "vow-code-group" });
+    await markdownToNodes(
+      "::: code-group\n```bash [pnpm]\npnpm i\n```\n```bash [npm]\nnpm i\n```\n:::",
+    )
+  )[0] as ComponentNode;
+  expect(group.kind).toBe("component");
+  expect(group.name).toBe("CodeGroup");
+  expect(group.attrs).toContainEqual({ kind: "bound", name: "labels", expr: "['pnpm', 'npm']" });
 });
 
 test("a <<< snippet line includes the resolved file as a code block", () => {

@@ -28,20 +28,28 @@ const txt = (text: string): UiNode => ({ kind: "text", text });
 const raw = (html: string): UiNode => ({ kind: "raw", html });
 const href = (url: string): Attr => ({ kind: "static", name: "href", value: url });
 const sattr = (name: string, value: string): Attr => ({ kind: "static", name, value });
+const bound = (name: string, expr: string): Attr => ({ kind: "bound", name, expr });
+const comp = (name: string, attrs: Attr[], children: UiNode[]): UiNode => ({
+  kind: "component",
+  name,
+  attrs,
+  children,
+});
 
-/** A `:::` container → a callout box (with an optional title) or a grouped code block. */
-function containerNode(name: string, title: string, kids: UiNode[]): UiNode {
-  if (name === "code-group") return el("div", kids, [sattr("class", "vow-code-group")]);
+/** A `:::` callout container → a styled box with an optional title (code-group is handled inline). */
+function calloutNode(name: string, title: string, kids: UiNode[]): UiNode {
   const children = title
     ? [el("p", [txt(title)], [sattr("class", "vow-callout__title")]), ...kids]
     : kids;
   return el("div", children, [sattr("class", "vow-callout"), sattr("data-kind", name)]);
 }
 
-/** A node being assembled from its children, closed on the matching `_close` token. */
+/** A node being assembled from its children, closed on the matching `_close` token. A `tabs` marker
+    (set for `::: code-group`) collects the inner fences' `[label]`s for the CodeGroup component. */
 interface Frame {
   readonly kids: UiNode[];
   readonly build: (kids: UiNode[]) => UiNode;
+  readonly tabs?: { labels: string[] };
 }
 
 /** Inline tokens (a token's `children`) → inline UiNodes: text, strong/em/code, links. */
@@ -84,13 +92,31 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter): UiNode[] {
     if (t.type === "inline") {
       for (const node of inlineToNodes(t.children ?? [])) sink().push(node);
     } else if (t.type === "fence" || t.type === "code_block") {
+      const open = stack[stack.length - 1];
+      if (open?.tabs) {
+        const label =
+          /\[([^\]]+)\]/.exec(t.info)?.[1]?.trim() ?? t.info.trim().split(/\s+/)[0] ?? "";
+        open.tabs.labels.push(label);
+      }
       sink().push(codeNode(t.content, t.info, hl));
     } else if (t.type === "hr") {
       sink().push(el("hr", []));
     } else if (t.type.startsWith("container_") && t.type.endsWith("_open")) {
       const name = t.type.slice("container_".length, -"_open".length);
-      const title = t.info.trim().slice(name.length).trim();
-      stack.push({ kids: [], build: (k) => containerNode(name, title, k) });
+      if (name === "code-group") {
+        const tabs = { labels: [] as string[] };
+        // single-quoted array literal — the bound attr is rendered double-quoted (`:labels="…"`).
+        const expr = (): string =>
+          `[${tabs.labels.map((l) => `'${l.replace(/'/g, "\\'")}'`).join(", ")}]`;
+        stack.push({
+          kids: [],
+          tabs,
+          build: (k) => comp("CodeGroup", [bound("labels", expr())], k),
+        });
+      } else {
+        const title = t.info.trim().slice(name.length).trim();
+        stack.push({ kids: [], build: (k) => calloutNode(name, title, k) });
+      }
     } else if (t.type.startsWith("container_") && t.type.endsWith("_close")) {
       const top = stack.pop();
       if (top) sink().push(top.build(top.kids));

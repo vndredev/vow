@@ -168,6 +168,7 @@ export function generateDocs(
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
   const pages: PageMeta[] = [];
+  const used = new Set<string>(); // prose-component names referenced across the pages
   for (const file of mdFilesUnder(contentDir)) {
     const slug = docSlug(contentDir, file);
     const { data, body } = parseFrontmatter(readFileSync(file, "utf8"));
@@ -182,6 +183,7 @@ export function generateDocs(
         }
       },
     });
+    collectComponents(nodes, used);
     const out = join(outDir, `${slug}.vue`);
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);
@@ -204,7 +206,26 @@ export function generateDocs(
   const layout = join(outDir, "vow-docs-layout.vue");
   writeFileSync(layout, LAYOUT_SFC, "utf8");
   written.push(layout);
+
+  // Materialise the prose-components the pages reference (CodeGroup, …) into .generated so the prose
+  // SFCs' `./<Name>.vue` imports resolve. The adapters/components stay vow-native; emit-* unchanged.
+  for (const name of used) {
+    const sfc = PROSE_COMPONENTS[name];
+    if (sfc === undefined) continue;
+    const file = join(outDir, `${name}.vue`);
+    writeFileSync(file, sfc, "utf8");
+    written.push(file);
+  }
   return written;
+}
+
+/** Collect every `<Component>` name referenced in a UiNode tree (structural — no core type import). */
+function collectComponents(nodes: readonly unknown[], acc: Set<string>): void {
+  for (const node of nodes) {
+    const n = node as { kind?: string; name?: string; children?: unknown[] };
+    if (n.kind === "component" && n.name !== undefined) acc.add(n.name);
+    if (Array.isArray(n.children)) collectComponents(n.children, acc);
+  }
 }
 
 /** The generated layout SFC — forwards the frontmatter-derived sidebar to @vow/docs's Layout. */
@@ -221,6 +242,42 @@ const LAYOUT_SFC = [
   `</template>`,
   ``,
 ].join("\n");
+
+/** The CodeGroup component a `::: code-group` renders to — a tablist over its panels (the slot
+    children, one per fence), showing the active one. Materialised into .generated when referenced. */
+const CODE_GROUP_SFC = [
+  `<script setup lang="ts">`,
+  `import { type Component, computed, ref, useSlots } from "vue";`,
+  `defineProps<{ labels: string[] }>();`,
+  `const slots = useSlots();`,
+  `const active = ref(0);`,
+  `const panel = computed<Component>(() => () => slots.default?.()[active.value] ?? null);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-code-group">`,
+  `    <div class="vow-code-group__tabs" role="tablist">`,
+  `      <button`,
+  `        v-for="(label, i) in labels"`,
+  `        :key="i"`,
+  `        type="button"`,
+  `        role="tab"`,
+  `        :aria-selected="i === active"`,
+  `        class="vow-code-group__tab"`,
+  `        :class="{ 'is-active': i === active }"`,
+  `        @click="active = i"`,
+  `      >`,
+  `        {{ label }}`,
+  `      </button>`,
+  `    </div>`,
+  `    <component :is="panel" />`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+/** Prose-components @vow/docs materialises into .generated when a page references them. */
+const PROSE_COMPONENTS: Record<string, string> = { CodeGroup: CODE_GROUP_SFC };
 
 /** A Vite plugin: scan `content` into generated prose pages; pre-warm Shiki once; reload on `.md` edit. */
 export function vowDocs(options: VowDocsOptions): Plugin {

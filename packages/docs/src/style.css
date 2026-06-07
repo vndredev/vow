@@ -125,15 +125,39 @@
   --callout-color: var(--vow-color-danger);
 }
 
-/* A code-group — stacked code blocks (tabs are a later step). */
+/* A code-group — a tablist over its code panels (the CodeGroup component). */
 .vow-code-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--vow-space-2);
   margin: var(--vow-space-5) 0;
+  overflow: hidden;
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-code-group__tabs {
+  display: flex;
+  gap: var(--vow-space-1);
+  padding: 0 var(--vow-space-2);
+  background: var(--vow-color-surface);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-code-group__tab {
+  padding: var(--vow-space-2) var(--vow-space-3);
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.vow-code-group__tab.is-active {
+  color: var(--vow-color-text);
+  border-bottom-color: var(--vow-color-accent);
 }
 .vow-code-group .shiki {
   margin: 0;
+  border: none;
+  border-radius: 0;
 }
 
 /* Docs chrome — the nav + sidebar + layout (@vow/docs). All here, none in the components. */
