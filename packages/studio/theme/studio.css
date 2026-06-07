@@ -1,0 +1,319 @@
+/* @vow/studio — the docs chrome. Layout (nav + sidebar + content + TOC), prose typography, callouts,
+   Shiki dual-theme wiring, and dark mode (a `.dark` class on <html>). Tuned to read like the VitePress
+   default; refine against a side-by-side during migration. Tokens come from @vow/theme (vow.css). */
+
+:root {
+  --studio-nav-height: 56px;
+  --studio-sidebar-width: 252px;
+  --studio-toc-width: 232px;
+  --studio-content-max: 720px;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
+  line-height: var(--vow-leading-normal);
+}
+* {
+  box-sizing: border-box;
+}
+
+/* Top nav */
+.vow-nav {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 20;
+  height: var(--studio-nav-height);
+  background: var(--vow-color-bg);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vow-space-4);
+  height: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--vow-space-6);
+}
+.vow-nav__title {
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+  text-decoration: none;
+}
+.vow-nav__links {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-5);
+}
+.vow-nav__links a {
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-nav__links a:hover {
+  color: var(--vow-color-text);
+}
+.vow-nav__dark {
+  font: inherit;
+  font-size: var(--vow-text-base);
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Page frame: sidebar | content | toc */
+.vow-layout {
+  display: grid;
+  grid-template-columns: var(--studio-sidebar-width) minmax(0, 1fr) var(--studio-toc-width);
+  gap: var(--vow-space-7);
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: calc(var(--studio-nav-height) + var(--vow-space-6)) var(--vow-space-6) var(--vow-space-9);
+}
+
+/* Sidebar */
+.vow-sidebar {
+  position: sticky;
+  top: calc(var(--studio-nav-height) + var(--vow-space-6));
+  align-self: start;
+  max-height: calc(100vh - var(--studio-nav-height) - var(--vow-space-7));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-5);
+}
+.vow-sidebar__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  width: 100%;
+  margin: 0 0 var(--vow-space-2);
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.vow-sidebar__heading::after {
+  content: "";
+  width: 0.4em;
+  height: 0.4em;
+  margin-left: auto;
+  border-right: 2px solid var(--vow-color-muted);
+  border-bottom: 2px solid var(--vow-color-muted);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.vow-sidebar__heading[data-state="closed"]::after {
+  transform: rotate(-45deg);
+}
+.vow-sidebar__items,
+.vow-sidebar__sub {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.vow-sidebar__sub {
+  margin-left: var(--vow-space-4);
+}
+.vow-sidebar__link {
+  display: block;
+  padding: var(--vow-space-1) 0;
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+  line-height: var(--vow-leading-normal);
+}
+.vow-sidebar__link:hover {
+  color: var(--vow-color-text);
+}
+.vow-sidebar__link.is-active {
+  color: var(--vow-color-accent);
+  font-weight: var(--vow-weight-medium);
+}
+
+/* Content prose (.vow-doc) */
+.vow-doc {
+  min-width: 0;
+  max-width: var(--studio-content-max);
+}
+.vow-doc h1 {
+  font-size: var(--vow-text-3xl);
+  font-weight: var(--vow-weight-display);
+  line-height: var(--vow-leading-tight);
+  letter-spacing: var(--vow-tracking-tight);
+  margin: 0 0 var(--vow-space-5);
+}
+.vow-doc h2 {
+  font-size: var(--vow-text-2xl);
+  font-weight: var(--vow-weight-bold);
+  line-height: var(--vow-leading-tight);
+  margin: var(--vow-space-8) 0 var(--vow-space-4);
+  padding-top: var(--vow-space-5);
+  border-top: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-doc h3 {
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-semibold);
+  margin: var(--vow-space-6) 0 var(--vow-space-3);
+}
+.vow-doc p,
+.vow-doc li {
+  line-height: var(--vow-leading-relaxed);
+}
+.vow-doc p {
+  margin: var(--vow-space-4) 0;
+}
+.vow-doc a {
+  color: var(--vow-color-accent);
+  text-decoration: none;
+  font-weight: var(--vow-weight-medium);
+}
+.vow-doc a:hover {
+  text-decoration: underline;
+}
+.vow-doc ul,
+.vow-doc ol {
+  padding-left: var(--vow-space-6);
+  margin: var(--vow-space-4) 0;
+}
+.vow-doc li {
+  margin: var(--vow-space-2) 0;
+}
+.vow-doc :not(pre) > code {
+  font-family: var(--vow-font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  padding: 0.15em 0.4em;
+  border-radius: var(--vow-radius-1);
+  background: var(--vow-color-surface);
+}
+.vow-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--vow-space-5) 0;
+  font-size: var(--vow-text-sm);
+}
+.vow-doc th,
+.vow-doc td {
+  padding: var(--vow-space-2) var(--vow-space-3);
+  border: var(--vow-border) solid var(--vow-color-border);
+  text-align: left;
+}
+.vow-doc th {
+  background: var(--vow-color-surface);
+}
+
+/* Code blocks (Shiki dual-theme: switch the CSS variables on .dark) */
+.vow-doc .shiki {
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-4) var(--vow-space-5);
+  border-radius: var(--vow-radius-3);
+  overflow-x: auto;
+  font-size: var(--vow-text-sm);
+  background: var(--shiki-light-bg);
+}
+.vow-doc .shiki span {
+  color: var(--shiki-light);
+}
+.dark .vow-doc .shiki {
+  background: var(--shiki-dark-bg);
+}
+.dark .vow-doc .shiki span {
+  color: var(--shiki-dark);
+}
+
+/* On-this-page TOC */
+.vow-toc {
+  position: sticky;
+  top: calc(var(--studio-nav-height) + var(--vow-space-6));
+  align-self: start;
+  font-size: var(--vow-text-sm);
+}
+.vow-toc__title {
+  display: block;
+  margin-bottom: var(--vow-space-2);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+}
+.vow-toc__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-toc__list a {
+  display: block;
+  padding: var(--vow-space-1) var(--vow-space-3);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-toc__list a:hover {
+  color: var(--vow-color-text);
+}
+.vow-toc__item--l3 a {
+  padding-left: var(--vow-space-5);
+}
+
+/* Callouts (::: warning|tip|info|danger) */
+.vow-callout {
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-3) var(--vow-space-4);
+  border-radius: var(--vow-radius-3);
+  border: var(--vow-border) solid var(--vow-color-border);
+  background: var(--vow-color-surface);
+}
+.vow-callout__title {
+  margin: 0 0 var(--vow-space-1);
+  font-weight: var(--vow-weight-bold);
+}
+.vow-callout__body > :first-child {
+  margin-top: 0;
+}
+.vow-callout__body > :last-child {
+  margin-bottom: 0;
+}
+.vow-callout[data-kind="warning"] {
+  border-color: #e0b050;
+  background: #fbf3e0;
+}
+.vow-callout[data-kind="danger"] {
+  border-color: var(--vow-color-danger);
+}
+.vow-callout[data-kind="tip"] {
+  border-color: var(--vow-color-accent);
+}
+
+/* Responsive: drop the TOC, then the sidebar, on narrower viewports. */
+@media (max-width: 1100px) {
+  .vow-layout {
+    grid-template-columns: var(--studio-sidebar-width) minmax(0, 1fr);
+  }
+  .vow-toc {
+    display: none;
+  }
+}
+@media (max-width: 768px) {
+  .vow-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vow-sidebar {
+    display: none;
+  }
+}

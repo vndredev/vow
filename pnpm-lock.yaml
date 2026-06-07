@@ -214,6 +214,12 @@ importers:
 
   packages/studio:
     dependencies:
+      '@vow/headless':
+        specifier: workspace:*
+        version: link:../headless
+      '@vow/theme':
+        specifier: workspace:*
+        version: link:../theme
       '@vue/server-renderer':
         specifier: ^3.5.13
         version: 3.5.35(vue@3.5.35(typescript@6.0.3))

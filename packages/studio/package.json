@@ -12,6 +12,8 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@vow/headless": "workspace:*",
+    "@vow/theme": "workspace:*",
     "@vue/server-renderer": "^3.5.13",
     "markdown-it": "^14.1.0",
     "shiki": "^2.5.0",
