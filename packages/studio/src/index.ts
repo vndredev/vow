@@ -13,3 +13,5 @@ export { type TocEntry } from "./markdown/toc.ts";
 export { defineStudio, type StudioConfig, type NavLink } from "./config.ts";
 export { routes, toRoutePath, type Route } from "./routes.ts";
 export { buildSidebar, type Page, type SidebarGroup, type SidebarItem } from "./sidebar.ts";
+export { discover, type Discovered } from "./discover.ts";
+export { studioDocs, compileMarkdownModule, type StudioOptions } from "./plugin.ts";
