@@ -24,4 +24,4 @@ jobs:
       - run: vp build apps/starter
       - run: vp check
       - run: pnpm -r test
-      - run: pnpm --filter @vow/docs run docs:build
+      - run: vp build apps/docs
