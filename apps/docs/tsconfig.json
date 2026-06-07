@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["app", ".generated", "vite.config.ts", "gate.test.ts"]
+}
