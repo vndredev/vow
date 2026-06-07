@@ -7,13 +7,14 @@ test("emitBoot generates a router boot — root route + the theme, mounted on #a
   expect(boot).toContain('import "@vow/theme/vow.css";');
   expect(boot).toContain('import Landing from "./landing.vue";');
   expect(boot).toContain('{ path: "/", load: async () => ({ default: Landing }) }');
-  expect(boot).toContain('createRouter(routes).mount("#app");');
+  expect(boot).toContain('createRouter(routes, { layout }).mount("#app");');
 });
 
-test("the router boot folds in optional @vow/docs routes via import.meta.glob", () => {
+test("the router boot folds in optional @vow/docs routes + chrome via import.meta.glob", () => {
   const boot = emitBoot("home");
   expect(boot).toContain('import.meta.glob<{ routes?: Route[] }>("./vow-docs-routes.ts"');
   expect(boot).toContain("m.routes ?? []");
+  expect(boot).toContain('import.meta.glob<{ default: Component }>("./vow-docs-layout.vue"');
 });
 
 test("emitBoot can omit the theme", () => {

@@ -175,9 +175,15 @@ importers:
       '@vow/emit-view':
         specifier: workspace:*
         version: link:../emit-view
+      '@vow/headless':
+        specifier: workspace:*
+        version: link:../headless
       '@vow/markdown':
         specifier: workspace:*
         version: link:../markdown
+      vue:
+        specifier: ^3.5.13
+        version: 3.5.35(typescript@6.0.3)
     devDependencies:
       vite-plus:
         specifier: 'catalog:'

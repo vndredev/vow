@@ -17,24 +17,34 @@ export function matchRoute(routes: readonly Route[], path: string): Route | null
   return routes.find((r) => r.path === path) ?? routes.find((r) => r.path === "/404") ?? null;
 }
 
+export interface RouterOptions {
+  /** A chrome component wrapping every page — it receives a `path` prop and the page in its slot. */
+  readonly layout?: Component;
+}
+
 export interface Router {
   /** Resolve the initial route and mount the app, then take over in-app navigation. */
   mount(selector: string): Promise<void>;
 }
 
 /** Create a router over the given routes (browser-only — uses history + the DOM). */
-export function createRouter(routes: readonly Route[]): Router {
+export function createRouter(routes: readonly Route[], options: RouterOptions = {}): Router {
   const page = shallowRef<Component | null>(null);
+  const path = shallowRef("/");
 
-  const load = async (path: string): Promise<void> => {
-    const route = matchRoute(routes, path);
+  const load = async (to: string): Promise<void> => {
+    path.value = to;
+    const route = matchRoute(routes, to);
     page.value = route ? (await route.load()).default : null;
   };
 
   return {
     async mount(selector) {
       await load(window.location.pathname);
-      createApp({ render: () => (page.value ? h(page.value) : null) }).mount(selector);
+      const outlet = () => (page.value ? h(page.value) : null);
+      const render = (): ReturnType<typeof h> | null =>
+        options.layout ? h(options.layout, { path: path.value }, { default: outlet }) : outlet();
+      createApp({ render }).mount(selector);
 
       document.addEventListener("click", (event) => {
         const anchor = (event.target as HTMLElement | null)?.closest?.("a");

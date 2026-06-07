@@ -408,22 +408,25 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
   const name = pascalCase(rootSlug);
   const lines = [
     `// Generated boot for the root vow "${rootSlug}". The vow is the source — do not edit.`,
+    `import type { Component } from "vue";`,
     `import { createRouter, type Route } from "@vow/router";`,
     `import ${name} from "./${rootSlug}.vue";`,
   ];
   if (theme) lines.push(`import "${theme}";`);
   lines.push(
     ``,
-    `// Optional docs routes, written by @vow/docs — an empty map when there are none.`,
+    `// Optional docs routes + chrome, written by @vow/docs — empty maps when there are none.`,
     `const docs = import.meta.glob<{ routes?: Route[] }>("./vow-docs-routes.ts", { eager: true });`,
     `const docRoutes = Object.values(docs).flatMap((m) => m.routes ?? []);`,
+    `const layouts = import.meta.glob<{ default: Component }>("./vow-docs-layout.vue", { eager: true });`,
+    `const layout = Object.values(layouts)[0]?.default;`,
     ``,
     `const routes: Route[] = [`,
     `  { path: "/", load: async () => ({ default: ${name} }) },`,
     `  ...docRoutes,`,
     `];`,
     ``,
-    `createRouter(routes).mount("#app");`,
+    `createRouter(routes, { layout }).mount("#app");`,
     ``,
   );
   return lines.join("\n");

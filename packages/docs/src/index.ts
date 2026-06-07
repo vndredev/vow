@@ -157,8 +157,28 @@ export function generateDocs(
   const manifest = join(outDir, "vow-docs-routes.ts");
   writeFileSync(manifest, manifestModule(pages, buildSidebar(pages, opts.groups)), "utf8");
   written.push(manifest);
+
+  // The generated chrome: wires @vow/docs's Layout to the sidebar data. The boot picks it up via
+  // import.meta.glob and passes it to the router as the layout around every page.
+  const layout = join(outDir, "vow-docs-layout.vue");
+  writeFileSync(layout, LAYOUT_SFC, "utf8");
+  written.push(layout);
   return written;
 }
+
+/** The generated layout SFC — forwards the frontmatter-derived sidebar to @vow/docs's Layout. */
+const LAYOUT_SFC = [
+  `<script setup lang="ts">`,
+  `import Layout from "@vow/docs/Layout.vue";`,
+  `import { sidebar } from "./vow-docs-routes.ts";`,
+  `defineProps<{ path: string }>();`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <Layout :groups="sidebar" :path="path"><slot /></Layout>`,
+  `</template>`,
+  ``,
+].join("\n");
 
 /** A Vite plugin: scan `content` into generated prose pages; pre-warm Shiki once; reload on `.md` edit. */
 export function vowDocs(options: VowDocsOptions): Plugin {
