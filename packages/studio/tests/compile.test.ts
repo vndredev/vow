@@ -31,3 +31,31 @@ test("an unknown fence language falls back to plain text (no throw)", async () =
   expect(code).toContain("shiki");
   expect(code).toContain("plain content");
 });
+
+test("compiles hoisted script + callout + snippet + a TOC together", async () => {
+  const md = [
+    "<script setup>",
+    "import { ref } from 'vue';",
+    "</script>",
+    "",
+    "## Intro",
+    "",
+    "::: warning Note",
+    "be careful",
+    ":::",
+    "",
+    "<<< ./demo.ts{ts}",
+    "",
+    "### Details",
+    "",
+  ].join("\n");
+
+  const { code, toc } = await compile(md, { readSnippet: () => "export const x = 1;" });
+  expect(code.startsWith("<script setup>")).toBe(true); // hoisted to the SFC top
+  expect(code).toContain('<Callout kind="warning" title="Note">'); // ::: → component
+  expect(code).toContain("export"); // snippet inlined + Shiki-highlighted
+  expect(code).toContain('id="intro"'); // heading got a slug id
+  expect(toc.map((entry) => entry.slug)).toEqual(["intro", "details"]);
+  expect(toc[0]?.level).toBe(2);
+  expect(toc[1]?.level).toBe(3);
+});
