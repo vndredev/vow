@@ -614,3 +614,26 @@ body {
   color: var(--vow-color-muted);
   text-align: center;
 }
+
+/* A markdown task list (- [x] / - [ ]) renders vow's Checkbox primitive per item — dogfooded in prose. */
+.vow-doc ul:has(> .vow-task) {
+  padding-left: 0;
+}
+.vow-task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--vow-space-2);
+  list-style: none;
+}
+.vow-task > .vow-checkbox {
+  flex: none;
+  margin-top: 0.15em;
+}
+/* the items are read-only status, not inputs — keep the disabled box crisp (not the dimmed look) */
+.vow-task > .vow-checkbox[data-disabled] {
+  opacity: 1;
+  cursor: default;
+}
+.vow-task p {
+  margin: 0;
+}

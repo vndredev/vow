@@ -85,6 +85,19 @@ test("duplicate and non-Latin headings get unique, non-empty slug ids", () => {
   expect(toc.map((e) => e.slug)).toEqual(["usage", "usage-1", "section"]);
 });
 
+test("a task-list item renders the Checkbox primitive (checked/unchecked, disabled)", () => {
+  const nodes = markdownToNodesSync("- [x] done\n- [ ] todo");
+  const ul = nodes[0] as ElementNode;
+  const li0 = ul.children[0] as ElementNode;
+  expect(li0.attrs).toContainEqual({ kind: "static", name: "class", value: "vow-task" });
+  const box0 = li0.children[0] as ComponentNode;
+  expect(box0.name).toBe("Checkbox");
+  expect(box0.attrs).toContainEqual({ kind: "bound", name: "modelValue", expr: "true" });
+  expect(box0.attrs).toContainEqual({ kind: "bound", name: "disabled", expr: "true" });
+  const box1 = (ul.children[1] as ElementNode).children[0] as ComponentNode;
+  expect(box1.attrs).toContainEqual({ kind: "bound", name: "modelValue", expr: "false" });
+});
+
 test("a bullet list maps to ul > li", async () => {
   const ul = (await markdownToNodes("- one\n- two"))[0] as ElementNode;
   expect(ul.tag).toBe("ul");

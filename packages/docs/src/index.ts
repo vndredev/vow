@@ -310,6 +310,7 @@ export function generateDocs(
   };
   for (const name of used) {
     if (PROSE_COMPONENTS[name] !== undefined) writeComp(name, PROSE_COMPONENTS[name]);
+    if (PRIMITIVES[name] !== undefined) writeComp(name, PRIMITIVES[name]()); // a primitive used in prose
     const demo = DEMOS[name];
     if (demo !== undefined) {
       writeComp(demo.adapter, demo.emit()); // the generated primitive adapter
@@ -319,7 +320,8 @@ export function generateDocs(
   // A referenced component with nothing to materialise would emit a prose SFC that imports a missing
   // file → a hard build failure. Fail loud here, naming the likely cause (an unknown `::: demo <x>`).
   const unknown = [...used].filter(
-    (n) => PROSE_COMPONENTS[n] === undefined && DEMOS[n] === undefined,
+    (n) =>
+      PROSE_COMPONENTS[n] === undefined && DEMOS[n] === undefined && PRIMITIVES[n] === undefined,
   );
   if (unknown.length > 0) {
     const demos = Object.keys(DEMOS)
@@ -492,6 +494,16 @@ const DEMOS: Record<string, Demo> = {
   VowDemoTabs: { sfc: DEMO_TABS, adapter: "Tabs", emit: emitTabsSfc },
   VowDemoDialog: { sfc: DEMO_DIALOG, adapter: "Dialog", emit: emitDialogSfc },
   VowDemoSelect: { sfc: DEMO_SELECT, adapter: "Select", emit: emitSelectSfc },
+};
+
+/** Primitive adapters a page may reference directly (composed from @vow/emit-primitive) — e.g. a
+ *  markdown task list (`- [x]`) renders <Checkbox>, and prose can use any primitive by name. */
+const PRIMITIVES: Record<string, () => string> = {
+  Checkbox: emitCheckboxSfc,
+  Collapsible: emitCollapsibleSfc,
+  Tabs: emitTabsSfc,
+  Dialog: emitDialogSfc,
+  Select: emitSelectSfc,
 };
 
 /** A Vite plugin: scan `content` into generated prose pages; pre-warm Shiki once; reload on `.md` edit. */

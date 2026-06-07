@@ -65,6 +65,31 @@ function textOf(nodes: readonly UiNode[]): string {
   return out;
 }
 
+/** A markdown task-list item (`[x] …` / `[ ] …`)? If so, return its checked state and the content with
+    the `[ ]`/`[x]` marker stripped from the first text node — for rendering vow's Checkbox primitive. */
+function asTaskItem(kids: readonly UiNode[]): { checked: boolean; kids: UiNode[] } | null {
+  const first = kids[0];
+  if (!first) return null;
+  let text: string;
+  let rebuild: (stripped: string) => UiNode[];
+  if (first.kind === "text") {
+    text = first.text;
+    rebuild = (s) => [txt(s), ...kids.slice(1)];
+  } else if (
+    (first.kind === "element" || first.kind === "component") &&
+    first.children[0]?.kind === "text"
+  ) {
+    const inner = first.children;
+    text = (inner[0] as { text: string }).text;
+    rebuild = (s) => [{ ...first, children: [txt(s), ...inner.slice(1)] }, ...kids.slice(1)];
+  } else {
+    return null;
+  }
+  const m = /^\[([ xX])\]\s+/.exec(text);
+  if (!m) return null;
+  return { checked: m[1]?.toLowerCase() === "x", kids: rebuild(text.slice(m[0].length)) };
+}
+
 /** A `:::` callout container → a styled box with an optional title (code-group is handled inline). */
 function calloutNode(name: string, title: string, kids: UiNode[]): UiNode {
   const children = title
@@ -128,6 +153,9 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]
     return n === 0 ? base : `${base}-${n}`;
   };
   for (const t of tokens) {
+    // tight-list items wrap their content in a hidden <p> — drop it so the inline content sits directly
+    // in the <li> (and task-list detection sees the leading text)
+    if ((t.type === "paragraph_open" || t.type === "paragraph_close") && t.hidden) continue;
     if (t.type === "inline") {
       for (const node of inlineToNodes(t.children ?? [])) sink().push(node);
     } else if (t.type === "fence" || t.type === "code_block") {
@@ -176,6 +204,25 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]
             return el(tag, k, [sattr("id", s)]);
           }
           return el(tag, k);
+        },
+      });
+    } else if (t.type === "list_item_open") {
+      // a `[x]`/`[ ]` item renders vow's Checkbox primitive (disabled) + the rest as the item content
+      stack.push({
+        kids: [],
+        build: (k) => {
+          const task = asTaskItem(k);
+          if (!task) return el("li", k);
+          const box = comp(
+            "Checkbox",
+            [
+              bound("modelValue", task.checked ? "true" : "false"),
+              bound("disabled", "true"),
+              sattr("label", ""),
+            ],
+            [],
+          );
+          return el("li", [box, ...task.kids], [sattr("class", "vow-task")]);
         },
       });
     } else if (t.type.endsWith("_open")) {
