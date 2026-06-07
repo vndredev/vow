@@ -26,11 +26,12 @@ h2/h3 headings that feed this page's TOC.
 ## The docs feature: `@vow/docs`
 
 `@vow/docs` is a reusable Vite plugin, `vowDocs()`, that any vow app can add. It scans a folder of
-plain `.md` (this repo keeps it in `/docs`), and for each file generates a prose `.vue` page via
+plain `.md` (this repo keeps it in `/docs/guide`), and for each file generates a prose `.vue` page via
 `@vow/markdown` → `emitProse`. It also derives the **sidebar** from each page's `group`/`order`
-frontmatter, generates the **chrome** (nav + sidebar + TOC layout), and materialises the components the
-pages reference — `CodeGroup`, the `::: demo` wrappers, and the primitive adapters those demos import
-(by calling `@vow/emit-primitive` — composition, the core stays untouched).
+frontmatter, builds a **search index** (page titles + headings), generates the **chrome** (nav +
+sidebar + TOC layout), and materialises the components the pages reference — `CodeGroup`, the
+`::: demo` wrappers, a `<Checkbox>` for every markdown task list (`- [x]`), and the primitive adapters
+those use (by calling `@vow/emit-primitive` — composition, the core stays untouched).
 
 ## Routing: `@vow/router`
 
@@ -44,8 +45,10 @@ vow distinguishes two layers:
 
 - **Primitives** (atoms) — `@vow/headless` + `@vow/emit-primitive`: single accessible widgets
   (`checkbox`, `collapsible`, `tabs`, `dialog`, `select`). Only what HTML can't do natively.
-- **Composed components** (molecules) — built _from_ primitives + data. The docs **sidebar** is the
-  first one: each group is a `collapsible`; a `::: code-group` is a tab switcher over its code panels.
+- **Composed components** (molecules) — built _from_ primitives + data. The docs **sidebar** is one
+  (each group is a `collapsible`); the **⌘K search** and the **mobile nav drawer** are both built on
+  the `dialog` primitive; a `::: code-group` is a tab switcher over its code panels. Chrome icons come
+  from **`@vow/icons`** (a swappable Lucide adapter).
 
 ## Styling & tokens
 

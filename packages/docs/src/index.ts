@@ -28,10 +28,12 @@ export interface NavLink {
   readonly link: string;
 }
 
-/** The docs chrome config — title + top-nav links, surfaced in the generated manifest. */
+/** The docs chrome config — title + top-nav links + the page base, surfaced in the generated manifest. */
 export interface DocsConfig {
   readonly title: string;
   readonly nav: readonly NavLink[];
+  /** The URL prefix doc pages live under (e.g. "/guide") — the layout uses it to tell docs from home. */
+  readonly base: string;
 }
 
 export interface VowDocsOptions {
@@ -281,7 +283,11 @@ export function generateDocs(
       title,
     });
   }
-  const config: DocsConfig = { title: opts.title ?? "Docs", nav: opts.nav ?? [] };
+  const config: DocsConfig = {
+    title: opts.title ?? "Docs",
+    nav: opts.nav ?? [],
+    base: opts.base ?? "",
+  };
   const manifest = join(outDir, "vow-docs.routes.ts");
   writeFileSync(
     manifest,

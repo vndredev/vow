@@ -17,7 +17,8 @@ const props = defineProps<{
   search: SearchItem[];
   path: string;
 }>();
-const isDocPage = computed(() => props.path.startsWith("/guide"));
+// a doc page is any non-home route under the configured base (the home is full-width, nav only)
+const isDocPage = computed(() => props.path !== "/" && props.path.startsWith(props.config.base));
 const toc = computed(() => props.tocByPath[props.path] ?? []);
 const mobileOpen = ref(false);
 const searchOpen = ref(false);
