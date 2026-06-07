@@ -7,5 +7,12 @@ import { defineConfig } from "vite-plus";
 // ./.generated/. vowDocs() scans the plain .md content in /docs into generated prose pages — the
 // content stays as markdown, rendered through the core (@vow/markdown), dogfooded. No hand-written src/.
 export default defineConfig({
-  plugins: [vue(), vow(), vowDocs({ content: "../../docs/guide" })],
+  plugins: [
+    vue(),
+    vow(),
+    vowDocs({
+      content: "../../docs/guide",
+      groups: ["Introduction", "Fulfilment", "UI", "Project", "Docs"],
+    }),
+  ],
 });

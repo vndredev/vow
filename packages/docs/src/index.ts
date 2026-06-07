@@ -18,6 +18,35 @@ export interface VowDocsOptions {
   readonly content: string;
   /** Where to write generated `.vue` (default ".generated", matching the vow app). */
   readonly outDir?: string;
+  /** Section order for the sidebar (the page `group` frontmatter). Unlisted groups follow, A→Z. */
+  readonly groups?: readonly string[];
+}
+
+/** A page in the sidebar — its title and clean URL. */
+export interface SidebarItem {
+  readonly title: string;
+  readonly path: string;
+}
+
+/** A sidebar section — a `group` and its ordered pages. */
+export interface SidebarGroup {
+  readonly title: string;
+  readonly items: readonly SidebarItem[];
+}
+
+/** Options threaded into generation. */
+export interface GenerateDocsOptions {
+  readonly highlighter?: Highlighter;
+  readonly groups?: readonly string[];
+}
+
+/** One scanned page's metadata, before it becomes a route + a sidebar entry. */
+interface PageMeta {
+  readonly path: string;
+  readonly file: string;
+  readonly group?: string;
+  readonly order: number;
+  readonly title: string;
 }
 
 /** Recursively collect every `.md` file under a directory. */
@@ -31,8 +60,20 @@ function mdFilesUnder(dir: string): string[] {
   return out;
 }
 
-/** Strip a leading YAML frontmatter block — the prose body is what renders. */
-const stripFrontmatter = (src: string): string => src.replace(/^---\n[\s\S]*?\n---\n?/, "");
+/** Split a leading YAML frontmatter block (flat `key: value` lines) from the markdown body. */
+function parseFrontmatter(src: string): { data: Record<string, string>; body: string } {
+  const m = /^---\n([\s\S]*?)\n---\n?/.exec(src);
+  if (!m) return { data: {}, body: src };
+  const data: Record<string, string> = {};
+  for (const line of (m[1] ?? "").split("\n")) {
+    const kv = /^(\w+):\s*(.+)$/.exec(line.trim());
+    if (kv?.[1] !== undefined && kv[2] !== undefined) data[kv[1]] = kv[2].trim();
+  }
+  return { data, body: src.slice(m[0].length) };
+}
+
+/** The first `# heading` of a markdown body — the page title fallback. */
+const firstH1 = (body: string): string | undefined => /^#\s+(.+)$/m.exec(body)?.[1]?.trim();
 
 /** A content file's path under the root, `.md` stripped, forward-slashed (e.g. "guide/emit"). */
 const relNoExt = (contentDir: string, file: string): string =>
@@ -46,41 +87,75 @@ export const docSlug = (contentDir: string, file: string): string =>
 export const routePath = (rel: string): string =>
   `/${rel.replace(/(^|\/)index$/, "$1").replace(/\/$/, "")}`;
 
-/** The generated routes manifest — `@vow/docs`'s routes, folded into the boot via import.meta.glob. */
-function routesManifest(
-  routes: readonly { readonly path: string; readonly file: string }[],
-): string {
+/** Group the pages into ordered sidebar sections — `groups` first (in order), then any extras A→Z. */
+export function buildSidebar(
+  pages: readonly PageMeta[],
+  groups: readonly string[] = [],
+): SidebarGroup[] {
+  const byGroup = new Map<string, PageMeta[]>();
+  for (const p of pages) {
+    if (p.group === undefined) continue; // ungrouped (e.g. the home page) is not in the sidebar
+    byGroup.set(p.group, [...(byGroup.get(p.group) ?? []), p]);
+  }
+  const order = [...groups, ...[...byGroup.keys()].filter((g) => !groups.includes(g)).sort()];
+  return order
+    .filter((g) => byGroup.has(g))
+    .map((g) => ({
+      title: g,
+      items: [...(byGroup.get(g) ?? [])]
+        .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
+        .map((p) => ({ title: p.title, path: p.path })),
+    }));
+}
+
+/** The generated manifest — `@vow/docs`'s routes (for the boot) + sidebar (for the chrome). */
+function manifestModule(pages: readonly PageMeta[], sidebar: readonly SidebarGroup[]): string {
   return [
-    `// Generated docs routes (from @vow/docs). The markdown is the source — do not edit.`,
+    `// Generated docs manifest (from @vow/docs). The markdown is the source — do not edit.`,
     `import type { Route } from "@vow/router";`,
+    `import type { SidebarGroup } from "@vow/docs";`,
     ``,
     `export const routes: Route[] = [`,
-    ...routes.map(
-      (r) => `  { path: ${JSON.stringify(r.path)}, load: () => import("./${r.file}") },`,
+    ...pages.map(
+      (p) => `  { path: ${JSON.stringify(p.path)}, load: () => import("./${p.file}") },`,
     ),
     `];`,
+    ``,
+    `export const sidebar: SidebarGroup[] = ${JSON.stringify(sidebar, null, 2)};`,
     ``,
   ].join("\n");
 }
 
 /**
- * Scan a content folder → a generated prose `.vue` per `.md` plus a routes manifest. Returns the
- * written paths. With a highlighter, fenced code is Shiki-highlighted; without (e.g. tests), plain.
+ * Scan a content folder → a generated prose `.vue` per `.md` plus a manifest (routes + sidebar). The
+ * sidebar is built from each page's `group`/`order`/`title` frontmatter. Returns the written paths.
  */
-export function generateDocs(contentDir: string, outDir: string, hl?: Highlighter): string[] {
+export function generateDocs(
+  contentDir: string,
+  outDir: string,
+  opts: GenerateDocsOptions = {},
+): string[] {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
-  const routes: { path: string; file: string }[] = [];
+  const pages: PageMeta[] = [];
   for (const file of mdFilesUnder(contentDir)) {
     const slug = docSlug(contentDir, file);
-    const nodes = markdownToNodesSync(stripFrontmatter(readFileSync(file, "utf8")), hl);
+    const { data, body } = parseFrontmatter(readFileSync(file, "utf8"));
+    const nodes = markdownToNodesSync(body, opts.highlighter);
     const out = join(outDir, `${slug}.vue`);
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);
-    routes.push({ path: routePath(relNoExt(contentDir, file)), file: `${slug}.vue` });
+    const path = routePath(relNoExt(contentDir, file));
+    pages.push({
+      path,
+      file: `${slug}.vue`,
+      group: data["group"],
+      order: Number(data["order"] ?? 0),
+      title: data["title"] ?? firstH1(body) ?? path,
+    });
   }
   const manifest = join(outDir, "vow-docs-routes.ts");
-  writeFileSync(manifest, routesManifest(routes), "utf8");
+  writeFileSync(manifest, manifestModule(pages, buildSidebar(pages, opts.groups)), "utf8");
   written.push(manifest);
   return written;
 }
@@ -92,7 +167,7 @@ export function vowDocs(options: VowDocsOptions): Plugin {
   let genDir = outOpt;
   let highlighter: Highlighter | undefined;
   const regenerate = (): void => {
-    generateDocs(contentDir, genDir, highlighter);
+    generateDocs(contentDir, genDir, { highlighter, groups: options.groups });
   };
   return {
     name: "vow:docs",

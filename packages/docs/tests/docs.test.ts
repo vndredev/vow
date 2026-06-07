@@ -2,7 +2,21 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vite-plus/test";
-import { docSlug, generateDocs, routePath } from "../src/index.ts";
+import { buildSidebar, docSlug, generateDocs, routePath } from "../src/index.ts";
+
+test("buildSidebar groups pages by `group`, ordered by the groups list then by `order`", () => {
+  const sidebar = buildSidebar(
+    [
+      { path: "/b", file: "b.vue", group: "UI", order: 1, title: "B" },
+      { path: "/a", file: "a.vue", group: "Intro", order: 0, title: "A" },
+      { path: "/c", file: "c.vue", group: "UI", order: 0, title: "C" },
+      { path: "/home", file: "home.vue", order: 0, title: "Home" }, // ungrouped → excluded
+    ],
+    ["Intro", "UI"],
+  );
+  expect(sidebar.map((g) => g.title)).toEqual(["Intro", "UI"]);
+  expect(sidebar[1]?.items.map((i) => i.title)).toEqual(["C", "B"]); // order 0 before 1
+});
 
 test("docSlug derives a unique, path-based doc- slug", () => {
   expect(docSlug("/c", "/c/guide/emit.md")).toBe("doc-guide-emit");
@@ -34,4 +48,6 @@ test("generateDocs renders each .md into a prose .vue + a routes manifest", () =
 
   const manifest = readFileSync(join(out, "vow-docs-routes.ts"), "utf8");
   expect(manifest).toContain('{ path: "/intro", load: () => import("./doc-intro.vue") }');
+  expect(manifest).toContain("export const sidebar: SidebarGroup[]");
+  expect(manifest).toContain('"title": "Intro"'); // group from frontmatter, in the sidebar
 });
