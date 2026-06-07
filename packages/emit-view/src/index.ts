@@ -131,6 +131,20 @@ export function emitEntityList(entity: Vow): string {
         children: [],
       };
     }
+    if (f.type === "reference") {
+      // the referent's id (a dropdown of the target's items needs the cross-entity data layer — later)
+      return {
+        kind: "element",
+        tag: "input",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-view__input" },
+          { kind: "model", expr: `draft.${f.name}` },
+          { kind: "static", name: "placeholder", value: `${f.name} (${f.ref ?? "ref"} id)` },
+          { kind: "static", name: "aria-label", value: f.name },
+        ],
+        children: [],
+      };
+    }
     return {
       kind: "element",
       tag: "input",

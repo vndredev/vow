@@ -64,6 +64,18 @@ test("a date field renders as a native date input in the create form", () => {
   expect(sfc).toContain('<input class="vow-view__input" type="date" v-model="draft.starts"');
 });
 
+test("a reference field renders as an id input hinting its target", () => {
+  const issue: VowNode = {
+    ...entity,
+    id: "vow_issue",
+    slug: "issue",
+    fields: [{ name: "assignee", type: "reference", required: false, ref: "user" }],
+  };
+  const sfc = emitEntityList(issue);
+  expect(sfc).toContain('v-model="draft.assignee"');
+  expect(sfc).toContain('placeholder="assignee (user id)"');
+});
+
 test("emitEntityList fails fast when the target is not an emit entity", () => {
   const view: VowNode = {
     id: "vow_page",
