@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { collapsible } from "@vow/headless";
+import Icon from "@vow/icons/Icon.vue";
 import { computed, ref } from "vue";
 import type { SidebarGroup } from "./index.ts";
 import SidebarItem from "./SidebarItem.vue";
@@ -16,7 +17,10 @@ const api = computed(() =>
 
 <template>
   <div class="vow-sidebar__group">
-    <button v-bind="api.triggerProps" class="vow-sidebar__heading">{{ group.title }}</button>
+    <button v-bind="api.triggerProps" class="vow-sidebar__heading">
+      <span>{{ group.title }}</span>
+      <Icon name="chevron-down" class="vow-sidebar__caret" />
+    </button>
     <ul v-bind="api.contentProps" v-show="open" class="vow-sidebar__items">
       <SidebarItem v-for="item in group.items" :key="item.path" :item="item" :path="path" />
     </ul>

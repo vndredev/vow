@@ -1,0 +1,20 @@
+{
+  "name": "@vow/icons",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A semantic icon set behind swappable library adapters (Lucide today; Heroicons / Phosphor next).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./Icon.vue": "./src/Icon.vue"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}

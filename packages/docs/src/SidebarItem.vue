@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { collapsible } from "@vow/headless";
+import Icon from "@vow/icons/Icon.vue";
 import { computed, ref } from "vue";
 import type { SidebarItem } from "./index.ts";
 
@@ -25,7 +26,9 @@ const api = computed(() =>
         :aria-current="item.path === path ? 'page' : undefined"
         >{{ item.title }}</a
       >
-      <button v-bind="api.triggerProps" class="vow-sidebar__toggle" aria-label="Toggle section" />
+      <button v-bind="api.triggerProps" class="vow-sidebar__toggle" aria-label="Toggle section">
+        <Icon name="chevron-down" class="vow-sidebar__caret" />
+      </button>
     </div>
     <a
       v-else

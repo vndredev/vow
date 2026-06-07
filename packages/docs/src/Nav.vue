@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from "@vow/icons/Icon.vue";
 import { onMounted, ref } from "vue";
 import type { DocsConfig } from "./index.ts";
 
@@ -31,7 +32,7 @@ onMounted(() => {
         aria-label="Open menu"
         @click="emit('toggleSidebar')"
       >
-        ☰
+        <Icon name="menu" />
       </button>
       <a href="/" class="vow-nav__title">{{ config.title }}</a>
       <nav class="vow-nav__links" aria-label="Primary">
@@ -41,6 +42,7 @@ onMounted(() => {
           aria-label="Search"
           @click="emit('openSearch')"
         >
+          <Icon name="search" />
           <span>Search</span>
           <kbd class="vow-nav__kbd">⌘K</kbd>
         </button>
@@ -52,7 +54,7 @@ onMounted(() => {
           aria-label="Toggle dark mode"
           @click="apply(!dark)"
         >
-          {{ dark ? "☀" : "☾" }}
+          <Icon :name="dark ? 'sun' : 'moon'" />
         </button>
       </nav>
     </div>

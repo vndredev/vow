@@ -277,18 +277,19 @@ body {
   border: none;
   cursor: pointer;
 }
-.vow-sidebar__heading::after {
-  content: "";
-  width: 0.4em;
-  height: 0.4em;
-  margin-left: auto;
-  border-right: 2px solid var(--vow-color-muted);
-  border-bottom: 2px solid var(--vow-color-muted);
-  transform: rotate(45deg);
+/* the collapse caret (a chevron Icon) — shared by the section heading and the nested-entry toggle */
+.vow-sidebar__caret {
+  flex: none;
+  font-size: 1.1em;
+  color: var(--vow-color-muted);
   transition: transform 0.15s ease;
 }
-.vow-sidebar__heading[data-state="closed"]::after {
-  transform: rotate(-45deg);
+.vow-sidebar__heading .vow-sidebar__caret {
+  margin-left: auto;
+}
+.vow-sidebar__heading[data-state="closed"] .vow-sidebar__caret,
+.vow-sidebar__toggle[data-state="closed"] .vow-sidebar__caret {
+  transform: rotate(-90deg);
 }
 .vow-sidebar__items {
   display: flex;
@@ -312,7 +313,9 @@ body {
   flex: 1;
 }
 .vow-sidebar__toggle {
-  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
   width: 1.6em;
   height: 1.6em;
@@ -320,22 +323,6 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-}
-.vow-sidebar__toggle::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0.35em;
-  height: 0.35em;
-  margin: -0.28em 0 0 -0.22em;
-  border-right: 2px solid var(--vow-color-muted);
-  border-bottom: 2px solid var(--vow-color-muted);
-  transform: rotate(45deg);
-  transition: transform 0.15s ease;
-}
-.vow-sidebar__toggle[data-state="closed"]::after {
-  transform: rotate(-45deg);
 }
 .vow-sidebar__link {
   display: block;
@@ -356,12 +343,17 @@ body {
 }
 
 /* The dark-mode toggle button in the nav. */
+.vow-icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
 .vow-nav__dark {
   display: inline-flex;
   align-items: center;
   padding: 0;
   font: inherit;
-  font-size: var(--vow-text-base);
+  font-size: var(--vow-text-xl);
   line-height: 1;
   color: var(--vow-color-muted);
   background: none;

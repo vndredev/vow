@@ -159,6 +159,9 @@ importers:
       '@vow/headless':
         specifier: workspace:*
         version: link:../headless
+      '@vow/icons':
+        specifier: workspace:*
+        version: link:../icons
       '@vow/markdown':
         specifier: workspace:*
         version: link:../markdown
@@ -243,6 +246,16 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 29.1.1
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
+
+  packages/icons:
+    dependencies:
+      vue:
+        specifier: ^3.5.13
+        version: 3.5.35(typescript@6.0.3)
+    devDependencies:
       vite-plus:
         specifier: 'catalog:'
         version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
