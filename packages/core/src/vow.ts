@@ -73,10 +73,6 @@ export interface Vow {
   readonly id: string;
   readonly slug: string;
   readonly intent: string;
-  /** Optional lens (epic | feature | …) — a view over the tree, not a separate type. */
-  readonly kind?: string;
-  /** For `emit view`: the slug of the entity this view renders. */
-  readonly of?: string;
   readonly children: readonly Vow[];
   /** Absent = pure composition (a vow that only groups children). */
   readonly fulfills?: Fulfillment;
@@ -94,8 +90,6 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     id: Id,
     slug: Slug,
     intent: Line,
-    kind: z.string().optional(),
-    of: Slug.optional(),
     children: z.array(Vow).default([]),
     fulfills: Fulfillment.optional(),
     fields: z.array(Field).default([]),

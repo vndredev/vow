@@ -7,9 +7,9 @@ import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { emitCheckboxSfc } from "@vow/emit-primitive";
 import {
   emitBoot,
-  emitDefaultView,
+  emitEntityList,
   emitView,
-  emitViewSfc,
+  listedEntities,
   VOW_ENV_DTS,
   viewComponentName,
 } from "@vow/emit-view";
@@ -55,21 +55,27 @@ function bindSpecifier(module: string, outDir: string, srcDir: string): string {
 
 /**
  * Write the real files per fulfilled vow into outDir, by target:
- *   `emit entity` → `<slug>.ts` + `<slug>.test.ts` + `<Name>.vue` (model, derived proof, default list)
- *   `emit view`   → `<slug>.vue` (an extra typed list over the `of:` entity)
+ *   `emit entity` → `<slug>.ts` + `<slug>.test.ts` (a pure model: type + factory + derived proof)
+ *   `emit view`   → `<slug>.vue` from its `## view`; its `list:` references pull in entity lists
  *   `bind`        → `<slug>.bind.ts` (re-export anchor; tsgo verifies the bound export exists)
- * `srcDir` is where the vows + hand-written bind code live (to resolve relative bind modules).
- * Returns the written paths.
+ * An entity's list view (`<Name>.vue`) is emitted only when a `## view` references it via `list:` —
+ * the entity is never auto-rendered. `srcDir` is where the vows + hand-written bind code live (to
+ * resolve relative bind modules). Returns the written paths.
  */
 export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: string): string[] {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
-  let needsLayout = false; // any `emit view` with a `## view` pulls in the layout primitives
-  // the entity slugs a `## view`'s `list:` may reference (e.g. `list: task`)
-  const entities = allVows(vows)
-    .filter((e) => e.fulfills?.kind === "emit" && e.fulfills.as === "entity")
-    .map((e) => e.slug);
-  for (const v of allVows(vows)) {
+  const all = allVows(vows);
+  const entityBySlug = new Map(
+    all
+      .filter((e) => e.fulfills?.kind === "emit" && e.fulfills.as === "entity")
+      .map((e) => [e.slug, e] as const),
+  );
+  const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
+  const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
+  let needsLayout = false; // any `emit view` pulls in the layout primitives
+
+  for (const v of all) {
     const f = v.fulfills;
     if (!f) continue;
     if (f.kind === "emit" && f.as === "entity") {
@@ -78,45 +84,37 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(mod, emitEntityModule(v), "utf8");
       writeFileSync(test, emitEntityTest(v), "utf8");
       written.push(mod, test);
-      // the entity brings its own default list view (+ checkbox for any boolean field)
-      const viewFile = join(outDir, `${viewComponentName(v)}.vue`);
-      writeFileSync(viewFile, emitDefaultView(v), "utf8");
-      written.push(viewFile);
-      if (v.fields.some((fld) => fld.type === "boolean")) {
-        const cb = join(outDir, "Checkbox.vue");
-        writeFileSync(cb, emitCheckboxSfc(), "utf8");
-        written.push(cb);
-      }
     } else if (f.kind === "emit" && f.as === "view") {
-      const file = join(outDir, `${v.slug}.vue`);
-      if (v.view) {
-        // a `## view`: a list of components (semantic blocks + primitives + generated views)
-        writeFileSync(file, emitView(v, entities), "utf8");
-        written.push(file);
-        needsLayout = true;
-      } else {
-        const entity = allVows(vows).find(
-          (e) => e.slug === v.of && e.fulfills?.kind === "emit" && e.fulfills.as === "entity",
-        );
-        if (!entity) {
-          throw new Error(
-            `vow "${v.slug}": emit view references unknown entity (of: ${v.of ?? "—"})`,
-          );
-        }
-        writeFileSync(file, emitViewSfc(v, entity), "utf8");
-        written.push(file);
-        // a boolean field renders as the emitted <Checkbox> → generate the adapter alongside it
-        if (entity.fields.some((fld) => fld.type === "boolean")) {
-          const cb = join(outDir, "Checkbox.vue");
-          writeFileSync(cb, emitCheckboxSfc(), "utf8");
-          written.push(cb);
-        }
+      if (!v.view) {
+        throw new Error(`vow "${v.slug}": an \`emit view\` needs a \`## view\` block`);
       }
+      const file = join(outDir, `${v.slug}.vue`);
+      writeFileSync(file, emitView(v, entities), "utf8");
+      written.push(file);
+      for (const slug of listedEntities(v)) listed.add(slug);
+      needsLayout = true;
     } else if (f.kind === "bind") {
       const file = join(outDir, `${v.slug}.bind.ts`);
       writeFileSync(file, emitBindAnchor(v, bindSpecifier(f.module, outDir, srcDir)), "utf8");
       written.push(file);
     }
+  }
+
+  // A view's `list: <entity>` instantiates that entity's CRUD list — emitted here, on demand. A
+  // boolean field in any listed entity renders as <Checkbox>, so emit the adapter once if needed.
+  let needsCheckbox = false;
+  for (const slug of listed) {
+    const entity = entityBySlug.get(slug);
+    if (!entity) continue; // emitView already validated the reference; defensive
+    const file = join(outDir, `${viewComponentName(entity)}.vue`);
+    writeFileSync(file, emitEntityList(entity), "utf8");
+    written.push(file);
+    if (entity.fields.some((fld) => fld.type === "boolean")) needsCheckbox = true;
+  }
+  if (needsCheckbox) {
+    const cb = join(outDir, "Checkbox.vue");
+    writeFileSync(cb, emitCheckboxSfc(), "utf8");
+    written.push(cb);
   }
   // A `## view` imports `./<Primitive>.vue`; emit the layout primitives so those resolve (and are
   // themselves type-checked by `vp check`). Written wholesale — the unused ones are harmless.
@@ -129,7 +127,7 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
   }
   // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
   // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.
-  const rootVow = allVows(vows).find((v) => v.root === true && v.view);
+  const rootVow = all.find((v) => v.root === true && v.view);
   if (rootVow) {
     const boot = join(outDir, "main.ts");
     const env = join(outDir, "vow-env.d.ts");

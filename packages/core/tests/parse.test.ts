@@ -33,8 +33,8 @@ test("`fulfills: bind <module>#<export>` parses to a bind fulfilment", () => {
 });
 
 test("a pure-composition vow needs no fulfilment and no proof", () => {
-  const vow = parseVowMd("epic", `---\nid: vow_e\nkind: epic\n---\n# A grouping epic\n`);
-  expect(vow.kind).toBe("epic");
+  const vow = parseVowMd("epic", `---\nid: vow_e\n---\n# A grouping epic\n`);
+  expect(vow.intent).toBe("A grouping epic");
   expect(vow.fulfills).toBeUndefined();
   expect(vow.proof).toEqual([]);
 });

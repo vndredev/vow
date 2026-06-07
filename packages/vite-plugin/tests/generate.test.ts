@@ -35,23 +35,54 @@ test("generateFiles renders a `## view` and writes the layout primitives it need
   }
 });
 
-test("a plain entity view writes no layout primitives (they are pulled in only by a `## view`)", () => {
-  const entity: VowNode = {
-    id: "vow_task",
-    slug: "task",
-    intent: "A task",
+const task: VowNode = {
+  id: "vow_task",
+  slug: "task",
+  intent: "A task",
+  children: [],
+  fields: [
+    { name: "title", type: "text", required: true },
+    { name: "done", type: "boolean", required: false },
+  ],
+  proof: [],
+  fulfills: { kind: "emit", as: "entity" },
+};
+
+test("a lone entity is a pure model — only its .ts + .test.ts, no view, no primitives", () => {
+  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
+  try {
+    generateFiles([task], dir, dir);
+    const files = readdirSync(dir);
+    expect(files).toContain("task.ts");
+    expect(files).toContain("task.test.ts");
+    expect(files).not.toContain("Task.vue"); // not auto-rendered — a view must pull it in
+    expect(files).not.toContain("Checkbox.vue");
+    expect(files).not.toContain("Flex.vue");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a `## view` with `list: task` pulls in the entity's list (+ Checkbox for its boolean)", () => {
+  const page: VowNode = {
+    id: "vow_page",
+    slug: "page",
+    intent: "A page",
     children: [],
-    fields: [{ name: "title", type: "text", required: true }],
+    fields: [],
     proof: [],
-    fulfills: { kind: "emit", as: "entity" },
+    fulfills: { kind: "emit", as: "view" },
+    view: [{ type: "list", value: "task" }],
   };
   const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
   try {
-    generateFiles([entity], dir, dir);
+    generateFiles([page, task], dir, dir);
     const files = readdirSync(dir);
-    expect(files).toContain("Task.vue");
-    expect(files).not.toContain("Flex.vue");
-    expect(files).not.toContain("Container.vue");
+    expect(files).toContain("Task.vue"); // emitted because the view lists it
+    expect(files).toContain("Checkbox.vue"); // task has a boolean field
+    const pageVue = readFileSync(join(dir, "page.vue"), "utf8");
+    expect(pageVue).toContain("<Task />");
+    expect(pageVue).toContain('import Task from "./Task.vue";');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

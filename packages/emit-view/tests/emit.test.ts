@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow as VowNode } from "@vow/core";
-import { emitDefaultView, emitViewSfc, viewComponentName } from "../src/index.ts";
+import { emitEntityList, viewComponentName } from "../src/index.ts";
 
 const entity: VowNode = {
   id: "vow_task",
@@ -14,19 +14,10 @@ const entity: VowNode = {
   proof: [],
   fulfills: { kind: "emit", as: "entity" },
 };
-const view: VowNode = {
-  id: "vow_tasks",
-  slug: "tasks",
-  intent: "Aufgaben verwalten",
-  of: "task",
-  children: [],
-  fields: [],
-  proof: [],
-  fulfills: { kind: "emit", as: "view" },
-};
 
-test("emitViewSfc renders an unstyled, hooked CRUD list over the entity", () => {
-  const sfc = emitViewSfc(view, entity);
+test("emitEntityList renders an unstyled, hooked CRUD list over the entity", () => {
+  expect(viewComponentName(entity)).toBe("Task");
+  const sfc = emitEntityList(entity);
   expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
   expect(sfc).toContain(
@@ -42,12 +33,10 @@ test("emitViewSfc renders an unstyled, hooked CRUD list over the entity", () => 
   expect(sfc).not.toContain("<style");
 });
 
-test("emitDefaultView renders a CRUD view straight from the entity — no separate view vow", () => {
-  expect(viewComponentName(entity)).toBe("Task");
-  const sfc = emitDefaultView(entity);
-  expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
-  expect(sfc).toContain('v-for="(item, i) in rows"');
-  expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
+test("the list carries no heading of its own — the referencing view owns headings", () => {
+  const sfc = emitEntityList(entity);
+  expect(sfc).not.toContain("vow-view__title");
+  expect(sfc).not.toContain("<h1");
 });
 
 test("a select field renders as a <select> with options in the create form", () => {
@@ -59,7 +48,7 @@ test("a select field renders as a <select> with options in the create form", () 
       { name: "status", type: "select", required: false, options: ["todo", "doing", "done"] },
     ],
   };
-  const sfc = emitDefaultView(ticket);
+  const sfc = emitEntityList(ticket);
   expect(sfc).toContain('<select class="vow-view__input" v-model="draft.status"');
   expect(sfc).toContain('<option value="todo">todo</option>');
 });
@@ -71,11 +60,19 @@ test("a date field renders as a native date input in the create form", () => {
     slug: "event",
     fields: [{ name: "starts", type: "date", required: true }],
   };
-  const sfc = emitDefaultView(event);
+  const sfc = emitEntityList(event);
   expect(sfc).toContain('<input class="vow-view__input" type="date" v-model="draft.starts"');
 });
 
-test("emitViewSfc fails fast when the target is not an emit view / entity", () => {
-  expect(() => emitViewSfc(entity, entity)).toThrow();
-  expect(() => emitViewSfc(view, view)).toThrow();
+test("emitEntityList fails fast when the target is not an emit entity", () => {
+  const view: VowNode = {
+    id: "vow_page",
+    slug: "page",
+    intent: "A page",
+    children: [],
+    fields: [],
+    proof: [],
+    fulfills: { kind: "emit", as: "view" },
+  };
+  expect(() => emitEntityList(view)).toThrow();
 });
