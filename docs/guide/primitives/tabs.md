@@ -11,22 +11,8 @@ A tablist: a row of tabs over panels, where one panel shows at a time. It's how 
 
 The tabs below are the **exact** generated adapter — `emitTabsSfc()` written to a real `.vue` file at build time, running the real `@vow/headless` logic in vow's base look. Click a tab, or focus one and press **←/→** (Home/End jump to the ends):
 
-<script setup>
-import { ref } from "vue";
-import Tabs from "../../.studio/generated/Tabs.vue";
-
-const fw = ref("vue");
-</script>
-
-<div :style="{ padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
-  <Tabs v-model="fw" :items="['vue', 'react', 'solid']">
-    <template #vue><p style="margin: 0; color: var(--vow-color-muted)">Vue ships today — <code>renderVueSfc</code> turns the component model into an SFC.</p></template>
-    <template #react><p style="margin: 0; color: var(--vow-color-muted)">React is planned — a second adapter over the same model.</p></template>
-    <template #solid><p style="margin: 0; color: var(--vow-color-muted)">Solid is planned — another adapter, same headless cores.</p></template>
-  </Tabs>
-</div>
-
-<p style="color: var(--vow-color-muted)">Live reactive state: <code>fw = {{ fw }}</code>. Only the active tab is in the tab order; arrows roam the rest.</p>
+::: demo tabs
+:::
 
 ## The contract
 
@@ -49,16 +35,6 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 | `#<value>`   | slot       | one named slot per item holds that panel's content   |
 
 Emits `update:modelValue: string` on every change.
-
-## The generated adapter
-
-This is the file vow writes — nothing here is hand-edited. The tabs are a `v-for` over `items`; each panel is a `v-for` too, shown under `v-show` and filled by a per-item named slot (`<slot :name="item" />`). Pick a framework in the header to switch this output:
-
-<FrameworkBlock>
-
-<<< ../../.studio/generated/Tabs.vue{vue}
-
-</FrameworkBlock>
 
 ## Styling hooks
 

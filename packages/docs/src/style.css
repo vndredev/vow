@@ -300,3 +300,27 @@
   margin: 0 auto;
   padding: var(--vow-space-7) var(--vow-space-6);
 }
+
+/* A live primitive demo (::: demo <x>) — a bordered box around the running component. */
+.vow-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-3);
+  align-items: flex-start;
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-5);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-demo__trigger {
+  padding: var(--vow-space-2) var(--vow-space-4);
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-on-accent);
+  background: var(--vow-color-accent);
+  border: none;
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}

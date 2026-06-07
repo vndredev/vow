@@ -11,23 +11,8 @@ A listbox dropdown: a button that opens a list of options and commits one. It's 
 
 The select below is the **exact** generated adapter — `emitSelectSfc()` written to a real `.vue` file at build time, running the real `@vow/headless` logic in vow's base look. Open it and use **↑/↓**, **Home/End**, **Enter** to commit, **Esc** to cancel — or click an option / click outside:
 
-<script setup>
-import { ref } from "vue";
-import Select from "../../.studio/generated/Select.vue";
-
-const fw = ref("vue");
-const options = [
-  { value: "vue", label: "Vue" },
-  { value: "react", label: "React" },
-  { value: "solid", label: "Solid" },
-];
-</script>
-
-<div :style="{ padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
-  <Select v-model="fw" :options="options" label="Framework" />
-</div>
-
-<p style="color: var(--vow-color-muted)">Live reactive state: <code>fw = {{ fw }}</code>. Focus stays on the trigger; the highlighted option is tracked with <code>aria-activedescendant</code>.</p>
+::: demo select
+:::
 
 ## The contract
 
@@ -51,16 +36,6 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 | `disabled`   | `boolean` (optional)                 | block interaction                       |
 
 Emits `update:modelValue: string` on commit.
-
-## The generated adapter
-
-This is the file vow writes — nothing here is hand-edited. The listbox renders under `v-if` (absent when closed). The keyboard + ARIA come from the core; the `setup` glue closes on an outside pointer and scrolls the active option into view. Pick a framework in the header to switch this output:
-
-<FrameworkBlock>
-
-<<< ../../.studio/generated/Select.vue{vue}
-
-</FrameworkBlock>
 
 ## Styling hooks
 

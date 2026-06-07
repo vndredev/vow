@@ -6,8 +6,12 @@ import { getHighlighter, highlight } from "./highlight.ts";
 
 export { getHighlighter, highlight } from "./highlight.ts";
 
-/** The `:::` container kinds we render: callouts (a styled box) + code-group (grouped code blocks). */
-const CONTAINERS = ["tip", "info", "warning", "danger", "code-group"];
+/** The `:::` container kinds: callouts, code-group (a tab switcher), and demo (a live primitive). */
+const CONTAINERS = ["tip", "info", "warning", "danger", "code-group", "demo"];
+
+/** PascalCase a word (`checkbox` → `Checkbox`, `code-group` → `CodeGroup`). */
+const pascal = (s: string): string =>
+  s.replace(/(^|[-_\s])(\w)/g, (_m, _sep, c) => c.toUpperCase());
 
 const md = new MarkdownIt({ html: false, linkify: true });
 // markdown-it-container is `(md, name, opts)`; markdown-it's `use` overloads don't model a 3-arg
@@ -113,6 +117,10 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter): UiNode[] {
           tabs,
           build: (k) => comp("CodeGroup", [bound("labels", expr())], k),
         });
+      } else if (name === "demo") {
+        // `::: demo <primitive>` → a live demo component (@vow/docs generates it). No raw Vue.
+        const demo = "VowDemo" + pascal(t.info.trim().slice("demo".length).trim());
+        stack.push({ kids: [], build: () => comp(demo, [], []) });
       } else {
         const title = t.info.trim().slice(name.length).trim();
         stack.push({ kids: [], build: (k) => calloutNode(name, title, k) });

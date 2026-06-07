@@ -11,27 +11,8 @@ A disclosure: a button that expands and collapses a region of content. It's how 
 
 The panels below are the **exact** generated adapter — `emitCollapsibleSfc()` written to a real `.vue` file at build time, running the real `@vow/headless` logic in vow's base look. Click a header, or focus it and press **Space**:
 
-<script setup>
-import { ref } from "vue";
-import Collapsible from "../../.studio/generated/Collapsible.vue";
-
-const what = ref(true);
-const how = ref(false);
-</script>
-
-<div :style="{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
-  <Collapsible v-model="what" label="What is a vow?">
-    <p style="margin: 0; color: var(--vow-color-muted)">A promise about your app's behaviour — an intent plus the proof that redeems it.</p>
-  </Collapsible>
-  <Collapsible v-model="how" label="How is its status known?">
-    <p style="margin: 0; color: var(--vow-color-muted)">It's derived, never stored: a vow is fulfilled when its proof scenarios have green tests.</p>
-  </Collapsible>
-  <Collapsible :model-value="false" label="Locked (disabled)" disabled>
-    <p style="margin: 0; color: var(--vow-color-muted)">You can't open this one.</p>
-  </Collapsible>
-</div>
-
-<p style="color: var(--vow-color-muted)">Live reactive state: <code>what = {{ what }}</code> · <code>how = {{ how }}</code>. The disabled header ignores click and Space — that rule lives in the core, not the theme.</p>
+::: demo collapsible
+:::
 
 ## The contract
 
@@ -54,16 +35,6 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 | `disabled`   | `boolean` (optional) | block toggling and dim the control  |
 
 Emits `update:modelValue: boolean` on every toggle.
-
-## The generated adapter
-
-This is the file vow writes — nothing here is hand-edited. The content region renders under `v-show`, so it stays mounted (the theme can animate it) and only its visibility toggles. Pick a framework in the header to switch this output:
-
-<FrameworkBlock>
-
-<<< ../../.studio/generated/Collapsible.vue{vue}
-
-</FrameworkBlock>
 
 ## Styling hooks
 

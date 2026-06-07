@@ -11,21 +11,8 @@ A boolean field, rendered as an accessible custom checkbox. A native `<input typ
 
 The boxes below are the **exact** generated adapter — `emitCheckboxSfc()` is written to a real `.vue` file at build time and imported here, running the real `@vow/headless` logic dressed in vow's own base look (`@vow/theme`). Click a box, or focus it and press **Space**:
 
-<script setup>
-import { ref } from "vue";
-import Checkbox from "../../.studio/generated/Checkbox.vue";
-
-const done = ref(false);
-const subscribed = ref(true);
-</script>
-
-<div :style="{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
-  <Checkbox v-model="done" label="Mark as done" />
-  <Checkbox v-model="subscribed" label="Subscribe to updates" />
-  <Checkbox :model-value="false" label="Locked (disabled)" disabled />
-</div>
-
-<p style="color: var(--vow-color-muted)">Live reactive state: <code>done = {{ done }}</code> · <code>subscribed = {{ subscribed }}</code>. The disabled box ignores both click and Space — that rule lives in the core, not in the theme.</p>
+::: demo checkbox
+:::
 
 ## The contract
 
@@ -49,16 +36,6 @@ Derived from the adapter's `Component` definition — the same shape you see in 
 | `disabled`   | `boolean` (optional) | block interaction and remove from the tab order |
 
 Emits `update:modelValue: boolean` on every toggle.
-
-## The generated adapter
-
-This is the file vow writes — nothing here is hand-edited. The logic and the a11y come from the core; the adapter only binds the framework's reactivity and spreads the part-props. Pick a framework in the header to switch this output (Vue today; React/Solid are on the roadmap):
-
-<FrameworkBlock>
-
-<<< ../../.studio/generated/Checkbox.vue{vue}
-
-</FrameworkBlock>
 
 ## Styling hooks
 

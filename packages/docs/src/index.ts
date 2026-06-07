@@ -1,6 +1,13 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
+import {
+  emitCheckboxSfc,
+  emitCollapsibleSfc,
+  emitDialogSfc,
+  emitSelectSfc,
+  emitTabsSfc,
+} from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync } from "@vow/markdown";
 
@@ -207,14 +214,24 @@ export function generateDocs(
   writeFileSync(layout, LAYOUT_SFC, "utf8");
   written.push(layout);
 
-  // Materialise the prose-components the pages reference (CodeGroup, …) into .generated so the prose
-  // SFCs' `./<Name>.vue` imports resolve. The adapters/components stay vow-native; emit-* unchanged.
-  for (const name of used) {
-    const sfc = PROSE_COMPONENTS[name];
-    if (sfc === undefined) continue;
+  // Materialise the prose-components the pages reference (CodeGroup, demos, …) into .generated so the
+  // prose SFCs' `./<Name>.vue` imports resolve. Demos also write the generated primitive adapter they
+  // import (via @vow/emit-primitive). Everything stays vow-native; the emit-* core is unchanged.
+  const done = new Set<string>();
+  const writeComp = (name: string, sfc: string): void => {
+    if (done.has(name)) return;
+    done.add(name);
     const file = join(outDir, `${name}.vue`);
     writeFileSync(file, sfc, "utf8");
     written.push(file);
+  };
+  for (const name of used) {
+    if (PROSE_COMPONENTS[name] !== undefined) writeComp(name, PROSE_COMPONENTS[name]);
+    const demo = DEMOS[name];
+    if (demo !== undefined) {
+      writeComp(demo.adapter, demo.emit()); // the generated primitive adapter
+      writeComp(name, demo.sfc); // the live demo wrapper
+    }
   }
   return written;
 }
@@ -278,6 +295,107 @@ const CODE_GROUP_SFC = [
 
 /** Prose-components @vow/docs materialises into .generated when a page references them. */
 const PROSE_COMPONENTS: Record<string, string> = { CodeGroup: CODE_GROUP_SFC };
+
+/** Live primitive demos a `::: demo <X>` renders to — a wrapper around the generated adapter. */
+const DEMO_CHECKBOX = `<script setup lang="ts">
+import { ref } from "vue";
+import Checkbox from "./Checkbox.vue";
+const done = ref(false);
+const subscribed = ref(true);
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Checkbox v-model="done" label="Mark as done" />
+    <Checkbox v-model="subscribed" label="Subscribe to updates" />
+    <Checkbox :model-value="false" label="Locked (disabled)" disabled />
+  </div>
+</template>
+`;
+
+const DEMO_COLLAPSIBLE = `<script setup lang="ts">
+import { ref } from "vue";
+import Collapsible from "./Collapsible.vue";
+const open = ref(true);
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Collapsible v-model="open" label="What is a vow?">
+      A vow is a promise the app makes — intent, shape, proof — and vow keeps it by generating
+      type-safe code that a test holds to account.
+    </Collapsible>
+  </div>
+</template>
+`;
+
+const DEMO_TABS = `<script setup lang="ts">
+import { ref } from "vue";
+import Tabs from "./Tabs.vue";
+const active = ref("Vue");
+const items = ["Vue", "React", "Solid"];
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Tabs v-model="active" :items="items">
+      <template #Vue>The Vue adapter ships today.</template>
+      <template #React>The React adapter is on the roadmap.</template>
+      <template #Solid>The Solid adapter is on the roadmap.</template>
+    </Tabs>
+  </div>
+</template>
+`;
+
+const DEMO_DIALOG = `<script setup lang="ts">
+import { ref } from "vue";
+import Dialog from "./Dialog.vue";
+const open = ref(false);
+</script>
+
+<template>
+  <div class="vow-demo">
+    <button type="button" class="vow-demo__trigger" @click="open = true">Open dialog</button>
+    <Dialog v-model="open" title="A dialog">
+      A modal dialog — focus is trapped, Esc or the close button dismisses it.
+    </Dialog>
+  </div>
+</template>
+`;
+
+const DEMO_SELECT = `<script setup lang="ts">
+import { ref } from "vue";
+import Select from "./Select.vue";
+const value = ref("todo");
+const options = [
+  { value: "todo", label: "To do" },
+  { value: "doing", label: "Doing" },
+  { value: "done", label: "Done" },
+];
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Select v-model="value" :options="options" label="Status" />
+  </div>
+</template>
+`;
+
+/** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
+interface Demo {
+  readonly sfc: string;
+  readonly adapter: string;
+  readonly emit: () => string;
+}
+
+/** `::: demo <X>` → the VowDemo<X> component; @vow/docs materialises the wrapper + the adapter. */
+const DEMOS: Record<string, Demo> = {
+  VowDemoCheckbox: { sfc: DEMO_CHECKBOX, adapter: "Checkbox", emit: emitCheckboxSfc },
+  VowDemoCollapsible: { sfc: DEMO_COLLAPSIBLE, adapter: "Collapsible", emit: emitCollapsibleSfc },
+  VowDemoTabs: { sfc: DEMO_TABS, adapter: "Tabs", emit: emitTabsSfc },
+  VowDemoDialog: { sfc: DEMO_DIALOG, adapter: "Dialog", emit: emitDialogSfc },
+  VowDemoSelect: { sfc: DEMO_SELECT, adapter: "Select", emit: emitSelectSfc },
+};
 
 /** A Vite plugin: scan `content` into generated prose pages; pre-warm Shiki once; reload on `.md` edit. */
 export function vowDocs(options: VowDocsOptions): Plugin {

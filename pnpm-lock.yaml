@@ -147,6 +147,9 @@ importers:
 
   packages/docs:
     dependencies:
+      '@vow/emit-primitive':
+        specifier: workspace:*
+        version: link:../emit-primitive
       '@vow/emit-view':
         specifier: workspace:*
         version: link:../emit-view

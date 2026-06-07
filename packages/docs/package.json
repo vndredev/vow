@@ -13,6 +13,7 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@vow/emit-primitive": "workspace:*",
     "@vow/emit-view": "workspace:*",
     "@vow/headless": "workspace:*",
     "@vow/markdown": "workspace:*",

@@ -11,21 +11,8 @@ A modal: content that takes over the screen until dismissed, over a backdrop. It
 
 The dialog below is the **exact** generated adapter — `emitDialogSfc()` written to a real `.vue` file at build time, running the real `@vow/headless` logic in vow's base look. Open it, then try **Esc**, **Tab** (focus stays inside), clicking the backdrop, or the close button:
 
-<script setup>
-import { ref } from "vue";
-import Dialog from "../../.studio/generated/Dialog.vue";
-
-const open = ref(false);
-</script>
-
-<div :style="{ padding: '1.5rem', border: '1px solid var(--vow-color-border)', borderRadius: '12px', margin: '1.25rem 0' }">
-  <button @click="open = true" :style="{ padding: '0.45rem 0.9rem', font: 'inherit', fontWeight: 500, color: 'var(--vow-color-bg)', background: 'var(--vow-color-text)', border: 'none', borderRadius: '8px', cursor: 'pointer' }">Open dialog</button>
-  <Dialog v-model="open" title="A vow">
-    <p style="margin: 0.75rem 0 0; color: var(--vow-color-muted)">A promise about your app's behaviour — an intent plus the proof that redeems it. Press Esc, click the backdrop, or use the close button to dismiss.</p>
-  </Dialog>
-</div>
-
-<p style="color: var(--vow-color-muted)">Live reactive state: <code>open = {{ open }}</code>. Opening is controlled by <code>v-model</code> — the dialog owns no trigger, so any button can open it.</p>
+::: demo dialog
+:::
 
 ## The contract
 
@@ -49,16 +36,6 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 | _(default)_  | slot      | the dialog body                               |
 
 Emits `update:modelValue: boolean` when dismissed.
-
-## The generated adapter
-
-This is the file vow writes — nothing here is hand-edited. The overlay + content are `<Teleport>`ed to `<body>` and rendered under `v-if`, so they leave the DOM (and the tab order) when closed. The ARIA, Escape and Tab-trap come from the core; the `setup` glue does focus-in/out + scroll-lock. Pick a framework in the header to switch this output:
-
-<FrameworkBlock>
-
-<<< ../../.studio/generated/Dialog.vue{vue}
-
-</FrameworkBlock>
 
 ## Styling hooks
 
