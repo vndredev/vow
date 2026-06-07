@@ -18,30 +18,36 @@ fulfills: emit entity
 - done: boolean
 ```
 
-→ three files in `.generated/`:
+→ two files in `.generated/` — a **pure model**, no UI:
 
 - **`task.ts`** — a `Task` interface + a validating `createTask` factory (a missing required field throws).
 - **`task.test.ts`** — a Vitest suite **derived from the fields** (a happy path + one reject per required field). No one writes it; the test names _are_ the proven scenarios (see [proof](/guide/proof)).
-- **`Task.vue`** — a **default CRUD list** over the entity: read · create (inline form) · toggle · delete, on local component state. Boolean fields become the emitted, accessible [`<Checkbox>`](/guide/primitives).
 
 **Field types:** `text` · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`). More (`reference`) + relations are on the [roadmap](/guide/roadmap).
 
-One entity vow gives you the model **and** its UI — no separate view file for the common case.
+An entity is **data, not a screen** — it never renders by itself. To put it on the page, a view lists it.
 
 ## emit view
 
-Need a _second_ or _different_ view of an entity — a board, a detail page? Add a view vow that points at the entity with `of:`:
+A view is a page: a **`## view`** block — a YAML list of components (semantic blocks, layout primitives, text). It's the one view path; the full catalog is in [Views](/guide/layout). A view that renders an entity's CRUD list references it by slug with `list:`:
 
 ```markdown
 ---
-id: vow_board
+id: vow_home
 fulfills: emit view
-of: task
+root: true
 ---
 
-# Board
+# Home
 ```
 
-→ another typed `.vue` over the same entity. For the common case (one entity, one list) you don't need this — the entity already brings its default view.
+with the page's components under `## view`:
+
+```yaml
+- h2: Your tasks
+- list: task
+```
+
+→ a `.vue` for the page and — **because the view asked for it** — the entity's CRUD list (`Task.vue`): read · create (inline form) · toggle · delete on local state. Boolean fields become the emitted, accessible [`<Checkbox>`](/guide/primitives). No `list:`, no list — the entity stays a pure model.
 
 Next: [bind →](/guide/bind)

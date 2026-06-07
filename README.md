@@ -25,7 +25,7 @@ fulfills: emit entity
 - status: select(todo|doing|done)
 ```
 
-→ vow generates the `Task` type, a validating factory, derived tests, and a default CRUD list (into `.generated/`, never edited). You write the intent; vow keeps the promise.
+→ vow generates the `Task` type, a validating factory, and derived tests (into `.generated/`, never edited) — a model, type-safe and proven. Put it on a page and a view's `list: task` renders its CRUD list. You write the intent; vow keeps the promise.
 
 ## Two ways to work
 
