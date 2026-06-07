@@ -1,0 +1,23 @@
+{
+  "name": "@vow/studio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's view system — renders markdown + the vow forest into a themed, navigable site on Vite+ (the VitePress replacement).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vue/server-renderer": "^3.5.13",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
