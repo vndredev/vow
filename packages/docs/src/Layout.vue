@@ -34,7 +34,12 @@ onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 
 <template>
   <div class="vow-docs">
-    <Nav :config="config" @toggle-sidebar="mobileOpen = true" @open-search="searchOpen = true" />
+    <Nav
+      :config="config"
+      :sidebar-open="mobileOpen"
+      @toggle-sidebar="mobileOpen = true"
+      @open-search="searchOpen = true"
+    />
     <div v-if="isDocPage" class="vow-docs-layout">
       <Sidebar :groups="groups" :path="path" />
       <main class="vow-docs-content"><slot /></main>

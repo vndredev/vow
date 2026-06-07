@@ -6,7 +6,7 @@ import type { DocsConfig } from "./index.ts";
 // The top nav — site title (links home) + configured links + a dark-mode toggle. A native button is
 // accessible on its own (no Switch primitive needed). State lives on `<html class="dark">`. On mobile
 // a hamburger emits `toggleSidebar` (the Layout opens the drawer).
-defineProps<{ config: DocsConfig }>();
+defineProps<{ config: DocsConfig; sidebarOpen?: boolean }>();
 const emit = defineEmits<{ toggleSidebar: []; openSearch: [] }>();
 
 const dark = ref(false);
@@ -30,6 +30,7 @@ onMounted(() => {
         type="button"
         class="vow-nav__menu"
         aria-label="Open menu"
+        :aria-expanded="sidebarOpen ?? false"
         @click="emit('toggleSidebar')"
       >
         <Icon name="menu" />

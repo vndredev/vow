@@ -19,6 +19,7 @@
     "@vow/headless": "workspace:*",
     "@vow/icons": "workspace:*",
     "@vow/markdown": "workspace:*",
+    "@vow/router": "workspace:*",
     "vue": "^3.5.13"
   },
   "devDependencies": {
