@@ -3,7 +3,7 @@ import { Vow, type Fulfillment, type ViewNode, type Vow as VowNode } from "./vow
 
 /**
  * Parse a `<slug>.vow.md` — plain Markdown, no invented DSL:
- *   - YAML frontmatter for the non-prosaic truth (`id`, `fulfills`, `kind`)
+ *   - YAML frontmatter for the non-prosaic truth (`id`, `fulfills`, `root`)
  *   - `# …`        → the intent (the promise)
  *   - `## fields`  → the data shape (for `emit entity`): `- <name>: <type>[, required]`
  *   - `## proves`  → the proof scenarios (one per list item)
@@ -116,8 +116,6 @@ export function parseVowMd(slug: string, content: string): VowNode {
     id: frontmatter["id"],
     slug,
     intent,
-    kind: frontmatter["kind"],
-    of: frontmatter["of"],
     fulfills: parseFulfills(frontmatter["fulfills"]),
     fields: [...itemsUnder(body, "fields")].map(parseFieldLine),
     proof: [...itemsUnder(body, "proves")].map((claim) => ({ claim })),

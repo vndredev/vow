@@ -23,7 +23,6 @@ The task list is generated from one file, `apps/starter/app/task.vow.md`:
 ---
 id: vow_task
 fulfills: emit entity
-kind: entity
 ---
 
 # A task someone must do
@@ -46,12 +45,15 @@ Save. The dev server regenerates `.generated/` and reloads — a `priority` drop
 ## What just happened
 
 ```
-app/task.vow.md  →  vow() plugin  →  .generated/{ task.ts · task.test.ts · Task.vue }  →  the app
+app/task.vow.md      →  vow() plugin  →  .generated/{ task.ts · task.test.ts }
+app/landing.vow.md   →  vow() plugin  →  .generated/{ landing.vue · Task.vue · main.ts · … }
 ```
 
 - **`task.ts`** — a `Task` type + a validating `createTask` factory
 - **`task.test.ts`** — tests derived from the fields (the [proof](/guide/proof))
-- **`Task.vue`** — the default CRUD list, rendered from the [component model](/guide/components)
+- **`Task.vue`** — the CRUD list, rendered from the [component model](/guide/components)
+
+The entity is a **pure model** — it never renders by itself. `Task.vue` exists only because the landing's `## view` says `list: task`, which pulls the list in. Change the field, and the model, its test, and the list all follow.
 
 You can inspect `.generated/`, but never edit it — change the vow, not the output, and it can't drift.
 

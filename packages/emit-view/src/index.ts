@@ -10,21 +10,25 @@ import type { Vow } from "@vow/core";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
 
 /**
- * vow's view emitter — `emit view` made real (CRUD over local state).
+ * vow's view emitter — `emit view` made real.
  *
- * The view is built as a canonical `Component` and rendered by the Vue adapter (`renderVueSfc`); the
- * imperative glue (refs, add/remove) lives in `setup`. Boolean fields render as the emitted,
- * accessible `<Checkbox>`. The view is **unstyled** — only class hooks; styling lives in the
- * swappable `@vow/theme`. React/Solid would reuse the same Component via a different adapter.
+ * Two outputs: a page from a YAML `## view` (`emitView`, below) and the CRUD list of an entity
+ * (`emitEntityList`). The list is emitted **on demand** — only when a `## view` pulls it in via
+ * `list: <entity>` — so an `emit entity` stays a pure model, never auto-rendered. Both are built as a
+ * canonical `Component` and rendered by the Vue adapter (`renderVueSfc`); the imperative glue (refs,
+ * add/remove) lives in `setup`. Boolean fields render as the emitted, accessible `<Checkbox>`. The
+ * output is **unstyled** — only class hooks; styling lives in the swappable `@vow/theme`. React/Solid
+ * would reuse the same Component via a different adapter.
  */
 
-/** A Vue CRUD view over an entity, expressed as a Component and rendered by renderVueSfc. */
-export function emitViewSfc(view: Vow, entity: Vow): string {
-  if (view.fulfills?.kind !== "emit" || view.fulfills.as !== "view") {
-    throw new Error(`emit-view: vow "${view.slug}" is not an \`emit view\``);
-  }
+/**
+ * The CRUD list of an entity — what a `## view` pulls in via `list: <entity>`. Emitted on demand
+ * (because a view references it), never automatically. Any heading is the referencing view's job, so
+ * the list carries none of its own.
+ */
+export function emitEntityList(entity: Vow): string {
   if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
-    throw new Error(`emit-view: view "${view.slug}" must be \`of\` an \`emit entity\``);
+    throw new Error(`emit-view: \`list:\` target "${entity.slug}" must be an \`emit entity\``);
   }
   const type = pascalCase(entity.slug);
   const hasBoolean = entity.fields.some((f) => f.type === "boolean");
@@ -155,21 +159,15 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
   const component: Component = {
     name: type,
     doc: [
-      `Generated from vow "${view.slug}" (a view of "${entity.slug}"). The vow tree is the source — do not edit.`,
+      `Generated from vow "${entity.slug}" (the list view of an entity). The vow is the source — do not edit.`,
     ],
     imports,
     setup,
     view: {
       kind: "element",
       tag: "section",
-      attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${view.slug}` }],
+      attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${entity.slug}` }],
       children: [
-        {
-          kind: "element",
-          tag: "h1",
-          attrs: [{ kind: "static", name: "class", value: "vow-view__title" }],
-          children: [{ kind: "text", text: view.intent }],
-        },
         {
           kind: "element",
           tag: "ul",
@@ -200,20 +198,9 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
   return renderVueSfc(component);
 }
 
-/** The PascalCase component name for an entity's default view (`task` → `Task`). */
+/** The PascalCase component name for an entity's list view (`task` → `Task`). */
 export function viewComponentName(entity: Vow): string {
   return pascalCase(entity.slug);
-}
-
-/**
- * The default list view over an entity — no separate view vow needed. The entity is treated as its
- * own view, so a single `task.vow.md` yields the model AND its CRUD list.
- */
-export function emitDefaultView(entity: Vow): string {
-  return emitViewSfc(
-    { ...entity, fulfills: { kind: "emit", as: "view" }, of: entity.slug },
-    entity,
-  );
 }
 
 /**
@@ -360,6 +347,29 @@ export function emitView(view: Vow, entities: readonly string[] = []): string {
     view: root,
   };
   return renderVueSfc(component);
+}
+
+/**
+ * Every entity slug a view references via `list:` — recursing into primitive `children`. The plugin
+ * uses this to emit each referenced entity's list on demand (the entity itself stays a pure model).
+ */
+export function listedEntities(view: Vow): string[] {
+  const found = new Set<string>();
+  const walk = (type: string, value: unknown): void => {
+    if (type === "list") {
+      found.add(str(value));
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return [...found];
 }
 
 /**
