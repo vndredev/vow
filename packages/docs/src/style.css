@@ -232,11 +232,16 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* the left vertical guide line that leads the nested items (VitePress-style) */
+  border-left: 1px solid var(--vow-color-border);
 }
 .vow-sidebar__link {
   display: block;
-  padding: var(--vow-space-1) 0;
+  margin-left: -1px; /* the link's left border sits on the guide line */
+  padding: var(--vow-space-1) 0 var(--vow-space-1) var(--vow-space-4);
+  border-left: 1px solid transparent;
   font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
   color: var(--vow-color-muted);
   text-decoration: none;
 }
@@ -245,7 +250,7 @@
 }
 .vow-sidebar__link.is-active {
   color: var(--vow-color-accent);
-  font-weight: var(--vow-weight-medium);
+  border-left-color: var(--vow-color-accent); /* the active indicator bar on the guide line */
 }
 
 /* The dark-mode toggle button in the nav. */
