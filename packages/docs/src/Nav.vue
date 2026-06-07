@@ -1,26 +1,35 @@
 <script setup lang="ts">
 import Icon from "@vow/icons/Icon.vue";
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import type { DocsConfig } from "./index.ts";
 
 // The top nav — site title (links home) + configured links + a dark-mode toggle. A native button is
-// accessible on its own (no Switch primitive needed). State lives on `<html class="dark">`. On mobile
-// a hamburger emits `toggleSidebar` (the Layout opens the drawer).
+// accessible on its own (no Switch primitive needed). The theme class is set before first paint by the
+// index.html boot script; here we sync the ref, persist a user toggle, and follow the OS while the user
+// hasn't overridden it (true auto). On mobile a hamburger emits `toggleSidebar` (the Layout opens it).
 defineProps<{ config: DocsConfig; sidebarOpen?: boolean }>();
 const emit = defineEmits<{ toggleSidebar: []; openSearch: [] }>();
 
 const dark = ref(false);
+const media = window.matchMedia("(prefers-color-scheme: dark)");
 
-function apply(value: boolean): void {
+function setClass(value: boolean): void {
   dark.value = value;
   document.documentElement.classList.toggle("dark", value);
-  localStorage.setItem("vow-theme", value ? "dark" : "light");
+}
+function toggle(): void {
+  setClass(!dark.value);
+  localStorage.setItem("vow-theme", dark.value ? "dark" : "light"); // an explicit choice persists
+}
+function onSystemChange(event: MediaQueryListEvent): void {
+  if (!localStorage.getItem("vow-theme")) setClass(event.matches); // follow the OS until overridden
 }
 
 onMounted(() => {
-  const stored = localStorage.getItem("vow-theme");
-  apply(stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches);
+  dark.value = document.documentElement.classList.contains("dark"); // the boot script already set it
+  media.addEventListener("change", onSystemChange);
 });
+onBeforeUnmount(() => media.removeEventListener("change", onSystemChange));
 </script>
 
 <template>
@@ -53,7 +62,7 @@ onMounted(() => {
           class="vow-nav__dark"
           :aria-pressed="dark"
           aria-label="Toggle dark mode"
-          @click="apply(!dark)"
+          @click="toggle"
         >
           <Icon :name="dark ? 'sun' : 'moon'" />
         </button>
