@@ -58,7 +58,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 
 ## Roadmap (two strands → dashboard / planning app)
 
-- **Generation** (what vow emits): views as YAML `## view` (semantic blocks `hero`/`features`/`list` + primitive escape `flex`/`grid`/`box`/text; layout primitives + theme tokens) ✓ → more field types (reference) + relations → more view blocks (table/cards/board/stats) → primitive ladder (Switch/Dialog/Tabs/…; wrap complex ones via Zag/Ark) → routing → data adapter (memory → CF D1).
+- **Generation** (what vow emits): DONE so far — entity/view/bind, field types (text/number/boolean/select/date), views as YAML `## view` (semantic blocks + layout primitives + tokens), **five primitives** (checkbox/collapsible/tabs/dialog/select), the **docs system** (`@vow/markdown`→`@vow/docs`; the docs are a generated vow app), `@vow/router` (boot-level, hash anchors, 404, title), docs chrome (⌘K search + mobile drawer on `dialog`, sidebar, TOC, dark toggle, Inter), `@vow/icons` (Lucide). NEXT → `reference` field + relations → more view blocks (table/cards/board/stats) → primitive ladder cont'd (switch/table; wrap complex via Zag/Ark) → multi-view nav **from vows** → data adapter (memory → CF D1).
 - **Author layer** (LLM-first): `serialize` (Vow → vow.md) → typed mutation API (`addEntity`/`addField`/…) → **vow MCP server** (the LLM operates vow via typed tools).
 - **Reference product:** a dashboard / planning system (entities + board/kanban + stats + CRUD + persistence), operable by user + LLM.
 
