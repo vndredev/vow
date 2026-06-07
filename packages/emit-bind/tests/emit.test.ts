@@ -18,6 +18,6 @@ test("emitBindAnchor re-exports the bound symbol so tsgo verifies it exists", ()
 });
 
 test("emitBindAnchor fails fast on a non-bind vow", () => {
-  const emit: VowNode = { ...bind, fulfills: { kind: "emit", as: "vue" } };
+  const emit: VowNode = { ...bind, fulfills: { kind: "emit", as: "view" } };
   expect(() => emitBindAnchor(emit, "x")).toThrow();
 });

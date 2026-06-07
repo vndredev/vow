@@ -5,6 +5,7 @@ import { expect, test } from "vite-plus/test";
 import {
   checkVowExample,
   germanMarkers,
+  germanWords,
   undocumentedFieldTypes,
   undocumentedKinds,
   vowExamplesIn,
@@ -134,7 +135,12 @@ test("every core field type is documented in emit.md", () => {
   expect(undocumentedFieldTypes(core, doc)).toEqual([]);
 });
 
-test("the codebase and docs are English-only (no German umlauts)", () => {
+test("the codebase and docs are English-only (no German umlauts or words)", () => {
+  // The gate itself defines + tests the German markers, so it legitimately contains them as data.
+  const selfReferential = new Set([
+    join(root, "packages/gate/src/index.ts"),
+    join(root, "packages/gate/tests/docs-drift.test.ts"),
+  ]);
   const scanned = [
     ...sourceFilesUnder(join(root, "packages")),
     ...sourceFilesUnder(join(root, "apps")),
@@ -143,8 +149,17 @@ test("the codebase and docs are English-only (no German umlauts)", () => {
     join(root, "README.md"),
   ];
   const offenders = scanned
-    .map((file) => ({ file, markers: germanMarkers(readFileSync(file, "utf8")) }))
-    .filter((o) => o.markers.length > 0)
-    .map((o) => `${o.file.slice(root.length + 1)}: ${o.markers.join(" ")}`);
+    .filter((file) => !selfReferential.has(file))
+    .map((file) => {
+      const src = readFileSync(file, "utf8");
+      return { file, hits: [...germanMarkers(src), ...germanWords(src)] };
+    })
+    .filter((o) => o.hits.length > 0)
+    .map((o) => `${o.file.slice(root.length + 1)}: ${o.hits.join(" ")}`);
   expect(offenders).toEqual([]);
+});
+
+test("germanWords flags German prose without umlauts, but not English", () => {
+  expect(germanWords("ab 10 greift der Rabatt")).toContain("greift");
+  expect(germanWords("a discount applies from 10 units")).toEqual([]);
 });

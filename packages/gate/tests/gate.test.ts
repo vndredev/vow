@@ -20,10 +20,10 @@ test("expectedScenarios derives for emit entity, reads ## proves otherwise", () 
     intent: "x",
     children: [],
     fields: [],
-    proof: [{ claim: "ab 10 greift der Rabatt" }],
+    proof: [{ claim: "a discount applies from 10 units" }],
     fulfills: { kind: "bind", module: "./x.ts", export: "f" },
   };
-  expect(expectedScenarios(bind)).toEqual(["ab 10 greift der Rabatt"]);
+  expect(expectedScenarios(bind)).toEqual(["a discount applies from 10 units"]);
 });
 
 test("testNamesIn extracts both test() and it() names", () => {

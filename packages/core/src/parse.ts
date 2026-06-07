@@ -11,8 +11,8 @@ import { Vow, type Fulfillment, type ViewNode, type Vow as VowNode } from "./vow
  *   - the slug comes from the filename, not the file content
  *
  * `fulfills` uses a compact value convention (still standard YAML strings, trivial to read/write):
- *   `emit vue`              → { kind: "emit", as: "vue" }
  *   `emit entity`           → { kind: "emit", as: "entity" }
+ *   `emit view`             → { kind: "emit", as: "view" }
  *   `bind @vow/core#rollup` → { kind: "bind", module: "@vow/core", export: "rollup" }
  */
 

@@ -18,7 +18,7 @@ const card: VowNode = {
   children: [],
   fields: [],
   proof: [],
-  fulfills: { kind: "emit", as: "vue" },
+  fulfills: { kind: "emit", as: "view" },
 };
 const root: VowNode = {
   id: "vow_root",
