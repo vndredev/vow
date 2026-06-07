@@ -399,3 +399,10 @@ body {
   line-height: var(--vow-leading-relaxed);
   color: var(--vow-color-muted);
 }
+
+/* The framework picker sits in the nav — a compact variant of the select primitive. */
+.vow-nav__fw .vow-select__trigger {
+  min-width: auto;
+  padding: var(--vow-space-1) var(--vow-space-3);
+  font-size: var(--vow-text-sm);
+}

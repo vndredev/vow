@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { StudioConfig } from "../src/config.ts";
+import FrameworkSwitcher from "./FrameworkSwitcher.vue";
 
 defineProps<{ config: StudioConfig }>();
 
@@ -15,6 +16,7 @@ function toggleDark(): void {
       <a class="vow-nav__title" href="/">{{ config.title }}</a>
       <nav class="vow-nav__links" aria-label="Primary">
         <a v-for="link in config.nav ?? []" :key="link.link" :href="link.link">{{ link.text }}</a>
+        <FrameworkSwitcher />
         <button
           class="vow-nav__dark"
           type="button"
