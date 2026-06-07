@@ -78,6 +78,18 @@ export const TreeNode: z.ZodType<TreeNode> = z.lazy(() =>
   }),
 );
 
+/**
+ * A node in a view's `## view` (YAML): one component, keyed by name, with its raw value. The format
+ * layer stays UI-agnostic — core only knows "a named component with some value" (`{ hero: {...} }`,
+ * `{ list: "task" }`, `{ flex: { children: [...] } }`); the emitter decides what each component means.
+ */
+export interface ViewNode {
+  readonly type: string;
+  readonly value: unknown;
+}
+
+export const ViewNode = z.object({ type: z.string(), value: z.unknown() });
+
 export interface Vow {
   readonly id: string;
   readonly slug: string;
@@ -94,6 +106,8 @@ export interface Vow {
   readonly proof: readonly Scenario[];
   /** Optional layout tree for a view (`## tree`) — composed from layout primitives. */
   readonly tree?: TreeNode;
+  /** Optional view (`## view`, YAML) — a list of components (semantic blocks + primitive escape). */
+  readonly view?: readonly ViewNode[];
   /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
   readonly root?: boolean;
 }
@@ -110,6 +124,7 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     fields: z.array(Field).default([]),
     proof: z.array(Scenario).default([]),
     tree: TreeNode.optional(),
+    view: z.array(ViewNode).optional(),
     root: z.boolean().optional(),
   }),
 );
