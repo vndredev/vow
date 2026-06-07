@@ -98,3 +98,46 @@ test("a quoted tree line parses as a text node", () => {
   expect(text?.component).toBe("text");
   expect(text?.props).toEqual({ value: "Hello world" });
 });
+
+test("parseVowMd reads a ## view YAML block into a list of components", () => {
+  const md = [
+    "---",
+    "id: vow_v",
+    "fulfills: emit view",
+    "---",
+    "# A page",
+    "",
+    "## view",
+    "```yaml",
+    "- hero:",
+    "    title: Welcome",
+    "    lead: Build it",
+    "- list: task",
+    "- flex:",
+    "    gap: 4",
+    "    children:",
+    "      - text: hi",
+    "```",
+  ].join("\n");
+  const view = parseVowMd("page", md).view;
+  expect(view?.[0]).toEqual({ type: "hero", value: { title: "Welcome", lead: "Build it" } });
+  expect(view?.[1]).toEqual({ type: "list", value: "task" });
+  expect(view?.[2]?.type).toBe("flex");
+});
+
+test("a ## view item with more than one key fails fast", () => {
+  const md = [
+    "---",
+    "id: vow_b",
+    "fulfills: emit view",
+    "---",
+    "# Bad",
+    "",
+    "## view",
+    "```yaml",
+    "- hero: {}",
+    "  list: task",
+    "```",
+  ].join("\n");
+  expect(() => parseVowMd("bad", md)).toThrow();
+});

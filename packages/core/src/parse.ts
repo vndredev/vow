@@ -1,5 +1,5 @@
 import { parse as parseYaml } from "yaml";
-import { Vow, type Fulfillment, type Vow as VowNode } from "./vow.ts";
+import { Vow, type Fulfillment, type ViewNode, type Vow as VowNode } from "./vow.ts";
 
 /**
  * Parse a `<slug>.vow.md` — plain Markdown, no invented DSL:
@@ -8,6 +8,7 @@ import { Vow, type Fulfillment, type Vow as VowNode } from "./vow.ts";
  *   - `## fields`  → the data shape (for `emit entity`): `- <name>: <type>[, required]`
  *   - `## proves`  → the proof scenarios (one per list item)
  *   - `## tree`    → a view's layout (indented `- Name(prop=value)` nodes; indentation = nesting)
+ *   - `## view`    → a view as YAML: a list of components (`- hero: {…}`, `- list: task`, `- flex: {…}`)
  *   - the slug comes from the filename, not the file content
  *
  * `fulfills` uses a compact value convention (still standard YAML strings, trivial to read/write):
@@ -145,6 +146,33 @@ function parseTree(body: string): MutableTree | undefined {
   return roots[0];
 }
 
+/**
+ * Parse the `## view` section: a fenced ```yaml block of components. Each list item is a single-key
+ * object — the key is the component (`hero`, `list`, `flex`, …), the value its raw content. Kept
+ * UI-agnostic: core validates only the shape, the emitter interprets each component.
+ */
+function parseView(body: string): ViewNode[] | undefined {
+  const m = /##\s+view\b[^\n]*\n+```ya?ml\n([\s\S]*?)\n```/i.exec(body);
+  if (!m?.[1]) return undefined;
+  const parsed: unknown = parseYaml(m[1]);
+  if (!Array.isArray(parsed)) {
+    throw new Error("vow: `## view` must be a YAML list of components (e.g. `- hero: {...}`)");
+  }
+  return parsed.map((node): ViewNode => {
+    if (typeof node !== "object" || node === null || Array.isArray(node)) {
+      throw new Error("vow: each `## view` item must be a single-key object, e.g. `- list: task`");
+    }
+    const keys = Object.keys(node);
+    if (keys.length !== 1 || keys[0] === undefined) {
+      throw new Error(
+        `vow: a "## view" item must have exactly one component key (got ${keys.length})`,
+      );
+    }
+    const type = keys[0];
+    return { type, value: (node as Record<string, unknown>)[type] };
+  });
+}
+
 /** Parse one `<slug>.vow.md` into a validated Vow. `slug` is supplied by the loader (the filename). */
 export function parseVowMd(slug: string, content: string): VowNode {
   const fm = FRONTMATTER.exec(content);
@@ -161,6 +189,7 @@ export function parseVowMd(slug: string, content: string): VowNode {
     fields: [...itemsUnder(body, "fields")].map(parseFieldLine),
     proof: [...itemsUnder(body, "proves")].map((claim) => ({ claim })),
     tree: parseTree(body),
+    view: parseView(body),
     root: frontmatter["root"],
   });
 }
