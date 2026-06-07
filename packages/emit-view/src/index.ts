@@ -1,11 +1,12 @@
 import {
   pascalCase,
   renderVueSfc,
+  type Attr,
   type Component,
   type ImportDecl,
   type UiNode,
 } from "@vow/component";
-import type { TreeNode, Vow } from "@vow/core";
+import type { Vow } from "@vow/core";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
 
 /**
@@ -36,7 +37,7 @@ export function emitViewSfc(view: Vow, entity: Vow): string {
   if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
 
   const setup: string[] = [
-    // items is optional (default empty) so the view drops into a `## tree` as `- <Name>` with no props
+    // items is optional (default empty) so the view drops into a `## view` as `list: <slug>` with no props
     `const props = withDefaults(defineProps<{ items?: ${type}[] }>(), { items: () => [] });`,
     `const rows = ref<${type}[]>(props.items.map((item) => ({ ...item })));`,
     `const draft = ref<Partial<${type}>>({});`,
@@ -216,90 +217,144 @@ export function emitDefaultView(entity: Vow): string {
 }
 
 /**
- * The vow-native layout path — `emit view` from a `## tree`.
+ * The vow-native view path — `emit view` from a YAML `## view`.
  *
- * The core parses the tree UI-agnostically (`TreeNode`); here it becomes a `UiNode`: a `slot` node is
- * an outlet, every other node is a layout primitive (`Flex`/`Grid`/…) rendered as a `<Component>`.
- * Raw string props become bound attrs with the right JS literal — a numeric value is a `number`
- * (`:gap="4"`), anything else a string (`:direction="'column'"`) — so the primitive receives the
- * typed prop, not a stringified one. This is the seam that lets a `.vow.md` express layout itself.
+ * The core parses it UI-agnostically (`ViewNode[]`); here each component becomes a `UiNode`. Semantic
+ * blocks (`hero`, `features`) expand into primitive trees; `list: <entity>` references a generated
+ * view; layout primitives (`flex`/`box`/`grid`) + text tags (`h1`/`p`/…) + `text` are the escape
+ * hatch — the full model, so anything from a landing page to a SaaS screen is expressible. Numeric
+ * props stay numbers (`:gap="4"`), the rest become string literals. The catalog is sugar over the
+ * escape; nothing a block can do is impossible in primitives.
  */
 
-/** Plain text-bearing HTML elements a tree may use directly (headings, paragraphs, inline). */
+/** Plain text-bearing HTML elements a view may use directly (headings, paragraphs, inline). */
 const TEXT_TAGS: readonly string[] = ["h1", "h2", "h3", "p", "span"];
 
-/** True for tree nodes that are markup, not a referenced component (`slot`, `text`, a text tag). */
-function isReserved(component: string): boolean {
-  return component === "slot" || component === "text" || TEXT_TAGS.includes(component);
+/** A YAML scalar as a string (object/array values become empty — they aren't content). */
+const str = (v: unknown): string =>
+  typeof v === "string" ? v : typeof v === "number" || typeof v === "boolean" ? String(v) : "";
+
+const txt = (s: string): UiNode => ({ kind: "text", text: s });
+const el = (tag: string, children: UiNode[]): UiNode => ({
+  kind: "element",
+  tag,
+  attrs: [],
+  children,
+});
+const comp = (name: string, attrs: Attr[], children: UiNode[]): UiNode => ({
+  kind: "component",
+  name,
+  attrs,
+  children,
+});
+const bound = (name: string, expr: string): Attr => ({ kind: "bound", name, expr });
+
+/** A raw YAML value as an object (props + optional `children`); non-objects → empty. */
+function asObject(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+/** Map raw props (every key but `children`) to bound attrs: numbers stay numbers, else string literals. */
+function propsToAttrs(value: Record<string, unknown>): Attr[] {
+  return Object.entries(value)
+    .filter(([k]) => k !== "children")
+    .map(([name, v]) =>
+      bound(name, typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "\\'")}'`),
+    );
+}
+
+/** Map a node's `children:` (raw single-key objects) to UiNodes. */
+function childrenOf(value: Record<string, unknown>, entities: readonly string[]): UiNode[] {
+  const kids = value["children"];
+  return Array.isArray(kids) ? kids.map((k) => rawToUiNode(k, entities)) : [];
+}
+
+/** Map a raw single-key YAML node (`{ flex: {...} }`) to a UiNode. */
+function rawToUiNode(raw: unknown, entities: readonly string[]): UiNode {
+  const obj = asObject(raw);
+  const type = Object.keys(obj)[0] ?? "";
+  return mapNode(type, obj[type], entities);
 }
 
 /**
- * Map a parsed `TreeNode` to a `UiNode`. `slot` → outlet; `text`/a text tag → markup; a layout
- * primitive OR a known generated view (e.g. `- Task`) → `<Component>`. `knownViews` are the generated
- * view component names the tree is allowed to reference.
+ * Map one component (`type` + raw `value`) to a UiNode. `entities` are the entity slugs a `list:`
+ * may reference. Semantic blocks expand into primitive trees; primitives/text tags/`text` are the
+ * escape hatch.
  */
-function treeToUiNode(node: TreeNode, knownViews: readonly string[]): UiNode {
-  if (node.component === "slot") {
-    const name = node.props["name"];
-    return {
-      kind: "slot",
-      ...(name !== undefined ? { name } : {}),
-      children: node.children.map((c) => treeToUiNode(c, knownViews)),
-    };
+function mapNode(type: string, value: unknown, entities: readonly string[]): UiNode {
+  if (type === "hero") {
+    const o = asObject(value);
+    const kids: UiNode[] = [];
+    if (o["eyebrow"] !== undefined) kids.push(el("span", [txt(str(o["eyebrow"]))]));
+    if (o["title"] !== undefined) kids.push(el("h1", [txt(str(o["title"]))]));
+    if (o["lead"] !== undefined) kids.push(el("p", [txt(str(o["lead"]))]));
+    return comp("Flex", [bound("direction", "'column'"), bound("gap", "3")], kids);
   }
-  if (node.component === "text") {
-    return { kind: "text", text: node.props["value"] ?? "" };
+  if (type === "features") {
+    const cards = (Array.isArray(value) ? value : []).map((it) => {
+      const o = asObject(it);
+      const inner: UiNode[] = [];
+      if (o["title"] !== undefined) inner.push(el("h3", [txt(str(o["title"]))]));
+      if (o["body"] !== undefined) inner.push(el("p", [txt(str(o["body"]))]));
+      return comp("Box", [bound("p", "5")], inner);
+    });
+    return comp("Grid", [bound("columns", "3"), bound("gap", "4")], cards);
   }
-  if (TEXT_TAGS.includes(node.component)) {
-    // a text-bearing HTML element (h1/p/…): its quoted children are its content
-    return {
-      kind: "element",
-      tag: node.component,
-      attrs: [],
-      children: node.children.map((c) => treeToUiNode(c, knownViews)),
-    };
+  if (type === "list") {
+    const slug = str(value);
+    if (!entities.includes(slug)) {
+      throw new Error(
+        `emit-view: \`list: ${slug}\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
+      );
+    }
+    return comp(pascalCase(slug), [], []);
   }
-  if (!LAYOUT_PRIMITIVES.includes(node.component) && !knownViews.includes(node.component)) {
-    throw new Error(
-      `emit-view: unknown tree component "${node.component}" (known: ${[...LAYOUT_PRIMITIVES, ...knownViews].join(", ")}, ${TEXT_TAGS.join(", ")}, slot, text)`,
-    );
+  if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
+    const o = asObject(value);
+    return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
   }
-  return {
-    kind: "component",
-    name: node.component,
-    attrs: Object.entries(node.props).map(([name, value]) => ({
-      kind: "bound",
-      name,
-      // a number stays a number; everything else is a quoted string literal
-      expr: /^-?\d+(?:\.\d+)?$/.test(value) ? value : `'${value.replace(/'/g, "\\'")}'`,
-    })),
-    children: node.children.map((c) => treeToUiNode(c, knownViews)),
-  };
+  if (TEXT_TAGS.includes(type)) {
+    return el(type, [txt(str(value))]);
+  }
+  if (type === "text") {
+    return txt(str(value));
+  }
+  throw new Error(`emit-view: unknown view component "${type}"`);
 }
 
-/** Every component a tree references (layout primitives + generated views) — each imported from ./<Name>.vue. */
-function componentsInTree(node: TreeNode, acc: Set<string> = new Set()): Set<string> {
-  if (!isReserved(node.component)) acc.add(node.component);
-  for (const child of node.children) componentsInTree(child, acc);
+/** Collect every `<Component>` name in a UiNode tree (for imports). */
+function componentsIn(node: UiNode, acc: Set<string> = new Set()): Set<string> {
+  if (node.kind === "component") acc.add(node.name);
+  if (node.kind === "element" || node.kind === "component" || node.kind === "slot") {
+    for (const c of node.children) componentsIn(c, acc);
+  }
   return acc;
 }
 
 /**
- * A view whose layout is its `## tree` — composed from layout primitives, text, and generated views
- * (e.g. `- Task`), rendered to a Vue SFC. `knownViews` lists the generated view component names the
- * tree may reference; each referenced component is imported from its `.generated/` `.vue`.
+ * A view from a YAML `## view` — a list of components rendered to a Vue SFC, wrapped in a `vow-app`
+ * root. `entities` are the entity slugs a `list:` may reference; every `<Component>` in the result
+ * (primitives + referenced views) is imported from its `.generated/` `.vue`.
  */
-export function emitTreeView(view: Vow, knownViews: readonly string[] = []): string {
-  if (!view.tree) throw new Error(`emit-view: vow "${view.slug}" has no \`## tree\``);
-  const root = treeToUiNode(view.tree, knownViews); // validates every node up front
-  const imports: ImportDecl[] = [...componentsInTree(view.tree)].map((name) => ({
+export function emitView(view: Vow, entities: readonly string[] = []): string {
+  if (!view.view) throw new Error(`emit-view: vow "${view.slug}" has no \`## view\``);
+  const nodes = view.view.map((vn) => mapNode(vn.type, vn.value, entities));
+  const root: UiNode = {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-app" }],
+    children: nodes,
+  };
+  const imports: ImportDecl[] = [...componentsIn(root)].map((name) => ({
     from: `./${name}.vue`,
     default: name,
   }));
   const component: Component = {
     name: pascalCase(view.slug),
     doc: [
-      `Generated from vow "${view.slug}" (a \`## tree\` layout). The vow is the source — do not edit.`,
+      `Generated from vow "${view.slug}" (a \`## view\`). The vow is the source — do not edit.`,
     ],
     imports,
     view: root,

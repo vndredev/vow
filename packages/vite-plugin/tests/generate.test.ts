@@ -6,7 +6,7 @@ import { expect, test } from "vite-plus/test";
 import { type Vow as VowNode } from "@vow/core";
 import { generateFiles } from "../src/index.ts";
 
-/** A layout-only view: its `## tree` is the component, and it pulls in the layout primitives. */
+/** A `## view`: a list of components; it pulls in the layout primitives it uses. */
 const shell: VowNode = {
   id: "vow_shell",
   slug: "shell",
@@ -15,38 +15,27 @@ const shell: VowNode = {
   fields: [],
   proof: [],
   fulfills: { kind: "emit", as: "view" },
-  tree: {
-    component: "Container",
-    props: { size: "3" },
-    children: [
-      {
-        component: "Flex",
-        props: { direction: "column", gap: "4" },
-        children: [{ component: "slot", props: {}, children: [] }],
-      },
-    ],
-  },
+  view: [{ type: "flex", value: { direction: "column", gap: 4, children: [{ text: "hi" }] } }],
 };
 
-test("generateFiles renders a `## tree` view and writes the layout primitives it needs", () => {
+test("generateFiles renders a `## view` and writes the layout primitives it needs", () => {
   const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
   try {
     generateFiles([shell], dir, dir);
     const files = readdirSync(dir);
     expect(files).toContain("shell.vue");
-    expect(files).toContain("Container.vue"); // layout primitives written alongside
-    expect(files).toContain("Flex.vue");
+    expect(files).toContain("Flex.vue"); // layout primitives written alongside
 
     const shellVue = readFileSync(join(dir, "shell.vue"), "utf8");
-    expect(shellVue).toContain('<Container :size="3">');
-    expect(shellVue).toContain('import Container from "./Container.vue";');
-    expect(shellVue).toContain("<slot />");
+    expect(shellVue).toContain('<div class="vow-app">');
+    expect(shellVue).toContain('<Flex :direction="\'column\'" :gap="4">hi</Flex>');
+    expect(shellVue).toContain('import Flex from "./Flex.vue";');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
-test("a plain entity view writes no layout primitives (they are pulled in only by a tree)", () => {
+test("a plain entity view writes no layout primitives (they are pulled in only by a `## view`)", () => {
   const entity: VowNode = {
     id: "vow_task",
     slug: "task",

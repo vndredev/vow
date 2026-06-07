@@ -26,7 +26,7 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [ ] multi-value fields (e.g. `labels`)
 - [ ] primitive ladder: switch · dialog · tabs · select · combobox · table _(complex ones wrap Zag/Ark)_
 - [ ] patterns: form · table · detail · board / kanban · stats
-- [x] layout: primitives (Flex / Grid / Box / Container) + view `## tree` + theme tokens
+- [x] layout: primitives (Flex / Grid / Box / Container) + view `## view` + theme tokens
 - [ ] routing · multi-view navigation
 - [ ] data adapter: in-memory → Cloudflare D1 (real persistence)
 
@@ -62,5 +62,5 @@ The critical path — each element green before the next:
 The dogfood moment: once the board exists, **its first content is the plan for itself** — vow planning its own build, in vow.
 
 ::: warning Honest status
-Today: entity / view / bind + the checkbox primitive + field types (`text` · `number` · `boolean` · `select` · `date`) + scenario-coverage + the docs-drift gate + local-state CRUD + layout (primitives + view `## tree` + theme tokens) — all green. Everything unchecked above is planned and built slowly, one element at a time.
+Today: entity / view / bind + the checkbox primitive + field types (`text` · `number` · `boolean` · `select` · `date`) + scenario-coverage + the docs-drift gate + local-state CRUD + layout (primitives + view `## view` + theme tokens) — all green. Everything unchecked above is planned and built slowly, one element at a time.
 :::
