@@ -13,6 +13,18 @@ import { getHighlighter, markdownToNodesSync } from "@vow/markdown";
 /** A loaded Shiki highlighter (typed without a direct shiki import). */
 type Highlighter = Awaited<ReturnType<typeof getHighlighter>>;
 
+/** A top-nav link. */
+export interface NavLink {
+  readonly text: string;
+  readonly link: string;
+}
+
+/** The docs chrome config — title + top-nav links, surfaced in the generated manifest. */
+export interface DocsConfig {
+  readonly title: string;
+  readonly nav: readonly NavLink[];
+}
+
 export interface VowDocsOptions {
   /** Folder of plain `.md` content to render into prose pages. */
   readonly content: string;
@@ -20,6 +32,10 @@ export interface VowDocsOptions {
   readonly outDir?: string;
   /** Section order for the sidebar (the page `group` frontmatter). Unlisted groups follow, A→Z. */
   readonly groups?: readonly string[];
+  /** The site title shown in the top nav (links home). */
+  readonly title?: string;
+  /** Top-nav links. */
+  readonly nav?: readonly NavLink[];
 }
 
 /** A page in the sidebar — its title and clean URL. */
@@ -38,6 +54,8 @@ export interface SidebarGroup {
 export interface GenerateDocsOptions {
   readonly highlighter?: Highlighter;
   readonly groups?: readonly string[];
+  readonly title?: string;
+  readonly nav?: readonly NavLink[];
 }
 
 /** One scanned page's metadata, before it becomes a route + a sidebar entry. */
@@ -108,12 +126,16 @@ export function buildSidebar(
     }));
 }
 
-/** The generated manifest — `@vow/docs`'s routes (for the boot) + sidebar (for the chrome). */
-function manifestModule(pages: readonly PageMeta[], sidebar: readonly SidebarGroup[]): string {
+/** The generated manifest — `@vow/docs`'s routes (boot) + sidebar + chrome config (the layout). */
+function manifestModule(
+  pages: readonly PageMeta[],
+  sidebar: readonly SidebarGroup[],
+  config: DocsConfig,
+): string {
   return [
     `// Generated docs manifest (from @vow/docs). The markdown is the source — do not edit.`,
     `import type { Route } from "@vow/router";`,
-    `import type { SidebarGroup } from "@vow/docs";`,
+    `import type { DocsConfig, SidebarGroup } from "@vow/docs";`,
     ``,
     `export const routes: Route[] = [`,
     ...pages.map(
@@ -122,6 +144,8 @@ function manifestModule(pages: readonly PageMeta[], sidebar: readonly SidebarGro
     `];`,
     ``,
     `export const sidebar: SidebarGroup[] = ${JSON.stringify(sidebar, null, 2)};`,
+    ``,
+    `export const config: DocsConfig = ${JSON.stringify(config, null, 2)};`,
     ``,
   ].join("\n");
 }
@@ -154,8 +178,9 @@ export function generateDocs(
       title: data["title"] ?? firstH1(body) ?? path,
     });
   }
+  const config: DocsConfig = { title: opts.title ?? "Docs", nav: opts.nav ?? [] };
   const manifest = join(outDir, "vow-docs-routes.ts");
-  writeFileSync(manifest, manifestModule(pages, buildSidebar(pages, opts.groups)), "utf8");
+  writeFileSync(manifest, manifestModule(pages, buildSidebar(pages, opts.groups), config), "utf8");
   written.push(manifest);
 
   // The generated chrome: wires @vow/docs's Layout to the sidebar data. The boot picks it up via
@@ -170,12 +195,12 @@ export function generateDocs(
 const LAYOUT_SFC = [
   `<script setup lang="ts">`,
   `import Layout from "@vow/docs/Layout.vue";`,
-  `import { sidebar } from "./vow-docs-routes.ts";`,
+  `import { config, sidebar } from "./vow-docs-routes.ts";`,
   `defineProps<{ path: string }>();`,
   `</script>`,
   ``,
   `<template>`,
-  `  <Layout :groups="sidebar" :path="path"><slot /></Layout>`,
+  `  <Layout :config="config" :groups="sidebar" :path="path"><slot /></Layout>`,
   `</template>`,
   ``,
 ].join("\n");
@@ -187,7 +212,12 @@ export function vowDocs(options: VowDocsOptions): Plugin {
   let genDir = outOpt;
   let highlighter: Highlighter | undefined;
   const regenerate = (): void => {
-    generateDocs(contentDir, genDir, { highlighter, groups: options.groups });
+    generateDocs(contentDir, genDir, {
+      highlighter,
+      groups: options.groups,
+      title: options.title,
+      nav: options.nav,
+    });
   };
   return {
     name: "vow:docs",
