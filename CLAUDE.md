@@ -31,7 +31,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 
 **Primitives (headless, a11y):** `@vow/headless` = framework-agnostic core (`checkbox(state,set)→api` — ARIA/keyboard logic), whose **a11y is tested against the platform** (vanilla DOM + axe, no framework). `@vow/emit-primitive` generates the **unstyled** Vue adapter (only `class` + `data-*` hooks). Only build what HTML can't do natively — **no Button** (`<button>` is already accessible).
 
-**Three zones:** `app/` (vows = truth, versioned) ⟂ `.generated/` (output, gitignored, NEVER edited) ⟂ `src/` (thin boot shell: `main.ts` + shims).
+**Two zones:** `app/` (vows = truth, versioned) ⟂ `.generated/` (machine output — incl. the generated boot `main.ts` + `vow-env.d.ts` shims; gitignored, NEVER edited). No hand-written `src/`: the entry is a `root: true` page and vow generates the boot that mounts it; `index.html` loads `/.generated/main.ts`.
 
 **Styling:** `@vow/theme` = swappable `vow.css` over the `class`/`data-*` hooks. Adapters stay unstyled; the theme is optional (or replaceable by vndre.dev tokens) — no component change.
 
@@ -47,7 +47,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 - Test **a11y against the platform** (vanilla DOM + axe), not a framework — the truth lives in the headless core; the adapter only forwards.
 - **English only** across codebase + docs — enforced by a gate (no umlauts).
 - VitePress (`docs/`) runs on its own **upstream Vite** (scoped override `"vitepress>vite"`), not Vite+ (Vite+ dropped `transformWithEsbuild` for oxc). `allowBuilds: esbuild`.
-- Side-effect imports (`*.css`, `*.vue`) need a tsgo shim (`src/env.d.ts`).
+- Side-effect imports (`*.css`, `*.vue`) need a tsgo shim — generated into `.generated/vow-env.d.ts`.
 
 ## Way of working (hard rules, from Andre)
 

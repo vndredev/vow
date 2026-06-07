@@ -67,3 +67,28 @@ test("a plain entity view writes no layout primitives (they are pulled in only b
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("a `root` page generates the boot (main.ts) + the env shims", () => {
+  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
+  try {
+    generateFiles([{ ...shell, root: true }], dir, dir);
+    const files = readdirSync(dir);
+    expect(files).toContain("main.ts");
+    expect(files).toContain("vow-env.d.ts");
+    const main = readFileSync(join(dir, "main.ts"), "utf8");
+    expect(main).toContain('import Shell from "./shell.vue";');
+    expect(main).toContain('createApp(Shell).mount("#app");');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a non-root view generates no boot", () => {
+  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
+  try {
+    generateFiles([shell], dir, dir);
+    expect(readdirSync(dir)).not.toContain("main.ts");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -5,7 +5,14 @@ import { loadVowForest, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { emitCheckboxSfc } from "@vow/emit-primitive";
-import { emitDefaultView, emitTreeView, emitViewSfc, viewComponentName } from "@vow/emit-view";
+import {
+  emitBoot,
+  emitDefaultView,
+  emitTreeView,
+  emitViewSfc,
+  VOW_ENV_DTS,
+  viewComponentName,
+} from "@vow/emit-view";
 import { layoutSfcs } from "@vow/layout";
 
 /**
@@ -119,6 +126,16 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(file, sfc, "utf8");
       written.push(file);
     }
+  }
+  // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
+  // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.
+  const rootVow = allVows(vows).find((v) => v.root === true && v.tree);
+  if (rootVow) {
+    const boot = join(outDir, "main.ts");
+    const env = join(outDir, "vow-env.d.ts");
+    writeFileSync(boot, emitBoot(rootVow.slug), "utf8");
+    writeFileSync(env, VOW_ENV_DTS, "utf8");
+    written.push(boot, env);
   }
   return written;
 }

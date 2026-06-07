@@ -1,6 +1,7 @@
 ---
 id: vow_landing
 fulfills: emit view
+root: true
 ---
 
 # The vow starter landing
