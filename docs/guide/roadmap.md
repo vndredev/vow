@@ -30,6 +30,7 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [ ] `reference` field + relations (entity → entity)
 - [ ] multi-value fields (e.g. `labels`)
 - [ ] primitive ladder: switch · dialog · tabs · select · combobox · table _(complex ones wrap Zag/Ark)_
+- [ ] icon libraries: a semantic icon set (check · chevron · close · menu · search · …) behind a swappable adapter — pick one of 1–3 common libs (Lucide / Heroicons / Phosphor) by config, exactly like the framework adapters. Today the primitives use Unicode glyphs + CSS-drawn carets
 - [ ] patterns: form · table · detail · board / kanban · stats
 - [x] layout: primitives (Flex / Grid / Box / Container) + view `## view` + theme tokens
 - [ ] routing · multi-view navigation
