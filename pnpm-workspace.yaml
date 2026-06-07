@@ -2,7 +2,6 @@ packages:
   - apps/*
   - packages/*
   - tools/*
-  - docs
 
 catalogMode: prefer
 

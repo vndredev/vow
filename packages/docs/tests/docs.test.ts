@@ -38,7 +38,7 @@ test("generateDocs renders each .md into a prose .vue + a routes manifest", () =
   const out = mkdtempSync(join(tmpdir(), "vow-docs-out-"));
 
   const written = generateDocs(content, out); // no highlighter → plain code blocks
-  expect(written).toHaveLength(2); // the page + the manifest
+  expect(written).toHaveLength(3); // the page + the routes manifest + the layout
 
   const vue = readFileSync(join(out, "doc-intro.vue"), "utf8");
   expect(vue).toContain('<div class="vow-doc">');

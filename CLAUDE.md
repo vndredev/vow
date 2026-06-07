@@ -14,7 +14,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 - **`pnpm -r test`** — tests per package (local `.bin`). **NOT `vp test`** (root): the global `vp` can't resolve project-local optional peers like `jsdom`.
 - `vp build apps/starter` — generates `.generated/` + builds the bundle.
 - `vp dev apps/starter` — dev server (HMR: change `app/*.vow.md` → regenerates + reloads).
-- `pnpm --filter @vow/docs run dev` / `build` — the docs, built on **`@vow/studio`** (vow's own Vite+ doc-system, not VitePress).
+- `vp dev apps/docs` / `vp build apps/docs` — the docs: a **generated vow app** (content stays as plain `.md` in `/docs`, scanned by `@vow/docs`).
 - pre-commit (`vp staged`) runs `vp check --fix`.
 
 ## Architecture (the contract)
@@ -46,7 +46,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 - Run tests **always** via `pnpm -r test` (local bins, jsdom peer). The global `vp test` breaks on `jsdom`.
 - Test **a11y against the platform** (vanilla DOM + axe), not a framework — the truth lives in the headless core; the adapter only forwards.
 - **English only** across codebase + docs — enforced by a gate (no umlauts).
-- The docs (`docs/`) run on **`@vow/studio`** — vow's own Vite+-native doc-system (markdown→Vue via studioDocs + the app shell), fully on the VoidZero stack. (VitePress is gone, along with its upstream-Vite override.)
+- The docs are a **generated vow app** (`apps/docs`): content stays as plain `.md` in `/docs` (not a package), scanned by **`@vow/docs`** (`vowDocs()`), rendered through the core — `@vow/markdown` (md→UiNode + Shiki) → `emitProse` → prose `.vue`, navigated by **`@vow/router`**, wrapped in a sidebar (`collapsible`-composed). No parallel doc-system; everything dogfooded. (VitePress + the old `@vow/studio` are both gone.)
 - Side-effect imports (`*.css`, `*.vue`) need a tsgo shim — generated into `.generated/vow-env.d.ts`.
 
 ## Way of working (hard rules, from Andre)
