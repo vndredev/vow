@@ -1,7 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { emitCheckboxSfc, emitCollapsibleSfc, emitTabsSfc } from "@vow/emit-primitive";
+import {
+  emitCheckboxSfc,
+  emitCollapsibleSfc,
+  emitDialogSfc,
+  emitTabsSfc,
+} from "@vow/emit-primitive";
 import { defineConfig } from "vitepress";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -18,6 +23,7 @@ function vowPrimitives() {
       writeFileSync(resolve(out, "Checkbox.vue"), emitCheckboxSfc());
       writeFileSync(resolve(out, "Collapsible.vue"), emitCollapsibleSfc());
       writeFileSync(resolve(out, "Tabs.vue"), emitTabsSfc());
+      writeFileSync(resolve(out, "Dialog.vue"), emitDialogSfc());
     },
   };
 }
@@ -64,6 +70,7 @@ export default defineConfig({
                 { text: "Checkbox", link: "/guide/primitives/checkbox" },
                 { text: "Collapsible", link: "/guide/primitives/collapsible" },
                 { text: "Tabs", link: "/guide/primitives/tabs" },
+                { text: "Dialog", link: "/guide/primitives/dialog" },
               ],
             },
             { text: "Views", link: "/guide/layout" },

@@ -39,5 +39,6 @@ Each primitive has its own page — the live demo, the contract, props & events,
 | [Checkbox](/guide/primitives/checkbox)       | ✓ available | a boolean field         |
 | [Collapsible](/guide/primitives/collapsible) | ✓ available | a disclosure / fold-out |
 | [Tabs](/guide/primitives/tabs)               | ✓ available | a tablist over panels   |
+| [Dialog](/guide/primitives/dialog)           | ✓ available | a modal / drawer        |
 
-Climbing the ladder next — same headless-core + unstyled-adapter split, hand-rolled (no runtime lock-in): **Dialog**, **Select**, … See the [Roadmap](/guide/roadmap).
+Climbing the ladder next — same headless-core + unstyled-adapter split, hand-rolled (no runtime lock-in): **Select**, … See the [Roadmap](/guide/roadmap).

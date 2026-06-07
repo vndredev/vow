@@ -17,6 +17,7 @@
   --vow-color-on-accent: #ffffff; /* text/icon on an accent or ink fill */
   --vow-color-border: #e6e6e6; /* hairlines, input + card borders */
   --vow-color-danger: #cc1f1f; /* destructive affordances (delete) */
+  --vow-color-scrim: rgb(0 0 0 / 0.5); /* modal/overlay backdrop */
 
   /* Type — one font stack, a size scale, weights, line-heights, tracking. */
   --vow-font-sans: system-ui, -apple-system, "Segoe UI", roboto, helvetica, arial, sans-serif;
@@ -76,6 +77,7 @@
     --vow-color-on-accent: #0f1115;
     --vow-color-border: #2a2f3a;
     --vow-color-danger: #ff6b6b;
+    --vow-color-scrim: rgb(0 0 0 / 0.6);
   }
 }
 
@@ -370,4 +372,72 @@
   flex-direction: column;
   border-bottom: none;
   border-right: var(--vow-border) solid var(--vow-color-border);
+}
+
+/* The dialog (modal) primitive — a fixed, full-screen container centering the content box over a
+   dismiss overlay (the whole thing Teleported to <body> and shown only when open). */
+.vow-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vow-space-4);
+}
+.vow-dialog__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--vow-color-scrim);
+}
+.vow-dialog__content {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--vow-container-1);
+  max-height: calc(100vh - var(--vow-space-8));
+  overflow: auto;
+  padding: var(--vow-space-6);
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-dialog__content:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+.vow-dialog__title {
+  margin: 0;
+  font-size: var(--vow-text-xl);
+  font-weight: var(--vow-weight-bold);
+  line-height: var(--vow-leading-tight);
+}
+.vow-dialog__close {
+  position: absolute;
+  top: var(--vow-space-4);
+  right: var(--vow-space-4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-lg);
+  line-height: 1;
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}
+.vow-dialog__close:hover {
+  color: var(--vow-color-text);
+}
+.vow-dialog__close:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
 }

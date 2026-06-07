@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { emitCheckboxSfc, emitCollapsibleSfc, emitTabsSfc } from "../src/index.ts";
+import { emitCheckboxSfc, emitCollapsibleSfc, emitDialogSfc, emitTabsSfc } from "../src/index.ts";
 
 test("emitCheckboxSfc generates a Vue adapter over the headless core with class + data hooks", () => {
   const sfc = emitCheckboxSfc();
@@ -90,4 +90,58 @@ const EXPECTED_TABS = [
 
 test("emitTabsSfc renders the tabs adapter byte-for-byte", () => {
   expect(emitTabsSfc()).toBe(EXPECTED_TABS);
+});
+
+// The byte-stable oracle for the dialog adapter: a Teleported, v-if'd overlay + content.
+const EXPECTED_DIALOG = [
+  `<script setup lang="ts">`,
+  `// Generated dialog adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed, nextTick, ref, useId, watch } from "vue";`,
+  `import { dialog } from "@vow/headless";`,
+  ``,
+  `const props = defineProps<{ modelValue: boolean; title: string }>();`,
+  `const emit = defineEmits<{ "update:modelValue": [boolean] }>();`,
+  ``,
+  `const uid = useId();`,
+  `const content = ref<HTMLElement>();`,
+  `let restore: HTMLElement | null = null;`,
+  `const api = computed(() =>`,
+  `  dialog({ open: props.modelValue, id: uid }, (next) =>`,
+  `    emit("update:modelValue", next.open),`,
+  `  ),`,
+  `);`,
+  `watch(`,
+  `  () => props.modelValue,`,
+  `  async (open) => {`,
+  `    if (open) {`,
+  `      restore = document.activeElement as HTMLElement | null;`,
+  `      document.body.style.overflow = "hidden";`,
+  `      await nextTick();`,
+  `      content.value?.focus();`,
+  `    } else {`,
+  `      document.body.style.overflow = "";`,
+  `      restore?.focus();`,
+  `    }`,
+  `  },`,
+  `);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <Teleport to="body">`,
+  `    <div v-if="api.open" class="vow-dialog">`,
+  `      <div v-bind="api.overlayProps" class="vow-dialog__overlay" />`,
+  `      <div v-bind="api.contentProps" ref="content" class="vow-dialog__content">`,
+  `        <h2 v-bind="api.titleProps" class="vow-dialog__title">{{ title }}</h2>`,
+  `        <slot />`,
+  `        <button v-bind="api.closeProps" class="vow-dialog__close">×</button>`,
+  `      </div>`,
+  `    </div>`,
+  `  </Teleport>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitDialogSfc renders the dialog adapter byte-for-byte", () => {
+  expect(emitDialogSfc()).toBe(EXPECTED_DIALOG);
 });

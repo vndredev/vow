@@ -217,3 +217,110 @@ const tabs: Component = {
 export function emitTabsSfc(): string {
   return renderVueSfc(tabs);
 }
+
+/**
+ * The dialog (modal) adapter: a Teleported, v-if'd overlay + content. The ARIA contract, Escape and
+ * the Tab focus-trap come from the core; the `setup` glue reacts to the open state — moving focus into
+ * the content on open, restoring it on close, and locking body scroll (the parts that touch document).
+ */
+const dialogComponent: Component = {
+  name: "Dialog",
+  doc: [
+    "Generated dialog adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed", "nextTick", "ref", "useId", "watch"] },
+    { from: "@vow/headless", names: ["dialog"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "boolean" },
+    { name: "title", tsType: "string" },
+  ],
+  events: [{ name: "update:modelValue", payload: "boolean" }],
+  setup: [
+    "const uid = useId();",
+    "const content = ref<HTMLElement>();",
+    "let restore: HTMLElement | null = null;",
+    "const api = computed(() =>",
+    "  dialog({ open: props.modelValue, id: uid }, (next) =>",
+    '    emit("update:modelValue", next.open),',
+    "  ),",
+    ");",
+    "watch(",
+    "  () => props.modelValue,",
+    "  async (open) => {",
+    "    if (open) {",
+    "      restore = document.activeElement as HTMLElement | null;",
+    '      document.body.style.overflow = "hidden";',
+    "      await nextTick();",
+    "      content.value?.focus();",
+    "    } else {",
+    '      document.body.style.overflow = "";',
+    "      restore?.focus();",
+    "    }",
+    "  },",
+    ");",
+  ],
+  view: {
+    kind: "component",
+    name: "Teleport",
+    attrs: [{ kind: "static", name: "to", value: "body" }],
+    children: [
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "cond", type: "if", expr: "api.open" },
+          { kind: "static", name: "class", value: "vow-dialog" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "div",
+            attrs: [
+              { kind: "spread", expr: "api.overlayProps" },
+              { kind: "static", name: "class", value: "vow-dialog__overlay" },
+            ],
+            children: [],
+          },
+          {
+            kind: "element",
+            tag: "div",
+            attrs: [
+              { kind: "spread", expr: "api.contentProps" },
+              { kind: "static", name: "ref", value: "content" },
+              { kind: "static", name: "class", value: "vow-dialog__content" },
+            ],
+            children: [
+              {
+                kind: "element",
+                tag: "h2",
+                attrs: [
+                  { kind: "spread", expr: "api.titleProps" },
+                  { kind: "static", name: "class", value: "vow-dialog__title" },
+                ],
+                children: [{ kind: "interp", expr: "title" }],
+              },
+              { kind: "slot", children: [] },
+              {
+                kind: "element",
+                tag: "button",
+                attrs: [
+                  { kind: "spread", expr: "api.closeProps" },
+                  { kind: "static", name: "class", value: "vow-dialog__close" },
+                ],
+                children: [{ kind: "text", text: "×" }],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue dialog adapter (over @vow/headless), rendered from the canonical model. */
+export function emitDialogSfc(): string {
+  return renderVueSfc(dialogComponent);
+}
