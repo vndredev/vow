@@ -374,6 +374,11 @@ body {
   margin: 0 auto;
   padding: var(--vow-space-7) var(--vow-space-6);
 }
+/* the home content fills the same width as the nav (the wrapper owns the bounds, not the inner app) */
+.vow-docs-home .vow-app {
+  max-width: none;
+  padding: 0;
+}
 
 /* A live primitive demo (::: demo <x>) — a bordered box around the running component. */
 .vow-demo {

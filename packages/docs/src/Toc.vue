@@ -12,6 +12,7 @@ let ticking = false;
 
 function update(): void {
   ticking = false;
+  if (props.items.length === 0) return; // no TOC on this page — nothing to track
   let current = props.items[0]?.slug ?? "";
   for (const item of props.items) {
     const el = document.getElementById(item.slug);
