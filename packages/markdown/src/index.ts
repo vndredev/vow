@@ -222,7 +222,9 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]
             ],
             [],
           );
-          return el("li", [box, ...task.kids], [sattr("class", "vow-task")]);
+          // wrap the content in ONE span so the flex row has two items (box + label), not one per node
+          const label = el("span", task.kids, [sattr("class", "vow-task__label")]);
+          return el("li", [box, label], [sattr("class", "vow-task")]);
         },
       });
     } else if (t.type.endsWith("_open")) {

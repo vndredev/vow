@@ -629,6 +629,9 @@ body {
   flex: none;
   margin-top: 0.15em;
 }
+.vow-task__label {
+  min-width: 0;
+}
 /* the items are read-only status, not inputs — keep the disabled box crisp (not the dimmed look) */
 .vow-task > .vow-checkbox[data-disabled] {
   opacity: 1;
