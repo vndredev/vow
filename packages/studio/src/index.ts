@@ -15,3 +15,10 @@ export { routes, toRoutePath, type Route } from "./routes.ts";
 export { buildSidebar, type Page, type SidebarGroup, type SidebarItem } from "./sidebar.ts";
 export { discover, type Discovered } from "./discover.ts";
 export { studioDocs, compileMarkdownModule, type StudioOptions } from "./plugin.ts";
+export {
+  matchRoute,
+  createStudioRouter,
+  type RouteDef,
+  type PageModule,
+  type StudioRouter,
+} from "../theme/router.ts";
