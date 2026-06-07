@@ -9,7 +9,9 @@ import {
   emitTabsSfc,
 } from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
-import { getHighlighter, markdownToNodesSync } from "@vow/markdown";
+import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
+
+export type { TocEntry } from "@vow/markdown";
 
 /**
  * @vow/docs — reusable docs for any vow app. It scans a folder of plain `.md` content and generates a
@@ -139,16 +141,17 @@ export function buildSidebar(
     }));
 }
 
-/** The generated manifest — `@vow/docs`'s routes (boot) + sidebar + chrome config (the layout). */
+/** The generated manifest — `@vow/docs`'s routes (boot) + sidebar + config + per-page TOC (the layout). */
 function manifestModule(
   pages: readonly PageMeta[],
   sidebar: readonly SidebarGroup[],
   config: DocsConfig,
+  tocByPath: Record<string, TocEntry[]>,
 ): string {
   return [
     `// Generated docs manifest (from @vow/docs). The markdown is the source — do not edit.`,
     `import type { Route } from "@vow/router";`,
-    `import type { DocsConfig, SidebarGroup } from "@vow/docs";`,
+    `import type { DocsConfig, SidebarGroup, TocEntry } from "@vow/docs";`,
     ``,
     `export const routes: Route[] = [`,
     ...pages.map(
@@ -159,6 +162,8 @@ function manifestModule(
     `export const sidebar: SidebarGroup[] = ${JSON.stringify(sidebar, null, 2)};`,
     ``,
     `export const config: DocsConfig = ${JSON.stringify(config, null, 2)};`,
+    ``,
+    `export const tocByPath: Record<string, TocEntry[]> = ${JSON.stringify(tocByPath, null, 2)};`,
     ``,
   ].join("\n");
 }
@@ -176,12 +181,15 @@ export function generateDocs(
   const written: string[] = [];
   const pages: PageMeta[] = [];
   const used = new Set<string>(); // prose-component names referenced across the pages
+  const tocByPath: Record<string, TocEntry[]> = {}; // "on this page" entries per route
   for (const file of mdFilesUnder(contentDir)) {
     const slug = docSlug(contentDir, file);
     const { data, body } = parseFrontmatter(readFileSync(file, "utf8"));
     const dir = dirname(file);
+    const toc: TocEntry[] = [];
     const nodes = markdownToNodesSync(body, {
       highlighter: opts.highlighter,
+      toc,
       resolveSnippet: (p) => {
         try {
           return readFileSync(resolve(dir, p), "utf8");
@@ -195,6 +203,7 @@ export function generateDocs(
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);
     const path = routePath(relNoExt(contentDir, file), opts.base);
+    tocByPath[path] = toc;
     pages.push({
       path,
       file: `${slug}.vue`,
@@ -205,7 +214,11 @@ export function generateDocs(
   }
   const config: DocsConfig = { title: opts.title ?? "Docs", nav: opts.nav ?? [] };
   const manifest = join(outDir, "vow-docs-routes.ts");
-  writeFileSync(manifest, manifestModule(pages, buildSidebar(pages, opts.groups), config), "utf8");
+  writeFileSync(
+    manifest,
+    manifestModule(pages, buildSidebar(pages, opts.groups), config, tocByPath),
+    "utf8",
+  );
   written.push(manifest);
 
   // The generated chrome: wires @vow/docs's Layout to the sidebar data. The boot picks it up via
@@ -249,13 +262,13 @@ function collectComponents(nodes: readonly unknown[], acc: Set<string>): void {
 const LAYOUT_SFC = [
   `<script setup lang="ts">`,
   `import Layout from "@vow/docs/Layout.vue";`,
-  `import { config, sidebar } from "./vow-docs-routes.ts";`,
+  `import { config, sidebar, tocByPath } from "./vow-docs-routes.ts";`,
   `import "@vow/docs/style.css";`,
   `defineProps<{ path: string }>();`,
   `</script>`,
   ``,
   `<template>`,
-  `  <Layout :config="config" :groups="sidebar" :path="path"><slot /></Layout>`,
+  `  <Layout :config="config" :groups="sidebar" :toc-by-path="tocByPath" :path="path"><slot /></Layout>`,
   `</template>`,
   ``,
 ].join("\n");

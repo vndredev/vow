@@ -40,6 +40,31 @@ const comp = (name: string, attrs: Attr[], children: UiNode[]): UiNode => ({
   children,
 });
 
+/** One "on this page" entry — a heading's level (2|3), text, and slug id. */
+export interface TocEntry {
+  readonly level: number;
+  readonly text: string;
+  readonly slug: string;
+}
+
+/** A heading slug: lowercase, spaces → "-", non-word stripped (the anchor id). */
+const slug = (text: string): string =>
+  text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+
+/** The concatenated text of a node tree (for a heading's slug + TOC label). */
+function textOf(nodes: readonly UiNode[]): string {
+  let out = "";
+  for (const n of nodes) {
+    if (n.kind === "text") out += n.text;
+    else if ("children" in n) out += textOf(n.children);
+  }
+  return out;
+}
+
 /** A `:::` callout container → a styled box with an optional title (code-group is handled inline). */
 function calloutNode(name: string, title: string, kids: UiNode[]): UiNode {
   const children = title
@@ -87,8 +112,9 @@ function codeNode(content: string, info: string, hl?: Highlighter): UiNode {
   return raw(highlight(hl, code, lang));
 }
 
-/** Block tokens → block UiNodes. Tag-driven opens (p/h2/ul/li/blockquote); fences → code node. */
-function blockToNodes(tokens: readonly Tok[], hl?: Highlighter): UiNode[] {
+/** Block tokens → block UiNodes. Tag-driven opens (p/h2/ul/li/blockquote); fences → code node;
+    h2/h3 get a slug id and (if `toc` is given) feed the "on this page" entries. */
+function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]): UiNode[] {
   const root: UiNode[] = [];
   const stack: Frame[] = [];
   const sink = (): UiNode[] => stack[stack.length - 1]?.kids ?? root;
@@ -128,6 +154,21 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter): UiNode[] {
     } else if (t.type.startsWith("container_") && t.type.endsWith("_close")) {
       const top = stack.pop();
       if (top) sink().push(top.build(top.kids));
+    } else if (t.type === "heading_open") {
+      const tag = t.tag;
+      const level = Number(tag.slice(1));
+      stack.push({
+        kids: [],
+        build: (k) => {
+          if (toc && (level === 2 || level === 3)) {
+            const text = textOf(k);
+            const s = slug(text);
+            toc.push({ level, text, slug: s });
+            return el(tag, k, [sattr("id", s)]);
+          }
+          return el(tag, k);
+        },
+      });
     } else if (t.type.endsWith("_open")) {
       const tag = t.tag || "div";
       stack.push({ kids: [], build: (k) => el(tag, k) });
@@ -145,6 +186,8 @@ export interface MarkdownOptions {
   readonly highlighter?: Highlighter;
   /** Read a `<<< <path>` snippet's content (relative to the source file); null = not found. */
   readonly resolveSnippet?: (path: string) => string | null;
+  /** If given, the page's h2/h3 headings are collected here (the "on this page" TOC). */
+  readonly toc?: TocEntry[];
 }
 
 /** A `<<< <path>` (optionally `{lang}`) line that includes a file as a fenced code block. */
@@ -167,7 +210,7 @@ function expandSnippets(src: string, resolve: (path: string) => string | null): 
  */
 export function markdownToNodesSync(source: string, opts: MarkdownOptions = {}): UiNode[] {
   const src = opts.resolveSnippet ? expandSnippets(source, opts.resolveSnippet) : source;
-  return blockToNodes(md.parse(src, {}), opts.highlighter);
+  return blockToNodes(md.parse(src, {}), opts.highlighter, opts.toc);
 }
 
 /**

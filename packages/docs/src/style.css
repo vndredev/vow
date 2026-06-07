@@ -204,9 +204,9 @@
 }
 .vow-docs-layout {
   display: grid;
-  grid-template-columns: 16rem minmax(0, 1fr);
+  grid-template-columns: 16rem minmax(0, 1fr) 13rem;
   gap: var(--vow-space-7);
-  max-width: 80rem;
+  max-width: 84rem;
   margin: 0 auto;
   padding: var(--vow-space-7) var(--vow-space-6);
 }
@@ -323,4 +323,35 @@
   border: none;
   border-radius: var(--vow-radius-1);
   cursor: pointer;
+}
+
+/* The "on this page" TOC rail. */
+.vow-toc {
+  position: sticky;
+  top: calc(var(--vow-nav-h) + var(--vow-space-6));
+  align-self: start;
+  font-size: var(--vow-text-sm);
+}
+.vow-toc__title {
+  margin-bottom: var(--vow-space-2);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+}
+.vow-toc__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-left: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-toc__list a {
+  display: block;
+  padding: var(--vow-space-1) var(--vow-space-3);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-toc__list a:hover {
+  color: var(--vow-color-text);
+}
+.vow-toc__item--l3 a {
+  padding-left: var(--vow-space-5);
 }

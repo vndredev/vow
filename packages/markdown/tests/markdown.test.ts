@@ -68,6 +68,17 @@ test("a <<< snippet line includes the resolved file as a code block", () => {
   expect(JSON.stringify(pre)).toContain("export const a = 1;");
 });
 
+test("h2/h3 headings get slug ids and feed the toc", () => {
+  const toc: { level: number; text: string; slug: string }[] = [];
+  const nodes = markdownToNodesSync("## Run the starter\n\ntext\n\n### A sub-step", { toc });
+  expect(toc).toEqual([
+    { level: 2, text: "Run the starter", slug: "run-the-starter" },
+    { level: 3, text: "A sub-step", slug: "a-sub-step" },
+  ]);
+  const h2 = nodes[0] as ElementNode;
+  expect(h2.attrs).toContainEqual({ kind: "static", name: "id", value: "run-the-starter" });
+});
+
 test("a bullet list maps to ul > li", async () => {
   const ul = (await markdownToNodes("- one\n- two"))[0] as ElementNode;
   expect(ul.tag).toBe("ul");
