@@ -224,6 +224,9 @@ export function emitDefaultView(entity: Vow): string {
  * typed prop, not a stringified one. This is the seam that lets a `.vow.md` express layout itself.
  */
 
+/** Plain text-bearing HTML elements a tree may use directly (headings, paragraphs, inline). */
+const TEXT_TAGS: readonly string[] = ["h1", "h2", "h3", "p", "span"];
+
 /** Map a parsed `TreeNode` to a `UiNode`. `slot` → outlet; a known primitive → `<Component>`. */
 function treeToUiNode(node: TreeNode): UiNode {
   if (node.component === "slot") {
@@ -237,9 +240,18 @@ function treeToUiNode(node: TreeNode): UiNode {
   if (node.component === "text") {
     return { kind: "text", text: node.props["value"] ?? "" };
   }
+  if (TEXT_TAGS.includes(node.component)) {
+    // a text-bearing HTML element (h1/p/…): its quoted children are its content
+    return {
+      kind: "element",
+      tag: node.component,
+      attrs: [],
+      children: node.children.map(treeToUiNode),
+    };
+  }
   if (!LAYOUT_PRIMITIVES.includes(node.component)) {
     throw new Error(
-      `emit-view: unknown tree component "${node.component}" (known: ${LAYOUT_PRIMITIVES.join(", ")}, slot, text)`,
+      `emit-view: unknown tree component "${node.component}" (known: ${LAYOUT_PRIMITIVES.join(", ")}, ${TEXT_TAGS.join(", ")}, slot, text)`,
     );
   }
   return {
@@ -257,7 +269,7 @@ function treeToUiNode(node: TreeNode): UiNode {
 
 /** The distinct layout primitives referenced by a tree (for the SFC's imports). */
 function primitivesInTree(node: TreeNode, acc: Set<string> = new Set()): Set<string> {
-  if (node.component !== "slot" && node.component !== "text") acc.add(node.component);
+  if (LAYOUT_PRIMITIVES.includes(node.component)) acc.add(node.component);
   for (const child of node.children) primitivesInTree(child, acc);
   return acc;
 }
