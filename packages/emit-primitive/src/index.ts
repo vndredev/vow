@@ -84,3 +84,64 @@ const checkbox: Component = {
 export function emitCheckboxSfc(): string {
   return renderVueSfc(checkbox);
 }
+
+/** The collapsible (disclosure) adapter as a canonical Component: a button trigger + a v-show region. */
+const collapsible: Component = {
+  name: "Collapsible",
+  doc: [
+    "Generated collapsible adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed", "useId"] },
+    { from: "@vow/headless", names: ["collapsible"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "boolean" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "boolean" }],
+  setup: [
+    "const uid = useId();",
+    "const api = computed(() =>",
+    "  collapsible({ open: props.modelValue, id: uid, disabled: props.disabled }, (next) =>",
+    '    emit("update:modelValue", next.open),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "class", value: "vow-collapsible" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.triggerProps" },
+          { kind: "static", name: "class", value: "vow-collapsible__trigger" },
+        ],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "spread", expr: "api.contentProps" },
+          { kind: "cond", type: "show", expr: "api.open" },
+          { kind: "static", name: "class", value: "vow-collapsible__content" },
+        ],
+        children: [{ kind: "slot", children: [] }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue collapsible adapter (over @vow/headless), rendered from the canonical model. */
+export function emitCollapsibleSfc(): string {
+  return renderVueSfc(collapsible);
+}

@@ -74,3 +74,64 @@ export function checkbox(state: CheckboxState, set: (next: CheckboxState) => voi
     toggle,
   };
 }
+
+export interface CollapsibleState {
+  readonly open: boolean;
+  /** A stable base id to wire the trigger ↔ content (aria-controls / aria-labelledby). */
+  readonly id: string;
+  readonly disabled?: boolean;
+}
+
+export interface CollapsibleApi {
+  readonly open: boolean;
+  /** Props for the outer wrapper (carries the state hooks for theming). */
+  readonly rootProps: Record<string, unknown>;
+  /** Props for the focusable trigger — a `<button>` that expands/collapses the region. */
+  readonly triggerProps: Record<string, unknown>;
+  /** Props for the collapsible content region; the adapter renders it under `v-show="open"`. */
+  readonly contentProps: Record<string, unknown>;
+  toggle(): void;
+}
+
+/**
+ * The collapsible (disclosure) primitive — Reka-style. A `<button>` trigger toggles a content region;
+ * the button is the whole keyboard contract (native Space/Enter), so there's no custom key handling —
+ * "only build what HTML can't". `aria-expanded` on the trigger + `aria-controls`/`aria-labelledby`
+ * wire the two parts; state is mirrored as `data-state="open|closed"` (+ `data-disabled`) for the theme.
+ */
+export function collapsible(
+  state: CollapsibleState,
+  set: (next: CollapsibleState) => void,
+): CollapsibleApi {
+  const dataState = state.open ? "open" : "closed";
+  const triggerId = `${state.id}-trigger`;
+  const contentId = `${state.id}-content`;
+  const toggle = (): void => {
+    if (state.disabled) return;
+    set({ ...state, open: !state.open });
+  };
+  return {
+    open: state.open,
+    rootProps: {
+      "data-state": dataState,
+      "data-disabled": state.disabled ? "" : undefined,
+    },
+    triggerProps: {
+      id: triggerId,
+      type: "button",
+      "aria-expanded": state.open,
+      "aria-controls": contentId,
+      "data-state": dataState,
+      "data-disabled": state.disabled ? "" : undefined,
+      disabled: state.disabled || undefined,
+      onClick: toggle,
+    },
+    contentProps: {
+      id: contentId,
+      role: "region",
+      "aria-labelledby": triggerId,
+      "data-state": dataState,
+    },
+    toggle,
+  };
+}

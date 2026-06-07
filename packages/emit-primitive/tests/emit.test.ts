@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { emitCheckboxSfc } from "../src/index.ts";
+import { emitCheckboxSfc, emitCollapsibleSfc } from "../src/index.ts";
 
 test("emitCheckboxSfc generates a Vue adapter over the headless core with class + data hooks", () => {
   const sfc = emitCheckboxSfc();
@@ -19,4 +19,39 @@ test("emitCheckboxSfc generates a Vue adapter over the headless core with class 
   expect(sfc).toContain(':aria-label="label"');
   // carries no styling of its own — vow's base look lives in @vow/theme (swappable)
   expect(sfc).not.toContain("<style");
+});
+
+// The byte-stable oracle for the collapsible adapter: a button trigger + a v-show content region.
+// Pins the exact emitted SFC — a render change is a red test, not silent drift.
+const EXPECTED_COLLAPSIBLE = [
+  `<script setup lang="ts">`,
+  `// Generated collapsible adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed, useId } from "vue";`,
+  `import { collapsible } from "@vow/headless";`,
+  ``,
+  `const props = defineProps<{ modelValue: boolean; label: string; disabled?: boolean }>();`,
+  `const emit = defineEmits<{ "update:modelValue": [boolean] }>();`,
+  ``,
+  `const uid = useId();`,
+  `const api = computed(() =>`,
+  `  collapsible({ open: props.modelValue, id: uid, disabled: props.disabled }, (next) =>`,
+  `    emit("update:modelValue", next.open),`,
+  `  ),`,
+  `);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div v-bind="api.rootProps" class="vow-collapsible">`,
+  `    <button v-bind="api.triggerProps" class="vow-collapsible__trigger">{{ label }}</button>`,
+  `    <div v-bind="api.contentProps" v-show="api.open" class="vow-collapsible__content">`,
+  `      <slot />`,
+  `    </div>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitCollapsibleSfc renders the collapsible adapter byte-for-byte", () => {
+  expect(emitCollapsibleSfc()).toBe(EXPECTED_COLLAPSIBLE);
 });

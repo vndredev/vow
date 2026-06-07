@@ -34,8 +34,9 @@ If the core is sound against the bare platform, every adapter that merely forwar
 
 Each primitive has its own page — the live demo, the contract, props & events, the generated code, and its styling hooks.
 
-| Primitive                              | Status      | For             |
-| -------------------------------------- | ----------- | --------------- |
-| [Checkbox](/guide/primitives/checkbox) | ✓ available | a boolean field |
+| Primitive                                    | Status      | For                     |
+| -------------------------------------------- | ----------- | ----------------------- |
+| [Checkbox](/guide/primitives/checkbox)       | ✓ available | a boolean field         |
+| [Collapsible](/guide/primitives/collapsible) | ✓ available | a disclosure / fold-out |
 
-Climbing the ladder next — same agnostic-core + unstyled-adapter split, the more complex ones wrapped over Zag/Ark: **Switch**, **Dialog**, **Tabs**, … See the [Roadmap](/guide/roadmap).
+Climbing the ladder next — same headless-core + unstyled-adapter split, hand-rolled (no runtime lock-in): **Tabs**, **Dialog**, **Select**, … See the [Roadmap](/guide/roadmap).
