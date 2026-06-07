@@ -178,11 +178,12 @@ function manifestModule(
   sidebar: readonly SidebarGroup[],
   config: DocsConfig,
   tocByPath: Record<string, TocEntry[]>,
+  search: readonly SearchItem[],
 ): string {
   return [
     `// Generated docs manifest (from @vow/docs). The markdown is the source — do not edit.`,
     `import type { Route } from "@vow/router";`,
-    `import type { DocsConfig, SidebarGroup, TocEntry } from "@vow/docs";`,
+    `import type { DocsConfig, SearchItem, SidebarGroup, TocEntry } from "@vow/docs";`,
     ``,
     `export const routes: Route[] = [`,
     ...pages.map(
@@ -195,6 +196,8 @@ function manifestModule(
     `export const config: DocsConfig = ${JSON.stringify(config, null, 2)};`,
     ``,
     `export const tocByPath: Record<string, TocEntry[]> = ${JSON.stringify(tocByPath, null, 2)};`,
+    ``,
+    `export const search: SearchItem[] = ${JSON.stringify(search, null, 2)};`,
     ``,
   ].join("\n");
 }
@@ -213,6 +216,7 @@ export function generateDocs(
   const pages: PageMeta[] = [];
   const used = new Set<string>(); // prose-component names referenced across the pages
   const tocByPath: Record<string, TocEntry[]> = {}; // "on this page" entries per route
+  const search: SearchItem[] = []; // searchable entries (page titles + headings)
   for (const file of mdFilesUnder(contentDir)) {
     const slug = docSlug(contentDir, file);
     const { data, body } = parseFrontmatter(readFileSync(file, "utf8"));
@@ -234,20 +238,25 @@ export function generateDocs(
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);
     const path = routePath(relNoExt(contentDir, file), opts.base);
+    const title = data["title"] ?? firstH1(body) ?? path;
     tocByPath[path] = toc;
+    search.push({ label: title, path });
+    for (const heading of toc) {
+      search.push({ label: heading.text, path: `${path}#${heading.slug}`, section: title });
+    }
     pages.push({
       path,
       file: `${slug}.vue`,
       group: data["group"],
       order: Number(data["order"] ?? 0),
-      title: data["title"] ?? firstH1(body) ?? path,
+      title,
     });
   }
   const config: DocsConfig = { title: opts.title ?? "Docs", nav: opts.nav ?? [] };
   const manifest = join(outDir, "vow-docs-routes.ts");
   writeFileSync(
     manifest,
-    manifestModule(pages, buildSidebar(pages, opts.groups), config, tocByPath),
+    manifestModule(pages, buildSidebar(pages, opts.groups), config, tocByPath, search),
     "utf8",
   );
   written.push(manifest);
@@ -293,13 +302,13 @@ function collectComponents(nodes: readonly unknown[], acc: Set<string>): void {
 const LAYOUT_SFC = [
   `<script setup lang="ts">`,
   `import Layout from "@vow/docs/Layout.vue";`,
-  `import { config, sidebar, tocByPath } from "./vow-docs-routes.ts";`,
+  `import { config, search, sidebar, tocByPath } from "./vow-docs-routes.ts";`,
   `import "@vow/docs/style.css";`,
   `defineProps<{ path: string }>();`,
   `</script>`,
   ``,
   `<template>`,
-  `  <Layout :config="config" :groups="sidebar" :toc-by-path="tocByPath" :path="path"><slot /></Layout>`,
+  `  <Layout :config="config" :groups="sidebar" :toc-by-path="tocByPath" :search="search" :path="path"><slot /></Layout>`,
   `</template>`,
   ``,
 ].join("\n");

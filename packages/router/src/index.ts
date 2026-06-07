@@ -67,6 +67,7 @@ export function createRouter(routes: readonly Route[], options: RouterOptions = 
       void scrollTo(window.location.hash);
 
       document.addEventListener("click", (event) => {
+        if (event.defaultPrevented) return; // already handled (e.g. the search's programmatic nav)
         const anchor = (event.target as HTMLElement | null)?.closest?.("a");
         const href = anchor?.getAttribute("href");
         if (!anchor || !href || !href.startsWith("/") || anchor.target === "_blank") return;

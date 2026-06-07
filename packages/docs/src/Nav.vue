@@ -6,7 +6,7 @@ import type { DocsConfig } from "./index.ts";
 // accessible on its own (no Switch primitive needed). State lives on `<html class="dark">`. On mobile
 // a hamburger emits `toggleSidebar` (the Layout opens the drawer).
 defineProps<{ config: DocsConfig }>();
-const emit = defineEmits<{ toggleSidebar: [] }>();
+const emit = defineEmits<{ toggleSidebar: []; openSearch: [] }>();
 
 const dark = ref(false);
 
@@ -35,6 +35,15 @@ onMounted(() => {
       </button>
       <a href="/" class="vow-nav__title">{{ config.title }}</a>
       <nav class="vow-nav__links" aria-label="Primary">
+        <button
+          type="button"
+          class="vow-nav__search"
+          aria-label="Search"
+          @click="emit('openSearch')"
+        >
+          <span>Search</span>
+          <kbd class="vow-nav__kbd">⌘K</kbd>
+        </button>
         <a v-for="link in config.nav" :key="link.link" :href="link.link">{{ link.text }}</a>
         <button
           type="button"
