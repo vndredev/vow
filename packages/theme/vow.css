@@ -467,6 +467,7 @@
   padding: var(--vow-space-2) var(--vow-space-3);
   font: inherit;
   text-align: left;
+  white-space: nowrap;
   color: var(--vow-color-text);
   background: var(--vow-color-bg);
   border: var(--vow-border) solid var(--vow-color-border);
@@ -516,6 +517,7 @@
   align-items: center;
   padding: var(--vow-space-2) var(--vow-space-3);
   border-radius: var(--vow-radius-1);
+  white-space: nowrap;
   cursor: pointer;
 }
 .vow-select__option[data-active] {
