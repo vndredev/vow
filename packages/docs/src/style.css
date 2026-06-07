@@ -68,7 +68,7 @@ body {
   font-weight: var(--vow-weight-semibold);
 }
 .vow-doc p,
-.vow-doc li {
+.vow-doc li:not([class]) {
   line-height: var(--vow-leading-relaxed);
 }
 .vow-doc p {
@@ -82,12 +82,13 @@ body {
 .vow-doc a:hover {
   text-decoration: underline;
 }
-.vow-doc ul,
-.vow-doc ol {
+/* only markdown (class-less) lists get prose styling — primitive lists (e.g. the select listbox) keep theirs */
+.vow-doc ul:not([class]),
+.vow-doc ol:not([class]) {
   margin: var(--vow-space-4) 0;
   padding-left: var(--vow-space-6);
 }
-.vow-doc li {
+.vow-doc li:not([class]) {
   margin: var(--vow-space-2) 0;
 }
 .vow-doc :not(pre) > code {

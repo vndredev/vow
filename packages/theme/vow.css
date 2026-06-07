@@ -455,7 +455,7 @@
    `data-state` / `data-active` hooks; the highlighted row keys off `[data-active]`, the chevron flips. */
 .vow-select {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
   font-family: var(--vow-font-sans);
 }
 .vow-select__trigger {
