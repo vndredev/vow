@@ -128,7 +128,18 @@ export interface SlotNode {
   readonly children: readonly UiNode[];
 }
 
-export type UiNode = ElementNode | ComponentNode | TextNode | InterpNode | SlotNode;
+/**
+ * A raw HTML escape hatch — `html` is emitted verbatim into the markup (no escaping, no parsing). For
+ * build-time-trusted, already-rendered HTML with no structured-node equivalent: syntax-highlighted code
+ * (Shiki), an embedded SVG. Deterministic in → byte-stable out. A React adapter maps it to
+ * `dangerouslySetInnerHTML`. The escape hatch for prose, kept rare on purpose.
+ */
+export interface RawNode {
+  readonly kind: "raw";
+  readonly html: string;
+}
+
+export type UiNode = ElementNode | ComponentNode | TextNode | InterpNode | SlotNode | RawNode;
 
 /** The canonical, framework-agnostic component. Grows field-by-field as each step earns it. */
 export interface Component {

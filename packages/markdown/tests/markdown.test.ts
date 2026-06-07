@@ -1,0 +1,39 @@
+import type { ElementNode, RawNode } from "@vow/component";
+import { expect, test } from "vite-plus/test";
+import { markdownToNodes } from "../src/index.ts";
+
+test("headings and paragraphs map to element nodes", async () => {
+  const nodes = await markdownToNodes("# Title\n\nHello world.");
+  expect(nodes[0]).toMatchObject({ kind: "element", tag: "h1" });
+  expect(nodes[1]).toMatchObject({ kind: "element", tag: "p" });
+});
+
+test("inline strong / em / code / link become nested element nodes", async () => {
+  const p = (await markdownToNodes("a **b** _c_ `d` [e](/x)"))[0] as ElementNode;
+  const tags = p.children.map((c) => ("tag" in c ? c.tag : c.kind));
+  expect(tags).toContain("strong");
+  expect(tags).toContain("em");
+  expect(tags).toContain("code");
+  expect(tags).toContain("a");
+});
+
+test("a link carries its href as a static attr", async () => {
+  const p = (await markdownToNodes("[docs](/guide/)"))[0] as ElementNode;
+  const link = p.children[0] as ElementNode;
+  expect(link.tag).toBe("a");
+  expect(link.attrs[0]).toMatchObject({ name: "href", value: "/guide/" });
+});
+
+test("a fenced code block becomes a raw, Shiki-highlighted node (v-pre)", async () => {
+  const code = (await markdownToNodes("```ts\nconst a = 1;\n```"))[0] as RawNode;
+  expect(code.kind).toBe("raw");
+  expect(code.html).toContain("shiki");
+  expect(code.html).toContain("v-pre");
+});
+
+test("a bullet list maps to ul > li", async () => {
+  const ul = (await markdownToNodes("- one\n- two"))[0] as ElementNode;
+  expect(ul.tag).toBe("ul");
+  expect(ul.children).toHaveLength(2);
+  expect((ul.children[0] as ElementNode).tag).toBe("li");
+});

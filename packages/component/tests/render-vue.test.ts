@@ -114,6 +114,21 @@ test("a literal text node is HTML-escaped (& < > in order)", () => {
   expect(renderVueSfc(c)).toContain("<h1>a &lt; b &amp; c</h1>");
 });
 
+test("a raw node emits its HTML verbatim (no escaping) — the prose escape hatch", () => {
+  const c: Component = {
+    name: "Code",
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [],
+      children: [{ kind: "raw", html: '<pre class="shiki"><span>a &lt; b</span></pre>' }],
+    },
+  };
+  const out = renderVueSfc(c);
+  expect(out).toContain('<pre class="shiki"><span>a &lt; b</span></pre>');
+  expect(out).not.toContain("&amp;lt;"); // not double-escaped
+});
+
 test("a void element renders self-closing (<input … />)", () => {
   const c: Component = {
     name: "Field",

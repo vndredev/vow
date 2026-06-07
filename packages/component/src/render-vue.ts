@@ -76,6 +76,9 @@ function renderNode(node: UiNode, depth: number): string {
       return pad + escapeHtml(node.text);
     case "interp":
       return `${pad}{{ ${node.expr} }}`;
+    case "raw":
+      // Verbatim, trusted HTML (e.g. Shiki). Only the first line is indented; the rest is as-given.
+      return pad + node.html;
     case "slot": {
       // `<slot />` / `<slot name="x" />` / `<slot :name="expr" />`; with fallback children →
       // `<slot>…</slot>`. Own arm because the element path's attrs/for and `</tag>` close don't fit a

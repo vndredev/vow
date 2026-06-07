@@ -29,7 +29,8 @@ type UiNode =
   | { kind: "component"; name: string; attrs: Attr[]; children: UiNode[]; for?: Loop }
   | { kind: "text"; text: string } // an escaped literal
   | { kind: "interp"; expr: string } // an interpolated expression
-  | { kind: "slot"; name?: string; nameExpr?: string; children: UiNode[] }; // <slot>; nameExpr = :name="expr"
+  | { kind: "slot"; name?: string; nameExpr?: string; children: UiNode[] } // <slot>; nameExpr = :name="expr"
+  | { kind: "raw"; html: string }; // verbatim trusted HTML (Shiki, SVG) — the prose escape hatch
 ```
 
 A prop may carry a `default` (a verbatim TS expression); when any prop has one, the adapter emits `withDefaults(defineProps<…>(), { … })` instead of the bare `defineProps`. A `"slot"` node is a slot outlet — `<slot />`, `<slot name="x" />`, or `<slot>fallback</slot>` — the seam a layout shell uses to receive content.
