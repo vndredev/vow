@@ -151,20 +151,33 @@ export function buildSidebar(
     }));
 }
 
-/** Nest pages whose path is under another's (e.g. `/guide/primitives/checkbox` under `/guide/primitives`). */
+/** Nest pages whose path is under another's, at any depth (e.g. `/guide/a/b/c` under `/guide/a/b`). */
 function nestItems(pages: readonly PageMeta[]): SidebarItem[] {
   interface Node {
     title: string;
     path: string;
+    order: number;
     items: Node[];
   }
+  // shallowest paths first, so a page's parent is always already in the tree when we place it
+  const byDepth = [...pages].sort((a, b) => a.path.split("/").length - b.path.split("/").length);
+  const deepestAncestor = (nodes: Node[], path: string): Node | undefined => {
+    for (const node of nodes) {
+      if (path.startsWith(`${node.path}/`)) return deepestAncestor(node.items, path) ?? node;
+    }
+    return undefined;
+  };
   const roots: Node[] = [];
-  for (const p of pages) {
-    const node: Node = { title: p.title, path: p.path, items: [] };
-    const parent = roots.find((r) => p.path.startsWith(`${r.path}/`));
-    if (parent) parent.items.push(node);
-    else roots.push(node);
+  for (const p of byDepth) {
+    const node: Node = { title: p.title, path: p.path, order: p.order, items: [] };
+    (deepestAncestor(roots, p.path)?.items ?? roots).push(node);
   }
+  // depth-first sort restores the intended order/title order at every level
+  const sortLevel = (nodes: Node[]): void => {
+    nodes.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
+    for (const node of nodes) sortLevel(node.items);
+  };
+  sortLevel(roots);
   const toItem = (n: Node): SidebarItem =>
     n.items.length > 0
       ? { title: n.title, path: n.path, items: n.items.map(toItem) }
@@ -285,6 +298,20 @@ export function generateDocs(
       writeComp(demo.adapter, demo.emit()); // the generated primitive adapter
       writeComp(name, demo.sfc); // the live demo wrapper
     }
+  }
+  // A referenced component with nothing to materialise would emit a prose SFC that imports a missing
+  // file → a hard build failure. Fail loud here, naming the likely cause (an unknown `::: demo <x>`).
+  const unknown = [...used].filter(
+    (n) => PROSE_COMPONENTS[n] === undefined && DEMOS[n] === undefined,
+  );
+  if (unknown.length > 0) {
+    const demos = Object.keys(DEMOS)
+      .map((d) => d.replace(/^VowDemo/, "").toLowerCase())
+      .join(", ");
+    throw new Error(
+      `@vow/docs: no component to generate for ${unknown.join(", ")}. ` +
+        `For "::: demo <primitive>", the known primitives are: ${demos}.`,
+    );
   }
   return written;
 }

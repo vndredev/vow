@@ -48,6 +48,22 @@ test("buildSidebar nests pages under a parent path (subpages under their section
   expect(primitives?.items?.map((i) => i.title)).toEqual(["Checkbox"]);
 });
 
+test("buildSidebar nests at any depth, regardless of input order", () => {
+  const sidebar = buildSidebar(
+    [
+      { path: "/g/a/b/c", file: "c.vue", group: "UI", order: 3, title: "C" },
+      { path: "/g/a", file: "a.vue", group: "UI", order: 1, title: "A" },
+      { path: "/g/a/b", file: "b.vue", group: "UI", order: 2, title: "B" },
+    ],
+    ["UI"],
+  );
+  const a = sidebar[0]?.items[0];
+  expect(a?.title).toBe("A");
+  const b = a?.items?.[0];
+  expect(b?.title).toBe("B");
+  expect(b?.items?.[0]?.title).toBe("C");
+});
+
 test("generateDocs renders each .md into a prose .vue + a routes manifest", () => {
   const content = mkdtempSync(join(tmpdir(), "vow-docs-content-"));
   writeFileSync(
