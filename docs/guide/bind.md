@@ -5,7 +5,7 @@ For the 10% that is genuinely custom logic — a calculation, a workflow, an int
 ```markdown
 ---
 id: vow_invoicetotal
-fulfills: bind ./logic/invoice-total.ts#computeTotal
+fulfills: bind ./invoice-total.ts#computeTotal
 ---
 
 # Invoice total with a 5% staggered discount from 10 units
@@ -16,7 +16,7 @@ fulfills: bind ./logic/invoice-total.ts#computeTotal
 - under 10 units there is no discount
 ```
 
-The hand-written code lives **visibly** in `app/logic/` — it is the truth, not generated:
+The hand-written code lives **visibly, right next to its vow** (`app/invoice-total.ts` beside `app/invoice-total.vow.md`) — co-located, the truth, not generated:
 
 ```ts
 export interface InvoiceInput {
@@ -33,7 +33,7 @@ export function computeTotal(input: InvoiceInput): number {
 vow generates a tiny **anchor** in `.generated/` that re-exports the bound symbol:
 
 ```ts
-export { computeTotal } from "../app/logic/invoice-total.ts";
+export { computeTotal } from "../app/invoice-total.ts";
 ```
 
 So **tsgo fails the build if the export is missing or renamed** — the `fulfills` declaration can't lie. You prove the behaviour with your own test, whose names are the vow's `## proves`, gated by [scenario-coverage](/guide/proof).

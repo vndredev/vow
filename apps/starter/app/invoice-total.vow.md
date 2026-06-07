@@ -1,6 +1,6 @@
 ---
 id: vow_invoicetotal
-fulfills: bind ./logic/invoice-total.ts#computeTotal
+fulfills: bind ./invoice-total.ts#computeTotal
 ---
 
 # Invoice total with a 5% staggered discount from 10 units
