@@ -1,8 +1,43 @@
-/* vow's default theme — minimal structural styles over the class + data-* hooks.
-   Import it to style the generated UI; omit it for fully unstyled output. Replace it with your own
-   (e.g. the vndre.dev design tokens) — same hooks, different CSS, no component changes. */
+/* vow's base theme — one token system over the class + data-* hooks the emitters produce.
+
+   Every visual decision is a CSS custom property under `:root`; the `.vow-*` rules only *consume*
+   tokens, never hardcode a value. So re-theming the whole generated UI (brand colors, type scale,
+   density, radius) is editing the token block — no rule below changes, and no component changes.
+   Import it to dress the generated UI; omit it for fully unstyled output; replace it with your own
+   token block (e.g. the vndre.dev design tokens) for a different look over the same hooks. */
 
 :root {
+  /* Color — semantic roles, not raw swatches. Swap these to re-skin everything. */
+  --vow-color-bg: #ffffff; /* page background */
+  --vow-color-surface: #fafafa; /* raised surfaces: cards, boxes */
+  --vow-color-text: #1a1a1a; /* primary text */
+  --vow-color-muted: #565656; /* secondary text */
+  --vow-color-accent: #3b5bdb; /* brand: links, eyebrow, focus ring */
+  --vow-color-ink: #111418; /* solid dark fills: primary button, checked box */
+  --vow-color-on-accent: #ffffff; /* text/icon on an accent or ink fill */
+  --vow-color-border: #e6e6e6; /* hairlines, input + card borders */
+  --vow-color-danger: #cc1f1f; /* destructive affordances (delete) */
+
+  /* Type — one font stack, a size scale, weights, line-heights, tracking. */
+  --vow-font-sans: system-ui, -apple-system, "Segoe UI", roboto, helvetica, arial, sans-serif;
+  --vow-text-xs: 0.8rem;
+  --vow-text-sm: 0.9rem;
+  --vow-text-base: 1rem;
+  --vow-text-lg: 1.125rem;
+  --vow-text-xl: 1.4rem;
+  --vow-text-2xl: 1.75rem;
+  --vow-text-3xl: 2.75rem;
+  --vow-weight-normal: 400;
+  --vow-weight-medium: 500;
+  --vow-weight-semibold: 600;
+  --vow-weight-bold: 700;
+  --vow-weight-display: 800;
+  --vow-leading-tight: 1.1;
+  --vow-leading-normal: 1.4;
+  --vow-leading-relaxed: 1.6;
+  --vow-tracking-tight: -0.02em;
+  --vow-tracking-wide: 0.04em;
+
   /* Spacing scale — the steps the layout primitives map onto (Flex/Grid `gap`, Box `p`).
      A `gap=4` resolves to `var(--vow-space-4)`; swap these values to re-space the whole UI. */
   --vow-space-0: 0;
@@ -21,15 +56,44 @@
   --vow-container-2: 43rem;
   --vow-container-3: 55rem;
   --vow-container-4: 71rem;
+
+  /* Radius scale + the one border width every hairline uses. */
+  --vow-radius-1: 0.4rem; /* controls: inputs, buttons */
+  --vow-radius-2: 0.5rem; /* list rows */
+  --vow-radius-3: 0.75rem; /* cards, boxes */
+  --vow-border: 1px;
+}
+
+/* The token block is the whole theme; a host that prefers dark only re-declares the colors. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --vow-color-bg: #0f1115;
+    --vow-color-surface: #181b21;
+    --vow-color-text: #f3f4f6;
+    --vow-color-muted: #a4abb8;
+    --vow-color-accent: #8ea2ff;
+    --vow-color-ink: #f3f4f6;
+    --vow-color-on-accent: #0f1115;
+    --vow-color-border: #2a2f3a;
+    --vow-color-danger: #ff6b6b;
+  }
+}
+
+.vow-app,
+.vow-app *,
+.vow-view,
+.vow-view * {
+  box-sizing: border-box;
 }
 
 /* `.vow-app` wraps a `## view` — a centered, stacked page. Layout primitives are structural (inline
    style only); the theme dresses the page's text by tag *within* `.vow-app` (so the hero/features
-   read as a real page), and gives Box a card look. Scoped to `.vow-app` so an embedded `.vow-view`
+   read as a real page) and gives Box a card look. Scoped to `.vow-app` so an embedded `.vow-view`
    keeps its own style. */
 .vow-app {
-  font-family: system-ui, sans-serif;
-  color: #1a1a1a;
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
   max-width: var(--vow-container-3);
   margin: 0 auto;
   padding: var(--vow-space-9) var(--vow-space-4);
@@ -38,44 +102,52 @@
   gap: var(--vow-space-7);
 }
 .vow-app span {
-  color: #3b5bdb;
-  font-weight: 700;
-  font-size: 0.9rem;
-  letter-spacing: 0.04em;
+  color: var(--vow-color-accent);
+  font-weight: var(--vow-weight-bold);
+  font-size: var(--vow-text-sm);
+  letter-spacing: var(--vow-tracking-wide);
   text-transform: uppercase;
 }
 .vow-app h1 {
-  font-size: 2.75rem;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  font-size: var(--vow-text-3xl);
+  font-weight: var(--vow-weight-display);
+  line-height: var(--vow-leading-tight);
+  letter-spacing: var(--vow-tracking-tight);
+  margin: 0;
+}
+.vow-app h2 {
+  font-size: var(--vow-text-2xl);
+  font-weight: var(--vow-weight-bold);
+  line-height: var(--vow-leading-tight);
   margin: 0;
 }
 .vow-app h3 {
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-semibold);
+  line-height: var(--vow-leading-normal);
   margin: 0 0 var(--vow-space-2);
 }
 .vow-app p {
-  color: #555;
-  line-height: 1.6;
+  color: var(--vow-color-muted);
+  line-height: var(--vow-leading-relaxed);
   margin: 0;
-  max-width: 42rem;
-}
-.vow-box {
-  border: 1px solid #ececec;
-  border-radius: 0.6rem;
-  background: #fafafa;
+  max-width: var(--vow-container-2);
 }
 
-.vow-view {
-  font-family: system-ui, sans-serif;
-  max-width: 32rem;
-  margin: var(--vow-space-6) auto;
+/* Box is a structural primitive (inline layout style); the theme gives it a card surface. */
+.vow-box {
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+  background: var(--vow-color-surface);
 }
-.vow-view__title {
-  font-size: 1.4rem;
-  margin-bottom: var(--vow-space-4);
+
+/* The entity list (`emit entity` pulled in by a view's `list:`). Headings belong to the view, so
+   the list carries none — only its rows and create form. */
+.vow-view {
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+  max-width: var(--vow-container-1);
+  margin: var(--vow-space-6) auto;
 }
 .vow-view__list {
   list-style: none;
@@ -89,9 +161,9 @@
   display: flex;
   align-items: center;
   gap: var(--vow-space-4);
-  padding: 0.6rem 0.85rem;
-  border: 1px solid #e3e3e3;
-  border-radius: 0.5rem;
+  padding: var(--vow-space-3) var(--vow-space-4);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
 }
 .vow-view__field {
   flex: 1;
@@ -100,12 +172,12 @@
   border: none;
   background: none;
   cursor: pointer;
-  color: #999;
-  font-size: 1rem;
+  color: var(--vow-color-muted);
+  font-size: var(--vow-text-base);
   line-height: 1;
 }
 .vow-view__delete:hover {
-  color: #c00;
+  color: var(--vow-color-danger);
 }
 .vow-view__create {
   display: flex;
@@ -114,25 +186,33 @@
 }
 .vow-view__input {
   flex: 1;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #ccc;
-  border-radius: 0.4rem;
+  padding: var(--vow-space-2) var(--vow-space-3);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-1);
+  background: var(--vow-color-bg);
+  color: var(--vow-color-text);
   font: inherit;
+}
+.vow-view__input:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 1px;
 }
 .vow-view__add {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid #111;
-  border-radius: 0.4rem;
-  background: #111;
-  color: #fff;
+  padding: var(--vow-space-2) var(--vow-space-4);
+  border: var(--vow-border) solid var(--vow-color-ink);
+  border-radius: var(--vow-radius-1);
+  background: var(--vow-color-ink);
+  color: var(--vow-color-on-accent);
   cursor: pointer;
   font: inherit;
+  font-weight: var(--vow-weight-medium);
 }
 
+/* The accessible checkbox primitive (a boolean field). State is the `data-checked` hook. */
 .vow-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 0.4em;
+  gap: var(--vow-space-2);
   cursor: pointer;
 }
 .vow-checkbox__box {
@@ -141,16 +221,19 @@
   justify-content: center;
   width: 1.15em;
   height: 1.15em;
-  border: 1px solid currentColor;
-  border-radius: 0.2em;
-  font-size: 0.8em;
+  border: var(--vow-border) solid currentColor;
+  border-radius: var(--vow-radius-1);
+  font-size: var(--vow-text-xs);
   line-height: 1;
 }
 .vow-checkbox[data-checked] .vow-checkbox__box {
-  background: #111;
-  color: #fff;
+  background: var(--vow-color-ink);
+  color: var(--vow-color-on-accent);
 }
 .vow-checkbox__box:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--vow-color-accent);
   outline-offset: 2px;
+}
+.vow-checkbox__label {
+  user-select: none;
 }
