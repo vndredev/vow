@@ -36,6 +36,8 @@ export interface VowDocsOptions {
   readonly title?: string;
   /** Top-nav links. */
   readonly nav?: readonly NavLink[];
+  /** A URL prefix for every page (e.g. "/guide"), so docs don't collide with the app's home. */
+  readonly base?: string;
 }
 
 /** A page in the sidebar — its title and clean URL. */
@@ -56,6 +58,7 @@ export interface GenerateDocsOptions {
   readonly groups?: readonly string[];
   readonly title?: string;
   readonly nav?: readonly NavLink[];
+  readonly base?: string;
 }
 
 /** One scanned page's metadata, before it becomes a route + a sidebar entry. */
@@ -101,9 +104,12 @@ const relNoExt = (contentDir: string, file: string): string =>
 export const docSlug = (contentDir: string, file: string): string =>
   `doc-${relNoExt(contentDir, file).replace(/\//g, "-")}`;
 
-/** A content file's clean URL — `index` collapses to its folder (e.g. "guide/index" → "/guide"). */
-export const routePath = (rel: string): string =>
-  `/${rel.replace(/(^|\/)index$/, "$1").replace(/\/$/, "")}`;
+/** A content file's clean URL under `base` — `index` collapses to its folder ("guide/index" → "/guide"). */
+export const routePath = (rel: string, base = ""): string => {
+  const p = rel.replace(/(^|\/)index$/, "$1").replace(/\/$/, "");
+  const segs = [base, p].flatMap((s) => s.split("/")).filter(Boolean);
+  return `/${segs.join("/")}`;
+};
 
 /** Group the pages into ordered sidebar sections — `groups` first (in order), then any extras A→Z. */
 export function buildSidebar(
@@ -169,7 +175,7 @@ export function generateDocs(
     const out = join(outDir, `${slug}.vue`);
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);
-    const path = routePath(relNoExt(contentDir, file));
+    const path = routePath(relNoExt(contentDir, file), opts.base);
     pages.push({
       path,
       file: `${slug}.vue`,
@@ -196,6 +202,7 @@ const LAYOUT_SFC = [
   `<script setup lang="ts">`,
   `import Layout from "@vow/docs/Layout.vue";`,
   `import { config, sidebar } from "./vow-docs-routes.ts";`,
+  `import "@vow/docs/style.css";`,
   `defineProps<{ path: string }>();`,
   `</script>`,
   ``,
@@ -217,6 +224,7 @@ export function vowDocs(options: VowDocsOptions): Plugin {
       groups: options.groups,
       title: options.title,
       nav: options.nav,
+      base: options.base,
     });
   };
   return {

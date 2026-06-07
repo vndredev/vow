@@ -1,0 +1,249 @@
+/* @vow/docs — the docs layer's own stylesheet. The docs CHROME (nav, sidebar, layout, TOC)
+   + prose (.vow-doc) + the markdown extensions it renders (callouts, code-group). Built on @vow/theme
+   tokens (--vow-*); loaded by the generated docs layout. Kept OUT of vow.css (the shared design system). */
+/* Prose — a generated doc page (.vow-doc, from emitProse). Token-driven; reads like VitePress. */
+.vow-doc {
+  max-width: 44rem;
+  min-width: 0;
+}
+.vow-doc > :first-child {
+  margin-top: 0;
+}
+.vow-doc h1 {
+  margin: 0 0 var(--vow-space-5);
+  font-size: var(--vow-text-3xl);
+  font-weight: var(--vow-weight-display);
+  line-height: var(--vow-leading-tight);
+  letter-spacing: var(--vow-tracking-tight);
+}
+.vow-doc h2 {
+  margin: var(--vow-space-8) 0 var(--vow-space-4);
+  padding-top: var(--vow-space-5);
+  font-size: var(--vow-text-2xl);
+  font-weight: var(--vow-weight-bold);
+  line-height: var(--vow-leading-tight);
+  border-top: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-doc h3 {
+  margin: var(--vow-space-6) 0 var(--vow-space-3);
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-semibold);
+}
+.vow-doc p,
+.vow-doc li {
+  line-height: var(--vow-leading-relaxed);
+}
+.vow-doc p {
+  margin: var(--vow-space-4) 0;
+}
+.vow-doc a {
+  color: var(--vow-color-accent);
+  font-weight: var(--vow-weight-medium);
+  text-decoration: none;
+}
+.vow-doc a:hover {
+  text-decoration: underline;
+}
+.vow-doc ul,
+.vow-doc ol {
+  margin: var(--vow-space-4) 0;
+  padding-left: var(--vow-space-6);
+}
+.vow-doc li {
+  margin: var(--vow-space-2) 0;
+}
+.vow-doc :not(pre) > code {
+  padding: 0.15em 0.4em;
+  font-family: var(--vow-font-mono);
+  font-size: 0.85em;
+  background: var(--vow-color-surface);
+  border-radius: var(--vow-radius-1);
+}
+.vow-doc table {
+  width: 100%;
+  margin: var(--vow-space-5) 0;
+  font-size: var(--vow-text-sm);
+  border-collapse: collapse;
+}
+.vow-doc th,
+.vow-doc td {
+  padding: var(--vow-space-2) var(--vow-space-3);
+  text-align: left;
+  border: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-doc th {
+  background: var(--vow-color-surface);
+}
+.vow-doc .shiki {
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-4) var(--vow-space-5);
+  overflow-x: auto;
+  font-family: var(--vow-font-mono);
+  font-size: var(--vow-text-sm);
+  line-height: var(--vow-leading-relaxed);
+  color: var(--shiki-light);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-doc .shiki span {
+  color: var(--shiki-light);
+}
+.dark .vow-doc .shiki,
+.dark .vow-doc .shiki span {
+  color: var(--shiki-dark);
+}
+
+/* Callouts (::: tip|info|warning|danger) — a per-kind accent, all from vow tokens. */
+.vow-callout {
+  --callout-color: var(--vow-color-accent);
+  margin: var(--vow-space-5) 0;
+  padding: var(--vow-space-3) var(--vow-space-4);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-left: 3px solid var(--callout-color);
+  border-radius: var(--vow-radius-2);
+}
+.vow-callout__title {
+  margin: 0 0 var(--vow-space-1);
+  font-weight: var(--vow-weight-bold);
+  color: var(--callout-color);
+}
+.vow-callout > :first-child {
+  margin-top: 0;
+}
+.vow-callout > :last-child {
+  margin-bottom: 0;
+}
+.vow-callout[data-kind="info"] {
+  --callout-color: var(--vow-color-muted);
+}
+.vow-callout[data-kind="warning"] {
+  --callout-color: var(--vow-color-warning);
+}
+.vow-callout[data-kind="danger"] {
+  --callout-color: var(--vow-color-danger);
+}
+
+/* A code-group — stacked code blocks (tabs are a later step). */
+.vow-code-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-2);
+  margin: var(--vow-space-5) 0;
+}
+.vow-code-group .shiki {
+  margin: 0;
+}
+
+/* Docs chrome — the nav + sidebar + layout (@vow/docs). All here, none in the components. */
+.vow-docs {
+  --vow-nav-h: 56px;
+}
+.vow-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--vow-nav-h);
+  background: var(--vow-color-bg);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vow-space-4);
+  height: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 var(--vow-space-6);
+}
+.vow-nav__title {
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+  text-decoration: none;
+}
+.vow-nav__links {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-5);
+}
+.vow-nav__links a {
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-nav__links a:hover {
+  color: var(--vow-color-text);
+}
+.vow-docs-layout {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: var(--vow-space-7);
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: var(--vow-space-7) var(--vow-space-6);
+}
+.vow-docs-content {
+  min-width: 0;
+}
+.vow-sidebar {
+  position: sticky;
+  top: calc(var(--vow-nav-h) + var(--vow-space-6));
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-5);
+}
+.vow-sidebar__heading {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  width: 100%;
+  margin: 0 0 var(--vow-space-2);
+  padding: 0;
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.vow-sidebar__heading::after {
+  content: "";
+  width: 0.4em;
+  height: 0.4em;
+  margin-left: auto;
+  border-right: 2px solid var(--vow-color-muted);
+  border-bottom: 2px solid var(--vow-color-muted);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.vow-sidebar__heading[data-state="closed"]::after {
+  transform: rotate(-45deg);
+}
+.vow-sidebar__items {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vow-sidebar__link {
+  display: block;
+  padding: var(--vow-space-1) 0;
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+  text-decoration: none;
+}
+.vow-sidebar__link:hover {
+  color: var(--vow-color-text);
+}
+.vow-sidebar__link.is-active {
+  color: var(--vow-color-accent);
+  font-weight: var(--vow-weight-medium);
+}

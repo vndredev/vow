@@ -1,3 +1,8 @@
+---
+group: UI
+order: 1.3
+---
+
 # Dialog
 
 A modal: content that takes over the screen until dismissed, over a backdrop. It's how a search panel or a confirm box opens, and how the mobile nav slides in. Modelled on Reka UI and the WAI-ARIA APG: a `role="dialog"` `aria-modal` content over a dismiss overlay, with **Escape** to close and a **Tab focus-trap** so focus can't leave while it's open.

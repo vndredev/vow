@@ -38,6 +38,23 @@ test("a fenced code block becomes a raw, Shiki-highlighted node (v-pre)", async 
   expect(code.html).toContain("v-pre");
 });
 
+test("a ::: warning container becomes a callout node (class + data-kind + title)", async () => {
+  const callout = (
+    await markdownToNodes("::: warning Heads up\nBe careful.\n:::")
+  )[0] as ElementNode;
+  expect(callout.tag).toBe("div");
+  expect(callout.attrs).toContainEqual({ kind: "static", name: "class", value: "vow-callout" });
+  expect(callout.attrs).toContainEqual({ kind: "static", name: "data-kind", value: "warning" });
+  expect(JSON.stringify(callout.children)).toContain("Heads up");
+});
+
+test("a ::: code-group container becomes a grouped code wrapper", async () => {
+  const group = (
+    await markdownToNodes("::: code-group\n```bash\nnpm i\n```\n:::")
+  )[0] as ElementNode;
+  expect(group.attrs).toContainEqual({ kind: "static", name: "class", value: "vow-code-group" });
+});
+
 test("a bullet list maps to ul > li", async () => {
   const ul = (await markdownToNodes("- one\n- two"))[0] as ElementNode;
   expect(ul.tag).toBe("ul");

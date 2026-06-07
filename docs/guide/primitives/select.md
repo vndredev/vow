@@ -1,3 +1,8 @@
+---
+group: UI
+order: 1.4
+---
+
 # Select
 
 A listbox dropdown: a button that opens a list of options and commits one. It's how the framework switcher picks Vue/React/Solid, and how a form field offers a fixed set of choices that a native `<select>` can't fully style. Modelled on Reka UI and the WAI-ARIA APG select-only combobox: a `role="combobox"` button over a `role="listbox"`, with focus kept on the trigger and the highlight tracked via `aria-activedescendant`.

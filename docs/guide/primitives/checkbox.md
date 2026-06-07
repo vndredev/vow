@@ -1,3 +1,8 @@
+---
+group: UI
+order: 1.1
+---
+
 # Checkbox
 
 A boolean field, rendered as an accessible custom checkbox. A native `<input type="checkbox">` can't be fully or consistently styled, so this primitive earns its place: modelled on Reka UI, the control is a `<button role="checkbox">` that reproduces the native semantics — `role`, `aria-checked`, keyboard — over an element you _can_ style. `emit view` drops it into a list for every boolean field, so you never hand-write it.

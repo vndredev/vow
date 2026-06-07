@@ -1,11 +1,19 @@
 import type { Attr, UiNode } from "@vow/component";
 import MarkdownIt from "markdown-it";
+import container from "markdown-it-container";
 import type { Highlighter } from "shiki";
 import { getHighlighter, highlight } from "./highlight.ts";
 
 export { getHighlighter, highlight } from "./highlight.ts";
 
+/** The `:::` container kinds we render: callouts (a styled box) + code-group (grouped code blocks). */
+const CONTAINERS = ["tip", "info", "warning", "danger", "code-group"];
+
 const md = new MarkdownIt({ html: false, linkify: true });
+// markdown-it-container is `(md, name, opts)`; markdown-it's `use` overloads don't model a 3-arg
+// plugin, so bridge the type. Runtime is unaffected.
+const containerPlugin = container as unknown as Parameters<typeof md.use>[0];
+for (const name of CONTAINERS) md.use(containerPlugin, name, {});
 
 /** One markdown-it token (avoids a fragile deep import of the Token type). */
 type Tok = ReturnType<typeof md.parse>[number];
@@ -19,6 +27,16 @@ const el = (tag: string, children: UiNode[], attrs: Attr[] = []): UiNode => ({
 const txt = (text: string): UiNode => ({ kind: "text", text });
 const raw = (html: string): UiNode => ({ kind: "raw", html });
 const href = (url: string): Attr => ({ kind: "static", name: "href", value: url });
+const sattr = (name: string, value: string): Attr => ({ kind: "static", name, value });
+
+/** A `:::` container → a callout box (with an optional title) or a grouped code block. */
+function containerNode(name: string, title: string, kids: UiNode[]): UiNode {
+  if (name === "code-group") return el("div", kids, [sattr("class", "vow-code-group")]);
+  const children = title
+    ? [el("p", [txt(title)], [sattr("class", "vow-callout__title")]), ...kids]
+    : kids;
+  return el("div", children, [sattr("class", "vow-callout"), sattr("data-kind", name)]);
+}
 
 /** A node being assembled from its children, closed on the matching `_close` token. */
 interface Frame {
@@ -69,6 +87,13 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter): UiNode[] {
       sink().push(codeNode(t.content, t.info, hl));
     } else if (t.type === "hr") {
       sink().push(el("hr", []));
+    } else if (t.type.startsWith("container_") && t.type.endsWith("_open")) {
+      const name = t.type.slice("container_".length, -"_open".length);
+      const title = t.info.trim().slice(name.length).trim();
+      stack.push({ kids: [], build: (k) => containerNode(name, title, k) });
+    } else if (t.type.startsWith("container_") && t.type.endsWith("_close")) {
+      const top = stack.pop();
+      if (top) sink().push(top.build(top.kids));
     } else if (t.type.endsWith("_open")) {
       const tag = t.tag || "div";
       stack.push({ kids: [], build: (k) => el(tag, k) });

@@ -1,3 +1,8 @@
+---
+group: UI
+order: 1.5
+---
+
 # Tabs
 
 A tablist: a row of tabs over panels, where one panel shows at a time. It's how a code-group switches between Vue/React/Solid, and how a settings screen splits sections. Modelled on Reka UI and the WAI-ARIA APG: `role="tablist"` of `role="tab"` buttons over `role="tabpanel"` regions, with **roving focus** (arrow keys move selection _and_ focus).

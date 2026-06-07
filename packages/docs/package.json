@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./Layout.vue": "./src/Layout.vue"
+    "./Layout.vue": "./src/Layout.vue",
+    "./style.css": "./src/style.css"
   },
   "scripts": {
     "test": "vp test"
