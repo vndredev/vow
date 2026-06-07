@@ -161,5 +161,6 @@ export function parseVowMd(slug: string, content: string): VowNode {
     fields: [...itemsUnder(body, "fields")].map(parseFieldLine),
     proof: [...itemsUnder(body, "proves")].map((claim) => ({ claim })),
     tree: parseTree(body),
+    root: frontmatter["root"],
   });
 }

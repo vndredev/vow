@@ -75,6 +75,13 @@ test("a ## tree with more than one root fails fast", () => {
   expect(() => parseVowMd("bad", md)).toThrow();
 });
 
+test("root: true in the frontmatter marks the entry page", () => {
+  const md = `---\nid: vow_r\nfulfills: emit view\nroot: true\n---\n# Home\n\n## tree\n- Container\n`;
+  expect(parseVowMd("home", md).root).toBe(true);
+  const plain = parseVowMd("x", `---\nid: vow_x\nfulfills: emit entity\n---\n# A plain entity\n`);
+  expect(plain.root).toBeUndefined();
+});
+
 test("a quoted tree line parses as a text node", () => {
   const md = [
     "---",

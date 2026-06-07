@@ -94,6 +94,8 @@ export interface Vow {
   readonly proof: readonly Scenario[];
   /** Optional layout tree for a view (`## tree`) — composed from layout primitives. */
   readonly tree?: TreeNode;
+  /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
+  readonly root?: boolean;
 }
 
 export const Vow: z.ZodType<Vow> = z.lazy(() =>
@@ -108,5 +110,6 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     fields: z.array(Field).default([]),
     proof: z.array(Scenario).default([]),
     tree: TreeNode.optional(),
+    root: z.boolean().optional(),
   }),
 );

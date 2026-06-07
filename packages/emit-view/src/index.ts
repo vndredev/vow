@@ -306,3 +306,35 @@ export function emitTreeView(view: Vow, knownViews: readonly string[] = []): str
   };
   return renderVueSfc(component);
 }
+
+/**
+ * The generated boot — replaces a hand-written `src/main.ts`. Mounts the `root` page on `#app` and
+ * imports the default theme. So a vow app needs no boot shell: the entry is a vow (`root: true`).
+ */
+export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/vow.css"): string {
+  const name = pascalCase(rootSlug);
+  const lines = [
+    `// Generated boot for the root vow "${rootSlug}". The vow is the source — do not edit.`,
+    `import { createApp } from "vue";`,
+  ];
+  if (theme) lines.push(`import "${theme}";`);
+  lines.push(
+    `import ${name} from "./${rootSlug}.vue";`,
+    ``,
+    `createApp(${name}).mount("#app");`,
+    ``,
+  );
+  return lines.join("\n");
+}
+
+/** Ambient `*.vue` / `*.css` shims the generated boot needs for tsgo — written into `.generated/`. */
+export const VOW_ENV_DTS = [
+  `/** SFC + CSS shims so tsgo accepts .vue / .css imports (Volar/vue-tsc give the deep check). */`,
+  `declare module "*.vue" {`,
+  `  import type { DefineComponent } from "vue";`,
+  `  const component: DefineComponent;`,
+  `  export default component;`,
+  `}`,
+  `declare module "*.css";`,
+  ``,
+].join("\n");
