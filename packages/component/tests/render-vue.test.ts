@@ -215,6 +215,26 @@ test("a looped element renders v-for with key", () => {
   );
 });
 
+test("a slot renders a static, dynamic (:name), or default name", () => {
+  const named: Component = {
+    name: "Panel",
+    view: { kind: "slot", name: "header", children: [] },
+  };
+  expect(renderVueSfc(named)).toContain('<slot name="header" />');
+
+  const dynamic: Component = {
+    name: "Panel",
+    view: { kind: "slot", nameExpr: "item", children: [] },
+  };
+  expect(renderVueSfc(dynamic)).toContain('<slot :name="item" />');
+
+  const fallback: Component = {
+    name: "Panel",
+    view: { kind: "slot", children: [] },
+  };
+  expect(renderVueSfc(fallback)).toContain("<slot />");
+});
+
 test("an empty component renders self-closing (<Checkbox … />)", () => {
   const c: Component = {
     name: "Host",

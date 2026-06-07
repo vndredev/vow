@@ -320,3 +320,54 @@
   color: var(--vow-color-muted);
   line-height: var(--vow-leading-relaxed);
 }
+
+/* The tabs primitive — a tablist of tab buttons over `v-show` panels. State is the
+   `data-state="active|inactive"` hook per part; the active tab gets an accent underline. */
+.vow-tabs {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--vow-font-sans);
+  color: var(--vow-color-text);
+}
+.vow-tabs__list {
+  display: flex;
+  gap: var(--vow-space-1);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-tabs__tab {
+  margin: 0 0 calc(-1 * var(--vow-border));
+  padding: var(--vow-space-2) var(--vow-space-4);
+  font: inherit;
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+.vow-tabs__tab[data-state="active"] {
+  color: var(--vow-color-text);
+  border-bottom-color: var(--vow-color-accent);
+}
+.vow-tabs__tab:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: -2px;
+}
+.vow-tabs__panel {
+  padding: var(--vow-space-4) 0;
+  color: var(--vow-color-muted);
+  line-height: var(--vow-leading-relaxed);
+}
+.vow-tabs__panel:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 2px;
+}
+.vow-tabs[data-orientation="vertical"] {
+  flex-direction: row;
+  gap: var(--vow-space-4);
+}
+.vow-tabs[data-orientation="vertical"] .vow-tabs__list {
+  flex-direction: column;
+  border-bottom: none;
+  border-right: var(--vow-border) solid var(--vow-color-border);
+}

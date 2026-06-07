@@ -77,9 +77,15 @@ function renderNode(node: UiNode, depth: number): string {
     case "interp":
       return `${pad}{{ ${node.expr} }}`;
     case "slot": {
-      // `<slot />` / `<slot name="x" />`; with fallback children → `<slot>…</slot>`. Own arm because
-      // the element path's attrs/for and `</tag>` close don't fit a slot's name-only, fixed close.
-      const open = node.name !== undefined ? `slot name="${node.name}"` : "slot";
+      // `<slot />` / `<slot name="x" />` / `<slot :name="expr" />`; with fallback children →
+      // `<slot>…</slot>`. Own arm because the element path's attrs/for and `</tag>` close don't fit a
+      // slot's name-only, fixed close.
+      const open =
+        node.nameExpr !== undefined
+          ? `slot :name="${node.nameExpr}"`
+          : node.name !== undefined
+            ? `slot name="${node.name}"`
+            : "slot";
       if (node.children.length === 0) return `${pad}<${open} />`;
       const inline = node.children.every((c) => c.kind === "text" || c.kind === "interp");
       if (inline) {

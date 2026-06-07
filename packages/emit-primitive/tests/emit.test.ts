@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { emitCheckboxSfc, emitCollapsibleSfc } from "../src/index.ts";
+import { emitCheckboxSfc, emitCollapsibleSfc, emitTabsSfc } from "../src/index.ts";
 
 test("emitCheckboxSfc generates a Vue adapter over the headless core with class + data hooks", () => {
   const sfc = emitCheckboxSfc();
@@ -54,4 +54,40 @@ const EXPECTED_COLLAPSIBLE = [
 
 test("emitCollapsibleSfc renders the collapsible adapter byte-for-byte", () => {
   expect(emitCollapsibleSfc()).toBe(EXPECTED_COLLAPSIBLE);
+});
+
+// The byte-stable oracle for the tabs adapter: a roving tablist + v-show panels with per-item slots.
+const EXPECTED_TABS = [
+  `<script setup lang="ts">`,
+  `// Generated tabs adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed, useId } from "vue";`,
+  `import { tabs } from "@vow/headless";`,
+  ``,
+  `const props = defineProps<{ modelValue: string; items: string[] }>();`,
+  `const emit = defineEmits<{ "update:modelValue": [string] }>();`,
+  ``,
+  `const uid = useId();`,
+  `const api = computed(() =>`,
+  `  tabs({ value: props.modelValue, items: props.items, id: uid }, (next) =>`,
+  `    emit("update:modelValue", next.value),`,
+  `  ),`,
+  `);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div v-bind="api.rootProps" class="vow-tabs">`,
+  `    <div v-bind="api.listProps" class="vow-tabs__list">`,
+  `      <button v-bind="api.tabProps(item)" class="vow-tabs__tab" v-for="item in items" :key="item">{{ item }}</button>`,
+  `    </div>`,
+  `    <div v-bind="api.panelProps(item)" v-show="item === modelValue" class="vow-tabs__panel" v-for="item in items" :key="item">`,
+  `      <slot :name="item" />`,
+  `    </div>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitTabsSfc renders the tabs adapter byte-for-byte", () => {
+  expect(emitTabsSfc()).toBe(EXPECTED_TABS);
 });

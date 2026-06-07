@@ -135,3 +135,97 @@ export function collapsible(
     toggle,
   };
 }
+
+export interface TabsState {
+  readonly value: string;
+  readonly items: readonly string[];
+  /** A stable base id to wire each tab ↔ its panel (aria-controls / aria-labelledby). */
+  readonly id: string;
+  readonly orientation?: "horizontal" | "vertical";
+}
+
+export interface TabsApi {
+  readonly value: string;
+  /** Props for the outer wrapper (carries `data-orientation`). */
+  readonly rootProps: Record<string, unknown>;
+  /** Props for the tablist container. */
+  readonly listProps: Record<string, unknown>;
+  /** Per-tab props (roving focus + selection) for the tab with this value. */
+  tabProps(item: string): Record<string, unknown>;
+  /** Per-panel props for the panel of this value. */
+  panelProps(item: string): Record<string, unknown>;
+  select(item: string): void;
+}
+
+/** The next tab value for an arrow/Home/End key (wrapping), or undefined for any other key. */
+function nextTabValue(
+  key: string,
+  current: string,
+  items: readonly string[],
+  orientation: "horizontal" | "vertical",
+): string | undefined {
+  const i = items.indexOf(current);
+  if (i === -1) return undefined;
+  const last = items.length - 1;
+  const forward = orientation === "vertical" ? "ArrowDown" : "ArrowRight";
+  const backward = orientation === "vertical" ? "ArrowUp" : "ArrowLeft";
+  if (key === forward) return items[i === last ? 0 : i + 1];
+  if (key === backward) return items[i === 0 ? last : i - 1];
+  if (key === "Home") return items[0];
+  if (key === "End") return items[last];
+  return undefined;
+}
+
+/**
+ * The tabs primitive — WAI-ARIA APG tablist, Reka-style. A `role="tablist"` of `role="tab"` buttons
+ * over `role="tabpanel"` regions. Roving focus: only the selected tab is tabbable (`tabindex` 0, the
+ * rest -1), and Arrow/Home/End move selection *and* focus (automatic activation). The focus move runs
+ * in the keydown handler against the event's OWN DOM subtree (no globals) — so it's proven against the
+ * platform like every primitive. State is mirrored as `data-state="active|inactive"` per part.
+ */
+export function tabs(state: TabsState, set: (next: TabsState) => void): TabsApi {
+  const orientation = state.orientation ?? "horizontal";
+  const select = (item: string): void => {
+    if (item !== state.value) set({ ...state, value: item });
+  };
+  const tabId = (item: string): string => `${state.id}-tab-${state.items.indexOf(item)}`;
+  const panelId = (item: string): string => `${state.id}-panel-${state.items.indexOf(item)}`;
+  return {
+    value: state.value,
+    rootProps: { "data-orientation": orientation },
+    listProps: { role: "tablist", "aria-orientation": orientation },
+    tabProps(item) {
+      const active = item === state.value;
+      return {
+        id: tabId(item),
+        type: "button",
+        role: "tab",
+        "aria-selected": active,
+        "aria-controls": panelId(item),
+        tabindex: active ? 0 : -1,
+        "data-state": active ? "active" : "inactive",
+        onClick: (): void => select(item),
+        onKeydown: (event: KeyboardEvent): void => {
+          const next = nextTabValue(event.key, item, state.items, orientation);
+          if (next === undefined) return;
+          event.preventDefault();
+          select(next);
+          const list = (event.currentTarget as HTMLElement | null)?.parentElement;
+          const tabEls = list?.querySelectorAll<HTMLElement>('[role="tab"]');
+          tabEls?.[state.items.indexOf(next)]?.focus();
+        },
+      };
+    },
+    panelProps(item) {
+      const active = item === state.value;
+      return {
+        id: panelId(item),
+        role: "tabpanel",
+        "aria-labelledby": tabId(item),
+        tabindex: 0,
+        "data-state": active ? "active" : "inactive",
+      };
+    },
+    select,
+  };
+}

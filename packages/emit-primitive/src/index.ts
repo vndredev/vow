@@ -145,3 +145,75 @@ const collapsible: Component = {
 export function emitCollapsibleSfc(): string {
   return renderVueSfc(collapsible);
 }
+
+/** The tabs adapter as a canonical Component: a roving tablist + v-show panels with per-item slots. */
+const tabs: Component = {
+  name: "Tabs",
+  doc: [
+    "Generated tabs adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed", "useId"] },
+    { from: "@vow/headless", names: ["tabs"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "string" },
+    { name: "items", tsType: "string[]" },
+  ],
+  events: [{ name: "update:modelValue", payload: "string" }],
+  setup: [
+    "const uid = useId();",
+    "const api = computed(() =>",
+    "  tabs({ value: props.modelValue, items: props.items, id: uid }, (next) =>",
+    '    emit("update:modelValue", next.value),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "class", value: "vow-tabs" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "spread", expr: "api.listProps" },
+          { kind: "static", name: "class", value: "vow-tabs__list" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "button",
+            attrs: [
+              { kind: "spread", expr: "api.tabProps(item)" },
+              { kind: "static", name: "class", value: "vow-tabs__tab" },
+            ],
+            for: { each: "items", as: "item", key: "item" },
+            children: [{ kind: "interp", expr: "item" }],
+          },
+        ],
+      },
+      {
+        kind: "element",
+        tag: "div",
+        attrs: [
+          { kind: "spread", expr: "api.panelProps(item)" },
+          { kind: "cond", type: "show", expr: "item === modelValue" },
+          { kind: "static", name: "class", value: "vow-tabs__panel" },
+        ],
+        for: { each: "items", as: "item", key: "item" },
+        children: [{ kind: "slot", nameExpr: "item", children: [] }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue tabs adapter (over @vow/headless), rendered from the canonical model. */
+export function emitTabsSfc(): string {
+  return renderVueSfc(tabs);
+}

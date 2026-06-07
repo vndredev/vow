@@ -123,6 +123,8 @@ export interface InterpNode {
 export interface SlotNode {
   readonly kind: "slot";
   readonly name?: string;
+  /** A dynamic slot name expression (Vue `:name="<expr>"`) — e.g. a `v-for` of named panels. */
+  readonly nameExpr?: string;
   readonly children: readonly UiNode[];
 }
 
