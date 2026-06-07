@@ -28,7 +28,7 @@ fulfills: emit entity
 - **`task.ts`** — a `Task` interface + a validating `createTask` factory (a missing required field throws).
 - **`task.test.ts`** — a Vitest suite **derived from the fields** (a happy path + one reject per required field). No one writes it; the test names _are_ the proven scenarios (see [proof](/guide/proof)).
 
-**Field types:** `text` · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`). More (`reference`) + relations are on the [roadmap](/guide/roadmap).
+**Field types:** `text` · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`) · `reference(entity)` (the target entity's id — typed as `string`). Full relations (resolving the referent, a dropdown of its items) are on the [roadmap](/guide/roadmap).
 
 An entity is **data, not a screen** — it never renders by itself. To put it on the page, a view lists it.
 

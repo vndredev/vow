@@ -39,6 +39,21 @@ test("a select field becomes a string-literal union with a default", () => {
   expect(code).toContain('status: input.status ?? "todo"');
 });
 
+test("a reference field is the target entity's id (string)", () => {
+  const issue: VowNode = {
+    ...task,
+    id: "vow_issue",
+    slug: "issue",
+    fields: [
+      { name: "title", type: "text", required: true },
+      { name: "assignee", type: "reference", required: false, ref: "user" },
+    ],
+  };
+  const code = emitEntityModule(issue);
+  expect(code).toContain("assignee: string;");
+  expect(code).toContain('assignee: input.assignee ?? ""');
+});
+
 test("a date field is a string field (ISO-8601) with an ISO sample value", () => {
   const event: VowNode = {
     ...task,

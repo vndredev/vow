@@ -8,8 +8,8 @@ import type { Field, Vow } from "@vow/core";
  *  - `entityProves`     → the scenarios this entity proves, DERIVED from its fields (the contract).
  *  - `emitEntityTest`   → a Vitest suite whose test names ARE those proven scenarios.
  *
- * Field types: text → string, number → number, boolean → boolean, date → string (ISO-8601), select → a string-literal union
- * of its options. Files are written into `.generated/` by the Vite plugin — never source.
+ * Field types: text → string, number → number, boolean → boolean, date → string (ISO-8601), select → a string-literal
+ * union of its options, reference → string (the target entity's id). Files are written into `.generated/` — never source.
  */
 
 const TS_TYPE: Record<"text" | "number" | "boolean" | "date", string> = {
@@ -31,20 +31,25 @@ const SAMPLE: Record<"text" | "number" | "boolean" | "date", string> = {
   date: '"2026-01-01"',
 };
 
-/** The TS type for a field — a string-literal union for `select`. */
+/** The TS type for a field — a string-literal union for `select`, the target's id (string) for `reference`. */
 function tsType(f: Field): string {
   if (f.type === "select") {
     return (f.options ?? []).map((o) => JSON.stringify(o)).join(" | ") || "string";
   }
+  if (f.type === "reference") return "string"; // the referenced entity's id
   return TS_TYPE[f.type];
 }
 /** A default-value expression for the factory. */
 function defaultExpr(f: Field): string {
-  return f.type === "select" ? JSON.stringify(f.options?.[0] ?? "") : DEFAULT[f.type];
+  if (f.type === "select") return JSON.stringify(f.options?.[0] ?? "");
+  if (f.type === "reference") return '""'; // no referent yet
+  return DEFAULT[f.type];
 }
 /** A sample-value expression for the generated tests. */
 function sampleExpr(f: Field): string {
-  return f.type === "select" ? JSON.stringify(f.options?.[0] ?? "") : SAMPLE[f.type];
+  if (f.type === "select") return JSON.stringify(f.options?.[0] ?? "");
+  if (f.type === "reference") return JSON.stringify(`${f.ref ?? "ref"}_1`); // a sample target id
+  return SAMPLE[f.type];
 }
 
 function ensureEntity(vow: Vow): void {
