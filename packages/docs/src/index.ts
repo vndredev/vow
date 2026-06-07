@@ -62,6 +62,13 @@ export interface SidebarGroup {
   readonly items: readonly SidebarItem[];
 }
 
+/** A searchable entry — a page title or a heading (with its parent page for context). */
+export interface SearchItem {
+  readonly label: string;
+  readonly path: string;
+  readonly section?: string;
+}
+
 /** Options threaded into generation. */
 export interface GenerateDocsOptions {
   readonly highlighter?: Highlighter;

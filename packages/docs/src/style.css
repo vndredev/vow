@@ -383,12 +383,18 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--vow-space-3);
-  align-items: flex-start;
+  /* block primitives (collapsible/tabs/select) stretch to a stable width — open/close must not jump */
+  align-items: stretch;
   margin: var(--vow-space-5) 0;
   padding: var(--vow-space-5);
   background: var(--vow-color-bg);
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-3);
+}
+/* compact controls stay their own size (not full width) */
+.vow-demo > .vow-checkbox,
+.vow-demo__trigger {
+  align-self: flex-start;
 }
 .vow-demo__trigger {
   padding: var(--vow-space-2) var(--vow-space-4);

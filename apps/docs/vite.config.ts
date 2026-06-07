@@ -13,7 +13,7 @@ export default defineConfig({
     vowDocs({
       content: "../../docs/guide",
       base: "/guide",
-      groups: ["Introduction", "Fulfilment", "UI", "Project", "Docs"],
+      groups: ["Introduction", "Fulfilment", "UI", "Docs", "Project"],
       title: "vow",
       nav: [
         { text: "Guide", link: "/guide" },
