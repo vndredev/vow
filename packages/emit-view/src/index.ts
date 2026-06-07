@@ -408,13 +408,22 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
   const name = pascalCase(rootSlug);
   const lines = [
     `// Generated boot for the root vow "${rootSlug}". The vow is the source — do not edit.`,
-    `import { createApp } from "vue";`,
+    `import { createRouter, type Route } from "@vow/router";`,
+    `import ${name} from "./${rootSlug}.vue";`,
   ];
   if (theme) lines.push(`import "${theme}";`);
   lines.push(
-    `import ${name} from "./${rootSlug}.vue";`,
     ``,
-    `createApp(${name}).mount("#app");`,
+    `// Optional docs routes, written by @vow/docs — an empty map when there are none.`,
+    `const docs = import.meta.glob<{ routes?: Route[] }>("./vow-docs-routes.ts", { eager: true });`,
+    `const docRoutes = Object.values(docs).flatMap((m) => m.routes ?? []);`,
+    ``,
+    `const routes: Route[] = [`,
+    `  { path: "/", load: async () => ({ default: ${name} }) },`,
+    `  ...docRoutes,`,
+    `];`,
+    ``,
+    `createRouter(routes).mount("#app");`,
     ``,
   );
   return lines.join("\n");
@@ -422,6 +431,7 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
 
 /** Ambient `*.vue` / `*.css` shims the generated boot needs for tsgo — written into `.generated/`. */
 export const VOW_ENV_DTS = [
+  `/// <reference types="vite/client" />`,
   `/** SFC + CSS shims so tsgo accepts .vue / .css imports (Volar/vue-tsc give the deep check). */`,
   `declare module "*.vue" {`,
   `  import type { DefineComponent } from "vue";`,

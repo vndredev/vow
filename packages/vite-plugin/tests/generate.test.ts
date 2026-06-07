@@ -97,7 +97,8 @@ test("a `root` page generates the boot (main.ts) + the env shims", () => {
     expect(files).toContain("vow-env.d.ts");
     const main = readFileSync(join(dir, "main.ts"), "utf8");
     expect(main).toContain('import Shell from "./shell.vue";');
-    expect(main).toContain('createApp(Shell).mount("#app");');
+    expect(main).toContain('createRouter(routes).mount("#app");');
+    expect(main).toContain('{ path: "/", load: async () => ({ default: Shell }) }');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -34,24 +34,54 @@ function mdFilesUnder(dir: string): string[] {
 /** Strip a leading YAML frontmatter block — the prose body is what renders. */
 const stripFrontmatter = (src: string): string => src.replace(/^---\n[\s\S]*?\n---\n?/, "");
 
-/** A content file's generated slug — its path under the root, `/` → `-`, `doc-` prefixed. */
+/** A content file's path under the root, `.md` stripped, forward-slashed (e.g. "guide/emit"). */
+const relNoExt = (contentDir: string, file: string): string =>
+  relative(contentDir, file).replace(/\.md$/, "").replace(/\\/g, "/");
+
+/** A content file's generated slug — its path with `/` → `-`, `doc-` prefixed. */
 export const docSlug = (contentDir: string, file: string): string =>
-  `doc-${relative(contentDir, file).replace(/\.md$/, "").replace(/[/\\]/g, "-")}`;
+  `doc-${relNoExt(contentDir, file).replace(/\//g, "-")}`;
+
+/** A content file's clean URL — `index` collapses to its folder (e.g. "guide/index" → "/guide"). */
+export const routePath = (rel: string): string =>
+  `/${rel.replace(/(^|\/)index$/, "$1").replace(/\/$/, "")}`;
+
+/** The generated routes manifest — `@vow/docs`'s routes, folded into the boot via import.meta.glob. */
+function routesManifest(
+  routes: readonly { readonly path: string; readonly file: string }[],
+): string {
+  return [
+    `// Generated docs routes (from @vow/docs). The markdown is the source — do not edit.`,
+    `import type { Route } from "@vow/router";`,
+    ``,
+    `export const routes: Route[] = [`,
+    ...routes.map(
+      (r) => `  { path: ${JSON.stringify(r.path)}, load: () => import("./${r.file}") },`,
+    ),
+    `];`,
+    ``,
+  ].join("\n");
+}
 
 /**
- * Scan a content folder → a generated prose `.vue` per `.md`. Returns the written paths. With a
- * highlighter, fenced code is Shiki-highlighted; without (e.g. tests), it is a plain `<pre>`.
+ * Scan a content folder → a generated prose `.vue` per `.md` plus a routes manifest. Returns the
+ * written paths. With a highlighter, fenced code is Shiki-highlighted; without (e.g. tests), plain.
  */
 export function generateDocs(contentDir: string, outDir: string, hl?: Highlighter): string[] {
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
+  const routes: { path: string; file: string }[] = [];
   for (const file of mdFilesUnder(contentDir)) {
     const slug = docSlug(contentDir, file);
     const nodes = markdownToNodesSync(stripFrontmatter(readFileSync(file, "utf8")), hl);
     const out = join(outDir, `${slug}.vue`);
     writeFileSync(out, emitProse(slug, nodes), "utf8");
     written.push(out);
+    routes.push({ path: routePath(relNoExt(contentDir, file)), file: `${slug}.vue` });
   }
+  const manifest = join(outDir, "vow-docs-routes.ts");
+  writeFileSync(manifest, routesManifest(routes), "utf8");
+  written.push(manifest);
   return written;
 }
 

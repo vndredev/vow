@@ -1,12 +1,19 @@
 import { expect, test } from "vite-plus/test";
 import { VOW_ENV_DTS, emitBoot } from "../src/index.ts";
 
-test("emitBoot mounts the root view (PascalCase) and imports the default theme", () => {
+test("emitBoot generates a router boot — root route + the theme, mounted on #app", () => {
   const boot = emitBoot("landing");
-  expect(boot).toContain('import { createApp } from "vue";');
+  expect(boot).toContain('import { createRouter, type Route } from "@vow/router";');
   expect(boot).toContain('import "@vow/theme/vow.css";');
   expect(boot).toContain('import Landing from "./landing.vue";');
-  expect(boot).toContain('createApp(Landing).mount("#app");');
+  expect(boot).toContain('{ path: "/", load: async () => ({ default: Landing }) }');
+  expect(boot).toContain('createRouter(routes).mount("#app");');
+});
+
+test("the router boot folds in optional @vow/docs routes via import.meta.glob", () => {
+  const boot = emitBoot("home");
+  expect(boot).toContain('import.meta.glob<{ routes?: Route[] }>("./vow-docs-routes.ts"');
+  expect(boot).toContain("m.routes ?? []");
 });
 
 test("emitBoot can omit the theme", () => {
