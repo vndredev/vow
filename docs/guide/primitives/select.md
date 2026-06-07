@@ -5,7 +5,7 @@ order: 1.4
 
 # Select
 
-A listbox dropdown: a button that opens a list of options and commits one. It's how the framework switcher picks Vue/React/Solid, and how a form field offers a fixed set of choices that a native `<select>` can't fully style. Modelled on Reka UI and the WAI-ARIA APG select-only combobox: a `role="combobox"` button over a `role="listbox"`, with focus kept on the trigger and the highlight tracked via `aria-activedescendant`.
+A listbox dropdown: a button that opens a list of options and commits one — how a `select`-type field offers a fixed set of choices that a native `<select>` can't fully style. Modelled on Reka UI and the WAI-ARIA APG select-only combobox: a `role="combobox"` button over a `role="listbox"`, with focus kept on the trigger and the highlight tracked via `aria-activedescendant`.
 
 ## See it run
 
@@ -56,4 +56,4 @@ The core proves its own accessibility framework-free: the part-props are spread 
 
 ## Where it appears
 
-The doc-system's **framework switcher** (top of every page) is a `<Select>` — vow dogfooding its own primitive. Any generated app can use `<Select>` for a `select`-type field, a filter, or a settings choice.
+The live demo above is the exact generated adapter. Any generated app can use `<Select>` for a `select`-type field, a filter, or a settings choice — anywhere a native `<select>` can't be styled enough. _(Not yet wired into the chrome — the dark toggle is a plain button, and `select` fields still emit a native `<select>` today.)_

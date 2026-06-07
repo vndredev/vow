@@ -5,7 +5,7 @@ order: 1.5
 
 # Tabs
 
-A tablist: a row of tabs over panels, where one panel shows at a time. It's how a code-group switches between Vue/React/Solid, and how a settings screen splits sections. Modelled on Reka UI and the WAI-ARIA APG: `role="tablist"` of `role="tab"` buttons over `role="tabpanel"` regions, with **roving focus** (arrow keys move selection _and_ focus).
+A tablist: a row of tabs over panels, where one panel shows at a time — how a settings screen splits into sections, or a wizard steps through panels. Modelled on Reka UI and the WAI-ARIA APG: `role="tablist"` of `role="tab"` buttons over `role="tabpanel"` regions, with **roving focus** (arrow keys move selection _and_ focus).
 
 ## See it run
 
@@ -55,4 +55,4 @@ The core proves its own accessibility framework-free: the part-props are spread 
 
 ## Where it appears
 
-The doc-system's **code-groups** and the framework switcher are Tabs — vow dogfooding its primitive. Any generated app can use `<Tabs>` for settings sections, dashboards, or wizards.
+The live demo above is the exact generated adapter. Any generated app can use `<Tabs>` for settings sections, dashboards, or wizards. _(The docs' own `::: code-group` switcher is a separate, simpler hand-rolled tablist — not this primitive.)_
