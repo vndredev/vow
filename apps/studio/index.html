@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vow studio</title>
+    <script>
+      // Set the theme before first paint (no flash): the stored choice, else the OS preference.
+      (() => {
+        const s = localStorage.getItem("vow-theme");
+        if (s ? s === "dark" : matchMedia("(prefers-color-scheme: dark)").matches) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- the boot is generated from the root vow — there is no hand-written src/ -->
+    <script type="module" src="/.generated/main.ts"></script>
+  </body>
+</html>

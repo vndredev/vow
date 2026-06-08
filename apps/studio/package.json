@@ -1,0 +1,30 @@
+{
+  "name": "@vow/studio-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The vow studio — vow's own planning/build/design surface, generated from vows and composed entirely of vow's own means.",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@vow/headless": "workspace:*",
+    "@vow/icons": "workspace:*",
+    "@vow/router": "workspace:*",
+    "@vow/shell": "workspace:*",
+    "@vow/store": "workspace:*",
+    "@vow/theme": "workspace:*",
+    "vue": "^3.5.13",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "catalog:",
+    "@vow/core": "workspace:*",
+    "@vow/gate": "workspace:*",
+    "@vow/vite-plugin": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
