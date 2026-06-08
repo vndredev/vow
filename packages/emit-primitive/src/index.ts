@@ -447,8 +447,13 @@ const button: Component = {
     "Generated button — the one structural control with NO headless core (<button> is accessible).",
     "Carries only the variant/size theme surface; vow's base look lives in @vow/theme (swappable).",
   ],
+  imports: [
+    { from: "@vow/icons/Icon.vue", default: "Icon" },
+    { from: "@vow/icons", names: ["type IconName"] },
+  ],
   props: [
     { name: "label", tsType: "string", optional: true, default: "''" },
+    { name: "icon", tsType: "IconName", optional: true },
     {
       name: "variant",
       tsType: "'default' | 'outline' | 'ghost'",
@@ -467,13 +472,75 @@ const button: Component = {
       { kind: "bound", name: "data-variant", expr: "variant" },
       { kind: "bound", name: "data-size", expr: "size" },
     ],
-    children: [{ kind: "slot", children: [{ kind: "interp", expr: "label" }] }],
+    children: [
+      {
+        kind: "component",
+        name: "Icon",
+        attrs: [
+          { kind: "cond", type: "if", expr: "icon" },
+          { kind: "bound", name: "name", expr: "icon" },
+        ],
+        children: [],
+      },
+      { kind: "slot", children: [{ kind: "interp", expr: "label" }] },
+    ],
   },
 };
 
 /** Generate the Vue button adapter (structural — no headless), rendered from the canonical model. */
 export function emitButtonSfc(): string {
   return renderVueSfc(button);
+}
+
+/**
+ * The badge adapter — a structural status/label chip with NO headless core (it's inert text). Carries
+ * only the variant theme surface (status colours) + an optional leading icon; the look lives in @vow/theme.
+ */
+const badge: Component = {
+  name: "Badge",
+  doc: [
+    "Generated badge — a structural status/label chip (no headless core; it's inert text).",
+    "Carries only the variant theme surface; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "@vow/icons/Icon.vue", default: "Icon" },
+    { from: "@vow/icons", names: ["type IconName"] },
+  ],
+  props: [
+    { name: "label", tsType: "string", optional: true, default: "''" },
+    { name: "icon", tsType: "IconName", optional: true },
+    {
+      name: "variant",
+      tsType: "'neutral' | 'accent' | 'success' | 'warning' | 'danger'",
+      optional: true,
+      default: "'neutral'",
+    },
+  ],
+  view: {
+    kind: "element",
+    tag: "span",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-badge" },
+      { kind: "bound", name: "data-variant", expr: "variant" },
+    ],
+    children: [
+      {
+        kind: "component",
+        name: "Icon",
+        attrs: [
+          { kind: "cond", type: "if", expr: "icon" },
+          { kind: "bound", name: "name", expr: "icon" },
+        ],
+        children: [],
+      },
+      { kind: "slot", children: [{ kind: "interp", expr: "label" }] },
+    ],
+  },
+};
+
+/** Generate the Vue badge adapter (structural — no headless), rendered from the canonical model. */
+export function emitBadgeSfc(): string {
+  return renderVueSfc(badge);
 }
 
 /**
@@ -680,6 +747,7 @@ export function emitRadioGroupSfc(): string {
  * materialises each referenced adapter into `.generated/` on demand, and the docs reuse it for prose.
  */
 export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
+  Badge: emitBadgeSfc,
   Button: emitButtonSfc,
   Checkbox: emitCheckboxSfc,
   Collapsible: emitCollapsibleSfc,

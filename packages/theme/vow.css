@@ -353,6 +353,42 @@ body {
   font-size: var(--vow-text-lg);
 }
 
+/* The badge primitive — a structural status/label chip. `data-variant` is the status colour, a soft
+   tint of a semantic token (so it re-skins with the theme). */
+.vow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vow-space-1);
+  padding: 0.1rem var(--vow-space-2);
+  border: var(--vow-border) solid transparent;
+  border-radius: var(--vow-radius-3);
+  font-size: var(--vow-text-xs);
+  font-weight: var(--vow-weight-semibold);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.vow-badge[data-variant="neutral"] {
+  background: var(--vow-color-surface);
+  border-color: var(--vow-color-border);
+  color: var(--vow-color-muted);
+}
+.vow-badge[data-variant="accent"] {
+  background: color-mix(in srgb, var(--vow-color-accent) 12%, transparent);
+  color: var(--vow-color-accent);
+}
+.vow-badge[data-variant="success"] {
+  background: color-mix(in srgb, var(--vow-color-success) 14%, transparent);
+  color: var(--vow-color-success);
+}
+.vow-badge[data-variant="warning"] {
+  background: color-mix(in srgb, var(--vow-color-warning) 16%, transparent);
+  color: var(--vow-color-warning);
+}
+.vow-badge[data-variant="danger"] {
+  background: color-mix(in srgb, var(--vow-color-danger) 12%, transparent);
+  color: var(--vow-color-danger);
+}
+
 /* The switch (toggle) primitive — a pill track with a sliding thumb; state is the `data-state` hook. */
 .vow-switch {
   display: inline-flex;

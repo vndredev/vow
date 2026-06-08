@@ -9,4 +9,8 @@ export type IconName =
   | "chevron-down"
   | "chevron-right"
   | "check"
-  | "x";
+  | "x"
+  | "plus"
+  | "trash"
+  | "pencil"
+  | "arrow-right";

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@vow/headless": "workspace:*",
+    "@vow/icons": "workspace:*",
     "@vow/router": "workspace:*",
     "@vow/shell": "workspace:*",
     "@vow/store": "workspace:*",

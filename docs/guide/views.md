@@ -40,10 +40,14 @@ The catalog of ready-made components — you name them, vow brings the markup:
 - **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its full CRUD
   list, imported automatically). More data shapes (`table`, `cards`, `board`, `stats`) join over time.
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
-  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `switch` · `radio` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
+  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radio` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
   The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
   the adapters a view references, and an unknown name fails loud at generate time.
-- **`link: { to, label }`** — an internal link the router intercepts (no full reload).
+- **`icon: { name }`** — a glyph from [`@vow/icons`](/guide/primitives/button#icon), by semantic name
+  (`plus` · `trash` · `pencil` · `arrow-right` · `check` · `x` · `search` · `menu` · `chevron-down`/`-right` ·
+  `sun` · `moon` · `monitor`). Sizes with the surrounding font (`1em`), inherits `currentColor`.
+- **`link: { to, label, icon? }`** — an internal link the router intercepts (no full reload); an optional
+  leading `icon`. A [`button`](/guide/primitives/button) likewise takes an `icon` (e.g. `- button: { label: Add, icon: plus }`).
 
 **Pages & routing.** The `root: true` view is the app's home (`/`); **every other view and every `emit form`
 becomes a page at `/<slug>`** automatically — vow generates the route table, the boot serves them from one

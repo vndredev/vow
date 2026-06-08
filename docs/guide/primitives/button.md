@@ -35,11 +35,16 @@ Derived from the adapter's `Component` definition:
 | Prop      | Type                                | Purpose                                       |
 | --------- | ----------------------------------- | --------------------------------------------- |
 | `label`   | `string` (optional)                 | the button text — the default slot's fallback |
+| `icon`    | `IconName` (optional)               | a leading [`@vow/icons`](#icon) glyph         |
 | `variant` | `'default' \| 'outline' \| 'ghost'` | the look; defaults to `default`               |
 | `size`    | `'sm' \| 'md' \| 'lg'`              | the scale; defaults to `md`                   |
 | `type`    | `'button' \| 'submit'`              | the native button type; defaults to `button`  |
 
 The content is a default `<slot>` that falls back to `label`, so both `- button: { label: Save }` and a slotted `<Button>…</Button>` work.
+
+## Icon
+
+A button takes an optional **`icon`** — a glyph from [`@vow/icons`](/guide/architecture) (the swappable icon layer), rendered before the label: `- button: { label: Add task, icon: plus }`. The same `icon` is available on a [`link:`](/guide/views) node. Icons size with the surrounding font (`1em`) and inherit `currentColor`, so a button's icon takes its variant's text colour for free. Available names: :icon[plus] `plus` · :icon[trash] `trash` · :icon[pencil] `pencil` · :icon[arrow-right] `arrow-right` · :icon[check] `check` · :icon[x] `x` · :icon[search] `search` · :icon[menu] `menu` · :icon[chevron-down] `chevron-down` · :icon[chevron-right] `chevron-right` · :icon[sun] `sun` · :icon[moon] `moon` · :icon[monitor] `monitor`. _(For accessibility, give an icon-only button a `label` — it's the accessible name.)_
 
 ## Styling hooks
 
