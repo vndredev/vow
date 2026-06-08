@@ -1,0 +1,13 @@
+{
+  "feat": "success",
+  "fix": "warning",
+  "perf": "accent",
+  "refactor": "accent",
+  "revert": "danger",
+  "docs": "neutral",
+  "chore": "neutral",
+  "test": "neutral",
+  "style": "neutral",
+  "build": "neutral",
+  "ci": "neutral"
+}
