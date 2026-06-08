@@ -16,6 +16,7 @@ import {
 } from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
+import { gitTimeline } from "@vow/observability";
 
 export type { TocEntry } from "@vow/markdown";
 
@@ -259,7 +260,7 @@ function firstSentence(body: string): string {
 /** Strip doc-only blocks (the whole live `::: demo … :::` placeholder) — no text for an LLM reader. */
 const cleanBody = (body: string): string =>
   body
-    .replace(/^::: ?demo\b[\s\S]*?\n:::[ \t]*$/gm, "")
+    .replace(/^::: ?(?:demo|timeline)\b[\s\S]*?\n:::[ \t]*$/gm, "")
     .replace(/:badge\[([^\]]+)\](?:\{[^}]*\})?/g, "$1") // an inline badge → its label
     .replace(/:icon\[[^\]]+\]\s?/g, "") // an inline icon → dropped (it's decorative)
     .replace(/\n{3,}/g, "\n\n")
@@ -303,6 +304,31 @@ export function buildLlms(
     index.push("");
   }
   return { index: `${index.join("\n").trimEnd()}\n`, full: `${full.join("\n").trimEnd()}\n` };
+}
+
+/**
+ * The `::: timeline` component — the git-derived history, **baked in** at generate time. So the roadmap
+ * renders the real timeline, generated from `git log`, never a hand-typed list that could drift.
+ */
+export function emitTimelineSfc(
+  entries: readonly { readonly date: string; readonly title: string; readonly pr?: number }[],
+): string {
+  return [
+    `<script setup lang="ts">`,
+    `// Generated from git by @vow/docs — the derived timeline. The history is the source; do not edit.`,
+    `const entries = ${JSON.stringify(entries)};`,
+    `</script>`,
+    ``,
+    `<template>`,
+    `  <ol class="vow-timeline">`,
+    `    <li v-for="(e, i) in entries" :key="i" class="vow-timeline__item">`,
+    `      <time class="vow-timeline__date">{{ e.date }}</time>`,
+    `      <span class="vow-timeline__title">{{ e.title }}</span>`,
+    `    </li>`,
+    `  </ol>`,
+    `</template>`,
+    ``,
+  ].join("\n");
 }
 
 /**
@@ -427,6 +453,7 @@ export function generateDocs(
   for (const name of used) {
     if (PROSE_COMPONENTS[name] !== undefined) writeComp(name, PROSE_COMPONENTS[name]);
     if (PRIMITIVES[name] !== undefined) writeComp(name, PRIMITIVES[name]()); // a primitive used in prose
+    if (name === "VowTimeline") writeComp(name, emitTimelineSfc(gitTimeline(contentDir))); // `::: timeline`
     const demo = DEMOS[name];
     if (demo !== undefined) {
       writeComp(demo.adapter, demo.emit()); // the generated primitive adapter
@@ -438,6 +465,7 @@ export function generateDocs(
   const unknown = [...used].filter(
     (n) =>
       n !== "Icon" && // imported from @vow/icons (a package), not materialised into .generated
+      n !== "VowTimeline" && // materialised above from the git-derived timeline
       PROSE_COMPONENTS[n] === undefined &&
       DEMOS[n] === undefined &&
       PRIMITIVES[n] === undefined,

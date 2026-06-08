@@ -186,6 +186,9 @@ importers:
       '@vow/markdown':
         specifier: workspace:*
         version: link:../markdown
+      '@vow/observability':
+        specifier: workspace:*
+        version: link:../observability
       '@vow/router':
         specifier: workspace:*
         version: link:../router
