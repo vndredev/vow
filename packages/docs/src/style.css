@@ -662,30 +662,63 @@ body {
   border: 0;
 }
 
-/* The git-derived timeline (::: timeline) — a generated list of merged changes, newest first. */
+/* The git-derived timeline (::: timeline) — merged changes grouped by date, newest first. A dot per
+   date sits on the line; each change is a type Badge + its description + a link to its PR. */
 .vow-timeline {
-  list-style: none;
   margin: var(--vow-space-5) 0;
+  padding-left: var(--vow-space-5);
+  border-left: var(--vow-border) solid var(--vow-color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-5);
+}
+.vow-timeline__group {
+  position: relative;
+}
+.vow-timeline__group::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--vow-space-5) - 5px);
+  top: 0.35em;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--vow-color-bg);
+  border: 2px solid var(--vow-color-accent);
+}
+.vow-timeline__date {
+  display: block;
+  margin-bottom: var(--vow-space-2);
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-semibold);
+  color: var(--vow-color-muted);
+  font-variant-numeric: tabular-nums;
+}
+.vow-timeline__items {
+  list-style: none;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--vow-space-2);
-  border-left: var(--vow-border) solid var(--vow-color-border);
 }
 .vow-timeline__item {
   display: flex;
-  gap: var(--vow-space-4);
+  gap: var(--vow-space-3);
   align-items: baseline;
-  padding-left: var(--vow-space-4);
-}
-.vow-timeline__date {
-  flex: none;
-  width: 5.5rem;
-  color: var(--vow-color-muted);
-  font-size: var(--vow-text-sm);
-  font-variant-numeric: tabular-nums;
 }
 .vow-timeline__title {
+  flex: 1;
   color: var(--vow-color-text);
   font-size: var(--vow-text-sm);
+}
+.vow-timeline__pr {
+  flex: none;
+  color: var(--vow-color-muted);
+  font-size: var(--vow-text-xs);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+.vow-timeline__pr:hover {
+  color: var(--vow-color-accent);
 }

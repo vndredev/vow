@@ -16,7 +16,7 @@ import {
 } from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
-import { gitTimeline } from "@vow/observability";
+import { gitRemoteUrl, gitTimeline, type TimelineEntry } from "@vow/observability";
 
 export type { TocEntry } from "@vow/markdown";
 
@@ -306,26 +306,76 @@ export function buildLlms(
   return { index: `${index.join("\n").trimEnd()}\n`, full: `${full.join("\n").trimEnd()}\n` };
 }
 
+/** The Badge variant for a conventional-commit type — vow's own status colours, dogfooded. */
+function timelineVariant(type: string | undefined): "neutral" | "accent" | "success" | "warning" {
+  switch (type) {
+    case "feat":
+      return "success";
+    case "fix":
+      return "warning";
+    case "refactor":
+    case "perf":
+      return "accent";
+    default:
+      return "neutral";
+  }
+}
+
 /**
- * The `::: timeline` component — the git-derived history, **baked in** at generate time. So the roadmap
- * renders the real timeline, generated from `git log`, never a hand-typed list that could drift.
+ * The `::: timeline` component — the git-derived history, **baked in** at generate time, grouped by date,
+ * each change a type [Badge](/guide/primitives/badge) + a link to its PR. So the roadmap renders the real
+ * timeline (generated from `git log`, vow's own primitives), never a hand-typed list that could drift.
  */
-export function emitTimelineSfc(
-  entries: readonly { readonly date: string; readonly title: string; readonly pr?: number }[],
-): string {
+export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: string): string {
+  interface Item {
+    title: string;
+    type?: string;
+    variant?: "neutral" | "accent" | "success" | "warning";
+    pr?: number;
+  }
+  const groups: { date: string; items: Item[] }[] = [];
+  for (const e of entries) {
+    const item: Item = { title: e.title };
+    if (e.type !== undefined) {
+      item.type = e.type;
+      item.variant = timelineVariant(e.type);
+    }
+    if (e.pr !== undefined) item.pr = e.pr;
+    const last = groups[groups.length - 1];
+    if (last !== undefined && last.date === e.date) last.items.push(item);
+    else groups.push({ date: e.date, items: [item] });
+  }
+  const groupsType =
+    "{ date: string; items: { title: string; type?: string; " +
+    "variant?: 'neutral' | 'accent' | 'success' | 'warning'; pr?: number }[] }[]";
   return [
     `<script setup lang="ts">`,
     `// Generated from git by @vow/docs — the derived timeline. The history is the source; do not edit.`,
-    `const entries = ${JSON.stringify(entries)};`,
+    `import Badge from "./Badge.vue";`,
+    `const groups: ${groupsType} = ${JSON.stringify(groups)};`,
+    `const repo = ${JSON.stringify(repoUrl ?? "")};`,
     `</script>`,
     ``,
     `<template>`,
-    `  <ol class="vow-timeline">`,
-    `    <li v-for="(e, i) in entries" :key="i" class="vow-timeline__item">`,
-    `      <time class="vow-timeline__date">{{ e.date }}</time>`,
-    `      <span class="vow-timeline__title">{{ e.title }}</span>`,
-    `    </li>`,
-    `  </ol>`,
+    `  <div class="vow-timeline">`,
+    `    <section v-for="g in groups" :key="g.date" class="vow-timeline__group">`,
+    `      <time class="vow-timeline__date">{{ g.date }}</time>`,
+    `      <ul class="vow-timeline__items">`,
+    `        <li v-for="(e, i) in g.items" :key="i" class="vow-timeline__item">`,
+    `          <Badge v-if="e.type" :label="e.type" :variant="e.variant" />`,
+    `          <span class="vow-timeline__title">{{ e.title }}</span>`,
+    `          <a`,
+    `            v-if="e.pr && repo"`,
+    `            class="vow-timeline__pr"`,
+    `            :href="repo + '/pull/' + e.pr"`,
+    `            target="_blank"`,
+    `            rel="noreferrer"`,
+    `            >#{{ e.pr }}</a`,
+    `          >`,
+    `        </li>`,
+    `      </ul>`,
+    `    </section>`,
+    `  </div>`,
     `</template>`,
     ``,
   ].join("\n");
@@ -453,7 +503,11 @@ export function generateDocs(
   for (const name of used) {
     if (PROSE_COMPONENTS[name] !== undefined) writeComp(name, PROSE_COMPONENTS[name]);
     if (PRIMITIVES[name] !== undefined) writeComp(name, PRIMITIVES[name]()); // a primitive used in prose
-    if (name === "VowTimeline") writeComp(name, emitTimelineSfc(gitTimeline(contentDir))); // `::: timeline`
+    if (name === "VowTimeline") {
+      const badge = PRIMITIVES["Badge"];
+      if (badge !== undefined) writeComp("Badge", badge()); // the timeline's type chips
+      writeComp(name, emitTimelineSfc(gitTimeline(contentDir), gitRemoteUrl(contentDir)));
+    }
     const demo = DEMOS[name];
     if (demo !== undefined) {
       writeComp(demo.adapter, demo.emit()); // the generated primitive adapter
