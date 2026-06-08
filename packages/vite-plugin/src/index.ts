@@ -234,7 +234,10 @@ export function generateFiles(
   if (rootVow) {
     const boot = join(outDir, "main.ts");
     const env = join(outDir, "vow-env.d.ts");
-    writeFileSync(boot, emitBoot(rootVow.slug), "utf8");
+    const seeded = [...entityBySlug.values()]
+      .filter((e) => e.seed !== undefined && e.seed.length > 0)
+      .map((e) => e.slug);
+    writeFileSync(boot, emitBoot(rootVow.slug, seeded), "utf8");
     writeFileSync(env, VOW_ENV_DTS, "utf8");
     written.push(boot, env);
   }

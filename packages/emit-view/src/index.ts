@@ -1174,7 +1174,11 @@ export function emitAppLayout(
  * The generated boot — replaces a hand-written `src/main.ts`. Mounts the `root` page on `#app` and
  * imports the default theme. So a vow app needs no boot shell: the entry is a vow (`root: true`).
  */
-export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/vow.css"): string {
+export function emitBoot(
+  rootSlug: string,
+  seeds: readonly string[] = [],
+  theme: string | false = "@vow/theme/vow.css",
+): string {
   const name = pascalCase(rootSlug);
   const lines = [
     `// Generated boot for the root vow "${rootSlug}". The vow is the source — do not edit.`,
@@ -1182,6 +1186,10 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
     `import { createRouter, type Route } from "@vow/router";`,
     `import ${name} from "./${rootSlug}.vue";`,
   ];
+  if (seeds.length > 0) {
+    lines.push(`import { seed } from "@vow/store";`);
+    for (const slug of seeds) lines.push(`import { ${slug}Seed } from "./${slug}.ts";`);
+  }
   if (theme) lines.push(`import "${theme}";`);
   lines.push(
     ``,
@@ -1197,9 +1205,11 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
     `  ...docRoutes,`,
     `];`,
     ``,
-    `void createRouter(routes, { layout }).mount("#app");`,
-    ``,
   );
+  // seed the store before mounting, so the first render already has data
+  for (const slug of seeds) lines.push(`seed(${JSON.stringify(slug)}, ${slug}Seed);`);
+  if (seeds.length > 0) lines.push(``);
+  lines.push(`void createRouter(routes, { layout }).mount("#app");`, ``);
   return lines.join("\n");
 }
 
