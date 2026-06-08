@@ -150,6 +150,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `const draft = ref<Partial<${type}>>({});`,
     `const errors = ref<Record<string, string>>({});`,
     ...sliceComputed(type, "displayed"),
+    ...groupedLines(type, "displayed"),
   ];
   for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
   // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label};
@@ -297,12 +298,34 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
               kind: "element",
               tag: "tbody",
               attrs: [],
+              for: { each: "grouped", as: "grp", key: "grp.key ?? '_'" },
               children: [
+                {
+                  // a group-header row (only when grouped) spanning every column
+                  kind: "component",
+                  name: "TableRow",
+                  attrs: [{ kind: "cond", type: "if", expr: "grp.key !== null" }],
+                  children: [
+                    {
+                      kind: "component",
+                      name: "TableCell",
+                      attrs: [
+                        {
+                          kind: "static",
+                          name: "colspan",
+                          value: String(entity.fields.length + 1),
+                        },
+                        { kind: "static", name: "class", value: "vow-table__group" },
+                      ],
+                      children: [{ kind: "interp", expr: "grp.key" }],
+                    },
+                  ],
+                },
                 {
                   kind: "component",
                   name: "TableRow",
                   attrs: [],
-                  for: { each: "displayed", as: "item", key: "item.id" },
+                  for: { each: "grp.items", as: "item", key: "item.id" },
                   children: [
                     ...entity.fields.map(
                       (f): UiNode => ({
@@ -484,18 +507,36 @@ export function emitEntityCards(entity: Vow): string {
     setup: [
       `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
       ...sliceComputed(type, "displayed"),
+      ...groupedLines(type, "displayed"),
     ],
     view: {
-      kind: "component",
-      name: "Grid",
-      attrs: [bound("columns", "3"), bound("gap", "4")],
+      kind: "element",
+      tag: "section",
+      attrs: [{ kind: "static", name: "class", value: "vow-cards-group" }],
+      for: { each: "grouped", as: "grp", key: "grp.key ?? '_'" },
       children: [
         {
+          kind: "element",
+          tag: "h3",
+          attrs: [
+            { kind: "static", name: "class", value: "vow-cards-group__head" },
+            { kind: "cond", type: "if", expr: "grp.key !== null" },
+          ],
+          children: [{ kind: "interp", expr: "grp.key" }],
+        },
+        {
           kind: "component",
-          name: "Card",
-          for: { each: "displayed", as: "item", key: "item.id" },
-          attrs: [],
-          children: cardChildren,
+          name: "Grid",
+          attrs: [bound("columns", "3"), bound("gap", "4")],
+          children: [
+            {
+              kind: "component",
+              name: "Card",
+              for: { each: "grp.items", as: "item", key: "item.id" },
+              attrs: [],
+              children: cardChildren,
+            },
+          ],
         },
       ],
     },
@@ -794,15 +835,17 @@ function objectExpr(obj: Record<string, unknown>): string {
 function sliceAttrs(o: Record<string, unknown>): Attr[] {
   const attrs: Attr[] = [];
   if (o["sort"] !== undefined) attrs.push({ kind: "static", name: "sort", value: str(o["sort"]) });
+  if (o["group"] !== undefined)
+    attrs.push({ kind: "static", name: "group", value: str(o["group"]) });
   if (o["filter"] !== undefined) attrs.push(bound("filter", objectExpr(asObject(o["filter"]))));
   return attrs;
 }
 
-/** Setup lines for a sliced collection — the `filter`/`sort` props + a `<name>` computed over `rows`
- *  (filter by `{ field: value }`, then sort by a field). Shared by the list, cards and board. */
+/** Setup lines for a sliced collection — the `filter`/`sort`/`group` props + a `<name>` computed over
+ *  `rows` (filter by `{ field: value }`, then sort by a field). Shared by the list, cards and board. */
 function sliceComputed(type: string, name: string): string[] {
   return [
-    `const props = defineProps<{ filter?: Record<string, unknown>; sort?: keyof ${type} }>();`,
+    `const props = defineProps<{ filter?: Record<string, unknown>; sort?: keyof ${type}; group?: keyof ${type} }>();`,
     `const ${name} = computed(() => {`,
     `  const f = props.filter;`,
     `  let r = f`,
@@ -811,6 +854,23 @@ function sliceComputed(type: string, name: string): string[] {
     `  const s = props.sort;`,
     `  if (s) r = [...r].sort((a, b) => String(a[s]).localeCompare(String(b[s])));`,
     `  return r;`,
+    `});`,
+  ];
+}
+
+/** Setup lines for `group-by` — a `grouped` computed that sections `${src}` by `props.group` (or one
+ *  unlabelled section when no group is set). Each section is `{ key: string | null, items }`. */
+function groupedLines(type: string, src: string): string[] {
+  return [
+    `const grouped = computed(() => {`,
+    `  const g = props.group;`,
+    `  if (!g) return [{ key: null as string | null, items: ${src}.value }];`,
+    `  const m = new Map<string, ${type}[]>();`,
+    `  for (const it of ${src}.value) {`,
+    `    const k = String(it[g] ?? "");`,
+    `    m.set(k, [...(m.get(k) ?? []), it]);`,
+    `  }`,
+    `  return [...m.entries()].map(([key, items]) => ({ key: key as string | null, items }));`,
     `});`,
   ];
 }
