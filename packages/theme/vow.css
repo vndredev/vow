@@ -174,30 +174,39 @@ body {
   /* fills its page column — the page owns the width; no competing max-width/auto-centering */
   margin-top: var(--vow-space-6);
 }
-/* the list is one cohesive panel — a single bordered card, rows split by hairlines (a dashboard table) */
-.vow-view__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* the entity list is a real table — one cohesive bordered card, a header row, rows split by hairlines */
+.vow-table {
+  width: 100%;
+  border-collapse: collapse;
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-3);
   overflow: hidden;
 }
-.vow-view__row {
-  display: flex;
-  align-items: center;
-  gap: var(--vow-space-4);
+.vow-table thead th {
+  text-align: left;
   padding: var(--vow-space-3) var(--vow-space-4);
-  transition: background 0.15s;
-}
-.vow-view__row:not(:last-child) {
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-semibold);
+  color: var(--vow-color-muted);
+  background: var(--vow-color-surface);
   border-bottom: var(--vow-border) solid var(--vow-color-border);
 }
-.vow-view__row:hover {
+.vow-table tbody td {
+  padding: var(--vow-space-3) var(--vow-space-4);
+}
+.vow-table tbody tr {
+  transition: background 0.15s;
+}
+.vow-table tbody tr:not(:last-child) td {
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-table tbody tr:hover {
   background: var(--vow-color-surface);
 }
-.vow-view__field {
-  flex: 1;
+.vow-table__action {
+  width: 1px;
+  white-space: nowrap;
+  text-align: right;
 }
 .vow-view__delete {
   border: none;

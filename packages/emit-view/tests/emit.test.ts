@@ -15,15 +15,18 @@ const entity: VowNode = {
   fulfills: { kind: "emit", as: "entity" },
 };
 
-test("emitEntityList renders an unstyled, hooked CRUD list over the entity", () => {
+test("emitEntityList renders an unstyled, hooked CRUD table over the entity", () => {
   expect(viewComponentName(entity)).toBe("Task");
   const sfc = emitEntityList(entity);
   expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
   expect(sfc).toContain('import { useCollection } from "@vow/store";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
   expect(sfc).toContain('const { items: rows, append, removeAt } = useCollection<Task>("task");');
+  // a real <table>: a header from the field names, one <tr> per row, each value in its own <td>
+  expect(sfc).toContain('<table class="vow-table">');
+  expect(sfc).toContain('<th scope="col">title</th>');
   expect(sfc).toContain('v-for="(item, i) in rows"');
-  expect(sfc).toContain("{{ item.title }}");
+  expect(sfc).toContain('<td class="field-title">{{ item.title }}</td>');
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
   expect(sfc).toContain('v-model="draft.title"');
   expect(sfc).toContain('@submit.prevent="add"');

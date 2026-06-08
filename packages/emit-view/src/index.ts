@@ -176,14 +176,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   );
 
   // one display cell per field: boolean → <Checkbox>; reference → the target's resolved name (not its id);
-  // select → a <Badge> status chip; everything else → a <span> with the value
-  const span = (f: Field, expr: string): UiNode => ({
-    kind: "element",
-    tag: "span",
-    attrs: [{ kind: "static", name: "class", value: `vow-view__field field-${f.name}` }],
-    children: [{ kind: "interp", expr }],
-  });
-  const cells: UiNode[] = entity.fields.map((f): UiNode => {
+  // select → a <Badge> status chip; everything else → the value. The <td> is the cell — no span wrapper.
+  const cellContent = (f: Field): UiNode => {
     if (f.type === "boolean") {
       return {
         kind: "component",
@@ -195,7 +189,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
         children: [],
       };
     }
-    if (f.type === "reference") return span(f, `${f.name}Name(item.${f.name})`);
+    if (f.type === "reference") return { kind: "interp", expr: `${f.name}Name(item.${f.name})` };
     if (f.type === "select") {
       return {
         kind: "component",
@@ -204,8 +198,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
         children: [],
       };
     }
-    return span(f, `item.${f.name}`);
-  });
+    return { kind: "interp", expr: `item.${f.name}` };
+  };
 
   const deleteButton: UiNode = {
     kind: "element",
@@ -260,15 +254,68 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       children: [
         {
           kind: "element",
-          tag: "ul",
-          attrs: [{ kind: "static", name: "class", value: "vow-view__list" }],
+          tag: "table",
+          attrs: [{ kind: "static", name: "class", value: "vow-table" }],
           children: [
             {
               kind: "element",
-              tag: "li",
-              attrs: [{ kind: "static", name: "class", value: "vow-view__row" }],
-              for: { each: "rows", as: "item", index: "i", key: "item.id" },
-              children: [...cells, deleteButton],
+              tag: "thead",
+              attrs: [],
+              children: [
+                {
+                  kind: "element",
+                  tag: "tr",
+                  attrs: [],
+                  children: [
+                    ...entity.fields.map(
+                      (f): UiNode => ({
+                        kind: "element",
+                        tag: "th",
+                        attrs: [{ kind: "static", name: "scope", value: "col" }],
+                        children: [{ kind: "text", text: f.name }],
+                      }),
+                    ),
+                    {
+                      kind: "element",
+                      tag: "th",
+                      attrs: [
+                        { kind: "static", name: "scope", value: "col" },
+                        { kind: "static", name: "aria-label", value: "Actions" },
+                      ],
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              kind: "element",
+              tag: "tbody",
+              attrs: [],
+              children: [
+                {
+                  kind: "element",
+                  tag: "tr",
+                  attrs: [],
+                  for: { each: "rows", as: "item", index: "i", key: "item.id" },
+                  children: [
+                    ...entity.fields.map(
+                      (f): UiNode => ({
+                        kind: "element",
+                        tag: "td",
+                        attrs: [{ kind: "static", name: "class", value: `field-${f.name}` }],
+                        children: [cellContent(f)],
+                      }),
+                    ),
+                    {
+                      kind: "element",
+                      tag: "td",
+                      attrs: [{ kind: "static", name: "class", value: "vow-table__action" }],
+                      children: [deleteButton],
+                    },
+                  ],
+                },
+              ],
             },
           ],
         },

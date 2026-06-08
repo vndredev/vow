@@ -53,7 +53,7 @@ with the page's components under `## view`:
 - list: task
 ```
 
-→ a `.vue` for the page and — **because the view asked for it** — the entity's CRUD list (`Task.vue`): read · create (inline form) · toggle · delete on local state. Boolean fields become the emitted, accessible [`<Checkbox>`](/guide/primitives). No `list:`, no list — the entity stays a pure model.
+→ a `.vue` for the page and — **because the view asked for it** — the entity's CRUD **table** (`Task.vue`): a real `<table>` with a header from the field names and a row per record — read · create (inline form) · toggle · delete on local state. Boolean fields become the emitted, accessible [`<Checkbox>`](/guide/primitives). No `list:`, no table — the entity stays a pure model.
 
 ## emit form
 
