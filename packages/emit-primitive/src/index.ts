@@ -608,6 +608,72 @@ export function emitSwitchSfc(): string {
   return renderVueSfc(switchComponent);
 }
 
+/** The radio-group adapter as a canonical Component: a `role=radiogroup` of `role=radio` buttons. */
+const radioGroupComponent: Component = {
+  name: "RadioGroup",
+  doc: [
+    "Generated radio-group adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed"] },
+    { from: "@vow/headless", names: ["radioGroup"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "string", optional: true, default: '""' },
+    { name: "options", tsType: "string[]" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "string" }],
+  setup: [
+    "const api = computed(() =>",
+    "  radioGroup({ value: props.modelValue, options: props.options, disabled: props.disabled }, (next) =>",
+    '    emit("update:modelValue", next.value),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "bound", name: "aria-label", expr: "label" },
+      { kind: "static", name: "class", value: "vow-radio" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.radioProps(option)" },
+          { kind: "static", name: "class", value: "vow-radio__option" },
+        ],
+        for: { each: "options", as: "option", key: "option" },
+        children: [
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [{ kind: "static", name: "class", value: "vow-radio__dot" }],
+            children: [],
+          },
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [{ kind: "static", name: "class", value: "vow-radio__label" }],
+            children: [{ kind: "interp", expr: "option" }],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue radio-group adapter (over @vow/headless), rendered from the canonical model. */
+export function emitRadioGroupSfc(): string {
+  return renderVueSfc(radioGroupComponent);
+}
+
 /**
  * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
  * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
@@ -619,6 +685,7 @@ export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   Collapsible: emitCollapsibleSfc,
   Dialog: emitDialogSfc,
   Field: emitFieldSfc,
+  RadioGroup: emitRadioGroupSfc,
   Select: emitSelectSfc,
   Switch: emitSwitchSfc,
   Tabs: emitTabsSfc,

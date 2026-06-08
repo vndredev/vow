@@ -48,6 +48,7 @@ Each primitive has its own page — the live demo, the contract, props & events,
 | [Tabs](/guide/primitives/tabs)               | ✓ available | a tablist over panels     |
 | [Dialog](/guide/primitives/dialog)           | ✓ available | a modal / drawer          |
 | [Select](/guide/primitives/select)           | ✓ available | a listbox dropdown        |
+| [Radio group](/guide/primitives/radio)       | ✓ available | one choice, shown inline  |
 | [Field](/guide/primitives/field)             | ✓ available | a form field (structural) |
 
 Same headless-core + unstyled-adapter split throughout, hand-rolled (no runtime lock-in). More climb the ladder as the dashboard/planning views need them — see the [Roadmap](/guide/roadmap).

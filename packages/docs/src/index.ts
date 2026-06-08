@@ -7,6 +7,7 @@ import {
   emitCollapsibleSfc,
   emitDialogSfc,
   emitFieldSfc,
+  emitRadioGroupSfc,
   emitSelectSfc,
   emitSwitchSfc,
   emitTabsSfc,
@@ -539,6 +540,20 @@ const sync = ref(false);
 </template>
 `;
 
+const DEMO_RADIO = `<script setup lang="ts">
+import { ref } from "vue";
+import RadioGroup from "./RadioGroup.vue";
+const status = ref("doing");
+const options = ["todo", "doing", "done"];
+</script>
+
+<template>
+  <div class="vow-demo">
+    <RadioGroup v-model="status" :options="options" label="Status" />
+  </div>
+</template>
+`;
+
 /** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
 interface Demo {
   readonly sfc: string;
@@ -554,6 +569,7 @@ const DEMOS: Record<string, Demo> = {
   VowDemoTabs: { sfc: DEMO_TABS, adapter: "Tabs", emit: emitTabsSfc },
   VowDemoDialog: { sfc: DEMO_DIALOG, adapter: "Dialog", emit: emitDialogSfc },
   VowDemoField: { sfc: DEMO_FIELD, adapter: "Field", emit: emitFieldSfc },
+  VowDemoRadio: { sfc: DEMO_RADIO, adapter: "RadioGroup", emit: emitRadioGroupSfc },
   VowDemoSelect: { sfc: DEMO_SELECT, adapter: "Select", emit: emitSelectSfc },
   VowDemoSwitch: { sfc: DEMO_SWITCH, adapter: "Switch", emit: emitSwitchSfc },
 };

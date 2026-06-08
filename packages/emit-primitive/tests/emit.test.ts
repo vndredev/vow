@@ -5,6 +5,7 @@ import {
   emitCollapsibleSfc,
   emitDialogSfc,
   emitFieldSfc,
+  emitRadioGroupSfc,
   emitSelectSfc,
   emitSwitchSfc,
   emitTabsSfc,
@@ -300,4 +301,37 @@ const EXPECTED_SWITCH = [
 
 test("emitSwitchSfc renders the switch adapter byte-for-byte", () => {
   expect(emitSwitchSfc()).toBe(EXPECTED_SWITCH);
+});
+
+// The byte-stable oracle for the radio-group adapter: a role=radiogroup of role=radio buttons.
+const EXPECTED_RADIO = [
+  `<script setup lang="ts">`,
+  `// Generated radio-group adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed } from "vue";`,
+  `import { radioGroup } from "@vow/headless";`,
+  ``,
+  `const props = withDefaults(defineProps<{ modelValue?: string; options: string[]; label: string; disabled?: boolean }>(), { modelValue: "" });`,
+  `const emit = defineEmits<{ "update:modelValue": [string] }>();`,
+  ``,
+  `const api = computed(() =>`,
+  `  radioGroup({ value: props.modelValue, options: props.options, disabled: props.disabled }, (next) =>`,
+  `    emit("update:modelValue", next.value),`,
+  `  ),`,
+  `);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div v-bind="api.rootProps" :aria-label="label" class="vow-radio">`,
+  `    <button v-bind="api.radioProps(option)" class="vow-radio__option" v-for="option in options" :key="option">`,
+  `      <span class="vow-radio__dot" />`,
+  `      <span class="vow-radio__label">{{ option }}</span>`,
+  `    </button>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitRadioGroupSfc renders the radio-group adapter byte-for-byte", () => {
+  expect(emitRadioGroupSfc()).toBe(EXPECTED_RADIO);
 });
