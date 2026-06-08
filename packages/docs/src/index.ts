@@ -260,6 +260,8 @@ function firstSentence(body: string): string {
 const cleanBody = (body: string): string =>
   body
     .replace(/^::: ?demo\b[\s\S]*?\n:::[ \t]*$/gm, "")
+    .replace(/:badge\[([^\]]+)\](?:\{[^}]*\})?/g, "$1") // an inline badge → its label
+    .replace(/:icon\[[^\]]+\]\s?/g, "") // an inline icon → dropped (it's decorative)
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
@@ -435,7 +437,10 @@ export function generateDocs(
   // file → a hard build failure. Fail loud here, naming the likely cause (an unknown `::: demo <x>`).
   const unknown = [...used].filter(
     (n) =>
-      PROSE_COMPONENTS[n] === undefined && DEMOS[n] === undefined && PRIMITIVES[n] === undefined,
+      n !== "Icon" && // imported from @vow/icons (a package), not materialised into .generated
+      PROSE_COMPONENTS[n] === undefined &&
+      DEMOS[n] === undefined &&
+      PRIMITIVES[n] === undefined,
   );
   if (unknown.length > 0) {
     const demos = Object.keys(DEMOS)

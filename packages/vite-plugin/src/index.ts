@@ -135,10 +135,12 @@ export function generateFiles(
     const file = join(outDir, `${viewComponentName(entity)}.vue`);
     writeFileSync(file, emitEntityList(entity, entityBySlug), "utf8");
     written.push(file);
+    needed.add("Field").add("Button"); // the list's inline create form always wraps fields + a submit
     if (entity.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
     if (entity.fields.some((fld) => fld.type === "select" || fld.type === "reference")) {
       needed.add("Select");
     }
+    if (entity.fields.some((fld) => fld.type === "select")) needed.add("Badge"); // a select cell → <Badge>
   }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {

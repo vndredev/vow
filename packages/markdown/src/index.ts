@@ -106,13 +106,36 @@ interface Frame {
   readonly tabs?: { labels: string[] };
 }
 
+/** Split a text run into inline UiNodes, expanding `:icon[name]` and `:badge[label]{variant=…}` into vow's
+    own Icon / Badge components — the docs dogfooding their own primitives in prose. */
+const INLINE_RE = /:(icon|badge)\[([^\]]+)\](?:\{([^}]*)\})?/g;
+function textToInlineNodes(content: string): UiNode[] {
+  const out: UiNode[] = [];
+  let last = 0;
+  for (const m of content.matchAll(INLINE_RE)) {
+    const idx = m.index ?? 0;
+    if (idx > last) out.push(txt(content.slice(last, idx)));
+    if (m[1] === "icon") {
+      out.push(comp("Icon", [sattr("name", m[2] ?? "")], []));
+    } else {
+      const attrs: Attr[] = [sattr("label", m[2] ?? "")];
+      const variant = /(?:^|[\s,])variant\s*=\s*([\w-]+)/.exec(m[3] ?? "")?.[1];
+      if (variant !== undefined) attrs.push(sattr("variant", variant));
+      out.push(comp("Badge", attrs, []));
+    }
+    last = idx + m[0].length;
+  }
+  if (last < content.length) out.push(txt(content.slice(last)));
+  return out;
+}
+
 /** Inline tokens (a token's `children`) → inline UiNodes: text, strong/em/code, links. */
 function inlineToNodes(children: readonly Tok[]): UiNode[] {
   const root: UiNode[] = [];
   const stack: Frame[] = [];
   const sink = (): UiNode[] => stack[stack.length - 1]?.kids ?? root;
   for (const t of children) {
-    if (t.type === "text") sink().push(txt(t.content));
+    if (t.type === "text") for (const n of textToInlineNodes(t.content)) sink().push(n);
     else if (t.type === "code_inline") sink().push(el("code", [txt(t.content)]));
     else if (t.type === "softbreak" || t.type === "hardbreak") sink().push(txt(" "));
     else if (t.type === "link_open") {

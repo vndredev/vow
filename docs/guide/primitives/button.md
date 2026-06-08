@@ -44,7 +44,7 @@ The content is a default `<slot>` that falls back to `label`, so both `- button:
 
 ## Icon
 
-A button takes an optional **`icon`** — a glyph from [`@vow/icons`](/guide/architecture) (the swappable icon layer), rendered before the label: `- button: { label: Add task, icon: plus }`. The same `icon` is available on a [`link:`](/guide/views) node. Icons size with the surrounding font (`1em`) and inherit `currentColor`, so a button's icon takes its variant's text colour for free. Available names: `plus` · `trash` · `pencil` · `arrow-right` · `check` · `x` · `search` · `menu` · `chevron-down`/`-right` · `sun` · `moon` · `monitor`. _(For accessibility, give an icon-only button a `label` — it's the accessible name.)_
+A button takes an optional **`icon`** — a glyph from [`@vow/icons`](/guide/architecture) (the swappable icon layer), rendered before the label: `- button: { label: Add task, icon: plus }`. The same `icon` is available on a [`link:`](/guide/views) node. Icons size with the surrounding font (`1em`) and inherit `currentColor`, so a button's icon takes its variant's text colour for free. Available names: :icon[plus] `plus` · :icon[trash] `trash` · :icon[pencil] `pencil` · :icon[arrow-right] `arrow-right` · :icon[check] `check` · :icon[x] `x` · :icon[search] `search` · :icon[menu] `menu` · :icon[chevron-down] `chevron-down` · :icon[chevron-right] `chevron-right` · :icon[sun] `sun` · :icon[moon] `moon` · :icon[monitor] `monitor`. _(For accessibility, give an icon-only button a `label` — it's the accessible name.)_
 
 ## Styling hooks
 

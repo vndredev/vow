@@ -135,6 +135,9 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   if (entity.fields.some((f) => f.type === "select" || f.type === "reference")) {
     imports.push({ from: "./Select.vue", default: "Select" });
   }
+  if (entity.fields.some((f) => f.type === "select")) {
+    imports.push({ from: "./Badge.vue", default: "Badge" }); // a select value renders as a status chip
+  }
 
   const setup: string[] = [
     // the shared store holds the items (one array per slug) — so a reference field can read another
@@ -144,11 +147,13 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `const errors = ref<Record<string, string>>({});`,
   ];
   for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
-  // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label}
+  // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label};
+  // `${f.name}Name` resolves a stored id to the target's display name (referent-display) for the list cell
   for (const f of referenceFields) {
     setup.push(
       `const ${f.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(f.ref ?? "")}).items;`,
       `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
+      `const ${f.name}Name = (id: unknown): string => String(${f.name}Options.find((t) => t.id === id)?.${labelField(f.ref)} ?? id ?? "");`,
     );
   }
   setup.push(
@@ -170,26 +175,37 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `}`,
   );
 
-  // one display cell per field: boolean → <Checkbox>, everything else → a <span> with the value
-  const cells: UiNode[] = entity.fields.map(
-    (f): UiNode =>
-      f.type === "boolean"
-        ? {
-            kind: "component",
-            name: "Checkbox",
-            attrs: [
-              { kind: "model", expr: `item.${f.name}` },
-              { kind: "static", name: "label", value: f.name },
-            ],
-            children: [],
-          }
-        : {
-            kind: "element",
-            tag: "span",
-            attrs: [{ kind: "static", name: "class", value: `vow-view__field field-${f.name}` }],
-            children: [{ kind: "interp", expr: `item.${f.name}` }],
-          },
-  );
+  // one display cell per field: boolean → <Checkbox>; reference → the target's resolved name (not its id);
+  // select → a <Badge> status chip; everything else → a <span> with the value
+  const span = (f: Field, expr: string): UiNode => ({
+    kind: "element",
+    tag: "span",
+    attrs: [{ kind: "static", name: "class", value: `vow-view__field field-${f.name}` }],
+    children: [{ kind: "interp", expr }],
+  });
+  const cells: UiNode[] = entity.fields.map((f): UiNode => {
+    if (f.type === "boolean") {
+      return {
+        kind: "component",
+        name: "Checkbox",
+        attrs: [
+          { kind: "model", expr: `item.${f.name}` },
+          { kind: "static", name: "label", value: f.name },
+        ],
+        children: [],
+      };
+    }
+    if (f.type === "reference") return span(f, `${f.name}Name(item.${f.name})`);
+    if (f.type === "select") {
+      return {
+        kind: "component",
+        name: "Badge",
+        attrs: [{ kind: "bound", name: "label", expr: `String(item.${f.name})` }],
+        children: [],
+      };
+    }
+    return span(f, `item.${f.name}`);
+  });
 
   const deleteButton: UiNode = {
     kind: "element",

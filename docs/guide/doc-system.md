@@ -19,7 +19,8 @@ sidebar, this "on this page" rail — is built from vow's own packages. The docs
 `@vow/markdown` turns markdown into vow's **UiNode model** (the same adapter-neutral component tree the
 emitters use) — not an HTML blob, not a Vue-locked SFC. Headings, paragraphs, lists and inline marks
 become element + text nodes; fenced code becomes a raw, Shiki-highlighted node. On top of that it adds
-the doc features: `:::` callouts, `::: code-group`, `<<<` file snippets, `::: demo`, and the
+the doc features: `:::` callouts, `::: code-group`, `<<<` file snippets, `::: demo`, inline
+`:badge[Done]{variant=success}` + `:icon[plus]` (vow's own Badge/Icon, right in prose), and the
 h2/h3 headings that feed this page's TOC.
 
 ## The docs feature: `@vow/docs`
