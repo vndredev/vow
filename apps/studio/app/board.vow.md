@@ -11,5 +11,5 @@ nav: { label: Board, icon: list-checks, group: Plan }
 ```yaml
 - h1: Board
 - p: Every task in its column — drag a card to another column to move it.
-- board: { of: task, by: status }
+- board: { of: task, by: status, sort: title }
 ```

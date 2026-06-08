@@ -529,10 +529,20 @@ export function emitEntityBoard(entity: Vow, by: string): string {
       { from: "./CardBody.vue", default: "CardBody" },
     ],
     setup: [
+      `const props = defineProps<{ filter?: Record<string, unknown>; sort?: keyof ${type} }>();`,
       `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
       `const options = ${JSON.stringify(field.options ?? [])};`,
+      `const visible = computed(() => {`,
+      `  const f = props.filter;`,
+      `  let r = f`,
+      `    ? rows.filter((x) => Object.entries(f).every(([k, v]) => (x as Record<string, unknown>)[k] === v))`,
+      `    : rows;`,
+      `  const s = props.sort;`,
+      `  if (s) r = [...r].sort((a, b) => String(a[s]).localeCompare(String(b[s])));`,
+      `  return r;`,
+      `});`,
       `const columns = computed(() =>`,
-      `  options.map((o) => ({ option: o, cards: rows.filter((r) => r.${by} === o) })),`,
+      `  options.map((o) => ({ option: o, cards: visible.value.filter((r) => r.${by} === o) })),`,
       `);`,
       `const dragged = ref<${type} | null>(null);`,
       `function onDrop(option: string): void {`,
@@ -776,6 +786,23 @@ const comp = (name: string, attrs: Attr[], children: UiNode[]): UiNode => ({
 });
 const bound = (name: string, expr: string): Attr => ({ kind: "bound", name, expr });
 
+/** A JS object-literal expression with single-quoted string values — safe inside a `:attr="..."`. */
+function objectExpr(obj: Record<string, unknown>): string {
+  const entries = Object.entries(obj).map(
+    ([k, v]) =>
+      `${k}: ${typeof v === "string" ? `'${v.replace(/'/g, "\\'")}'` : JSON.stringify(v)}`,
+  );
+  return `{ ${entries.join(", ")} }`;
+}
+
+/** The `sort` / `filter` slice attrs for a sliced view node (`{ of, ..., sort?, filter? }`). */
+function sliceAttrs(o: Record<string, unknown>): Attr[] {
+  const attrs: Attr[] = [];
+  if (o["sort"] !== undefined) attrs.push({ kind: "static", name: "sort", value: str(o["sort"]) });
+  if (o["filter"] !== undefined) attrs.push(bound("filter", objectExpr(asObject(o["filter"]))));
+  return attrs;
+}
+
 /** A raw YAML value as an object (props + optional `children`); non-objects → empty. */
 function asObject(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -882,7 +909,7 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
         `emit-view: \`board: { of: ${of} }\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
       );
     }
-    return comp(boardComponentName(of, by), [], []);
+    return comp(boardComponentName(of, by), sliceAttrs(o), []);
   }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);

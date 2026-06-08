@@ -178,13 +178,16 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
   expect(boardComponentName("ticket", "status")).toBe("TicketStatusBoard");
   const sfc = emitEntityBoard(ticket, "status");
   expect(sfc).toContain('const options = ["todo","done"];');
-  expect(sfc).toContain("rows.filter((r) => r.status === o)"); // grouped into columns
   expect(sfc).toContain('v-for="col in columns"');
   expect(sfc).toContain('draggable="true"');
   expect(sfc).toContain("@dragover.prevent");
   expect(sfc).toContain('@dragstart="dragged = item"');
   expect(sfc).toContain('@drop="onDrop(col.option)"'); // a drop writes the field back
   expect(sfc).toContain('dragged.value.status = option as Ticket["status"]');
+  // slicing: a `filter` / `sort` prop narrows + orders the visible cards before they're grouped
+  expect(sfc).toContain("defineProps<{ filter?: Record<string, unknown>; sort?: keyof Ticket }>");
+  expect(sfc).toContain("const visible = computed(()");
+  expect(sfc).toContain("visible.value.filter((r) => r.status === o)");
   expect(() => emitEntityBoard(ticket, "title")).toThrow(); // `by` must be a select field
 });
 
