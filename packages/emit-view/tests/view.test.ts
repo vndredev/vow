@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow } from "@vow/core";
-import { emitView, referencedPrimitives } from "../src/index.ts";
+import { emitForm, emitView, referencedPrimitives } from "../src/index.ts";
 
 /** Build a view-only vow (a `## view`) with a given component list. */
 const view = (nodes: Vow["view"]): Vow => ({
@@ -90,4 +90,43 @@ test("an unknown component throws (the closed primitive/view vocabulary)", () =>
 
 test("the view is wrapped in a vow-app root", () => {
   expect(emitView(view([{ type: "text", value: "hello" }]))).toContain('<div class="vow-app">');
+});
+
+const taskEntity: Vow = {
+  id: "vow_task",
+  slug: "task",
+  intent: "A task",
+  children: [],
+  fields: [
+    { name: "title", type: "text", required: true },
+    { name: "done", type: "boolean", required: false },
+  ],
+  proof: [],
+  fulfills: { kind: "emit", as: "entity" },
+};
+const addTaskForm: Vow = {
+  id: "vow_addtask",
+  slug: "add-task",
+  intent: "Add a task",
+  children: [],
+  fields: [],
+  proof: [],
+  fulfills: { kind: "emit", as: "form" },
+  form: { of: "task", submit: "Add task" },
+};
+
+test("emitForm renders a labelled, zod-validated form bound to an entity", () => {
+  const sfc = emitForm(addTaskForm, new Map([["task", taskEntity]]));
+  expect(sfc).toContain('import { ZodError } from "zod";');
+  expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
+  expect(sfc).toContain('<form class="vow-form" @submit.prevent="submit">');
+  expect(sfc).toContain('<Field label="title" :control-id="titleId" :error="errors.title">');
+  expect(sfc).toContain('<Checkbox v-model="draft.done" label="done" />'); // a boolean self-labels
+  expect(sfc).toContain("append(createTask(draft.value));");
+  expect(sfc).toContain("err instanceof ZodError"); // per-field errors from the zod schema
+  expect(sfc).toContain('<Button type="submit" label="Add task" />');
+});
+
+test("emitForm fails fast when its `of` is not a known entity", () => {
+  expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/);
 });

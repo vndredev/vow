@@ -1,5 +1,12 @@
 import { parse as parseYaml } from "yaml";
-import { Vow, type Fulfillment, type ViewNode, type Vow as VowNode } from "./vow.ts";
+import {
+  FormSpec,
+  Vow,
+  type Fulfillment,
+  type FormSpec as FormSpecType,
+  type ViewNode,
+  type Vow as VowNode,
+} from "./vow.ts";
 
 /**
  * Parse a `<slug>.vow.md` — plain Markdown, no invented DSL:
@@ -113,6 +120,14 @@ function parseView(body: string): ViewNode[] | undefined {
   });
 }
 
+/** Parse the `## form` section: a fenced ```yaml block (`of: <entity>`, `submit: <label>`). */
+function parseForm(body: string): FormSpecType | undefined {
+  const m = /##\s+form\b[^\n]*\n+```ya?ml\n([\s\S]*?)\n```/i.exec(body);
+  if (!m?.[1]) return undefined;
+  const parsed = parseYaml(m[1]) as Record<string, unknown>;
+  return FormSpec.parse({ of: parsed["of"], submit: parsed["submit"] });
+}
+
 /** Parse one `<slug>.vow.md` into a validated Vow. `slug` is supplied by the loader (the filename). */
 export function parseVowMd(slug: string, content: string): VowNode {
   const fm = FRONTMATTER.exec(content);
@@ -127,6 +142,7 @@ export function parseVowMd(slug: string, content: string): VowNode {
     fields: [...itemsUnder(body, "fields")].map(parseFieldLine),
     proof: [...itemsUnder(body, "proves")].map((claim) => ({ claim })),
     view: parseView(body),
+    form: parseForm(body),
     root: frontmatter["root"],
   });
 }

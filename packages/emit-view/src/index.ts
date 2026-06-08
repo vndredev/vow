@@ -251,6 +251,161 @@ export function viewComponentName(entity: Vow): string {
   return pascalCase(entity.slug);
 }
 
+/** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set. */
+function errorNode(name: string): UiNode {
+  return {
+    kind: "element",
+    tag: "p",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-field__error" },
+      { kind: "static", name: "role", value: "alert" },
+      { kind: "cond", type: "if", expr: `errors.${name}` },
+    ],
+    children: [{ kind: "interp", expr: `errors.${name}` }],
+  };
+}
+
+/** Wire a native control to its field: the shared id (for the label), aria-describedby, aria-invalid. A
+ *  Select component keeps its own aria-label, so it's returned unchanged. */
+function withControlId(control: UiNode, name: string): UiNode {
+  if (control.kind !== "element") return control;
+  return {
+    ...control,
+    attrs: [
+      ...control.attrs,
+      { kind: "bound", name: "id", expr: `${name}Id` },
+      { kind: "bound", name: "aria-describedby", expr: `${name}Id + '-error'` },
+      { kind: "bound", name: "aria-invalid", expr: `!!errors.${name}` },
+    ],
+  };
+}
+
+/** One field in a form: a boolean self-labels as a <Checkbox>; everything else is a labelled <Field>. */
+function formField(f: Field): UiNode {
+  if (f.type === "boolean") {
+    return {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "static", name: "class", value: "vow-field" }],
+      children: [
+        {
+          kind: "component",
+          name: "Checkbox",
+          attrs: [
+            { kind: "model", expr: `draft.${f.name}` },
+            { kind: "static", name: "label", value: f.name },
+          ],
+          children: [],
+        },
+        errorNode(f.name),
+      ],
+    };
+  }
+  return {
+    kind: "component",
+    name: "Field",
+    attrs: [
+      { kind: "static", name: "label", value: f.name },
+      { kind: "bound", name: "control-id", expr: `${f.name}Id` },
+      { kind: "bound", name: "error", expr: `errors.${f.name}` },
+    ],
+    children: [withControlId(fieldControl(f, `draft.${f.name}`), f.name)],
+  };
+}
+
+/**
+ * A form from a `## form` (an `emit form` vow), bound to an entity via `of:`. Each entity field renders
+ * as a labelled `<Field>` (a boolean self-labels as `<Checkbox>`); on submit it validates with the
+ * entity's zod schema (via `create<Name>`) and surfaces the per-field errors. `byId` resolves the bound
+ * entity and any reference targets.
+ */
+export function emitForm(form: Vow, byId: Map<string, Vow>): string {
+  const spec = form.form;
+  if (!spec?.of) {
+    throw new Error(`emit-form: "${form.slug}" needs a \`## form\` with \`of: <entity>\``);
+  }
+  const entity = byId.get(spec.of);
+  if (!entity || entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
+    throw new Error(`emit-form: "${form.slug}" form \`of: ${spec.of}\` is not a known entity`);
+  }
+  const name = pascalCase(spec.of);
+  const fields = entity.fields;
+  const referenceFields = fields.filter((f) => f.type === "reference");
+  const nativeFields = fields.filter((f) => f.type !== "boolean"); // each gets a useId for its label
+  const labelField = (ref?: string): string =>
+    byId.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
+
+  const vueNames = referenceFields.length > 0 ? ["ref", "useId", "computed"] : ["ref", "useId"];
+  const imports: ImportDecl[] = [
+    { from: "vue", names: vueNames },
+    { from: "zod", names: ["ZodError"] },
+    { from: `./${spec.of}.ts`, names: [`create${name}`, `type ${name}`] },
+    { from: "@vow/store", names: ["useCollection"] },
+    { from: "./Field.vue", default: "Field" },
+    { from: "./Button.vue", default: "Button" },
+  ];
+  if (fields.some((f) => f.type === "boolean")) {
+    imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
+  }
+  if (fields.some((f) => f.type === "select" || f.type === "reference")) {
+    imports.push({ from: "./Select.vue", default: "Select" });
+  }
+
+  const setup: string[] = [
+    `const { append } = useCollection<${name}>(${JSON.stringify(spec.of)});`,
+    `const draft = ref<Partial<${name}>>({});`,
+    `const errors = ref<Record<string, string>>({});`,
+  ];
+  for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
+  for (const f of referenceFields) {
+    setup.push(
+      `const ${f.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(f.ref ?? "")}).items;`,
+      `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
+    );
+  }
+  setup.push(
+    ``,
+    `function submit(): void {`,
+    `  try {`,
+    `    append(create${name}(draft.value));`,
+    `    draft.value = {};`,
+    `    errors.value = {};`,
+    `  } catch (err) {`,
+    `    if (err instanceof ZodError) {`,
+    `      errors.value = Object.fromEntries(err.issues.map((i) => [String(i.path[0]), i.message]));`,
+    `    }`,
+    `  }`,
+    `}`,
+  );
+
+  const submitButton: UiNode = {
+    kind: "component",
+    name: "Button",
+    attrs: [
+      { kind: "static", name: "type", value: "submit" },
+      { kind: "static", name: "label", value: spec.submit },
+    ],
+    children: [],
+  };
+
+  const component: Component = {
+    name: pascalCase(form.slug),
+    doc: [`Generated from vow "${form.slug}" (a form over the "${spec.of}" entity). Do not edit.`],
+    imports,
+    setup,
+    view: {
+      kind: "element",
+      tag: "form",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-form" },
+        { kind: "event", name: "submit", expr: "submit", modifiers: ["prevent"] },
+      ],
+      children: [...fields.map(formField), submitButton],
+    },
+  };
+  return renderVueSfc(component);
+}
+
 /**
  * The vow-native view path — `emit view` from a YAML `## view`.
  *

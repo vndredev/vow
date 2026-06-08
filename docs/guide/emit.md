@@ -55,4 +55,26 @@ with the page's components under `## view`:
 
 → a `.vue` for the page and — **because the view asked for it** — the entity's CRUD list (`Task.vue`): read · create (inline form) · toggle · delete on local state. Boolean fields become the emitted, accessible [`<Checkbox>`](/guide/primitives). No `list:`, no list — the entity stays a pure model.
 
+## emit form
+
+A form is an entity's create screen. A **`## form`** block bound to an entity with `of:` renders every field as a labelled [`<Field>`](/guide/primitives/field) (a boolean self-labels as a [`<Checkbox>`](/guide/primitives/checkbox)) and validates on submit with the entity's **zod schema** — surfacing a per-field error, never swallowing it:
+
+```markdown
+---
+id: vow_addtask
+fulfills: emit form
+---
+
+# Add a task
+```
+
+with the form under `## form`:
+
+```yaml
+of: task
+submit: Add task
+```
+
+→ a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. (Standalone forms with inline `fields:`, and routing a form onto its own page, are on the [roadmap](/guide/roadmap).)
+
 Next: [bind →](/guide/bind)

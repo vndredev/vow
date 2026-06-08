@@ -8,6 +8,7 @@ import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
   emitBoot,
   emitEntityList,
+  emitForm,
   emitView,
   listedEntities,
   referencedPrimitives,
@@ -97,6 +98,16 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       for (const slug of listedEntities(v)) listed.add(slug);
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       needsLayout = true;
+    } else if (f.kind === "emit" && f.as === "form") {
+      const file = join(outDir, `${v.slug}.vue`);
+      writeFileSync(file, emitForm(v, entityBySlug), "utf8");
+      written.push(file);
+      const entity = entityBySlug.get(v.form?.of ?? "");
+      needed.add("Field").add("Button"); // a form always wraps fields + a submit button
+      if (entity?.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
+      if (entity?.fields.some((fld) => fld.type === "select" || fld.type === "reference")) {
+        needed.add("Select");
+      }
     } else if (f.kind === "bind") {
       const file = join(outDir, `${v.slug}.bind.ts`);
       writeFileSync(file, emitBindAnchor(v, bindSpecifier(f.module, outDir, srcDir)), "utf8");

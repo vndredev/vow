@@ -71,7 +71,7 @@ export function runGate(opts: {
  */
 
 /** The emit targets the generator actually knows; an example naming any other has drifted. */
-const KNOWN_EMIT_TARGETS: readonly string[] = ["entity", "view"];
+const KNOWN_EMIT_TARGETS: readonly string[] = ["entity", "view", "form"];
 
 /** Extract every fenced ```markdown block that looks like a vow.md (carries a `fulfills:` line). */
 export function vowExamplesIn(source: string): string[] {
