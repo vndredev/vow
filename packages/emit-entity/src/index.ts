@@ -12,20 +12,23 @@ import type { Field, Vow } from "@vow/core";
  * union of its options, reference → string (the target entity's id). Files are written into `.generated/` — never source.
  */
 
-const TS_TYPE: Record<"text" | "number" | "boolean" | "date", string> = {
+const TS_TYPE: Record<"text" | "longtext" | "number" | "boolean" | "date", string> = {
   text: "string",
+  longtext: "string", // multi-line text — a textarea in the UI, still a string
   number: "number",
   boolean: "boolean",
   date: "string", // ISO-8601 (YYYY-MM-DD) — string keeps it JSON- and adapter-neutral
 };
-const DEFAULT: Record<"text" | "number" | "boolean" | "date", string> = {
+const DEFAULT: Record<"text" | "longtext" | "number" | "boolean" | "date", string> = {
   text: '""',
+  longtext: '""',
   number: "0",
   boolean: "false",
   date: '""',
 };
-const SAMPLE: Record<"text" | "number" | "boolean" | "date", string> = {
+const SAMPLE: Record<"text" | "longtext" | "number" | "boolean" | "date", string> = {
   text: '"x"',
+  longtext: '"x"',
   number: "1",
   boolean: "true",
   date: '"2026-01-01"',
@@ -82,7 +85,8 @@ export function emitEntityModule(vow: Vow): string {
   for (const f of vow.fields) out.push(`  ${f.name}: ${tsType(f)};`);
   out.push(`}`, ``, `export function create${name}(input: Partial<${name}>): ${name} {`);
   for (const f of required) {
-    const empty = f.type === "text" || f.type === "date" ? ` || input.${f.name} === ""` : "";
+    const stringy = f.type === "text" || f.type === "longtext" || f.type === "date";
+    const empty = stringy ? ` || input.${f.name} === ""` : "";
     out.push(
       `  if (input.${f.name} === undefined${empty}) {`,
       `    throw new Error(${JSON.stringify(`${name}: '${f.name}' is required`)});`,

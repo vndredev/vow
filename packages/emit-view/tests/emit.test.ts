@@ -64,6 +64,17 @@ test("a date field renders as a native date input in the create form", () => {
   expect(sfc).toContain('<input class="vow-view__input" type="date" v-model="draft.starts"');
 });
 
+test("a longtext field renders as a textarea (the shared fieldControl)", () => {
+  const note: VowNode = {
+    ...entity,
+    id: "vow_note",
+    slug: "note",
+    fields: [{ name: "body", type: "longtext", required: false }],
+  };
+  const sfc = emitEntityList(note);
+  expect(sfc).toContain('<textarea class="vow-view__input vow-textarea" v-model="draft.body"');
+});
+
 const issue: VowNode = {
   ...entity,
   id: "vow_issue",

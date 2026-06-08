@@ -41,7 +41,15 @@ export const Scenario = z.object({ claim: Line });
 export type Scenario = z.infer<typeof Scenario>;
 
 /** The primitive types a field can take — the seam the entity emitter turns into TS + validation. */
-export const FieldType = z.enum(["text", "number", "boolean", "select", "date", "reference"]);
+export const FieldType = z.enum([
+  "text",
+  "longtext",
+  "number",
+  "boolean",
+  "select",
+  "date",
+  "reference",
+]);
 export type FieldType = z.infer<typeof FieldType>;
 
 /** A field on an `entity` vow: a camelCase name, a type, and whether it's required. */

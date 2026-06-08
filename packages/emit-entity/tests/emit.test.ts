@@ -78,6 +78,18 @@ test("a date field is a string field (ISO-8601) with an ISO sample value", () =>
   expect(testCode).toContain("Event without 'starts' is rejected");
 });
 
+test("a longtext field is a string, required-checked for emptiness like text", () => {
+  const note: VowNode = {
+    ...task,
+    id: "vow_note",
+    slug: "note",
+    fields: [{ name: "body", type: "longtext", required: true }],
+  };
+  const code = emitEntityModule(note);
+  expect(code).toContain("body: string;");
+  expect(code).toContain('input.body === undefined || input.body === ""');
+});
+
 test("entityProves derives the proven scenarios from the fields", () => {
   expect(entityProves(task)).toEqual([
     "A valid Task is built from its required fields",

@@ -210,6 +210,13 @@
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 1px;
 }
+/* a `longtext` field — the input look plus a resizable, multi-line box */
+.vow-textarea {
+  flex: 1 1 100%;
+  min-height: 4.5rem;
+  resize: vertical;
+  line-height: 1.5;
+}
 .vow-view__add {
   padding: var(--vow-space-2) var(--vow-space-4);
   border: var(--vow-border) solid var(--vow-color-ink);

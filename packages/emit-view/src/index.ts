@@ -6,7 +6,7 @@ import {
   type ImportDecl,
   type UiNode,
 } from "@vow/component";
-import type { Vow } from "@vow/core";
+import type { Field, Vow } from "@vow/core";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
 
@@ -24,6 +24,82 @@ const PRIMITIVES: readonly string[] = Object.keys(PRIMITIVE_ADAPTERS);
  * output is **unstyled** — only class hooks; styling lives in the swappable `@vow/theme`. React/Solid
  * would reuse the same Component via a different adapter.
  */
+
+/**
+ * The input control for one field — the shared field→control map, reused by the entity list and (later)
+ * the standalone form. select + reference render vow's Select primitive; date a native date input;
+ * longtext a textarea; text/number a native input. `model` is the v-model expression (e.g. `draft.title`);
+ * a reference reads its target's `<field>Choices` (a computed the caller defines in setup).
+ */
+export function fieldControl(f: Field, model: string): UiNode {
+  if (f.type === "select") {
+    const opts = (f.options ?? [])
+      .map((o) => `{ value: '${o.replace(/'/g, "\\'")}', label: '${o.replace(/'/g, "\\'")}' }`)
+      .join(", ");
+    return {
+      kind: "component",
+      name: "Select",
+      attrs: [
+        { kind: "model", expr: model },
+        { kind: "bound", name: "options", expr: `[${opts}]` },
+        { kind: "static", name: "label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  if (f.type === "reference") {
+    // vow's Select primitive over the target entity's shared collection (only existing items selectable)
+    return {
+      kind: "component",
+      name: "Select",
+      attrs: [
+        { kind: "model", expr: model },
+        { kind: "bound", name: "options", expr: `${f.name}Choices` },
+        { kind: "static", name: "label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  if (f.type === "date") {
+    return {
+      kind: "element",
+      tag: "input",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-view__input" },
+        { kind: "static", name: "type", value: "date" },
+        { kind: "model", expr: model },
+        { kind: "static", name: "aria-label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  if (f.type === "longtext") {
+    return {
+      kind: "element",
+      tag: "textarea",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-view__input vow-textarea" },
+        { kind: "model", expr: model },
+        { kind: "static", name: "placeholder", value: f.name },
+        { kind: "static", name: "aria-label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  return {
+    kind: "element",
+    tag: "input",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-view__input" },
+      f.type === "number"
+        ? { kind: "model", expr: model, modifiers: ["number"] }
+        : { kind: "model", expr: model },
+      { kind: "static", name: "placeholder", value: f.name },
+      { kind: "static", name: "aria-label", value: f.name },
+    ],
+    children: [],
+  };
+}
 
 /**
  * The CRUD list of an entity — what a `## view` pulls in via `list: <entity>`. Emitted on demand
@@ -115,64 +191,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     children: [{ kind: "text", text: "✕" }],
   };
 
-  // one input per non-boolean field: select → inline options, date → date input, else text/number
-  const inputs: UiNode[] = inputFields.map((f): UiNode => {
-    if (f.type === "select") {
-      const opts = (f.options ?? [])
-        .map((o) => `{ value: '${o.replace(/'/g, "\\'")}', label: '${o.replace(/'/g, "\\'")}' }`)
-        .join(", ");
-      return {
-        kind: "component",
-        name: "Select",
-        attrs: [
-          { kind: "model", expr: `draft.${f.name}` },
-          { kind: "bound", name: "options", expr: `[${opts}]` },
-          { kind: "static", name: "label", value: f.name },
-        ],
-        children: [],
-      };
-    }
-    if (f.type === "date") {
-      return {
-        kind: "element",
-        tag: "input",
-        attrs: [
-          { kind: "static", name: "class", value: "vow-view__input" },
-          { kind: "static", name: "type", value: "date" },
-          { kind: "model", expr: `draft.${f.name}` },
-          { kind: "static", name: "aria-label", value: f.name },
-        ],
-        children: [],
-      };
-    }
-    if (f.type === "reference") {
-      // vow's Select primitive over the target entity's shared collection (id → its first text field);
-      // only existing items are selectable, so the reference resolves to a real id
-      return {
-        kind: "component",
-        name: "Select",
-        attrs: [
-          { kind: "model", expr: `draft.${f.name}` },
-          { kind: "bound", name: "options", expr: `${f.name}Choices` },
-          { kind: "static", name: "label", value: f.name },
-        ],
-        children: [],
-      };
-    }
-    return {
-      kind: "element",
-      tag: "input",
-      attrs: [
-        { kind: "static", name: "class", value: "vow-view__input" },
-        f.type === "number"
-          ? { kind: "model", expr: `draft.${f.name}`, modifiers: ["number"] }
-          : { kind: "model", expr: `draft.${f.name}` },
-        { kind: "static", name: "placeholder", value: f.name },
-        { kind: "static", name: "aria-label", value: f.name },
-      ],
-      children: [],
-    };
-  });
+  // one input per non-boolean field — the shared field→control map (reused by the standalone form)
+  const inputs: UiNode[] = inputFields.map((f) => fieldControl(f, `draft.${f.name}`));
 
   const addButton: UiNode = {
     kind: "element",
