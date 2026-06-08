@@ -66,6 +66,12 @@ carries props plus an optional `children:` list (more components):
 A numeric prop is passed as a number (`gap: 4` → `:gap="4"`), anything else as a string. Text tags
 `h1` · `h2` · `h3` · `p` · `span` wrap their value; `text` is a bare string node.
 
+### Stack
+
+A vertical stack — a flex column with a gap, the most common page/form arrangement. Sugar for
+`flex: { direction: column }`: `- stack: { gap: 4, children: [...] }`. Its one prop is `gap` (a step on
+the spacing scale, default `4`).
+
 ### Flex
 
 | Prop        | Values                                              | CSS               |
