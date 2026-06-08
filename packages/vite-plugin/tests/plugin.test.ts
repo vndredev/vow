@@ -28,24 +28,24 @@ const root: VowNode = {
   fields: [],
   proof: [],
 };
-const forest: VowNode[] = [root];
+const vows: VowNode[] = [root];
 
 test("the tree virtual id resolves; foreign ids are ignored", () => {
   expect(resolveVowId(VIRTUAL_TREE)).toBe(NUL + VIRTUAL_TREE);
   expect(resolveVowId("some/other/module")).toBeUndefined();
 });
 
-test("loading the tree id yields the vow forest as data — no file", () => {
-  const code = loadVowModule(NUL + VIRTUAL_TREE, forest);
+test("loading the tree id yields the vows as data — no file", () => {
+  const code = loadVowModule(NUL + VIRTUAL_TREE, vows);
   expect(code).toContain("export const tree");
   expect(code).toContain("welcome-card");
 });
 
-test("allVows flattens the forest depth-first", () => {
-  expect(allVows(forest).map((v) => v.slug)).toEqual(["app", "welcome-card"]);
+test("allVows flattens the tree depth-first", () => {
+  expect(allVows(vows).map((v) => v.slug)).toEqual(["app", "welcome-card"]);
 });
 
-test("the plugin is named `vow`, and the forest round-trips as self-contained JS", () => {
-  expect(vow({ vows: forest }).name).toBe("vow");
-  expect(vowTreeModule(forest)).toContain('"id":"vow_card"');
+test("the plugin is named `vow`, and the vows round-trip as self-contained JS", () => {
+  expect(vow({ vows: vows }).name).toBe("vow");
+  expect(vowTreeModule(vows)).toContain('"id":"vow_card"');
 });

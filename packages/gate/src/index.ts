@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { loadVowForest, parseVowMd, uncoveredScenarios, type Vow } from "@vow/core";
+import { loadVows, parseVowMd, uncoveredScenarios, type Vow } from "@vow/core";
 import { entityProves } from "@vow/emit-entity";
 import { allVows, generateFiles } from "@vow/vite-plugin";
 
@@ -8,7 +8,7 @@ import { allVows, generateFiles } from "@vow/vite-plugin";
  * vow's scenario-coverage gate — the tor that keeps a promise from going unproven.
  *
  * `runGate` generates first (so `.generated/` tests exist — this also solves generate-before-test),
- * then checks that every scenario promised across the whole vow forest has a matching test in the
+ * then checks that every scenario promised across the whole vow tree has a matching test in the
  * corpus. Any uncovered claim is an unproven promise → the caller fails the gate.
  */
 
@@ -48,13 +48,13 @@ export interface GateResult {
   readonly uncovered: readonly string[];
 }
 
-/** Generate, then check coverage of every promised scenario across the forest. */
+/** Generate, then check coverage of every promised scenario across the vows. */
 export function runGate(opts: {
   readonly vowDir: string;
   readonly outDir: string;
   readonly testRoots: readonly string[];
 }): GateResult {
-  const vows = loadVowForest(opts.vowDir);
+  const vows = loadVows(opts.vowDir);
   generateFiles(vows, opts.outDir, opts.vowDir); // generate-before-test
   const expected = allVows(vows).flatMap(expectedScenarios);
   const testNames = collectTestNames(opts.testRoots);

@@ -16,7 +16,7 @@ A vow's `## proves` are its contract: the scenarios that must hold. The **scenar
 
 ```
 1. generate   →  .generated/ is fresh   (so generated tests exist — solves generate-before-test)
-2. collect    →  every promised scenario across the forest  +  every test name in the corpus
+2. collect    →  every promised scenario across the vows  +  every test name in the corpus
 3. check      →  a scenario with no matching test  →  uncovered  →  gate red
 ```
 

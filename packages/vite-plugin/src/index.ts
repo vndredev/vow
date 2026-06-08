@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
-import { loadVowForest, type Vow as VowNode } from "@vow/core";
+import { loadVows, validateReferences, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { emitCheckboxSfc, emitSelectSfc } from "@vow/emit-primitive";
@@ -21,7 +21,7 @@ import { layoutSfcs } from "@vow/layout";
  * Source of truth = the visible `app/` folder-tree of `vow.md` ("here lives your app, as MDs").
  * The plugin loads it and writes real `.vue` files into the hidden `.generated/` (gitignored,
  * regenerated) — so vue-tsc, Volar and plugin-vue see them (the hard gate + inspectability), but
- * they're never the source and can't drift. Plus `virtual:vow/tree` exposes the forest as data.
+ * they're never the source and can't drift. Plus `virtual:vow/tree` exposes the vows as data.
  */
 
 export const VIRTUAL_TREE = "virtual:vow/tree";
@@ -36,12 +36,12 @@ export interface VowOptions {
   readonly vows?: readonly VowNode[];
 }
 
-/** Flatten the forest into every vow, depth-first. */
+/** Flatten the tree into every vow, depth-first. */
 export function allVows(vows: readonly VowNode[]): VowNode[] {
   return vows.flatMap((v) => [v, ...allVows(v.children)]);
 }
 
-/** The vow forest as a live ES-module source (observability). */
+/** The vows as a live ES-module source (observability). */
 export function vowTreeModule(vows: readonly VowNode[]): string {
   return `export const tree = ${JSON.stringify(vows)};\nexport default tree;`;
 }
@@ -63,6 +63,7 @@ function bindSpecifier(module: string, outDir: string, srcDir: string): string {
  * resolve relative bind modules). Returns the written paths.
  */
 export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: string): string[] {
+  validateReferences(vows); // fail loud on a dangling `reference(<entity>)` before generating anything
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
   const all = allVows(vows);
@@ -152,7 +153,7 @@ export function resolveVowId(id: string): string | undefined {
   return id === VIRTUAL_TREE ? NUL + id : undefined;
 }
 
-/** Load the tree virtual module (the forest as data); ignore everything else. */
+/** Load the tree virtual module (the vows as data); ignore everything else. */
 export function loadVowModule(id: string, vows: readonly VowNode[]): string | undefined {
   return id === NUL + VIRTUAL_TREE ? vowTreeModule(vows) : undefined;
 }
@@ -166,7 +167,7 @@ export function vow(options: VowOptions = {}): Plugin {
   let genDir = outOpt;
 
   const regenerate = (): void => {
-    vows = options.vows ?? loadVowForest(vowDir);
+    vows = options.vows ?? loadVows(vowDir);
     generateFiles(vows, genDir, vowDir);
   };
 

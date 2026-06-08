@@ -19,7 +19,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 
 ## Architecture (the contract)
 
-**The Vow primitive** (`@vow/core`): ONE recursive node `{ id, slug, intent, kind?, of?, fields, fulfills?, proof }`. **Status is NEVER stored** (derived). `parse.ts` (vow.md → Vow), `load.ts` (folder tree → forest), `coverage.ts` (scenario-coverage).
+**The Vow primitive** (`@vow/core`): ONE recursive node `{ id, slug, intent, kind?, of?, fields, fulfills?, proof }`. **Status is NEVER stored** (derived). `parse.ts` (vow.md → Vow), `load.ts` (folder tree → vows), `coverage.ts` (scenario-coverage).
 
 **Fulfilment — how a vow is redeemed:**
 
@@ -35,7 +35,7 @@ This file guides Claude Code (claude.ai/code) when working in this repo.
 
 **Styling:** `@vow/theme` = swappable `vow.css` over the `class`/`data-*` hooks. Adapters stay unstyled; the theme is optional (or replaceable by vndre.dev tokens) — no component change.
 
-**Gate:** `@vow/gate` (`runGate`) generates first, then collects every prove across the whole forest + every test name in the corpus, and requires via `uncoveredScenarios`: **every prove has a green test** (else red). A **docs-drift gate** also re-parses the docs' vow.md examples against the real core and checks type-drift (every `Attr`/`UiNode` kind in `components.md`, every `FieldType` in `emit.md`). Wired as an app test.
+**Gate:** `@vow/gate` (`runGate`) generates first, then collects every prove across the whole vow tree + every test name in the corpus, and requires via `uncoveredScenarios`: **every prove has a green test** (else red). A **docs-drift gate** also re-parses the docs' vow.md examples against the real core and checks type-drift (every `Attr`/`UiNode` kind in `components.md`, every `FieldType` in `emit.md`). Wired as an app test.
 
 **Plugin:** `@vow/vite-plugin` (`vow()`) loads `app/`, generates `.generated/`, exposes `virtual:vow/tree`, watches `app/*.md` for HMR.
 
