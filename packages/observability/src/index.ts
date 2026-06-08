@@ -1,10 +1,30 @@
 import { execFileSync } from "node:child_process";
+import commitTypes from "./commit-types.json" with { type: "json" };
 
 /**
  * @vow/observability — read the truth into a derived timeline. Today it reads **git** (the merged
  * history, day 1 → now); coverage + CI join next (so a vow's derived status can include `blocked`).
  * This is what lets the roadmap derive itself instead of being hand-maintained.
  */
+
+/** A Badge variant — vow's status colours (see @vow/theme). */
+export type BadgeVariant = "neutral" | "accent" | "success" | "warning" | "danger";
+
+/**
+ * The single source for the commit vocabulary: every conventional-commit `type` → its timeline Badge
+ * variant (`commit-types.json`). The commit-msg hook (`commitlint.config.js`) enforces a subject uses one
+ * of these keys, and the roadmap timeline colours each change by it — so the format the git hook
+ * guarantees is the format the timeline reads, from one definition.
+ */
+export const COMMIT_TYPES: Readonly<Record<string, string>> = commitTypes;
+
+const VARIANTS = new Set<string>(["neutral", "accent", "success", "warning", "danger"]);
+
+/** The Badge variant for a commit type — `neutral` for an unknown type or an unrecognised value. */
+export function variantForType(type: string | undefined): BadgeVariant {
+  const v = type === undefined ? undefined : COMMIT_TYPES[type];
+  return v !== undefined && VARIANTS.has(v) ? (v as BadgeVariant) : "neutral";
+}
 
 /** One point on the timeline — a merged change, by date, with its conventional-commit type and (when
     squashed `(#N)`) its PR number. */

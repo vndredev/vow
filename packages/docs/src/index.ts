@@ -16,7 +16,13 @@ import {
 } from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
-import { gitRemoteUrl, gitTimeline, type TimelineEntry } from "@vow/observability";
+import {
+  type BadgeVariant,
+  gitRemoteUrl,
+  gitTimeline,
+  type TimelineEntry,
+  variantForType,
+} from "@vow/observability";
 
 export type { TocEntry } from "@vow/markdown";
 
@@ -306,21 +312,6 @@ export function buildLlms(
   return { index: `${index.join("\n").trimEnd()}\n`, full: `${full.join("\n").trimEnd()}\n` };
 }
 
-/** The Badge variant for a conventional-commit type — vow's own status colours, dogfooded. */
-function timelineVariant(type: string | undefined): "neutral" | "accent" | "success" | "warning" {
-  switch (type) {
-    case "feat":
-      return "success";
-    case "fix":
-      return "warning";
-    case "refactor":
-    case "perf":
-      return "accent";
-    default:
-      return "neutral";
-  }
-}
-
 /**
  * The `::: timeline` component — the git-derived history, **baked in** at generate time, grouped by date,
  * each change a type [Badge](/guide/primitives/badge) + a link to its PR. So the roadmap renders the real
@@ -330,7 +321,7 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
   interface Item {
     title: string;
     type?: string;
-    variant?: "neutral" | "accent" | "success" | "warning";
+    variant?: BadgeVariant;
     pr?: number;
   }
   const groups: { date: string; items: Item[] }[] = [];
@@ -338,7 +329,7 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
     const item: Item = { title: e.title };
     if (e.type !== undefined) {
       item.type = e.type;
-      item.variant = timelineVariant(e.type);
+      item.variant = variantForType(e.type); // the shared type → variant map (single source)
     }
     if (e.pr !== undefined) item.pr = e.pr;
     const last = groups[groups.length - 1];
@@ -347,7 +338,7 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
   }
   const groupsType =
     "{ date: string; items: { title: string; type?: string; " +
-    "variant?: 'neutral' | 'accent' | 'success' | 'warning'; pr?: number }[] }[]";
+    "variant?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger'; pr?: number }[] }[]";
   // each date is a Collapsible — all closed except the most recent (the first group)
   const initialOpen = JSON.stringify(groups.map((_, i) => i === 0));
   return [
