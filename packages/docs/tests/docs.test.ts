@@ -111,7 +111,7 @@ test("buildLlms builds an llms.txt index + a full single-file dump", () => {
         path: "/guide/primitives/button",
         group: "UI",
         order: 3.0,
-        body: "# Button\n\nA control.\n\n::: demo button\n",
+        body: "# Button\n\nA control.\n\n::: demo button\n:::\n",
       },
     ],
     { title: "vow", description: "LLM-first." },

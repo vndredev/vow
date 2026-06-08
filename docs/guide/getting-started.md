@@ -91,5 +91,5 @@ pnpm -r test    # tests per package (incl. the scenario-coverage gate)
 ## Where to go next
 
 - [The Vow primitive](/guide/vow) — the one node everything is made of
-- [emit](/guide/emit) — what `entity` and `view` generate
+- [emit](/guide/emit) — what `entity`, `view` and `form` generate
 - [App structure](/guide/structure) — the two zones: `app/` (hand-written) · `.generated/` (generated)

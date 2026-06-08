@@ -255,8 +255,12 @@ function firstSentence(body: string): string {
   return (dot === -1 ? text : text.slice(0, dot + 1)).trim();
 }
 
-/** Strip doc-only blocks (live `::: demo` placeholders) that carry no text for an LLM reader. */
-const cleanBody = (body: string): string => body.replace(/^::: demo .*$/gm, "").trim();
+/** Strip doc-only blocks (the whole live `::: demo … :::` placeholder) — no text for an LLM reader. */
+const cleanBody = (body: string): string =>
+  body
+    .replace(/^::: ?demo\b[\s\S]*?\n:::[ \t]*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 
 /**
  * Build the `llms.txt` pair from the scanned pages — the [llmstxt.org](https://llmstxt.org) convention:

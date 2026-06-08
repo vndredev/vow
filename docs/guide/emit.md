@@ -5,7 +5,7 @@ order: 0
 
 # emit — generated
 
-An `emit` vow is generated deterministically into `.generated/` and verified by the compiler. You declare; vow produces. There are two `emit` targets today: **entity** and **view**.
+An `emit` vow is generated deterministically into `.generated/` and verified by the compiler. You declare; vow produces. There are three `emit` targets: **entity**, **view**, and **form**.
 
 ## emit entity
 
