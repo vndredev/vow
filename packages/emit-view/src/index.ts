@@ -36,26 +36,27 @@ export function emitEntityList(entity: Vow): string {
 
   const imports: ImportDecl[] = [
     { from: "vue", names: ["ref"] },
+    { from: "@vow/store", names: ["useCollection"] },
     { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
   ];
   if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
 
   const setup: string[] = [
-    // items is optional (default empty) so the view drops into a `## view` as `list: <slug>` with no props
-    `const props = withDefaults(defineProps<{ items?: ${type}[] }>(), { items: () => [] });`,
-    `const rows = ref<${type}[]>(props.items.map((item) => ({ ...item })));`,
+    // the shared store holds the items (one array per slug) — so a reference field can read another
+    // entity's items; the local `ref`-per-view is gone
+    `const { items: rows, append, removeAt } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const draft = ref<Partial<${type}>>({});`,
     ``,
     `function add(): void {`,
     `  try {`,
-    `    rows.value.push(create${type}(draft.value));`,
+    `    append(create${type}(draft.value));`,
     `    draft.value = {};`,
     `  } catch {`,
     `    // invalid draft (e.g. a required field is empty) — ignore until we surface validation`,
     `  }`,
     `}`,
     `function remove(index: number): void {`,
-    `  rows.value.splice(index, 1);`,
+    `  removeAt(index);`,
     `}`,
   ];
 
@@ -191,7 +192,7 @@ export function emitEntityList(entity: Vow): string {
               kind: "element",
               tag: "li",
               attrs: [{ kind: "static", name: "class", value: "vow-view__row" }],
-              for: { each: "rows", as: "item", index: "i", key: "i" },
+              for: { each: "rows", as: "item", index: "i", key: "item.id" },
               children: [...cells, deleteButton],
             },
           ],

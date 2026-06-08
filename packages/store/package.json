@@ -1,0 +1,19 @@
+{
+  "name": "@vow/store",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A shared reactive in-memory collection per entity slug — the memory data adapter for generated vow apps.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
+}

@@ -19,10 +19,9 @@ test("emitEntityList renders an unstyled, hooked CRUD list over the entity", () 
   expect(viewComponentName(entity)).toBe("Task");
   const sfc = emitEntityList(entity);
   expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
+  expect(sfc).toContain('import { useCollection } from "@vow/store";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
-  expect(sfc).toContain(
-    "const props = withDefaults(defineProps<{ items?: Task[] }>(), { items: () => [] });",
-  );
+  expect(sfc).toContain('const { items: rows, append, removeAt } = useCollection<Task>("task");');
   expect(sfc).toContain('v-for="(item, i) in rows"');
   expect(sfc).toContain("{{ item.title }}");
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
