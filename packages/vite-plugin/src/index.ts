@@ -201,16 +201,29 @@ export function vow(options: VowOptions = {}): Plugin {
     configResolved(config) {
       vowDir = isAbsolute(dirOpt) ? dirOpt : join(config.root, dirOpt);
       genDir = isAbsolute(outOpt) ? outOpt : join(config.root, outOpt);
-      regenerate();
+      try {
+        regenerate();
+      } catch (err) {
+        // a broken vow at startup shouldn't abort the dev server — log it; the watcher recovers on the
+        // next save (and `vp build` still fails loud, so it can't ship).
+        config.logger.error(`[vow] generation failed: ${(err as Error).message}`);
+      }
     },
     configureServer(server) {
       // Watch the `app/` source (not in the module graph) → regenerate the `.vue` on change.
       // Rewriting the .vue then triggers plugin-vue's HMR; a full reload covers added/removed vows.
       server.watcher.add(vowDir);
       const onVowChange = (file: string): void => {
-        if (file.startsWith(vowDir) && file.endsWith(".md")) {
+        if (!file.startsWith(vowDir) || !file.endsWith(".md")) return;
+        try {
           regenerate();
           server.ws.send({ type: "full-reload" });
+        } catch (err) {
+          // a bad save mid-edit must NOT crash the server — surface it in the Vite error overlay and
+          // keep serving the last good output; the next valid save clears it.
+          const e = err as Error;
+          server.config.logger.error(`[vow] generation failed: ${e.message}`);
+          server.ws.send({ type: "error", err: { message: e.message, stack: e.stack ?? "" } });
         }
       };
       server.watcher.on("add", onVowChange);

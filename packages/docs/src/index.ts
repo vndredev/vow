@@ -602,14 +602,25 @@ export function vowDocs(options: VowDocsOptions): Plugin {
         : join(config.root, options.content);
       genDir = isAbsolute(outOpt) ? outOpt : join(config.root, outOpt);
       highlighter = await getHighlighter(); // pre-warm once, so generation stays sync
-      regenerate();
+      try {
+        regenerate();
+      } catch (err) {
+        config.logger.error(`[vow:docs] generation failed: ${(err as Error).message}`);
+      }
     },
     configureServer(server) {
       server.watcher.add(contentDir);
       const onChange = (file: string): void => {
-        if (file.startsWith(contentDir) && file.endsWith(".md")) {
+        if (!file.startsWith(contentDir) || !file.endsWith(".md")) return;
+        try {
           regenerate();
           server.ws.send({ type: "full-reload" });
+        } catch (err) {
+          // a bad save mid-edit must NOT crash the dev server — show it in the Vite error overlay and
+          // keep serving the last good docs; the next valid save clears it.
+          const e = err as Error;
+          server.config.logger.error(`[vow:docs] generation failed: ${e.message}`);
+          server.ws.send({ type: "error", err: { message: e.message, stack: e.stack ?? "" } });
         }
       };
       server.watcher.on("add", onChange);
