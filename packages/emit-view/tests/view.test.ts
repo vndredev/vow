@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow } from "@vow/core";
-import { emitView } from "../src/index.ts";
+import { emitView, referencedPrimitives } from "../src/index.ts";
 
 /** Build a view-only vow (a `## view`) with a given component list. */
 const view = (nodes: Vow["view"]): Vow => ({
@@ -62,7 +62,29 @@ test("primitives are the escape hatch: flex with props + children", () => {
   expect(sfc).toContain('<Flex :direction="\'column\'" :gap="4">hi</Flex>');
 });
 
-test("an unknown component throws", () => {
+test("a primitive placed directly in a view renders as its component + imports its adapter", () => {
+  const sfc = emitView(view([{ type: "button", value: { variant: "outline", label: "Save" } }]));
+  expect(sfc).toContain('import Button from "./Button.vue";');
+  expect(sfc).toContain(`<Button :variant="'outline'" :label="'Save'" />`);
+});
+
+test("the reserved model: key on a view primitive becomes a v-model", () => {
+  const sfc = emitView(
+    view([{ type: "checkbox", value: { label: "Subscribe", model: "subscribed" } }]),
+  );
+  expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
+  expect(sfc).toContain('v-model="subscribed"');
+});
+
+test("referencedPrimitives lists the primitives a view places directly (the closed registry)", () => {
+  const v = view([
+    { type: "button", value: { label: "Go" } },
+    { type: "text", value: "hi" },
+  ]);
+  expect(referencedPrimitives(v)).toEqual(["Button"]);
+});
+
+test("an unknown component throws (the closed primitive/view vocabulary)", () => {
   expect(() => emitView(view([{ type: "nope", value: {} }]))).toThrow(/unknown view component/);
 });
 

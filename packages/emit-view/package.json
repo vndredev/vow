@@ -14,6 +14,7 @@
   "dependencies": {
     "@vow/component": "workspace:*",
     "@vow/core": "workspace:*",
+    "@vow/emit-primitive": "workspace:*",
     "@vow/layout": "workspace:*"
   },
   "devDependencies": {

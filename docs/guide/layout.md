@@ -39,6 +39,10 @@ The catalog of ready-made components — you name them, vow brings the markup:
 - **`features`** — a list of `{ title?, body? }` → a three-column grid of cards.
 - **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its full CRUD
   list, imported automatically). More data shapes (`table`, `cards`, `board`, `stats`) join over time.
+- **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
+  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `select` · `collapsible` · `tabs` · `dialog`.
+  The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
+  the adapters a view references, and an unknown name fails loud at generate time.
 
 ## Primitives — the escape hatch
 

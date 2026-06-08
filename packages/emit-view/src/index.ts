@@ -7,7 +7,11 @@ import {
   type UiNode,
 } from "@vow/component";
 import type { Vow } from "@vow/core";
+import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
+
+/** The primitive names a `## view` may reference directly (the closed registry, from @vow/emit-primitive). */
+const PRIMITIVES: readonly string[] = Object.keys(PRIMITIVE_ADAPTERS);
 
 /**
  * vow's view emitter — `emit view` made real.
@@ -267,12 +271,18 @@ function asObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
-/** Map raw props (every key but `children`) to bound attrs: numbers stay numbers, else string literals. */
+/**
+ * Map raw props (every key but `children`) to bound attrs: numbers stay numbers, else string literals.
+ * The reserved `model:` key becomes a two-way binding (`v-model="<expr>"`) — its value is the expression.
+ */
 function propsToAttrs(value: Record<string, unknown>): Attr[] {
   return Object.entries(value)
     .filter(([k]) => k !== "children")
-    .map(([name, v]) =>
-      bound(name, typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "\\'")}'`),
+    .map(
+      ([name, v]): Attr =>
+        name === "model"
+          ? { kind: "model", expr: String(v) }
+          : bound(name, typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "\\'")}'`),
     );
 }
 
@@ -326,6 +336,11 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     const o = asObject(value);
     return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
   }
+  if (PRIMITIVES.includes(pascalCase(type))) {
+    // a UI primitive placed directly in a view (e.g. `- button: { variant: outline, label: Save }`)
+    const o = asObject(value);
+    return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
+  }
   if (TEXT_TAGS.includes(type)) {
     return el(type, [txt(str(value))]);
   }
@@ -342,6 +357,14 @@ function componentsIn(node: UiNode, acc: Set<string> = new Set()): Set<string> {
     for (const c of node.children) componentsIn(c, acc);
   }
   return acc;
+}
+
+/** The primitives a `## view` references directly — so the plugin can materialise each adapter on demand. */
+export function referencedPrimitives(view: Vow, entities: readonly string[] = []): string[] {
+  if (!view.view) return [];
+  const acc = new Set<string>();
+  for (const vn of view.view) componentsIn(mapNode(vn.type, vn.value, entities), acc);
+  return [...acc].filter((n) => PRIMITIVES.includes(n));
 }
 
 /**

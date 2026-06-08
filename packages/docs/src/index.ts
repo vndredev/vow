@@ -8,6 +8,7 @@ import {
   emitDialogSfc,
   emitSelectSfc,
   emitTabsSfc,
+  PRIMITIVE_ADAPTERS,
 } from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
@@ -519,16 +520,10 @@ const DEMOS: Record<string, Demo> = {
   VowDemoSelect: { sfc: DEMO_SELECT, adapter: "Select", emit: emitSelectSfc },
 };
 
-/** Primitive adapters a page may reference directly (composed from @vow/emit-primitive) — e.g. a
- *  markdown task list (`- [x]`) renders <Checkbox>, and prose can use any primitive by name. */
-const PRIMITIVES: Record<string, () => string> = {
-  Button: emitButtonSfc,
-  Checkbox: emitCheckboxSfc,
-  Collapsible: emitCollapsibleSfc,
-  Tabs: emitTabsSfc,
-  Dialog: emitDialogSfc,
-  Select: emitSelectSfc,
-};
+/** Primitive adapters a page may reference directly — the closed registry from @vow/emit-primitive
+ *  (one source of truth, shared with the `## view` vocabulary). A markdown task list (`- [x]`) renders
+ *  <Checkbox>; prose can use any primitive by name. */
+const PRIMITIVES = PRIMITIVE_ADAPTERS;
 
 /** A Vite plugin: scan `content` into generated prose pages; pre-warm Shiki once; reload on `.md` edit. */
 export function vowDocs(options: VowDocsOptions): Plugin {

@@ -475,3 +475,17 @@ const button: Component = {
 export function emitButtonSfc(): string {
   return renderVueSfc(button);
 }
+
+/**
+ * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
+ * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
+ * materialises each referenced adapter into `.generated/` on demand, and the docs reuse it for prose.
+ */
+export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
+  Button: emitButtonSfc,
+  Checkbox: emitCheckboxSfc,
+  Collapsible: emitCollapsibleSfc,
+  Tabs: emitTabsSfc,
+  Dialog: emitDialogSfc,
+  Select: emitSelectSfc,
+};

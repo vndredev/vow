@@ -4,12 +4,13 @@ import type { Plugin } from "vite-plus";
 import { loadVows, validateReferences, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
-import { emitCheckboxSfc, emitSelectSfc } from "@vow/emit-primitive";
+import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
   emitBoot,
   emitEntityList,
   emitView,
   listedEntities,
+  referencedPrimitives,
   VOW_ENV_DTS,
   viewComponentName,
 } from "@vow/emit-view";
@@ -74,6 +75,7 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
   );
   const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
+  const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
   let needsLayout = false; // any `emit view` pulls in the layout primitives
 
   for (const v of all) {
@@ -93,6 +95,7 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(file, emitView(v, entities), "utf8");
       written.push(file);
       for (const slug of listedEntities(v)) listed.add(slug);
+      for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       needsLayout = true;
     } else if (f.kind === "bind") {
       const file = join(outDir, `${v.slug}.bind.ts`);
@@ -101,30 +104,26 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
     }
   }
 
-  // A view's `list: <entity>` instantiates that entity's CRUD list — emitted here, on demand. A
-  // boolean → <Checkbox>; select + reference → <Select>. Emit each adapter once if any listed entity needs it.
-  let needsCheckbox = false;
-  let needsSelect = false;
+  // A view's `list: <entity>` instantiates that entity's CRUD list — emitted here, on demand. Its field
+  // types pull in adapters too: boolean → <Checkbox>, select/reference → <Select>.
   for (const slug of listed) {
     const entity = entityBySlug.get(slug);
     if (!entity) continue; // emitView already validated the reference; defensive
     const file = join(outDir, `${viewComponentName(entity)}.vue`);
     writeFileSync(file, emitEntityList(entity, entityBySlug), "utf8");
     written.push(file);
-    if (entity.fields.some((fld) => fld.type === "boolean")) needsCheckbox = true;
+    if (entity.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
     if (entity.fields.some((fld) => fld.type === "select" || fld.type === "reference")) {
-      needsSelect = true;
+      needed.add("Select");
     }
   }
-  if (needsCheckbox) {
-    const cb = join(outDir, "Checkbox.vue");
-    writeFileSync(cb, emitCheckboxSfc(), "utf8");
-    written.push(cb);
-  }
-  if (needsSelect) {
-    const sel = join(outDir, "Select.vue");
-    writeFileSync(sel, emitSelectSfc(), "utf8");
-    written.push(sel);
+  // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
+  for (const name of needed) {
+    const emit = PRIMITIVE_ADAPTERS[name];
+    if (emit === undefined) continue; // closed registry — defensive
+    const file = join(outDir, `${name}.vue`);
+    writeFileSync(file, emit(), "utf8");
+    written.push(file);
   }
   // A `## view` imports `./<Primitive>.vue`; emit the layout primitives so those resolve (and are
   // themselves type-checked by `vp check`). Written wholesale — the unused ones are harmless.
