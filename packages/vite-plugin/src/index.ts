@@ -136,6 +136,7 @@ export function generateFiles(
     writeFileSync(file, emitEntityList(entity, entityBySlug), "utf8");
     written.push(file);
     needed.add("Field").add("Button"); // the list's inline create form always wraps fields + a submit
+    needed.add("Table").add("TableRow").add("TableHead").add("TableCell"); // the list composes the Table parts
     if (entity.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
     if (entity.fields.some((fld) => fld.type === "select" || fld.type === "reference")) {
       needed.add("Select");

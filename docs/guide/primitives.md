@@ -41,17 +41,21 @@ If the core is sound against the bare platform, every adapter that merely forwar
 
 Each primitive has its own page — the live demo, the contract, props & events, the generated code, and its styling hooks.
 
-| Primitive                                    | Status                             | For                                |
-| -------------------------------------------- | ---------------------------------- | ---------------------------------- |
-| [Button](/guide/primitives/button)           | :badge[Available]{variant=success} | an action (structural)             |
-| [Badge](/guide/primitives/badge)             | :badge[Available]{variant=success} | a status / label chip (structural) |
-| [Checkbox](/guide/primitives/checkbox)       | :badge[Available]{variant=success} | a boolean field                    |
-| [Switch](/guide/primitives/switch)           | :badge[Available]{variant=success} | a boolean as a toggle              |
-| [Collapsible](/guide/primitives/collapsible) | :badge[Available]{variant=success} | a disclosure / fold-out            |
-| [Tabs](/guide/primitives/tabs)               | :badge[Available]{variant=success} | a tablist over panels              |
-| [Dialog](/guide/primitives/dialog)           | :badge[Available]{variant=success} | a modal / drawer                   |
-| [Select](/guide/primitives/select)           | :badge[Available]{variant=success} | a listbox dropdown                 |
-| [Radio group](/guide/primitives/radio)       | :badge[Available]{variant=success} | one choice, shown inline           |
-| [Field](/guide/primitives/field)             | :badge[Available]{variant=success} | a form field (structural)          |
+| Primitive                                    | Status                             | For                                                 |
+| -------------------------------------------- | ---------------------------------- | --------------------------------------------------- |
+| [Button](/guide/primitives/button)           | :badge[Available]{variant=success} | an action (structural)                              |
+| [Badge](/guide/primitives/badge)             | :badge[Available]{variant=success} | a status / label chip (structural)                  |
+| [Checkbox](/guide/primitives/checkbox)       | :badge[Available]{variant=success} | a boolean field                                     |
+| [Switch](/guide/primitives/switch)           | :badge[Available]{variant=success} | a boolean as a toggle                               |
+| [Collapsible](/guide/primitives/collapsible) | :badge[Available]{variant=success} | a disclosure / fold-out                             |
+| [Tabs](/guide/primitives/tabs)               | :badge[Available]{variant=success} | a tablist over panels                               |
+| [Dialog](/guide/primitives/dialog)           | :badge[Available]{variant=success} | a modal / drawer                                    |
+| [Select](/guide/primitives/select)           | :badge[Available]{variant=success} | a listbox dropdown                                  |
+| [Radio group](/guide/primitives/radio)       | :badge[Available]{variant=success} | one choice, shown inline                            |
+| [Field](/guide/primitives/field)             | :badge[Available]{variant=success} | a form field (structural)                           |
+| [Table](/guide/primitives/table)             | :badge[Available]{variant=success} | a data grid — composable parts (structural)         |
+| [Card](/guide/primitives/card)               | :badge[Available]{variant=success} | a content surface — composable parts (structural)   |
+| [Stats](/guide/primitives/stats)             | :badge[Available]{variant=success} | a metric-tile strip — composable parts (structural) |
+| [Callout](/guide/primitives/callout)         | :badge[Available]{variant=success} | a tinted notice (structural)                        |
 
 Same headless-core + unstyled-adapter split throughout, hand-rolled (no runtime lock-in). More climb the ladder as the dashboard/planning views need them — see the [Roadmap](/guide/roadmap).

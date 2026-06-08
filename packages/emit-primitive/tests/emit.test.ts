@@ -2,13 +2,23 @@ import { expect, test } from "vite-plus/test";
 import {
   emitBadgeSfc,
   emitButtonSfc,
+  emitCalloutSfc,
+  emitCardBodySfc,
+  emitCardHeaderSfc,
+  emitCardSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
   emitFieldSfc,
   emitRadioGroupSfc,
   emitSelectSfc,
+  emitStatSfc,
+  emitStatsSfc,
   emitSwitchSfc,
+  emitTableCellSfc,
+  emitTableHeadSfc,
+  emitTableRowSfc,
+  emitTableSfc,
   emitTabsSfc,
 } from "../src/index.ts";
 
@@ -270,6 +280,119 @@ test("emitBadgeSfc renders the structural badge adapter byte-for-byte", () => {
   expect(sfc).toBe(EXPECTED_BADGE);
   expect(sfc).not.toContain("@vow/headless"); // structural — no logic
   expect(sfc).not.toContain("<style");
+});
+
+const EXPECTED_TABLE = [
+  `<script setup lang="ts">`,
+  `// Generated table — a structural data grid over native <table> (no headless core).`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <table class="vow-table">`,
+  `    <slot />`,
+  `  </table>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+const EXPECTED_TABLE_HEAD = [
+  `<script setup lang="ts">`,
+  `// Generated table header cell (<th>) — structural; the caller sets \`scope\` via fall-through.`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <th class="vow-table__head">`,
+  `    <slot />`,
+  `  </th>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+const EXPECTED_TABLE_CELL = [
+  `<script setup lang="ts">`,
+  `// Generated table cell (<td>) — structural, class hook only.`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <td class="vow-table__cell">`,
+  `    <slot />`,
+  `  </td>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("the table parts render byte-for-byte as structural primitives", () => {
+  expect(emitTableSfc()).toBe(EXPECTED_TABLE);
+  expect(emitTableHeadSfc()).toBe(EXPECTED_TABLE_HEAD);
+  expect(emitTableCellSfc()).toBe(EXPECTED_TABLE_CELL);
+  expect(emitTableRowSfc()).toContain(`<tr class="vow-table__row">`); // symmetric with the others
+  for (const sfc of [emitTableSfc(), emitTableRowSfc(), emitTableHeadSfc(), emitTableCellSfc()]) {
+    expect(sfc).not.toContain("@vow/headless"); // structural — no logic
+    expect(sfc).not.toContain("<style");
+  }
+});
+
+const EXPECTED_CARD = [
+  `<script setup lang="ts">`,
+  `// Generated card — a structural bordered content surface (no headless core).`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-card">`,
+  `    <slot />`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+const EXPECTED_CARD_HEADER = [
+  `<script setup lang="ts">`,
+  `// Generated card header — structural, class hook only (a title row + optional actions).`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-card__header">`,
+  `    <slot />`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("the card parts render byte-for-byte as structural primitives", () => {
+  expect(emitCardSfc()).toBe(EXPECTED_CARD);
+  expect(emitCardHeaderSfc()).toBe(EXPECTED_CARD_HEADER);
+  expect(emitCardBodySfc()).toContain(`<div class="vow-card__body">`); // symmetric with the others
+  for (const sfc of [emitCardSfc(), emitCardHeaderSfc(), emitCardBodySfc()]) {
+    expect(sfc).not.toContain("@vow/headless");
+    expect(sfc).not.toContain("<style");
+  }
+});
+
+const EXPECTED_STAT = [
+  `<script setup lang="ts">`,
+  `// Generated stat tile — a value + label metric (structural, no headless).`,
+  ``,
+  `const props = defineProps<{ value: string | number; label: string }>();`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-stat">`,
+  `    <span class="vow-stat__value">{{ value }}</span>`,
+  `    <span class="vow-stat__label">{{ label }}</span>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("the data-display parts (stats, callout) render byte-for-byte as structural primitives", () => {
+  expect(emitStatSfc()).toBe(EXPECTED_STAT);
+  expect(emitStatsSfc()).toContain(`<div class="vow-stats">`);
+  expect(emitCalloutSfc()).toContain(`<div class="vow-callout" :data-variant="variant">`);
+  expect(emitCalloutSfc()).toContain(`<p v-if="title" class="vow-callout__title">{{ title }}</p>`);
+  for (const sfc of [emitStatSfc(), emitStatsSfc(), emitCalloutSfc()]) {
+    expect(sfc).not.toContain("@vow/headless");
+    expect(sfc).not.toContain("<style");
+  }
 });
 
 // The byte-stable oracle for the field wrapper: label + slotted control + description + error. Structural,

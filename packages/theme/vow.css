@@ -174,30 +174,104 @@ body {
   /* fills its page column — the page owns the width; no competing max-width/auto-centering */
   margin-top: var(--vow-space-6);
 }
-/* the list is one cohesive panel — a single bordered card, rows split by hairlines (a dashboard table) */
-.vow-view__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* the Table primitive (Table · TableRow · TableHead · TableCell) — the theme targets the parts' class
+   hooks: one cohesive bordered card, a header row, body rows split by hairlines. Composed by the entity
+   list into a data grid; reusable anywhere. */
+.vow-table {
+  width: 100%;
+  border-collapse: collapse;
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-3);
   overflow: hidden;
 }
-.vow-view__row {
-  display: flex;
-  align-items: center;
-  gap: var(--vow-space-4);
+.vow-table__head {
+  text-align: left;
   padding: var(--vow-space-3) var(--vow-space-4);
-  transition: background 0.15s;
-}
-.vow-view__row:not(:last-child) {
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-semibold);
+  color: var(--vow-color-muted);
+  background: var(--vow-color-surface);
   border-bottom: var(--vow-border) solid var(--vow-color-border);
 }
-.vow-view__row:hover {
+.vow-table__cell {
+  padding: var(--vow-space-3) var(--vow-space-4);
+}
+.vow-table tbody .vow-table__row {
+  transition: background 0.15s;
+}
+.vow-table tbody .vow-table__row:not(:last-child) > .vow-table__cell {
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-table tbody .vow-table__row:hover {
   background: var(--vow-color-surface);
 }
-.vow-view__field {
-  flex: 1;
+.vow-table__action {
+  width: 1px;
+  white-space: nowrap;
+  text-align: right;
+}
+/* the Card primitive (Card > CardHeader + CardBody) — a bordered content surface; the theme hooks the parts */
+.vow-card {
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+  background: var(--vow-color-bg);
+  overflow: hidden;
+}
+.vow-card__header {
+  padding: var(--vow-space-3) var(--vow-space-4);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+  font-weight: var(--vow-weight-semibold);
+}
+.vow-card__body {
+  padding: var(--vow-space-4);
+}
+/* the Stats primitive (Stats > Stat) — a responsive row of metric tiles */
+.vow-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: var(--vow-space-4);
+}
+.vow-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
+  padding: var(--vow-space-4);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
+.vow-stat__value {
+  font-size: var(--vow-text-2xl);
+  font-weight: var(--vow-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.vow-stat__label {
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+}
+/* the Callout primitive — a structural notice; the variant tints it (the reusable form of `:::`) */
+.vow-callout {
+  margin: var(--vow-space-3) 0;
+  padding: var(--vow-space-3) var(--vow-space-4);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-left: 3px solid var(--vow-color-accent);
+  border-radius: var(--vow-radius-2);
+  background: color-mix(in srgb, var(--vow-color-accent) 6%, var(--vow-color-bg));
+}
+.vow-callout__title {
+  margin: 0 0 var(--vow-space-1);
+  font-weight: var(--vow-weight-semibold);
+}
+.vow-callout[data-variant="tip"] {
+  border-left-color: var(--vow-color-success);
+  background: color-mix(in srgb, var(--vow-color-success) 8%, var(--vow-color-bg));
+}
+.vow-callout[data-variant="warning"] {
+  border-left-color: var(--vow-color-warning);
+  background: color-mix(in srgb, var(--vow-color-warning) 8%, var(--vow-color-bg));
+}
+.vow-callout[data-variant="danger"] {
+  border-left-color: var(--vow-color-danger);
+  background: color-mix(in srgb, var(--vow-color-danger) 8%, var(--vow-color-bg));
 }
 .vow-view__delete {
   border: none;

@@ -741,6 +741,192 @@ export function emitRadioGroupSfc(): string {
   return renderVueSfc(radioGroupComponent);
 }
 
+// The table parts — structural primitives over native <table> elements (no headless; class hooks only).
+// Composed (e.g. by an entity list) into a data grid; the theme styles `.vow-table` + its parts.
+const table: Component = {
+  name: "Table",
+  doc: ["Generated table — a structural data grid over native <table> (no headless core)."],
+  view: {
+    kind: "element",
+    tag: "table",
+    attrs: [{ kind: "static", name: "class", value: "vow-table" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const tableRow: Component = {
+  name: "TableRow",
+  doc: ["Generated table row (<tr>) — structural, class hook only."],
+  view: {
+    kind: "element",
+    tag: "tr",
+    attrs: [{ kind: "static", name: "class", value: "vow-table__row" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const tableHead: Component = {
+  name: "TableHead",
+  doc: [
+    "Generated table header cell (<th>) — structural; the caller sets `scope` via fall-through.",
+  ],
+  view: {
+    kind: "element",
+    tag: "th",
+    attrs: [{ kind: "static", name: "class", value: "vow-table__head" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const tableCell: Component = {
+  name: "TableCell",
+  doc: ["Generated table cell (<td>) — structural, class hook only."],
+  view: {
+    kind: "element",
+    tag: "td",
+    attrs: [{ kind: "static", name: "class", value: "vow-table__cell" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+/** The Vue table-part adapters — each a structural wrapper over its native element. */
+export function emitTableSfc(): string {
+  return renderVueSfc(table);
+}
+export function emitTableRowSfc(): string {
+  return renderVueSfc(tableRow);
+}
+export function emitTableHeadSfc(): string {
+  return renderVueSfc(tableHead);
+}
+export function emitTableCellSfc(): string {
+  return renderVueSfc(tableCell);
+}
+
+// The card parts — structural primitives for a bordered content surface (no headless; class hooks only).
+// Composed (Card > CardHeader + CardBody) by the `cards` view pattern + anywhere a record needs a panel.
+const card: Component = {
+  name: "Card",
+  doc: ["Generated card — a structural bordered content surface (no headless core)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-card" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const cardHeader: Component = {
+  name: "CardHeader",
+  doc: ["Generated card header — structural, class hook only (a title row + optional actions)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-card__header" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const cardBody: Component = {
+  name: "CardBody",
+  doc: ["Generated card body — structural, class hook only (the card's content)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-card__body" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+/** The Vue card-part adapters — each a structural wrapper over a <div> with its class hook. */
+export function emitCardSfc(): string {
+  return renderVueSfc(card);
+}
+export function emitCardHeaderSfc(): string {
+  return renderVueSfc(cardHeader);
+}
+export function emitCardBodySfc(): string {
+  return renderVueSfc(cardBody);
+}
+
+// The stats parts — a metric tile (Stat: value + label) and a responsive container (Stats > Stat).
+const stat: Component = {
+  name: "Stat",
+  doc: ["Generated stat tile — a value + label metric (structural, no headless)."],
+  props: [
+    { name: "value", tsType: "string | number" },
+    { name: "label", tsType: "string" },
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-stat" }],
+    children: [
+      {
+        kind: "element",
+        tag: "span",
+        attrs: [{ kind: "static", name: "class", value: "vow-stat__value" }],
+        children: [{ kind: "interp", expr: "value" }],
+      },
+      {
+        kind: "element",
+        tag: "span",
+        attrs: [{ kind: "static", name: "class", value: "vow-stat__label" }],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+    ],
+  },
+};
+const stats: Component = {
+  name: "Stats",
+  doc: ["Generated stats container — a responsive row of <Stat> tiles (structural)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-stats" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+export function emitStatSfc(): string {
+  return renderVueSfc(stat);
+}
+export function emitStatsSfc(): string {
+  return renderVueSfc(stats);
+}
+
+// The callout — a structural notice (tip/info/warning/danger); the reusable form of the markdown `:::`.
+const callout: Component = {
+  name: "Callout",
+  doc: [
+    "Generated callout — a structural notice; the variant tints it (the reusable `:::` block).",
+  ],
+  props: [
+    {
+      name: "variant",
+      tsType: "'tip' | 'info' | 'warning' | 'danger'",
+      optional: true,
+      default: "'info'",
+    },
+    { name: "title", tsType: "string", optional: true },
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-callout" },
+      { kind: "bound", name: "data-variant", expr: "variant" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "p",
+        attrs: [
+          { kind: "cond", type: "if", expr: "title" },
+          { kind: "static", name: "class", value: "vow-callout__title" },
+        ],
+        children: [{ kind: "interp", expr: "title" }],
+      },
+      { kind: "slot", children: [] },
+    ],
+  },
+};
+export function emitCalloutSfc(): string {
+  return renderVueSfc(callout);
+}
+
 /**
  * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
  * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
@@ -749,12 +935,22 @@ export function emitRadioGroupSfc(): string {
 export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   Badge: emitBadgeSfc,
   Button: emitButtonSfc,
+  Callout: emitCalloutSfc,
+  Card: emitCardSfc,
+  CardBody: emitCardBodySfc,
+  CardHeader: emitCardHeaderSfc,
   Checkbox: emitCheckboxSfc,
   Collapsible: emitCollapsibleSfc,
   Dialog: emitDialogSfc,
   Field: emitFieldSfc,
   RadioGroup: emitRadioGroupSfc,
   Select: emitSelectSfc,
+  Stat: emitStatSfc,
+  Stats: emitStatsSfc,
   Switch: emitSwitchSfc,
+  Table: emitTableSfc,
+  TableCell: emitTableCellSfc,
+  TableHead: emitTableHeadSfc,
+  TableRow: emitTableRowSfc,
   Tabs: emitTabsSfc,
 };
