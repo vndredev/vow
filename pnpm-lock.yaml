@@ -439,6 +439,9 @@ importers:
       '@vow/core':
         specifier: workspace:*
         version: link:../core
+      '@vow/db':
+        specifier: workspace:*
+        version: link:../db
       '@vow/emit-bind':
         specifier: workspace:*
         version: link:../emit-bind

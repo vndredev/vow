@@ -1,7 +1,20 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import { loadVows, validateReferences, type Vow as VowNode } from "@vow/core";
+import {
+  bootstrap,
+  type Db,
+  get,
+  insert,
+  list,
+  migrate,
+  openDb,
+  remove,
+  resolveDbPath,
+  update,
+} from "@vow/db";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
@@ -57,6 +70,67 @@ export interface VowOptions {
 /** Flatten the tree into every vow, depth-first. */
 export function allVows(vows: readonly VowNode[]): VowNode[] {
   return vows.flatMap((v) => [v, ...allVows(v.children)]);
+}
+
+/** The entity vows in the tree — the tables the DB schema + the data API are built from. */
+function entityVows(vows: readonly VowNode[]): VowNode[] {
+  return allVows(vows).filter((v) => v.fulfills?.kind === "emit" && v.fulfills.as === "entity");
+}
+
+/**
+ * The dev data API — `/__vow/db/<slug>[/<id>]` over `@vow/db` (the browser store fetches it; a Worker
+ * serves the same routes over D1 in prod). `db`/`entities` are read live so a regenerate stays in sync.
+ */
+function dataApi(
+  getDb: () => Db | undefined,
+  getEntities: () => readonly VowNode[],
+): (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => void {
+  return (req, res, next) => {
+    const db = getDb();
+    const path = (req.url ?? "/").split("?")[0] ?? "/";
+    const [slug, id] = path.replace(/^\/+/, "").split("/");
+    const entity = getEntities().find((e) => e.slug === slug);
+    if (!db || !entity) return next();
+    const send = (status: number, body?: unknown): void => {
+      res.statusCode = status;
+      if (body === undefined) return void res.end();
+      res.setHeader("content-type", "application/json");
+      res.end(JSON.stringify(body));
+    };
+    const withBody = (run: (body: Record<string, unknown>) => void): void => {
+      let raw = "";
+      req.on("data", (c) => (raw += String(c)));
+      req.on("end", () => {
+        try {
+          run(raw ? (JSON.parse(raw) as Record<string, unknown>) : {});
+        } catch (err) {
+          send(500, { error: (err as Error).message });
+        }
+      });
+    };
+    try {
+      const m = req.method ?? "GET";
+      if (id === undefined) {
+        if (m === "GET") return send(200, list(db, entity));
+        if (m === "POST") return withBody((b) => send(201, insert(db, entity, b)));
+        return send(405);
+      }
+      if (m === "GET") {
+        const r = get(db, entity, id);
+        return send(r ? 200 : 404, r);
+      }
+      if (m === "PATCH") {
+        return withBody((b) => {
+          const r = update(db, entity, id, b);
+          send(r ? 200 : 404, r);
+        });
+      }
+      if (m === "DELETE") return send(remove(db, entity, id) ? 204 : 404);
+      send(405);
+    } catch (err) {
+      send(500, { error: (err as Error).message });
+    }
+  };
 }
 
 /** The vows as a live ES-module source (observability). */
@@ -275,6 +349,9 @@ export function vow(options: VowOptions = {}): Plugin {
   let vowDir = dirOpt;
   let genDir = outOpt;
   let lastWritten = new Set<string>(); // what this plugin wrote last run — to clean up deleted vows
+  let root = ".";
+  let db: Db | undefined; // the local SQLite handle, opened when the dev server starts
+  let entities: readonly VowNode[] = []; // the entity vows → the DB tables + the data API
 
   const regenerate = (): void => {
     vows = options.vows ?? loadVows(vowDir);
@@ -285,11 +362,19 @@ export function vow(options: VowOptions = {}): Plugin {
     const current = new Set(written);
     for (const file of lastWritten) if (!current.has(file)) rmSync(file, { force: true });
     lastWritten = current;
+
+    // the data layer: recompute the entity tables; if the dev DB is open, keep its schema + seed live
+    entities = entityVows(vows);
+    if (db) {
+      migrate(db, entities);
+      bootstrap(db, entities);
+    }
   };
 
   return {
     name: "vow",
     configResolved(config) {
+      root = config.root;
       vowDir = isAbsolute(dirOpt) ? dirOpt : join(config.root, dirOpt);
       genDir = isAbsolute(outOpt) ? outOpt : join(config.root, outOpt);
       try {
@@ -301,6 +386,18 @@ export function vow(options: VowOptions = {}): Plugin {
       }
     },
     configureServer(server) {
+      // The local SQLite DB the studio reads (and the MCP shares) — opened once; the data API serves it.
+      db = openDb(resolveDbPath(root));
+      migrate(db, entities);
+      bootstrap(db, entities);
+      server.middlewares.use(
+        "/__vow/db",
+        dataApi(
+          () => db,
+          () => entities,
+        ),
+      );
+
       // Watch the `app/` source (not in the module graph) → regenerate the `.vue` on change.
       // Rewriting the .vue then triggers plugin-vue's HMR; a full reload covers added/removed vows.
       server.watcher.add(vowDir);
