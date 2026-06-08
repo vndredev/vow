@@ -15,18 +15,21 @@ const task: VowNode = {
   fulfills: { kind: "emit", as: "entity" },
 };
 
-test("emitEntityModule generates an interface and a validating factory", () => {
+test("emitEntityModule generates a zod schema, its inferred type, and a validating factory", () => {
   const code = emitEntityModule(task);
-  expect(code).toContain("export interface Task {");
-  expect(code).toContain("title: string;");
-  expect(code).toContain("done: boolean;");
+  expect(code).toContain('import { z } from "zod";');
+  expect(code).toContain("export const TaskSchema = z.object({");
+  expect(code).toContain('title: z.string().min(1, "title is required"),');
+  expect(code).toContain("done: z.boolean(),");
+  expect(code).toContain("export type Task = z.infer<typeof TaskSchema>;");
   expect(code).toContain("export function createTask(input: Partial<Task>): Task");
-  expect(code).toContain("'title' is required");
+  expect(code).toContain("return TaskSchema.parse({");
+  expect(code).toContain("title: input.title,"); // required → passed raw, so zod rejects it
 });
 
 test("every entity gets an implicit auto-id the factory generates", () => {
   const code = emitEntityModule(task);
-  expect(code).toContain("id: string;");
+  expect(code).toContain("id: z.string(),");
   expect(code).toContain("id: input.id ?? crypto.randomUUID(),");
 });
 
@@ -41,7 +44,7 @@ test("a select field becomes a string-literal union with a default", () => {
     ],
   };
   const code = emitEntityModule(ticket);
-  expect(code).toContain('status: "todo" | "doing" | "done";');
+  expect(code).toContain('status: z.enum(["todo", "doing", "done"]),');
   expect(code).toContain('status: input.status ?? "todo"');
 });
 
@@ -56,7 +59,7 @@ test("a reference field is the target entity's id (string)", () => {
     ],
   };
   const code = emitEntityModule(issue);
-  expect(code).toContain("assignee: string;");
+  expect(code).toContain("assignee: z.string(),");
   expect(code).toContain('assignee: input.assignee ?? ""');
 });
 
@@ -71,14 +74,14 @@ test("a date field is a string field (ISO-8601) with an ISO sample value", () =>
     ],
   };
   const code = emitEntityModule(event);
-  expect(code).toContain("starts: string;");
-  expect(code).toContain("'starts' is required");
+  expect(code).toContain('starts: z.string().min(1, "starts is required"),');
+  expect(code).toContain("starts: input.starts,");
   const testCode = emitEntityTest(event);
   expect(testCode).toContain('starts: "2026-01-01"');
   expect(testCode).toContain("Event without 'starts' is rejected");
 });
 
-test("a longtext field is a string, required-checked for emptiness like text", () => {
+test("a longtext field is a non-empty string in the schema (a textarea in the UI)", () => {
   const note: VowNode = {
     ...task,
     id: "vow_note",
@@ -86,8 +89,8 @@ test("a longtext field is a string, required-checked for emptiness like text", (
     fields: [{ name: "body", type: "longtext", required: true }],
   };
   const code = emitEntityModule(note);
-  expect(code).toContain("body: string;");
-  expect(code).toContain('input.body === undefined || input.body === ""');
+  expect(code).toContain('body: z.string().min(1, "body is required"),');
+  expect(code).toContain("body: input.body,");
 });
 
 test("entityProves derives the proven scenarios from the fields", () => {

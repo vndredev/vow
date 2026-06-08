@@ -4,21 +4,15 @@ import type { Field, Vow } from "@vow/core";
 /**
  * vow's entity emitter — the `emit entity` fulfilment made real.
  *
- *  - `emitEntityModule` → a typed module: a `<Name>` interface + a validating `create<Name>` factory.
+ *  - `emitEntityModule` → a typed module: a `<Name>Schema` (zod) + its inferred `<Name>` type + a
+ *    validating `create<Name>` factory (`.parse`); a form re-uses the schema via `.safeParse`.
  *  - `entityProves`     → the scenarios this entity proves, DERIVED from its fields (the contract).
  *  - `emitEntityTest`   → a Vitest suite whose test names ARE those proven scenarios.
  *
- * Field types: text → string, number → number, boolean → boolean, date → string (ISO-8601), select → a string-literal
- * union of its options, reference → string (the target entity's id). Files are written into `.generated/` — never source.
+ * Field types: text/longtext/date/reference → `z.string()`, number → `z.number()`, boolean → `z.boolean()`,
+ * select → `z.enum([...])`. Files are written into `.generated/` — never source.
  */
 
-const TS_TYPE: Record<"text" | "longtext" | "number" | "boolean" | "date", string> = {
-  text: "string",
-  longtext: "string", // multi-line text — a textarea in the UI, still a string
-  number: "number",
-  boolean: "boolean",
-  date: "string", // ISO-8601 (YYYY-MM-DD) — string keeps it JSON- and adapter-neutral
-};
 const DEFAULT: Record<"text" | "longtext" | "number" | "boolean" | "date", string> = {
   text: '""',
   longtext: '""',
@@ -34,13 +28,27 @@ const SAMPLE: Record<"text" | "longtext" | "number" | "boolean" | "date", string
   date: '"2026-01-01"',
 };
 
-/** The TS type for a field — a string-literal union for `select`, the target's id (string) for `reference`. */
-function tsType(f: Field): string {
+/**
+ * The zod schema for a field — `z.enum` for select, `z.number`/`z.boolean` for those, else a string
+ * (text/longtext/date/reference). A required string-ish field is `.min(1, "<name> is required")`, so an
+ * empty submit is rejected with a per-field message the form can surface; the inferred TS type follows.
+ */
+function zodType(f: Field): string {
+  let base: string;
   if (f.type === "select") {
-    return (f.options ?? []).map((o) => JSON.stringify(o)).join(" | ") || "string";
+    const opts = (f.options ?? []).map((o) => JSON.stringify(o)).join(", ");
+    base = opts ? `z.enum([${opts}])` : "z.string()";
+  } else if (f.type === "number") {
+    base = "z.number()";
+  } else if (f.type === "boolean") {
+    base = "z.boolean()";
+  } else {
+    base = "z.string()"; // text · longtext · date · reference (the target's id)
   }
-  if (f.type === "reference") return "string"; // the referenced entity's id
-  return TS_TYPE[f.type];
+  const stringy =
+    f.type === "text" || f.type === "longtext" || f.type === "date" || f.type === "reference";
+  if (f.required && stringy) base = `z.string().min(1, ${JSON.stringify(`${f.name} is required`)})`;
+  return base;
 }
 /** A default-value expression for the factory. */
 function defaultExpr(f: Field): string {
@@ -71,32 +79,34 @@ function entityScenarios(vow: Vow): { claim: string; missing?: Field }[] {
   ];
 }
 
-/** A typed module emitted from an `emit entity` vow: an interface + a validating factory. */
+/**
+ * A typed module emitted from an `emit entity` vow: a **zod schema**, its inferred type, and a validating
+ * `create<Name>` factory. The schema is the single source of validation — `create<Name>` runs `.parse`
+ * (throwing on bad input), and a form runs `.safeParse` for per-field errors. An optional field is
+ * defaulted before the parse; a required one is passed raw, so zod is what rejects it.
+ */
 export function emitEntityModule(vow: Vow): string {
   ensureEntity(vow);
   const name = pascalCase(vow.slug);
-  const required = vow.fields.filter((f) => f.required);
   const out: string[] = [
     `// Generated from vow "${vow.slug}". The vow tree is the source — do not edit.`,
     ``,
-    `export interface ${name} {`,
-    `  id: string; // a stable auto-id (referenced by reference fields); not a user field`,
+    `import { z } from "zod";`,
+    ``,
+    `export const ${name}Schema = z.object({`,
+    `  id: z.string(), // a stable auto-id (referenced by reference fields); not a user field`,
   ];
-  for (const f of vow.fields) out.push(`  ${f.name}: ${tsType(f)};`);
-  out.push(`}`, ``, `export function create${name}(input: Partial<${name}>): ${name} {`);
-  for (const f of required) {
-    const stringy = f.type === "text" || f.type === "longtext" || f.type === "date";
-    const empty = stringy ? ` || input.${f.name} === ""` : "";
-    out.push(
-      `  if (input.${f.name} === undefined${empty}) {`,
-      `    throw new Error(${JSON.stringify(`${name}: '${f.name}' is required`)});`,
-      `  }`,
-    );
-  }
-  out.push(`  return {`);
+  for (const f of vow.fields) out.push(`  ${f.name}: ${zodType(f)},`);
+  out.push(`});`, ``);
+  out.push(`export type ${name} = z.infer<typeof ${name}Schema>;`, ``);
+  out.push(`export function create${name}(input: Partial<${name}>): ${name} {`);
+  out.push(`  return ${name}Schema.parse({`);
   out.push(`    id: input.id ?? crypto.randomUUID(),`);
-  for (const f of vow.fields) out.push(`    ${f.name}: input.${f.name} ?? ${defaultExpr(f)},`);
-  out.push(`  };`, `}`, ``);
+  for (const f of vow.fields) {
+    const value = f.required ? `input.${f.name}` : `input.${f.name} ?? ${defaultExpr(f)}`;
+    out.push(`    ${f.name}: ${value},`);
+  }
+  out.push(`  });`, `}`, ``);
   return out.join("\n");
 }
 

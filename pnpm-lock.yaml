@@ -69,6 +69,9 @@ importers:
       vue:
         specifier: ^3.5.13
         version: 3.5.35(typescript@6.0.3)
+      zod:
+        specifier: ^4.1.13
+        version: 4.4.3
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 'catalog:'
@@ -109,6 +112,9 @@ importers:
       vue:
         specifier: ^3.5.13
         version: 3.5.35(typescript@6.0.3)
+      zod:
+        specifier: ^4.1.13
+        version: 4.4.3
     devDependencies:
       '@vitejs/plugin-vue':
         specifier: 'catalog:'
