@@ -5,7 +5,7 @@ order: 3
 
 # App structure
 
-A vow app lives in **two zones**: you work in `app/`, and vow writes everything else into `.generated/` — including the boot. There is no hand-written `src/` shell.
+A vow app lives in **two zones**: you work in `app/`, and vow writes everything else into `.generated/` — including the boot. There is no hand-written `src/` shell. (This page is _your app's_ layout; for how vow turns it into running code — the pipeline and packages — see [Architecture](/guide/architecture).)
 
 ## The folder layout
 

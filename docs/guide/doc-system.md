@@ -32,6 +32,15 @@ sidebar + TOC layout), and materialises the components the pages reference — `
 `::: demo` wrappers, a `<Checkbox>` for every markdown task list (`- [x]`), and the primitive adapters
 those use (by calling `@vow/emit-primitive` — composition, the core stays untouched).
 
+## `llms.txt` — the docs for an LLM
+
+vow is LLM-first, so the docs ship in a form a model can read whole. On every build, `@vow/docs` writes two files to the site root — the [llmstxt.org](https://llmstxt.org) convention:
+
+- **`/llms.txt`** — a curated index: the title, a one-line summary, and every page as a grouped link with a short description.
+- **`/llms-full.txt`** — the entire documentation inlined into one file, so a model loads it all in one request.
+
+Both are generated from the same markdown the site renders, so they can't drift. (Vite+'s own docs do this with a VitePress plugin; vow generates it from its own pipeline.)
+
 ## Routing: `@vow/router`
 
 `@vow/router` is a tiny client router. The generated boot builds one routes table — the app's root page
@@ -43,7 +52,8 @@ serves every page**; internal links navigate without a full reload.
 vow distinguishes two layers:
 
 - **Primitives** (atoms) — `@vow/headless` + `@vow/emit-primitive`: single accessible widgets
-  (`checkbox`, `collapsible`, `tabs`, `dialog`, `select`). Only what HTML can't do natively.
+  (`checkbox`, `switch`, `radio`, `collapsible`, `tabs`, `dialog`, `select`) — only what HTML can't do
+  natively — plus the structural `button` and `field`.
 - **Composed components** (molecules) — built _from_ primitives + data. The docs **sidebar** is one
   (each group is a `collapsible`); the **⌘K search** and the **mobile nav drawer** are both built on
   the `dialog` primitive; a `::: code-group` is a tab switcher over its code panels. Chrome icons come

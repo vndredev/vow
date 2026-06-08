@@ -1,2 +1,4 @@
 # Generated vow output — regenerated from app/**/vow.md, never the source, never committed.
 .generated/
+# Generated llms.txt (the docs in LLM-readable form) — written to public/ on each build.
+public/

@@ -5,7 +5,9 @@ order: 4
 
 # Architecture
 
-vow turns a folder of vows into a generated app. The packages are split by **kind**, not by feature — so the logic is written once, the look swaps freely, and a new framework is just another adapter.
+vow turns a folder of vows into a generated app. This page is what's _under the hood_ — the pipeline and the packages; for your own app's files and zones, see [App structure](/guide/structure).
+
+The packages are split by **kind**, not by feature — so the logic is written once, the look swaps freely, and a new framework is just another adapter.
 
 ## The path
 
@@ -27,7 +29,7 @@ One plugin (`@vow/vite-plugin`) drives it: it loads `app/`, runs the emitters, w
 | **look**         | `@vow/theme`                                             | the design tokens + the base CSS                                                           |
 | **chrome**       | `@vow/docs` · `@vow/shell`                               | the hand-written Vue frame — the docs site · the app dashboard                             |
 
-The split has one rule: `@vow/headless` holds **only logic** — no component, no CSS. That's why React or Solid would reuse it untouched, and why the look is a swappable layer.
+The split has one rule: `@vow/headless` holds **only logic** — no component, no CSS. That's why React or Solid would reuse it untouched, and why the look is a swappable layer. (`@vow/markdown` and `@vow/icons` support the docs chrome; `@vow/vite-plugin` is the plugin that drives the path above.)
 
 ## The UI, top down
 
