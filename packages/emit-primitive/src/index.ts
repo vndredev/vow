@@ -447,8 +447,13 @@ const button: Component = {
     "Generated button — the one structural control with NO headless core (<button> is accessible).",
     "Carries only the variant/size theme surface; vow's base look lives in @vow/theme (swappable).",
   ],
+  imports: [
+    { from: "@vow/icons/Icon.vue", default: "Icon" },
+    { from: "@vow/icons", names: ["type IconName"] },
+  ],
   props: [
     { name: "label", tsType: "string", optional: true, default: "''" },
+    { name: "icon", tsType: "IconName", optional: true },
     {
       name: "variant",
       tsType: "'default' | 'outline' | 'ghost'",
@@ -467,7 +472,18 @@ const button: Component = {
       { kind: "bound", name: "data-variant", expr: "variant" },
       { kind: "bound", name: "data-size", expr: "size" },
     ],
-    children: [{ kind: "slot", children: [{ kind: "interp", expr: "label" }] }],
+    children: [
+      {
+        kind: "component",
+        name: "Icon",
+        attrs: [
+          { kind: "cond", type: "if", expr: "icon" },
+          { kind: "bound", name: "name", expr: "icon" },
+        ],
+        children: [],
+      },
+      { kind: "slot", children: [{ kind: "interp", expr: "label" }] },
+    ],
   },
 };
 

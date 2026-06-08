@@ -39,6 +39,7 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [x] **zod** schema per entity (`z.object` + inferred type; `create<Name>` is `.parse`)
 - [x] multi-view navigation **from vows** — non-root views + forms become routed pages (`/<slug>`), with a generated nav
 - [x] `@vow/shell` — a dashboard-sidebar app chrome (sidebar nav + content) wrapping every page
+- [x] **icons in the app** — an `icon:` view node + an `icon` on Button/Link, from the swappable `@vow/icons` (set widened: `plus` · `trash` · `pencil` · `arrow-right`)
 - [ ] referent-display-resolution — show a reference's target name in place of the id
 - [ ] multi-value fields (e.g. `labels`)
 - [ ] primitive ladder cont'd: `table` _(complex ones wrap Zag/Ark)_

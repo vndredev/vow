@@ -18,6 +18,6 @@ root: true
     align: center
     children:
       - h2: Tasks
-      - link: { to: /add-task, label: + Add a task → }
+      - link: { to: /add-task, label: Add a task, icon: plus }
 - list: task
 ```

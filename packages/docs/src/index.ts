@@ -609,6 +609,11 @@ import Button from "./Button.vue";
       <Button label="Default" />
       <Button label="Large" size="lg" />
     </div>
+    <div class="vow-demo__row">
+      <Button label="Add task" icon="plus" />
+      <Button label="Edit" icon="pencil" variant="outline" />
+      <Button label="Delete" icon="trash" variant="ghost" />
+    </div>
   </div>
 </template>
 `;

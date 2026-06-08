@@ -546,9 +546,18 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
   if (type === "text") {
     return txt(str(value));
   }
-  if (type === "link") {
-    // an internal link the router intercepts (no full reload): `- link: { to: /add-task, label: … }`
+  if (type === "icon") {
+    // a swappable @vow/icons glyph, by semantic name: `- icon: { name: search }`
     const o = asObject(value);
+    return comp("Icon", [{ kind: "static", name: "name", value: str(o["name"]) }], []);
+  }
+  if (type === "link") {
+    // an internal link the router intercepts (no full reload): `- link: { to: /add-task, label: …, icon? }`
+    const o = asObject(value);
+    const children: UiNode[] = [];
+    if (o["icon"] !== undefined)
+      children.push(comp("Icon", [{ kind: "static", name: "name", value: str(o["icon"]) }], []));
+    children.push(txt(str(o["label"] ?? o["to"])));
     return {
       kind: "element",
       tag: "a",
@@ -556,7 +565,7 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
         { kind: "static", name: "class", value: "vow-link" },
         { kind: "static", name: "href", value: str(o["to"]) },
       ],
-      children: [txt(str(o["label"] ?? o["to"]))],
+      children,
     };
   }
   throw new Error(`emit-view: unknown view component "${type}"`);
@@ -594,7 +603,7 @@ export function emitView(view: Vow, entities: readonly string[] = []): string {
     children: nodes,
   };
   const imports: ImportDecl[] = [...componentsIn(root)].map((name) => ({
-    from: `./${name}.vue`,
+    from: name === "Icon" ? "@vow/icons/Icon.vue" : `./${name}.vue`,
     default: name,
   }));
   const component: Component = {
@@ -622,7 +631,7 @@ export function emitProse(slug: string, nodes: readonly UiNode[]): string {
     children: [...nodes],
   };
   const imports: ImportDecl[] = [...componentsIn(root)].map((name) => ({
-    from: `./${name}.vue`,
+    from: name === "Icon" ? "@vow/icons/Icon.vue" : `./${name}.vue`,
     default: name,
   }));
   const component: Component = {
