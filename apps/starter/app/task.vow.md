@@ -10,3 +10,4 @@ fulfills: emit entity
 - title: text, required
 - done: boolean
 - status: select(todo|doing|done)
+- assignee: reference(user)
