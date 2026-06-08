@@ -40,6 +40,8 @@ pnpm --filter @vow/docs run docs:build
 - **Conventional Commits**, enforced by commitlint: `feat(emit-view): …`, `fix(core): …`, `docs:`, `chore`, `refactor`, `test`, `build`, `ci`, `perf`, `style`.
 - Work on `feat/…` / `fix/…` branches → open a **PR**. CI must be green before merge; direct pushes to `main` are reserved for maintainers.
 
+The full format — the single-source type set, the PR template, and how a commit becomes a line on the roadmap timeline — lives in the [Git guide](docs/guide/git.md).
+
 ## Docs as the contract
 
 The `docs/` guide is where anyone — human or LLM — understands how vow works, **1:1 with the built state**. Keep it honest: no overselling, mark anything unfinished as roadmap.

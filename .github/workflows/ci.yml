@@ -19,6 +19,13 @@ jobs:
       # so the `prepare` script (vp config) can run.
       - run: npm install -g vite-plus
       - run: pnpm install --frozen-lockfile
+      # The squash-merge subject IS the PR title — the source the roadmap timeline reads. Enforce the
+      # same commit format on it (commitlint), so the timeline's input is guaranteed, not just commits.
+      - name: Lint PR title
+        if: github.event_name == 'pull_request'
+        run: echo "$PR_TITLE" | pnpm exec commitlint
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
       # Generate first: the starter app imports from the gitignored .generated/, which only a
       # Vite run materializes — so `vp check` (typecheck) needs it to exist beforehand.
       - run: vp build apps/starter

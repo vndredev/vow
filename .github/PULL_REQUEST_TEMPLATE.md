@@ -1,13 +1,23 @@
-<!-- Keep it small — one element per PR, in vow's slow style. -->
+<!-- Keep it small — one element per PR, in vow's slow style. The PR title is a Conventional Commit
+     (`type: imperative summary`) — it becomes the squash-merge subject the roadmap timeline reads, and
+     CI enforces it. Fill every section. -->
 
-## What & why
+## Summary
 
-<!-- What does this change, and which vow capability / roadmap item does it serve? -->
+<!-- One line: what this delivers + which vow capability / roadmap arc it serves. -->
 
-## Checklist
+## What
 
-- [ ] `vp check` is green (format · lint · typecheck)
-- [ ] `pnpm -r test` is green
-- [ ] the relevant **doc page** is updated 1:1 with the change
-- [ ] Conventional Commit message (`feat(scope): …`)
-- [ ] a changeset is added _(once releases are set up)_
+<!-- The concrete changes, as bullets. -->
+
+-
+
+## Proof
+
+- [ ] `vp check` green (format · lint · typecheck)
+- [ ] `pnpm -r test` green
+- [ ] the relevant **doc page** updated 1:1 with the change
+
+## Next
+
+<!-- Anything deliberately deferred (a follow-up, a separate plan) — or "—". -->
