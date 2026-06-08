@@ -501,7 +501,13 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
   if (type === "hero") {
     const o = asObject(value);
     const kids: UiNode[] = [];
-    if (o["eyebrow"] !== undefined) kids.push(el("span", [txt(str(o["eyebrow"]))]));
+    if (o["eyebrow"] !== undefined)
+      kids.push({
+        kind: "element",
+        tag: "span",
+        attrs: [{ kind: "static", name: "class", value: "vow-eyebrow" }],
+        children: [txt(str(o["eyebrow"]))],
+      });
     if (o["title"] !== undefined) kids.push(el("h1", [txt(str(o["title"]))]));
     if (o["lead"] !== undefined) kids.push(el("p", [txt(str(o["lead"]))]));
     return comp("Flex", [bound("direction", "'column'"), bound("gap", "3")], kids);
@@ -674,34 +680,32 @@ export function emitAppRoutes(pages: readonly { slug: string; title: string }[])
 }
 
 /**
- * The app's shared chrome — a nav (home + every page) wrapping each route's content. Written as a
- * `*.layout.vue` the boot globs (the same seam @vow/docs uses); it gets the current `path` to mark the
- * active link. Generated only when the app has more than the home page.
+ * The app's shared chrome — a thin `*.layout.vue` (the boot globs it, the same seam @vow/docs uses) that
+ * wraps every routed page in `@vow/shell`'s dashboard `Shell.vue`, passing the routed `pages`, the current
+ * `path` (active link) and the app `title`. The chrome itself is the swappable `@vow/shell` layer; this is
+ * only the generated wiring. Emitted only when the app has more than the home page.
  */
-export function emitAppLayout(pages: readonly { slug: string; title: string }[]): string {
-  const esc = (s: string): string =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const links = [
-    { to: "/", label: "Home" },
-    ...pages.map((p) => ({ to: `/${p.slug}`, label: p.title })),
-  ];
-  const nav = links.map(
-    (l) =>
-      `      <a class="vow-shell__link" :class="{ 'is-active': path === '${l.to}' }" href="${l.to}">${esc(l.label)}</a>`,
-  );
+export function emitAppLayout(
+  pages: readonly { slug: string; title: string }[],
+  title?: string,
+): string {
+  const navPages = pages
+    .map((p) => `{ path: "/${p.slug}", title: ${JSON.stringify(p.title)} }`)
+    .join(", ");
   return [
     `<script setup lang="ts">`,
-    `// Generated app chrome — a nav over every page. The vow tree is the source — do not edit.`,
+    `// Generated app chrome — wraps every page in @vow/shell. The vow tree is the source — do not edit.`,
+    `import Shell from "@vow/shell/Shell.vue";`,
+    `import "@vow/shell/style.css";`,
     `defineProps<{ path: string }>();`,
+    `const pages = [${navPages}];`,
+    ...(title === undefined ? [] : [`const title = ${JSON.stringify(title)};`]),
     `</script>`,
     ``,
     `<template>`,
-    `  <div class="vow-shell">`,
-    `    <nav class="vow-shell__nav">`,
-    ...nav,
-    `    </nav>`,
-    `    <main class="vow-shell__main"><slot /></main>`,
-    `  </div>`,
+    title === undefined
+      ? `  <Shell :pages="pages" :path="path"><slot /></Shell>`
+      : `  <Shell :pages="pages" :path="path" :title="title"><slot /></Shell>`,
     `</template>`,
     ``,
   ].join("\n");

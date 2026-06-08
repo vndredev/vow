@@ -15,6 +15,8 @@ export default defineConfig({
       base: "/guide",
       groups: ["Introduction", "Fulfilment", "UI", "Docs", "Project"],
       title: "vow",
+      description:
+        "A spec-driven, LLM-first generator for Vue — describe your app as vows (promises), and vow generates a type-safe Vue app you own.",
       nav: [
         { text: "Guide", link: "/guide" },
         { text: "Roadmap", link: "/guide/roadmap" },

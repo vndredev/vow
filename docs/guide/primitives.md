@@ -1,11 +1,13 @@
 ---
 group: UI
-order: 1
+order: 3
 ---
 
 # Primitives
 
-Some UI can't be plain HTML — a custom checkbox, a dialog, a menu need ARIA, focus handling and keyboard logic. vow builds a headless primitive **only where the browser can't do it natively**. A custom-styled checkbox isn't accessible on its own, so it earns a full headless core. A `<button>` _is_ already accessible, so [Button](/guide/primitives/button) is the one exception — a **structural** component with no headless core, there only for a variant/theme surface.
+A primitive is one control — a checkbox, a dialog, a select. vow builds a headless core for one **only where the browser can't do it natively**: a native `<input type=checkbox>` can't be consistently styled, so a custom checkbox earns ARIA + keyboard logic atop a stylable `<button>`. A `<button>` already _is_ accessible, so [Button](/guide/primitives/button) is the one exception — a **structural** primitive with no headless core, there for the variant/theme surface.
+
+**Variants.** Styled primitives take `variant` / `size` props, rendered as `data-variant` / `data-size` hooks the theme styles — token-driven, never Tailwind. See [Button](/guide/primitives/button#variants-the-vow-way).
 
 ## Headless core + generated adapter
 

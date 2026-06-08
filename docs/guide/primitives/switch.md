@@ -1,6 +1,6 @@
 ---
 group: UI
-order: 1.7
+order: 3.7
 ---
 
 # Switch

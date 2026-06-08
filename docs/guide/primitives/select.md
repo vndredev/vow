@@ -1,6 +1,6 @@
 ---
 group: UI
-order: 1.4
+order: 3.4
 ---
 
 # Select
@@ -30,7 +30,7 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 
 | Prop         | Type                                 | Purpose                                 |
 | ------------ | ------------------------------------ | --------------------------------------- |
-| `modelValue` | `string`                             | the selected value — use with `v-model` |
+| `modelValue` | `string` (optional, default `""`)    | the selected value — use with `v-model` |
 | `options`    | `{ value: string; label: string }[]` | the choices                             |
 | `label`      | `string`                             | the combobox's accessible name          |
 | `disabled`   | `boolean` (optional)                 | block interaction                       |
@@ -56,4 +56,4 @@ The core proves its own accessibility framework-free: the part-props are spread 
 
 ## Where it appears
 
-The live demo above is the exact generated adapter. Any generated app can use `<Select>` for a `select`-type field, a filter, or a settings choice — anywhere a native `<select>` can't be styled enough. _(Not yet wired into the chrome — the dark toggle is a plain button, and `select` fields still emit a native `<select>` today.)_
+The live demo above is the exact generated adapter — and the one a [`## form`](/guide/emit) wires in: every `select` field and every `reference` field (a dropdown over the target entity's items) renders as a `<Select>`. You can also place one in a `## view` directly, for a filter or a settings choice.

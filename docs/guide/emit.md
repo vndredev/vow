@@ -5,7 +5,7 @@ order: 0
 
 # emit — generated
 
-An `emit` vow is generated deterministically into `.generated/` and verified by the compiler. You declare; vow produces. There are two `emit` targets today: **entity** and **view**.
+An `emit` vow is generated deterministically into `.generated/` and verified by the compiler. You declare; vow produces. There are three `emit` targets: **entity**, **view**, and **form**.
 
 ## emit entity
 
@@ -34,7 +34,7 @@ An entity is **data, not a screen** — it never renders by itself. To put it on
 
 ## emit view
 
-A view is a page: a **`## view`** block — a YAML list of components (semantic blocks, layout primitives, text). It's the one view path; the full catalog is in [Views](/guide/layout). A view that renders an entity's CRUD list references it by slug with `list:`:
+A view is a page: a **`## view`** block — a YAML list of components (semantic blocks, layout primitives, text). It's the one view path; the full catalog is in [Views](/guide/views). A view that renders an entity's CRUD list references it by slug with `list:`:
 
 ```markdown
 ---
@@ -75,6 +75,6 @@ of: task
 submit: Add task
 ```
 
-→ a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. (Standalone forms with inline `fields:`, and routing a form onto its own page, are on the [roadmap](/guide/roadmap).)
+→ a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. The form becomes its **own routed page** at `/<slug>`. (Standalone forms with inline `fields:` are on the [roadmap](/guide/roadmap).)
 
 Next: [bind →](/guide/bind)

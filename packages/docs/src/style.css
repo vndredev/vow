@@ -385,19 +385,26 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--vow-space-3);
-  /* block primitives (collapsible/tabs/select) stretch to a stable width — open/close must not jump */
-  align-items: stretch;
+  /* compact controls (button/checkbox/switch/radio/select) keep their own size — they don't stretch */
+  align-items: flex-start;
   margin: var(--vow-space-5) 0;
   padding: var(--vow-space-5);
   background: var(--vow-color-bg);
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-3);
 }
-/* compact controls stay their own size (not full width) — only collapsible/tabs stretch */
-.vow-demo > .vow-checkbox,
-.vow-demo > .vow-select,
-.vow-demo__trigger {
-  align-self: flex-start;
+/* block primitives stretch to a stable full width (so open/close can't jump) */
+.vow-demo > .vow-collapsible,
+.vow-demo > .vow-tabs,
+.vow-demo > .vow-field {
+  align-self: stretch;
+}
+/* a wrapping row of variants — e.g. the button looks side by side */
+.vow-demo__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vow-space-3);
 }
 .vow-demo__trigger {
   padding: var(--vow-space-2) var(--vow-space-4);

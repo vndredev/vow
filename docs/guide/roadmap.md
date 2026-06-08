@@ -5,7 +5,7 @@ order: 0
 
 # Roadmap
 
-vow's goal: build a complete **dashboard / planning-system app** with the core product — operable by a human _and_ an LLM. We get there **slowly**, element by element, function by function; each element ships green and with its own doc page.
+vow's goal: a complete **dashboard / planning-system app**, operable by a person and an LLM alike. It's built piece by piece — each element green, proven, and documented before the next.
 
 ## Two ways to work with vow
 
@@ -25,7 +25,7 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [x] `bind` — hand-written logic, tsgo-verified seam
 - [x] component model + Vue adapter — one agnostic model, many framework adapters
 - [x] swappable theme + layout primitives (Flex / Grid / Box / Container) + view `## view` + tokens
-- [x] field types: `text` · `number` · `boolean` · `select` · `date`
+- [x] field types: `text` · `longtext` · `number` · `boolean` · `select` · `date`
 - [x] primitives — **checkbox · collapsible · tabs · dialog · select/combobox**: agnostic core (`@vow/headless`) + emitted adapter, a11y proven against the platform
 - [x] docs system — the docs are themselves a **generated vow app**: `@vow/markdown` (md → UiNode + Shiki + `:::` containers + `<<<` snippets + TOC) → `@vow/docs` (md → prose `.vue` + manifest)
 - [x] `@vow/router` — client router (exact match + `/404` + `document.title` + hash anchors + link interception), wired into every generated boot
@@ -33,18 +33,24 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [x] `@vow/icons` — a swappable icon adapter (Lucide set live in the chrome)
 - [x] `reference(entity)` field + a stable auto-id + a relation **dropdown** over the target's items (via the shared store) — referent-display-resolution (show the name, not the id) still to come
 - [x] data adapter (memory): `@vow/store` — shared reactive collections per entity
+- [x] primitives cont'd: **Button** (structural + a token-driven `variant`/`size` system) · **Switch** · **Radio group** · **Field** — nine primitives now
+- [x] primitives as `## view` vocabulary (a closed registry) + a `model:` binding + a `link:` node + a **Stack** layout primitive
+- [x] `emit form` — a **bound, validated form** (`## form` of `<Field>`s, zod `.parse()`, per-field errors); the entity list's create form shares it
+- [x] **zod** schema per entity (`z.object` + inferred type; `create<Name>` is `.parse`)
+- [x] multi-view navigation **from vows** — non-root views + forms become routed pages (`/<slug>`), with a generated nav
+- [x] `@vow/shell` — a dashboard-sidebar app chrome (sidebar nav + content) wrapping every page
+- [ ] referent-display-resolution — show a reference's target name in place of the id
 - [ ] multi-value fields (e.g. `labels`)
-- [ ] primitive ladder cont'd: switch · table _(complex ones wrap Zag/Ark)_
+- [ ] primitive ladder cont'd: `table` _(complex ones wrap Zag/Ark)_
 - [ ] icons cont'd: config-selection (`icons: "lucide"`), more libs (Heroicons / Phosphor), and the primitive glyphs (`✓` · `×`) onto `<Icon>`
-- [ ] patterns: form · table · detail · board / kanban · stats
-- [ ] multi-view navigation **from vows** (a view links to other views; vow generates the routes)
+- [ ] patterns: table · detail · board / kanban · stats
 - [ ] data adapter: Cloudflare D1 (real persistence) behind the `useCollection` seam
 
 **Author layer** — how you write the spec:
 
+- [x] `llms.txt` (the free way) — `@vow/docs` generates `/llms.txt` (index) + `/llms-full.txt` (the whole docs in one file) on every build
 - [ ] `serialize` (Vow → vow.md)
 - [ ] typed mutation API (`addEntity` / `addField` / …)
-- [ ] `llms.txt` (the free way — a docs export)
 - [ ] vow MCP server (typed tools over the mutation API)
 
 ## The reference product — a planning dashboard
@@ -72,5 +78,5 @@ The critical path — each element green before the next:
 The dogfood moment: once the board exists, **its first content is the plan for itself** — vow planning its own build, in vow.
 
 ::: warning Honest status
-Today: entity / view / bind + **five proven primitives** (checkbox · collapsible · tabs · dialog · select/combobox) + field types (`text` · `number` · `boolean` · `select` · `date` · `reference`) + a stable auto-id + relation **dropdowns** over a shared in-memory store (`@vow/store`) + layout (primitives + view `## view` + theme tokens) + scenario-coverage + the docs-drift gate + the **docs system** (`@vow/markdown` · `@vow/docs` · `@vow/router` · `@vow/icons`[Lucide]) with ⌘K search, a mobile nav drawer, a dark-mode toggle and Inter — the docs are themselves a generated vow app — all green. Everything unchecked above (referent-display-resolution, switch/table, patterns, multi-view nav from vows, the D1 data adapter, the whole author layer + MCP) is planned and built slowly, one element at a time.
+Today: entity / view / **form** / bind + **nine proven primitives** (checkbox · collapsible · tabs · dialog · select/combobox · switch · radio-group · button · field) + field types (`text` · `longtext` · `number` · `boolean` · `select` · `date` · `reference`) + a stable auto-id + per-entity **zod** schemas + relation **dropdowns** over a shared in-memory store (`@vow/store`) + a validated **`## form`** (labelled `<Field>`s + per-field errors) + layout (primitives incl. **Stack** + `## view` with the primitive/`link:` vocabulary + theme tokens) + **multi-view nav from vows** (non-root pages → `/<slug>` routes) + a **`@vow/shell`** dashboard chrome + scenario-coverage + the docs-drift gate + the **docs system** (`@vow/markdown` · `@vow/docs` · `@vow/router` · `@vow/icons`[Lucide]) with ⌘K search, a mobile nav drawer, a dark-mode toggle, Inter and a generated **`llms.txt`** — the docs are themselves a generated vow app — all green. Everything unchecked above (referent-display-resolution, table/detail/board/kanban/stats patterns, the D1 data adapter, the whole author layer + MCP) is planned and built slowly, one element at a time.
 :::
