@@ -10,10 +10,13 @@ import {
   emitAppRoutes,
   emitBoot,
   emitEntityList,
+  emitEntityStats,
   emitForm,
   emitView,
   listedEntities,
   referencedPrimitives,
+  statsComponentName,
+  statsRefs,
   VOW_ENV_DTS,
   viewComponentName,
 } from "@vow/emit-view";
@@ -85,6 +88,7 @@ export function generateFiles(
   );
   const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
+  const statsByKey = new Map<string, { of: string; by: string }>(); // `stats: { of, by }` refs, deduped
   const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
   const pages: { slug: string; title: string }[] = []; // non-root views + forms → routes at /<slug>
   let needsLayout = false; // any `emit view` pulls in the layout primitives
@@ -106,6 +110,7 @@ export function generateFiles(
       writeFileSync(file, emitView(v, entities), "utf8");
       written.push(file);
       for (const slug of listedEntities(v)) listed.add(slug);
+      for (const ref of statsRefs(v)) statsByKey.set(`${ref.of}.${ref.by}`, ref); // stats compositions
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       if (v.root !== true) pages.push({ slug: v.slug, title: v.intent }); // a non-root view → a route
       needsLayout = true;
@@ -142,6 +147,16 @@ export function generateFiles(
       needed.add("Select");
     }
     if (entity.fields.some((fld) => fld.type === "select")) needed.add("Badge"); // a select cell → <Badge>
+  }
+
+  // A view's `stats: { of, by }` instantiates a counts-by-field composition — emitted here, on demand.
+  for (const { of, by } of statsByKey.values()) {
+    const entity = entityBySlug.get(of);
+    if (!entity) continue; // emitView already validated the reference; defensive
+    const file = join(outDir, `${statsComponentName(of, by)}.vue`);
+    writeFileSync(file, emitEntityStats(entity, by), "utf8");
+    written.push(file);
+    needed.add("Stats").add("Stat"); // the stats composition composes the Stats/Stat primitives
   }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {

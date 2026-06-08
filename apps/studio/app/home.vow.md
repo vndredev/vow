@@ -10,6 +10,7 @@ root: true
 
 ```yaml
 - h1: Your work
+- stats: { of: task, by: status }
 - p: Every task across the studio — assign it, move it, prove it.
 - list: task
 ```
