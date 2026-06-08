@@ -2,6 +2,9 @@ import { expect, test } from "vite-plus/test";
 import {
   emitBadgeSfc,
   emitButtonSfc,
+  emitCardBodySfc,
+  emitCardHeaderSfc,
+  emitCardSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
@@ -322,6 +325,42 @@ test("the table parts render byte-for-byte as structural primitives", () => {
   expect(emitTableRowSfc()).toContain(`<tr class="vow-table__row">`); // symmetric with the others
   for (const sfc of [emitTableSfc(), emitTableRowSfc(), emitTableHeadSfc(), emitTableCellSfc()]) {
     expect(sfc).not.toContain("@vow/headless"); // structural — no logic
+    expect(sfc).not.toContain("<style");
+  }
+});
+
+const EXPECTED_CARD = [
+  `<script setup lang="ts">`,
+  `// Generated card — a structural bordered content surface (no headless core).`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-card">`,
+  `    <slot />`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+const EXPECTED_CARD_HEADER = [
+  `<script setup lang="ts">`,
+  `// Generated card header — structural, class hook only (a title row + optional actions).`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-card__header">`,
+  `    <slot />`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("the card parts render byte-for-byte as structural primitives", () => {
+  expect(emitCardSfc()).toBe(EXPECTED_CARD);
+  expect(emitCardHeaderSfc()).toBe(EXPECTED_CARD_HEADER);
+  expect(emitCardBodySfc()).toContain(`<div class="vow-card__body">`); // symmetric with the others
+  for (const sfc of [emitCardSfc(), emitCardHeaderSfc(), emitCardBodySfc()]) {
+    expect(sfc).not.toContain("@vow/headless");
     expect(sfc).not.toContain("<style");
   }
 });

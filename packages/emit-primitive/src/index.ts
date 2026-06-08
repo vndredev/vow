@@ -799,6 +799,49 @@ export function emitTableCellSfc(): string {
   return renderVueSfc(tableCell);
 }
 
+// The card parts — structural primitives for a bordered content surface (no headless; class hooks only).
+// Composed (Card > CardHeader + CardBody) by the `cards` view pattern + anywhere a record needs a panel.
+const card: Component = {
+  name: "Card",
+  doc: ["Generated card — a structural bordered content surface (no headless core)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-card" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const cardHeader: Component = {
+  name: "CardHeader",
+  doc: ["Generated card header — structural, class hook only (a title row + optional actions)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-card__header" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const cardBody: Component = {
+  name: "CardBody",
+  doc: ["Generated card body — structural, class hook only (the card's content)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-card__body" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+/** The Vue card-part adapters — each a structural wrapper over a <div> with its class hook. */
+export function emitCardSfc(): string {
+  return renderVueSfc(card);
+}
+export function emitCardHeaderSfc(): string {
+  return renderVueSfc(cardHeader);
+}
+export function emitCardBodySfc(): string {
+  return renderVueSfc(cardBody);
+}
+
 /**
  * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
  * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
@@ -807,6 +850,9 @@ export function emitTableCellSfc(): string {
 export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   Badge: emitBadgeSfc,
   Button: emitButtonSfc,
+  Card: emitCardSfc,
+  CardBody: emitCardBodySfc,
+  CardHeader: emitCardHeaderSfc,
   Checkbox: emitCheckboxSfc,
   Collapsible: emitCollapsibleSfc,
   Dialog: emitDialogSfc,

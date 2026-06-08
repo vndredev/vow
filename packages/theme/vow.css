@@ -210,6 +210,21 @@ body {
   white-space: nowrap;
   text-align: right;
 }
+/* the Card primitive (Card > CardHeader + CardBody) — a bordered content surface; the theme hooks the parts */
+.vow-card {
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+  background: var(--vow-color-bg);
+  overflow: hidden;
+}
+.vow-card__header {
+  padding: var(--vow-space-3) var(--vow-space-4);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+  font-weight: var(--vow-weight-semibold);
+}
+.vow-card__body {
+  padding: var(--vow-space-4);
+}
 .vow-view__delete {
   border: none;
   background: none;
