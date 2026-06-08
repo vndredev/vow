@@ -8,9 +8,12 @@ import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
   emitAppLayout,
   emitAppRoutes,
+  boardComponentName,
+  boardRefs,
   cardsComponentName,
   cardsRefs,
   emitBoot,
+  emitEntityBoard,
   emitEntityCards,
   emitEntityList,
   emitEntityStats,
@@ -93,6 +96,7 @@ export function generateFiles(
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
   const statsByKey = new Map<string, { of: string; by: string }>(); // `stats: { of, by }` refs, deduped
   const cardsBySlug = new Set<string>(); // entity slugs a `## view` renders via `cards:`
+  const boardByKey = new Map<string, { of: string; by: string }>(); // `board: { of, by }` refs, deduped
   const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
   // non-root views + forms → routes at /<slug>; each carries its `nav:` config for the shell sidebar
   const pages: { slug: string; title: string; icon?: string; order?: number; group?: string }[] =
@@ -125,6 +129,7 @@ export function generateFiles(
       for (const slug of listedEntities(v)) listed.add(slug);
       for (const ref of statsRefs(v)) statsByKey.set(`${ref.of}.${ref.by}`, ref); // stats compositions
       for (const slug of cardsRefs(v)) cardsBySlug.add(slug); // cards compositions
+      for (const ref of boardRefs(v)) boardByKey.set(`${ref.of}.${ref.by}`, ref); // board compositions
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       if (v.root !== true) pages.push(navPage(v)); // a non-root view → a route
       needsLayout = true;
@@ -181,6 +186,16 @@ export function generateFiles(
     writeFileSync(file, emitEntityCards(entity), "utf8");
     written.push(file);
     needed.add("Card").add("CardHeader").add("CardBody"); // the cards composition composes the Card parts
+  }
+
+  // A view's `board: { of, by }` instantiates a kanban composition — emitted here, on demand.
+  for (const { of, by } of boardByKey.values()) {
+    const entity = entityBySlug.get(of);
+    if (!entity) continue; // emitView already validated the reference; defensive
+    const file = join(outDir, `${boardComponentName(of, by)}.vue`);
+    writeFileSync(file, emitEntityBoard(entity, by), "utf8");
+    written.push(file);
+    needed.add("Card").add("CardHeader").add("CardBody"); // the board composition composes the Card parts
   }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {

@@ -357,6 +357,49 @@ export function cardsComponentName(of: string): string {
   return pascalCase(of) + "Cards";
 }
 
+/** The component name for an entity's kanban board (`task`,`status` → `TaskStatusBoard`). */
+export function boardComponentName(of: string, by: string): string {
+  return pascalCase(of) + pascalCase(by) + "Board";
+}
+
+/** The Card header + body for one record in a generated card/board view (title field → header, rest → body). */
+function recordCard(entity: Vow, omit: readonly string[]): UiNode[] {
+  const titleField =
+    entity.fields.find((f) => f.type === "text" || f.type === "longtext") ?? entity.fields[0];
+  const bodyFields = entity.fields.filter(
+    (f) => f.name !== titleField?.name && !omit.includes(f.name),
+  );
+  const children: UiNode[] = [];
+  if (titleField !== undefined) {
+    children.push(comp("CardHeader", [], [{ kind: "interp", expr: `item.${titleField.name}` }]));
+  }
+  if (bodyFields.length > 0) {
+    children.push(
+      comp(
+        "CardBody",
+        [],
+        bodyFields.map(
+          (f): UiNode => ({
+            kind: "element",
+            tag: "p",
+            attrs: [{ kind: "static", name: "class", value: "vow-card__field" }],
+            children: [
+              {
+                kind: "element",
+                tag: "strong",
+                attrs: [],
+                children: [{ kind: "text", text: `${f.name}: ` }],
+              },
+              { kind: "interp", expr: `item.${f.name}` },
+            ],
+          }),
+        ),
+      ),
+    );
+  }
+  return children;
+}
+
 /**
  * A stats composition over an entity — one `<Stat>` per option of a `select` field, counting the rows
  * in that group (live from the shared store). A composition, not a primitive: it knows the entity's
@@ -423,39 +466,7 @@ export function emitEntityCards(entity: Vow): string {
     throw new Error(`emit-view: \`cards\` target "${entity.slug}" must be an \`emit entity\``);
   }
   const type = pascalCase(entity.slug);
-  const titleField =
-    entity.fields.find((f) => f.type === "text" || f.type === "longtext") ?? entity.fields[0];
-  const bodyFields = entity.fields.filter((f) => f.name !== titleField?.name);
-  const cardChildren: UiNode[] = [];
-  if (titleField !== undefined) {
-    cardChildren.push(
-      comp("CardHeader", [], [{ kind: "interp", expr: `item.${titleField.name}` }]),
-    );
-  }
-  if (bodyFields.length > 0) {
-    cardChildren.push(
-      comp(
-        "CardBody",
-        [],
-        bodyFields.map(
-          (f): UiNode => ({
-            kind: "element",
-            tag: "p",
-            attrs: [{ kind: "static", name: "class", value: "vow-card__field" }],
-            children: [
-              {
-                kind: "element",
-                tag: "strong",
-                attrs: [],
-                children: [{ kind: "text", text: `${f.name}: ` }],
-              },
-              { kind: "interp", expr: `item.${f.name}` },
-            ],
-          }),
-        ),
-      ),
-    );
-  }
+  const cardChildren = recordCard(entity, []);
   const component: Component = {
     name: cardsComponentName(entity.slug),
     doc: [
@@ -481,6 +492,95 @@ export function emitEntityCards(entity: Vow): string {
           for: { each: "rows", as: "item", key: "item.id" },
           attrs: [],
           children: cardChildren,
+        },
+      ],
+    },
+  };
+  return renderVueSfc(component);
+}
+
+/**
+ * A kanban board over an entity — a column per option of a `select` field, the records grouped into
+ * their column (live from the store); dragging a card to another column writes that field back. A
+ * composition: it knows the entity's field + binds the store; it composes the Card primitives.
+ */
+export function emitEntityBoard(entity: Vow, by: string): string {
+  if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
+    throw new Error(`emit-view: \`board\` target "${entity.slug}" must be an \`emit entity\``);
+  }
+  const field = entity.fields.find((f) => f.name === by);
+  if (field === undefined || field.type !== "select") {
+    throw new Error(
+      `emit-view: \`board: { by: ${by} }\` must reference a select field of "${entity.slug}"`,
+    );
+  }
+  const type = pascalCase(entity.slug);
+  const component: Component = {
+    name: boardComponentName(entity.slug, by),
+    doc: [
+      `Generated from vow "${entity.slug}" — a kanban of records by ${by}. The vow is the source — do not edit.`,
+    ],
+    imports: [
+      { from: "vue", names: ["computed", "ref"] },
+      { from: "@vow/store", names: ["useCollection"] },
+      { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
+      { from: "./Card.vue", default: "Card" },
+      { from: "./CardHeader.vue", default: "CardHeader" },
+      { from: "./CardBody.vue", default: "CardBody" },
+    ],
+    setup: [
+      `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+      `const options = ${JSON.stringify(field.options ?? [])};`,
+      `const columns = computed(() =>`,
+      `  options.map((o) => ({ option: o, cards: rows.filter((r) => r.${by} === o) })),`,
+      `);`,
+      `const dragged = ref<${type} | null>(null);`,
+      `function onDrop(option: string): void {`,
+      `  if (dragged.value) dragged.value.${by} = option as ${type}[${JSON.stringify(by)}];`,
+      `  dragged.value = null;`,
+      `}`,
+    ],
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "static", name: "class", value: "vow-board" }],
+      children: [
+        {
+          kind: "element",
+          tag: "div",
+          attrs: [
+            { kind: "static", name: "class", value: "vow-board__col" },
+            { kind: "event", name: "dragover", expr: "", modifiers: ["prevent"] },
+            { kind: "event", name: "drop", expr: "onDrop(col.option)" },
+          ],
+          for: { each: "columns", as: "col", key: "col.option" },
+          children: [
+            {
+              kind: "element",
+              tag: "div",
+              attrs: [{ kind: "static", name: "class", value: "vow-board__col-head" }],
+              children: [
+                { kind: "interp", expr: "col.option" },
+                {
+                  kind: "element",
+                  tag: "span",
+                  attrs: [{ kind: "static", name: "class", value: "vow-board__count" }],
+                  children: [{ kind: "interp", expr: "col.cards.length" }],
+                },
+              ],
+            },
+            {
+              kind: "component",
+              name: "Card",
+              for: { each: "col.cards", as: "item", key: "item.id" },
+              attrs: [
+                { kind: "static", name: "class", value: "vow-board__card" },
+                { kind: "static", name: "draggable", value: "true" },
+                { kind: "event", name: "dragstart", expr: "dragged = item" },
+              ],
+              children: recordCard(entity, [by]),
+            },
+          ],
         },
       ],
     },
@@ -772,6 +872,18 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     }
     return comp(statsComponentName(of, by), [], []);
   }
+  if (type === "board") {
+    // `board: { of: <entity>, by: <select field> }` → the entity's kanban composition
+    const o = asObject(value);
+    const of = str(o["of"]);
+    const by = str(o["by"]);
+    if (!entities.includes(of)) {
+      throw new Error(
+        `emit-view: \`board: { of: ${of} }\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
+      );
+    }
+    return comp(boardComponentName(of, by), [], []);
+  }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);
     return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
@@ -954,6 +1066,33 @@ export function cardsRefs(view: Vow): string[] {
   };
   for (const node of view.view ?? []) walk(node.type, node.value);
   return [...found];
+}
+
+/** The `board: { of, by }` references a `## view` makes — so the plugin can emit each composition. */
+export function boardRefs(view: Vow): { of: string; by: string }[] {
+  const found: { of: string; by: string }[] = [];
+  const seen = new Set<string>();
+  const walk = (type: string, value: unknown): void => {
+    if (type === "board") {
+      const o = asObject(value);
+      const ref = { of: str(o["of"]), by: str(o["by"]) };
+      const key = `${ref.of}.${ref.by}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        found.push(ref);
+      }
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return found;
 }
 
 /**

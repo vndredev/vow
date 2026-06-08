@@ -1,7 +1,9 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow as VowNode } from "@vow/core";
 import {
+  boardComponentName,
   cardsComponentName,
+  emitEntityBoard,
   emitEntityCards,
   emitEntityList,
   emitEntityStats,
@@ -161,6 +163,29 @@ test("emitEntityCards renders a Card per record, titled by the first text field"
   expect(sfc).toContain("status: "); // a non-title field, labelled, in the body
   const notEntity: VowNode = { ...ticket, fulfills: { kind: "emit", as: "view" } };
   expect(() => emitEntityCards(notEntity)).toThrow();
+});
+
+test("emitEntityBoard renders a column per option, draggable cards, a status writeback", () => {
+  const ticket: VowNode = {
+    ...entity,
+    id: "vow_ticket",
+    slug: "ticket",
+    fields: [
+      { name: "title", type: "text", required: true },
+      { name: "status", type: "select", required: false, options: ["todo", "done"] },
+    ],
+  };
+  expect(boardComponentName("ticket", "status")).toBe("TicketStatusBoard");
+  const sfc = emitEntityBoard(ticket, "status");
+  expect(sfc).toContain('const options = ["todo","done"];');
+  expect(sfc).toContain("rows.filter((r) => r.status === o)"); // grouped into columns
+  expect(sfc).toContain('v-for="col in columns"');
+  expect(sfc).toContain('draggable="true"');
+  expect(sfc).toContain("@dragover.prevent");
+  expect(sfc).toContain('@dragstart="dragged = item"');
+  expect(sfc).toContain('@drop="onDrop(col.option)"'); // a drop writes the field back
+  expect(sfc).toContain('dragged.value.status = option as Ticket["status"]');
+  expect(() => emitEntityBoard(ticket, "title")).toThrow(); // `by` must be a select field
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {
