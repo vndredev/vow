@@ -54,6 +54,30 @@
 }
 .vow-shell__sidebar-footer {
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-3);
+}
+.vow-shell__theme {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  padding: var(--vow-space-2) var(--vow-space-3);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
+  background: transparent;
+  color: var(--vow-color-muted);
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  text-transform: capitalize;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.vow-shell__theme:hover {
+  color: var(--vow-color-text);
+  border-color: var(--vow-color-ink);
 }
 
 /* the main column — a slim (optional) top bar + a centered, max-width content column */

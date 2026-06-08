@@ -24,6 +24,22 @@ The sidebar nav is **data-driven** from the routed pages (`Home` + every non-roo
 
 The shell **owns the page width**: pages render inside one centered content column (`--vow-container-3`). A `## view` (`.vow-app`) or a `## form` (`.vow-form`) just stacks its blocks and fills that column — it never re-centers or sets its own page padding. One centering zone, not three.
 
+## Dark mode
+
+The sidebar footer carries a **tri-state theme toggle** — it cycles `system → light → dark`. An explicit choice persists in `localStorage`; `system` follows the OS live. To avoid a flash, the app's `index.html` sets the class before first paint:
+
+```html
+<script>
+  (() => {
+    const s = localStorage.getItem("vow-theme");
+    if (s ? s === "dark" : matchMedia("(prefers-color-scheme: dark)").matches)
+      document.documentElement.classList.add("dark");
+  })();
+</script>
+```
+
+The theme is just the `.dark` class on `<html>` — `@vow/theme`'s tokens have a `.dark` block, so the whole UI re-skins from one place. (Same logic as the docs chrome; shared by convention, not code.)
+
 ## Extend it (don't fork it)
 
 `Shell.vue` is built for extension:

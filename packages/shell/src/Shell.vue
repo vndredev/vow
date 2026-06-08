@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import DarkToggle from "./DarkToggle.vue";
 import type { Page } from "./index.ts";
 
 const props = withDefaults(
@@ -35,7 +36,10 @@ const links = computed<Page[]>(() => [{ path: "/", title: "Home" }, ...props.pag
           >{{ link.title }}</a
         >
       </nav>
-      <div class="vow-shell__sidebar-footer"><slot name="sidebar-footer" /></div>
+      <div class="vow-shell__sidebar-footer">
+        <slot name="sidebar-footer" />
+        <DarkToggle />
+      </div>
     </aside>
     <main class="vow-shell__main">
       <header v-if="$slots['topbar-actions']" class="vow-shell__topbar">
