@@ -741,6 +741,64 @@ export function emitRadioGroupSfc(): string {
   return renderVueSfc(radioGroupComponent);
 }
 
+// The table parts — structural primitives over native <table> elements (no headless; class hooks only).
+// Composed (e.g. by an entity list) into a data grid; the theme styles `.vow-table` + its parts.
+const table: Component = {
+  name: "Table",
+  doc: ["Generated table — a structural data grid over native <table> (no headless core)."],
+  view: {
+    kind: "element",
+    tag: "table",
+    attrs: [{ kind: "static", name: "class", value: "vow-table" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const tableRow: Component = {
+  name: "TableRow",
+  doc: ["Generated table row (<tr>) — structural, class hook only."],
+  view: {
+    kind: "element",
+    tag: "tr",
+    attrs: [{ kind: "static", name: "class", value: "vow-table__row" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const tableHead: Component = {
+  name: "TableHead",
+  doc: [
+    "Generated table header cell (<th>) — structural; the caller sets `scope` via fall-through.",
+  ],
+  view: {
+    kind: "element",
+    tag: "th",
+    attrs: [{ kind: "static", name: "class", value: "vow-table__head" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+const tableCell: Component = {
+  name: "TableCell",
+  doc: ["Generated table cell (<td>) — structural, class hook only."],
+  view: {
+    kind: "element",
+    tag: "td",
+    attrs: [{ kind: "static", name: "class", value: "vow-table__cell" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+/** The Vue table-part adapters — each a structural wrapper over its native element. */
+export function emitTableSfc(): string {
+  return renderVueSfc(table);
+}
+export function emitTableRowSfc(): string {
+  return renderVueSfc(tableRow);
+}
+export function emitTableHeadSfc(): string {
+  return renderVueSfc(tableHead);
+}
+export function emitTableCellSfc(): string {
+  return renderVueSfc(tableCell);
+}
+
 /**
  * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
  * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
@@ -756,5 +814,9 @@ export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   RadioGroup: emitRadioGroupSfc,
   Select: emitSelectSfc,
   Switch: emitSwitchSfc,
+  Table: emitTableSfc,
+  TableCell: emitTableCellSfc,
+  TableHead: emitTableHeadSfc,
+  TableRow: emitTableRowSfc,
   Tabs: emitTabsSfc,
 };

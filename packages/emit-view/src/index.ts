@@ -128,6 +128,11 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
     { from: "./Field.vue", default: "Field" },
     { from: "./Button.vue", default: "Button" },
+    // the Table primitive — composed (not a primitive itself); the list is a composition over the parts
+    { from: "./Table.vue", default: "Table" },
+    { from: "./TableRow.vue", default: "TableRow" },
+    { from: "./TableHead.vue", default: "TableHead" },
+    { from: "./TableCell.vue", default: "TableCell" },
   ];
   if (entity.fields.some((f) => f.type === "boolean")) {
     imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
@@ -253,9 +258,9 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${entity.slug}` }],
       children: [
         {
-          kind: "element",
-          tag: "table",
-          attrs: [{ kind: "static", name: "class", value: "vow-table" }],
+          kind: "component",
+          name: "Table",
+          attrs: [],
           children: [
             {
               kind: "element",
@@ -263,21 +268,21 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
               attrs: [],
               children: [
                 {
-                  kind: "element",
-                  tag: "tr",
+                  kind: "component",
+                  name: "TableRow",
                   attrs: [],
                   children: [
                     ...entity.fields.map(
                       (f): UiNode => ({
-                        kind: "element",
-                        tag: "th",
+                        kind: "component",
+                        name: "TableHead",
                         attrs: [{ kind: "static", name: "scope", value: "col" }],
                         children: [{ kind: "text", text: f.name }],
                       }),
                     ),
                     {
-                      kind: "element",
-                      tag: "th",
+                      kind: "component",
+                      name: "TableHead",
                       attrs: [
                         { kind: "static", name: "scope", value: "col" },
                         { kind: "static", name: "aria-label", value: "Actions" },
@@ -294,22 +299,22 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
               attrs: [],
               children: [
                 {
-                  kind: "element",
-                  tag: "tr",
+                  kind: "component",
+                  name: "TableRow",
                   attrs: [],
                   for: { each: "rows", as: "item", index: "i", key: "item.id" },
                   children: [
                     ...entity.fields.map(
                       (f): UiNode => ({
-                        kind: "element",
-                        tag: "td",
+                        kind: "component",
+                        name: "TableCell",
                         attrs: [{ kind: "static", name: "class", value: `field-${f.name}` }],
                         children: [cellContent(f)],
                       }),
                     ),
                     {
-                      kind: "element",
-                      tag: "td",
+                      kind: "component",
+                      name: "TableCell",
                       attrs: [{ kind: "static", name: "class", value: "vow-table__action" }],
                       children: [deleteButton],
                     },

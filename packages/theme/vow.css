@@ -174,7 +174,9 @@ body {
   /* fills its page column — the page owns the width; no competing max-width/auto-centering */
   margin-top: var(--vow-space-6);
 }
-/* the entity list is a real table — one cohesive bordered card, a header row, rows split by hairlines */
+/* the Table primitive (Table · TableRow · TableHead · TableCell) — the theme targets the parts' class
+   hooks: one cohesive bordered card, a header row, body rows split by hairlines. Composed by the entity
+   list into a data grid; reusable anywhere. */
 .vow-table {
   width: 100%;
   border-collapse: collapse;
@@ -182,7 +184,7 @@ body {
   border-radius: var(--vow-radius-3);
   overflow: hidden;
 }
-.vow-table thead th {
+.vow-table__head {
   text-align: left;
   padding: var(--vow-space-3) var(--vow-space-4);
   font-size: var(--vow-text-sm);
@@ -191,16 +193,16 @@ body {
   background: var(--vow-color-surface);
   border-bottom: var(--vow-border) solid var(--vow-color-border);
 }
-.vow-table tbody td {
+.vow-table__cell {
   padding: var(--vow-space-3) var(--vow-space-4);
 }
-.vow-table tbody tr {
+.vow-table tbody .vow-table__row {
   transition: background 0.15s;
 }
-.vow-table tbody tr:not(:last-child) td {
+.vow-table tbody .vow-table__row:not(:last-child) > .vow-table__cell {
   border-bottom: var(--vow-border) solid var(--vow-color-border);
 }
-.vow-table tbody tr:hover {
+.vow-table tbody .vow-table__row:hover {
   background: var(--vow-color-surface);
 }
 .vow-table__action {

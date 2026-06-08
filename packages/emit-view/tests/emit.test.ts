@@ -22,11 +22,12 @@ test("emitEntityList renders an unstyled, hooked CRUD table over the entity", ()
   expect(sfc).toContain('import { useCollection } from "@vow/store";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
   expect(sfc).toContain('const { items: rows, append, removeAt } = useCollection<Task>("task");');
-  // a real <table>: a header from the field names, one <tr> per row, each value in its own <td>
-  expect(sfc).toContain('<table class="vow-table">');
-  expect(sfc).toContain('<th scope="col">title</th>');
+  // composes the Table primitive (a composition, not a primitive): a header from the field names,
+  // one <TableRow> per record, each value in its own <TableCell>
+  expect(sfc).toContain('import Table from "./Table.vue";');
+  expect(sfc).toContain('<TableHead scope="col">title</TableHead>');
   expect(sfc).toContain('v-for="(item, i) in rows"');
-  expect(sfc).toContain('<td class="field-title">{{ item.title }}</td>');
+  expect(sfc).toContain('<TableCell class="field-title">{{ item.title }}</TableCell>');
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
   expect(sfc).toContain('v-model="draft.title"');
   expect(sfc).toContain('@submit.prevent="add"');
