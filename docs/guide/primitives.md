@@ -39,13 +39,14 @@ If the core is sound against the bare platform, every adapter that merely forwar
 
 Each primitive has its own page — the live demo, the contract, props & events, the generated code, and its styling hooks.
 
-| Primitive                                    | Status      | For                     |
-| -------------------------------------------- | ----------- | ----------------------- |
-| [Button](/guide/primitives/button)           | ✓ available | an action (structural)  |
-| [Checkbox](/guide/primitives/checkbox)       | ✓ available | a boolean field         |
-| [Collapsible](/guide/primitives/collapsible) | ✓ available | a disclosure / fold-out |
-| [Tabs](/guide/primitives/tabs)               | ✓ available | a tablist over panels   |
-| [Dialog](/guide/primitives/dialog)           | ✓ available | a modal / drawer        |
-| [Select](/guide/primitives/select)           | ✓ available | a listbox dropdown      |
+| Primitive                                    | Status      | For                       |
+| -------------------------------------------- | ----------- | ------------------------- |
+| [Button](/guide/primitives/button)           | ✓ available | an action (structural)    |
+| [Checkbox](/guide/primitives/checkbox)       | ✓ available | a boolean field           |
+| [Collapsible](/guide/primitives/collapsible) | ✓ available | a disclosure / fold-out   |
+| [Tabs](/guide/primitives/tabs)               | ✓ available | a tablist over panels     |
+| [Dialog](/guide/primitives/dialog)           | ✓ available | a modal / drawer          |
+| [Select](/guide/primitives/select)           | ✓ available | a listbox dropdown        |
+| [Field](/guide/primitives/field)             | ✓ available | a form field (structural) |
 
 Same headless-core + unstyled-adapter split throughout, hand-rolled (no runtime lock-in). More climb the ladder as the dashboard/planning views need them — see the [Roadmap](/guide/roadmap).

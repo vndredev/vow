@@ -4,6 +4,7 @@ import {
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
+  emitFieldSfc,
   emitSelectSfc,
   emitTabsSfc,
 } from "../src/index.ts";
@@ -236,5 +237,33 @@ test("emitButtonSfc renders the structural button adapter byte-for-byte", () => 
   const sfc = emitButtonSfc();
   expect(sfc).toBe(EXPECTED_BUTTON);
   expect(sfc).not.toContain("@vow/headless"); // no headless core — it's structural
+  expect(sfc).not.toContain("<style");
+});
+
+// The byte-stable oracle for the field wrapper: label + slotted control + description + error. Structural,
+// no headless — its a11y is the emitted markup (label `for`, error `role=alert` keyed for aria-describedby).
+const EXPECTED_FIELD = [
+  `<script setup lang="ts">`,
+  `// Generated field wrapper — a label + control + optional description and error. No headless core:`,
+  `// pure structure + a11y wiring (label \`for\`, error \`role=alert\`); the look lives in @vow/theme.`,
+  ``,
+  `const props = defineProps<{ label: string; controlId: string; description?: string; error?: string }>();`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-field">`,
+  `    <label class="vow-field__label" :for="controlId">{{ label }}</label>`,
+  `    <slot />`,
+  `    <p class="vow-field__desc" v-if="description">{{ description }}</p>`,
+  `    <p class="vow-field__error" :id="controlId + '-error'" role="alert" v-if="error">{{ error }}</p>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitFieldSfc renders the structural field wrapper byte-for-byte", () => {
+  const sfc = emitFieldSfc();
+  expect(sfc).toBe(EXPECTED_FIELD);
+  expect(sfc).not.toContain("@vow/headless"); // structural — no headless core
   expect(sfc).not.toContain("<style");
 });

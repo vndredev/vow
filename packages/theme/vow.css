@@ -197,8 +197,10 @@
   gap: var(--vow-space-2);
   margin-top: var(--vow-space-4);
 }
-.vow-view__input {
-  flex: 1;
+/* the form-control look — a block, full-width input by default; the list's create-row makes it grow */
+.vow-input {
+  display: block;
+  width: 100%;
   padding: var(--vow-space-2) var(--vow-space-3);
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-1);
@@ -206,16 +208,41 @@
   color: var(--vow-color-text);
   font: inherit;
 }
-.vow-view__input:focus-visible {
+.vow-input:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 1px;
 }
+.vow-view__create .vow-input {
+  flex: 1;
+  width: auto;
+}
 /* a `longtext` field — the input look plus a resizable, multi-line box */
 .vow-textarea {
-  flex: 1 1 100%;
   min-height: 4.5rem;
   resize: vertical;
   line-height: 1.5;
+}
+
+/* a labelled form field: a label over its control, with an optional description and a live error. */
+.vow-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
+}
+.vow-field__label {
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-text);
+}
+.vow-field__desc {
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+  margin: 0;
+}
+.vow-field__error {
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-danger);
+  margin: 0;
 }
 .vow-view__add {
   padding: var(--vow-space-2) var(--vow-space-4);

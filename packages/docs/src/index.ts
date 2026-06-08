@@ -6,6 +6,7 @@ import {
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
+  emitFieldSfc,
   emitSelectSfc,
   emitTabsSfc,
   PRIMITIVE_ADAPTERS,
@@ -503,6 +504,24 @@ import Button from "./Button.vue";
 </template>
 `;
 
+const DEMO_FIELD = `<script setup lang="ts">
+import { ref } from "vue";
+import Field from "./Field.vue";
+const name = ref("");
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Field label="Project name" control-id="demo-name" description="Shown across your dashboard.">
+      <input id="demo-name" class="vow-input" v-model="name" placeholder="Acme Inc." />
+    </Field>
+    <Field label="Work email" control-id="demo-email" error="Enter a valid email address.">
+      <input id="demo-email" class="vow-input" value="not-an-email" aria-invalid="true" aria-describedby="demo-email-error" />
+    </Field>
+  </div>
+</template>
+`;
+
 /** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
 interface Demo {
   readonly sfc: string;
@@ -517,6 +536,7 @@ const DEMOS: Record<string, Demo> = {
   VowDemoCollapsible: { sfc: DEMO_COLLAPSIBLE, adapter: "Collapsible", emit: emitCollapsibleSfc },
   VowDemoTabs: { sfc: DEMO_TABS, adapter: "Tabs", emit: emitTabsSfc },
   VowDemoDialog: { sfc: DEMO_DIALOG, adapter: "Dialog", emit: emitDialogSfc },
+  VowDemoField: { sfc: DEMO_FIELD, adapter: "Field", emit: emitFieldSfc },
   VowDemoSelect: { sfc: DEMO_SELECT, adapter: "Select", emit: emitSelectSfc },
 };
 

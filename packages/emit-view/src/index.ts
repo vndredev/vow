@@ -65,7 +65,7 @@ export function fieldControl(f: Field, model: string): UiNode {
       kind: "element",
       tag: "input",
       attrs: [
-        { kind: "static", name: "class", value: "vow-view__input" },
+        { kind: "static", name: "class", value: "vow-input" },
         { kind: "static", name: "type", value: "date" },
         { kind: "model", expr: model },
         { kind: "static", name: "aria-label", value: f.name },
@@ -78,7 +78,7 @@ export function fieldControl(f: Field, model: string): UiNode {
       kind: "element",
       tag: "textarea",
       attrs: [
-        { kind: "static", name: "class", value: "vow-view__input vow-textarea" },
+        { kind: "static", name: "class", value: "vow-input vow-textarea" },
         { kind: "model", expr: model },
         { kind: "static", name: "placeholder", value: f.name },
         { kind: "static", name: "aria-label", value: f.name },
@@ -90,7 +90,7 @@ export function fieldControl(f: Field, model: string): UiNode {
     kind: "element",
     tag: "input",
     attrs: [
-      { kind: "static", name: "class", value: "vow-view__input" },
+      { kind: "static", name: "class", value: "vow-input" },
       f.type === "number"
         ? { kind: "model", expr: model, modifiers: ["number"] }
         : { kind: "model", expr: model },

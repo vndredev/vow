@@ -477,6 +477,68 @@ export function emitButtonSfc(): string {
 }
 
 /**
+ * The field adapter — a structural label + control + optional description and error, with no headless
+ * core. The control is the default slot; the caller (a form) owns the id and passes it as `controlId`,
+ * so the `<label for>` and the control's `id` line up. The error is a live `role="alert"` region keyed
+ * `<controlId>-error`, the target for the control's `aria-describedby`. Look lives in @vow/theme.
+ */
+const field: Component = {
+  name: "Field",
+  doc: [
+    "Generated field wrapper — a label + control + optional description and error. No headless core:",
+    "pure structure + a11y wiring (label `for`, error `role=alert`); the look lives in @vow/theme.",
+  ],
+  props: [
+    { name: "label", tsType: "string" },
+    { name: "controlId", tsType: "string" },
+    { name: "description", tsType: "string", optional: true },
+    { name: "error", tsType: "string", optional: true },
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-field" }],
+    children: [
+      {
+        kind: "element",
+        tag: "label",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-field__label" },
+          { kind: "bound", name: "for", expr: "controlId" },
+        ],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+      { kind: "slot", children: [] },
+      {
+        kind: "element",
+        tag: "p",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-field__desc" },
+          { kind: "cond", type: "if", expr: "description" },
+        ],
+        children: [{ kind: "interp", expr: "description" }],
+      },
+      {
+        kind: "element",
+        tag: "p",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-field__error" },
+          { kind: "bound", name: "id", expr: "controlId + '-error'" },
+          { kind: "static", name: "role", value: "alert" },
+          { kind: "cond", type: "if", expr: "error" },
+        ],
+        children: [{ kind: "interp", expr: "error" }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue field wrapper (structural — no headless), rendered from the canonical model. */
+export function emitFieldSfc(): string {
+  return renderVueSfc(field);
+}
+
+/**
  * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
  * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
  * materialises each referenced adapter into `.generated/` on demand, and the docs reuse it for prose.
@@ -485,7 +547,8 @@ export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   Button: emitButtonSfc,
   Checkbox: emitCheckboxSfc,
   Collapsible: emitCollapsibleSfc,
-  Tabs: emitTabsSfc,
   Dialog: emitDialogSfc,
+  Field: emitFieldSfc,
   Select: emitSelectSfc,
+  Tabs: emitTabsSfc,
 };
