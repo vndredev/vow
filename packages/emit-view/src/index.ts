@@ -656,6 +656,40 @@ export function emitAppRoutes(pages: readonly { slug: string; title: string }[])
 }
 
 /**
+ * The app's shared chrome — a nav (home + every page) wrapping each route's content. Written as a
+ * `*.layout.vue` the boot globs (the same seam @vow/docs uses); it gets the current `path` to mark the
+ * active link. Generated only when the app has more than the home page.
+ */
+export function emitAppLayout(pages: readonly { slug: string; title: string }[]): string {
+  const esc = (s: string): string =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const links = [
+    { to: "/", label: "Home" },
+    ...pages.map((p) => ({ to: `/${p.slug}`, label: p.title })),
+  ];
+  const nav = links.map(
+    (l) =>
+      `      <a class="vow-shell__link" :class="{ 'is-active': path === '${l.to}' }" href="${l.to}">${esc(l.label)}</a>`,
+  );
+  return [
+    `<script setup lang="ts">`,
+    `// Generated app chrome — a nav over every page. The vow tree is the source — do not edit.`,
+    `defineProps<{ path: string }>();`,
+    `</script>`,
+    ``,
+    `<template>`,
+    `  <div class="vow-shell">`,
+    `    <nav class="vow-shell__nav">`,
+    ...nav,
+    `    </nav>`,
+    `    <main class="vow-shell__main"><slot /></main>`,
+    `  </div>`,
+    `</template>`,
+    ``,
+  ].join("\n");
+}
+
+/**
  * The generated boot — replaces a hand-written `src/main.ts`. Mounts the `root` page on `#app` and
  * imports the default theme. So a vow app needs no boot shell: the entry is a vow (`root: true`).
  */

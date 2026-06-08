@@ -1,6 +1,12 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow } from "@vow/core";
-import { emitAppRoutes, emitForm, emitView, referencedPrimitives } from "../src/index.ts";
+import {
+  emitAppLayout,
+  emitAppRoutes,
+  emitForm,
+  emitView,
+  referencedPrimitives,
+} from "../src/index.ts";
 
 /** Build a view-only vow (a `## view`) with a given component list. */
 const view = (nodes: Vow["view"]): Vow => ({
@@ -142,4 +148,14 @@ test("emitAppRoutes maps each non-root page to a /slug route loading its .vue", 
   expect(code).toContain(
     '{ path: "/add-task", load: () => import("./add-task.vue"), title: "Add a task" },',
   );
+});
+
+test("emitAppLayout renders a nav of home + every page, active by path", () => {
+  const code = emitAppLayout([{ slug: "add-task", title: "Add a task" }]);
+  expect(code).toContain("defineProps<{ path: string }>();");
+  expect(code).toContain(`:class="{ 'is-active': path === '/' }" href="/">Home</a>`);
+  expect(code).toContain(
+    `:class="{ 'is-active': path === '/add-task' }" href="/add-task">Add a task</a>`,
+  );
+  expect(code).toContain("<slot />");
 });

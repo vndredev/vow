@@ -6,6 +6,7 @@ import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
+  emitAppLayout,
   emitAppRoutes,
   emitBoot,
   emitEntityList,
@@ -150,11 +151,14 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
     }
   }
   // Non-root views + forms become routes (`/<slug>`) the boot globs via the `*.routes.ts` convention —
-  // so the root page stays `/` and every other page joins it, with no hand-written router.
+  // so the root page stays `/` and every other page joins it, with no hand-written router. With more than
+  // the home page, also emit a shared chrome (`*.layout.vue`) — a nav over every page.
   if (pages.length > 0) {
     const routes = join(outDir, "vow-pages.routes.ts");
     writeFileSync(routes, emitAppRoutes(pages), "utf8");
-    written.push(routes);
+    const layout = join(outDir, "vow-app.layout.vue");
+    writeFileSync(layout, emitAppLayout(pages), "utf8");
+    written.push(routes, layout);
   }
   // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
   // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.

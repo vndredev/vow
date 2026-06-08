@@ -261,6 +261,28 @@
 .vow-link:hover {
   text-decoration: underline;
 }
+
+/* the app shell — a shared top nav over every routed page. */
+.vow-shell__nav {
+  display: flex;
+  gap: var(--vow-space-4);
+  align-items: center;
+  padding: var(--vow-space-3) var(--vow-space-5);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-shell__link {
+  color: var(--vow-color-muted);
+  text-decoration: none;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+}
+.vow-shell__link:hover,
+.vow-shell__link.is-active {
+  color: var(--vow-color-text);
+}
+.vow-shell__main {
+  padding: var(--vow-space-6) var(--vow-space-5);
+}
 .vow-view__add {
   padding: var(--vow-space-2) var(--vow-space-4);
   border: var(--vow-border) solid var(--vow-color-ink);
