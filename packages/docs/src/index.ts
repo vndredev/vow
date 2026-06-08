@@ -599,11 +599,16 @@ import Button from "./Button.vue";
 
 <template>
   <div class="vow-demo">
-    <Button label="Default" />
-    <Button label="Outline" variant="outline" />
-    <Button label="Ghost" variant="ghost" />
-    <Button label="Small" size="sm" variant="outline" />
-    <Button label="Large" size="lg" variant="outline" />
+    <div class="vow-demo__row">
+      <Button label="Default" />
+      <Button label="Outline" variant="outline" />
+      <Button label="Ghost" variant="ghost" />
+    </div>
+    <div class="vow-demo__row">
+      <Button label="Small" size="sm" />
+      <Button label="Default" />
+      <Button label="Large" size="lg" />
+    </div>
   </div>
 </template>
 `;

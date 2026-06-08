@@ -14,6 +14,7 @@
   --vow-color-text: #3c3c43; /* primary text */
   --vow-color-muted: #67676c; /* secondary text */
   --vow-color-accent: #3451b2; /* brand: links, eyebrow, focus ring */
+  --vow-color-accent-hover: #2c4496; /* accent fill on hover (primary button) */
   --vow-color-ink: #213547; /* solid dark fills: primary button, checked box */
   --vow-color-on-accent: #ffffff; /* text/icon on an accent or ink fill */
   --vow-color-border: #e2e2e3; /* hairlines, input + card borders */
@@ -32,7 +33,7 @@
   --vow-text-lg: 1.125rem;
   --vow-text-xl: 1.4rem;
   --vow-text-2xl: 1.75rem;
-  --vow-text-3xl: 2.75rem;
+  --vow-text-3xl: 2.25rem;
   --vow-weight-normal: 400;
   --vow-weight-medium: 500;
   --vow-weight-semibold: 600;
@@ -69,7 +70,8 @@
   --vow-radius-3: 0.75rem; /* cards, boxes */
   --vow-border: 1px;
 
-  /* Elevation — the one shadow floating popovers use (the select listbox). */
+  /* Elevation — a subtle card lift, and the deeper shadow floating popovers use (the select listbox). */
+  --vow-shadow-1: 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px rgb(0 0 0 / 0.04);
   --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.12);
 }
 
@@ -81,6 +83,7 @@
   --vow-color-text: #dfdfd6;
   --vow-color-muted: #98989f;
   --vow-color-accent: #a8b1ff;
+  --vow-color-accent-hover: #c0c6ff;
   --vow-color-ink: #dfdfd6;
   --vow-color-on-accent: #1b1b1f;
   --vow-color-border: #2e2e32;
@@ -119,12 +122,13 @@ body {
   color: var(--vow-color-text);
   display: flex;
   flex-direction: column;
-  gap: var(--vow-space-7);
+  gap: var(--vow-space-6);
 }
-.vow-app span {
-  color: var(--vow-color-accent);
-  font-weight: var(--vow-weight-bold);
-  font-size: var(--vow-text-sm);
+/* the hero eyebrow — a subtle section label, not a marketing shout (muted, not accent) */
+.vow-eyebrow {
+  color: var(--vow-color-muted);
+  font-weight: var(--vow-weight-semibold);
+  font-size: var(--vow-text-xs);
   letter-spacing: var(--vow-tracking-wide);
   text-transform: uppercase;
 }
@@ -159,6 +163,7 @@ body {
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-3);
   background: var(--vow-color-surface);
+  box-shadow: var(--vow-shadow-1);
 }
 
 /* The entity list (`emit entity` pulled in by a view's `list:`). Headings belong to the view, so
@@ -169,21 +174,27 @@ body {
   /* fills its page column — the page owns the width; no competing max-width/auto-centering */
   margin-top: var(--vow-space-6);
 }
+/* the list is one cohesive panel — a single bordered card, rows split by hairlines (a dashboard table) */
 .vow-view__list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--vow-space-2);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+  overflow: hidden;
 }
 .vow-view__row {
   display: flex;
   align-items: center;
   gap: var(--vow-space-4);
   padding: var(--vow-space-3) var(--vow-space-4);
-  border: var(--vow-border) solid var(--vow-color-border);
-  border-radius: var(--vow-radius-2);
+  transition: background 0.15s;
+}
+.vow-view__row:not(:last-child) {
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-view__row:hover {
+  background: var(--vow-color-surface);
 }
 .vow-view__field {
   flex: 1;
@@ -285,14 +296,14 @@ body {
   align-items: center;
   justify-content: center;
   gap: var(--vow-space-2);
-  padding: var(--vow-space-2) var(--vow-space-4);
+  padding: var(--vow-space-2) var(--vow-space-5);
   border: var(--vow-border) solid transparent;
   border-radius: var(--vow-radius-1);
-  background: var(--vow-color-ink);
+  background: var(--vow-color-accent);
   color: var(--vow-color-on-accent);
   cursor: pointer;
   font: inherit;
-  font-weight: var(--vow-weight-medium);
+  font-weight: var(--vow-weight-semibold);
   line-height: 1.2;
   transition:
     background 0.15s,
@@ -308,9 +319,13 @@ body {
   cursor: not-allowed;
 }
 .vow-button[data-variant="default"] {
-  background: var(--vow-color-ink);
-  border-color: var(--vow-color-ink);
+  background: var(--vow-color-accent);
+  border-color: var(--vow-color-accent);
   color: var(--vow-color-on-accent);
+}
+.vow-button[data-variant="default"]:hover {
+  background: var(--vow-color-accent-hover);
+  border-color: var(--vow-color-accent-hover);
 }
 .vow-button[data-variant="outline"] {
   background: transparent;
@@ -318,6 +333,7 @@ body {
   color: var(--vow-color-text);
 }
 .vow-button[data-variant="outline"]:hover {
+  background: var(--vow-color-surface);
   border-color: var(--vow-color-border-hover);
 }
 .vow-button[data-variant="ghost"] {

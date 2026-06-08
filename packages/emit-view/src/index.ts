@@ -501,7 +501,13 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
   if (type === "hero") {
     const o = asObject(value);
     const kids: UiNode[] = [];
-    if (o["eyebrow"] !== undefined) kids.push(el("span", [txt(str(o["eyebrow"]))]));
+    if (o["eyebrow"] !== undefined)
+      kids.push({
+        kind: "element",
+        tag: "span",
+        attrs: [{ kind: "static", name: "class", value: "vow-eyebrow" }],
+        children: [txt(str(o["eyebrow"]))],
+      });
     if (o["title"] !== undefined) kids.push(el("h1", [txt(str(o["title"]))]));
     if (o["lead"] !== undefined) kids.push(el("p", [txt(str(o["lead"]))]));
     return comp("Flex", [bound("direction", "'column'"), bound("gap", "3")], kids);

@@ -25,7 +25,7 @@ test("hero expands to a column Flex with eyebrow, title and lead", () => {
     view([{ type: "hero", value: { eyebrow: "vow", title: "The framework", lead: "Build it" } }]),
   );
   expect(sfc).toContain('<Flex :direction="\'column\'" :gap="3">');
-  expect(sfc).toContain("<span>vow</span>");
+  expect(sfc).toContain('<span class="vow-eyebrow">vow</span>');
   expect(sfc).toContain("<h1>The framework</h1>");
   expect(sfc).toContain("<p>Build it</p>");
   expect(sfc).toContain('import Flex from "./Flex.vue";');

@@ -37,7 +37,7 @@ yarn vp dev apps/starter
 
 :::
 
-Open the printed URL. You see a dashboard — a left sidebar nav, and a home page with a hero, a three-card feature grid, then a generated task list — and you never wrote a `.vue` file. It's all from vows: the home page is a [`## view`](/guide/views), and its `list: task` pulls in the task entity's CRUD list. The sidebar is the [app shell](/guide/shell), wrapping every page.
+Open the printed URL. You see a dashboard — a left sidebar nav, and a home page with a hero, a "Tasks" heading, a link to the add-task page, then a generated task list — and you never wrote a `.vue` file. It's all from vows: the home page is a [`## view`](/guide/views), and its `list: task` pulls in the task entity's CRUD list. The sidebar is the [app shell](/guide/shell), wrapping every page.
 
 ## Watch the promise keep itself
 
