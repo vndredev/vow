@@ -32,6 +32,15 @@ test("emitEntityList renders an unstyled, hooked CRUD list over the entity", () 
   expect(sfc).not.toContain("<style");
 });
 
+test("the create form is a validated <Field> stack (converged with the ## form treatment)", () => {
+  const sfc = emitEntityList(entity);
+  expect(sfc).toContain('import Field from "./Field.vue";');
+  expect(sfc).toContain('import { ZodError } from "zod";');
+  expect(sfc).toContain('<form class="vow-form vow-view__create"'); // a stacked form, not a flex row
+  expect(sfc).toContain('<Field label="title" :control-id="titleId" :error="errors.title">');
+  expect(sfc).toContain("err instanceof ZodError"); // per-field errors, no silent swallow
+});
+
 test("the list carries no heading of its own — the referencing view owns headings", () => {
   const sfc = emitEntityList(entity);
   expect(sfc).not.toContain("vow-view__title");

@@ -92,11 +92,21 @@
   --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.45);
 }
 
-.vow-app,
-.vow-app *,
-.vow-view,
-.vow-view * {
+/* Base reset — applies once, app-wide (browser defaults gone: margin, box model, baseline). */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+html {
+  scrollbar-gutter: stable;
+}
+body {
+  margin: 0;
+  font-family: var(--vow-font-sans);
+  line-height: var(--vow-leading-normal);
+  color: var(--vow-color-text);
+  background: var(--vow-color-bg);
 }
 
 /* `.vow-app` wraps a `## view` — a centered, stacked page. Layout primitives are structural (inline
@@ -159,8 +169,8 @@
 .vow-view {
   font-family: var(--vow-font-sans);
   color: var(--vow-color-text);
-  max-width: var(--vow-container-1);
-  margin: var(--vow-space-6) auto;
+  /* fills its page column — the page owns the width; no competing max-width/auto-centering */
+  margin-top: var(--vow-space-6);
 }
 .vow-view__list {
   list-style: none;
@@ -192,12 +202,13 @@
 .vow-view__delete:hover {
   color: var(--vow-color-danger);
 }
+/* the create form sits below the list, separated by a rule — it's a stacked `.vow-form`, not a row */
 .vow-view__create {
-  display: flex;
-  gap: var(--vow-space-2);
-  margin-top: var(--vow-space-4);
+  margin-top: var(--vow-space-6);
+  padding-top: var(--vow-space-6);
+  border-top: var(--vow-border) solid var(--vow-color-border);
 }
-/* the form-control look — a block, full-width input by default; the list's create-row makes it grow */
+/* the form-control look — a block, full-width input */
 .vow-input {
   display: block;
   width: 100%;
@@ -211,10 +222,6 @@
 .vow-input:focus-visible {
   outline: 2px solid var(--vow-color-accent);
   outline-offset: 1px;
-}
-.vow-view__create .vow-input {
-  flex: 1;
-  width: auto;
 }
 /* a `longtext` field — the input look plus a resizable, multi-line box */
 .vow-textarea {

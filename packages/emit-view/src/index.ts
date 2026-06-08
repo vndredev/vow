@@ -111,41 +111,39 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     throw new Error(`emit-view: \`list:\` target "${entity.slug}" must be an \`emit entity\``);
   }
   const type = pascalCase(entity.slug);
-  const hasBoolean = entity.fields.some((f) => f.type === "boolean");
-  const inputFields = entity.fields.filter((f) => f.type !== "boolean");
-  const referenceFields = inputFields.filter((f) => f.type === "reference");
+  const nativeFields = entity.fields.filter((f) => f.type !== "boolean"); // each gets a useId for its label
+  const referenceFields = entity.fields.filter((f) => f.type === "reference");
   // a reference dropdown labels each target item by the target entity's first text field (else its id)
   const labelField = (ref?: string): string =>
     byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
 
-  const hasSelectLike = inputFields.some((f) => f.type === "select" || f.type === "reference");
+  const vueNames = ["ref"];
+  if (nativeFields.length > 0) vueNames.push("useId");
+  if (referenceFields.length > 0) vueNames.push("computed");
 
   const imports: ImportDecl[] = [
-    { from: "vue", names: referenceFields.length > 0 ? ["ref", "computed"] : ["ref"] },
+    { from: "vue", names: vueNames },
+    { from: "zod", names: ["ZodError"] },
     { from: "@vow/store", names: ["useCollection"] },
     { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
+    { from: "./Field.vue", default: "Field" },
+    { from: "./Button.vue", default: "Button" },
   ];
-  if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
-  if (hasSelectLike) imports.push({ from: "./Select.vue", default: "Select" }); // select + reference
+  if (entity.fields.some((f) => f.type === "boolean")) {
+    imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
+  }
+  if (entity.fields.some((f) => f.type === "select" || f.type === "reference")) {
+    imports.push({ from: "./Select.vue", default: "Select" });
+  }
 
   const setup: string[] = [
     // the shared store holds the items (one array per slug) — so a reference field can read another
     // entity's items; the local `ref`-per-view is gone
     `const { items: rows, append, removeAt } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const draft = ref<Partial<${type}>>({});`,
-    ``,
-    `function add(): void {`,
-    `  try {`,
-    `    append(create${type}(draft.value));`,
-    `    draft.value = {};`,
-    `  } catch {`,
-    `    // invalid draft (e.g. a required field is empty) — ignore until we surface validation`,
-    `  }`,
-    `}`,
-    `function remove(index: number): void {`,
-    `  removeAt(index);`,
-    `}`,
+    `const errors = ref<Record<string, string>>({});`,
   ];
+  for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
   // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label}
   for (const f of referenceFields) {
     setup.push(
@@ -153,6 +151,24 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
     );
   }
+  setup.push(
+    ``,
+    // the create form validates with the entity's zod schema and surfaces per-field errors (no swallow)
+    `function add(): void {`,
+    `  try {`,
+    `    append(create${type}(draft.value));`,
+    `    draft.value = {};`,
+    `    errors.value = {};`,
+    `  } catch (err) {`,
+    `    if (err instanceof ZodError) {`,
+    `      errors.value = Object.fromEntries(err.issues.map((i) => [String(i.path[0]), i.message]));`,
+    `    }`,
+    `  }`,
+    `}`,
+    `function remove(index: number): void {`,
+    `  removeAt(index);`,
+    `}`,
+  );
 
   // one display cell per field: boolean → <Checkbox>, everything else → a <span> with the value
   const cells: UiNode[] = entity.fields.map(
@@ -184,24 +200,34 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       {
         kind: "bound",
         name: "aria-label",
-        expr: `'Delete: ' + item.${inputFields[0]?.name ?? "title"}`,
+        expr: `'Delete: ' + item.${nativeFields[0]?.name ?? "title"}`,
       },
       { kind: "event", name: "click", expr: "remove(i)" },
     ],
     children: [{ kind: "text", text: "✕" }],
   };
 
-  // one input per non-boolean field — the shared field→control map (reused by the standalone form)
-  const inputs: UiNode[] = inputFields.map((f) => fieldControl(f, `draft.${f.name}`));
-
-  const addButton: UiNode = {
+  // the create form — the SAME labelled, zod-validated `<Field>` stack as a standalone `## form` (no
+  // squished single row); a boolean self-labels as a `<Checkbox>`.
+  const createForm: UiNode = {
     kind: "element",
-    tag: "button",
+    tag: "form",
     attrs: [
-      { kind: "static", name: "class", value: "vow-view__add" },
-      { kind: "static", name: "type", value: "submit" },
+      { kind: "static", name: "class", value: "vow-form vow-view__create" },
+      { kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] },
     ],
-    children: [{ kind: "text", text: "+ Add" }],
+    children: [
+      ...entity.fields.map(formField),
+      {
+        kind: "component",
+        name: "Button",
+        attrs: [
+          { kind: "static", name: "type", value: "submit" },
+          { kind: "static", name: "label", value: "+ Add" },
+        ],
+        children: [],
+      },
+    ],
   };
 
   const component: Component = {
@@ -230,15 +256,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
             },
           ],
         },
-        {
-          kind: "element",
-          tag: "form",
-          attrs: [
-            { kind: "static", name: "class", value: "vow-view__create" },
-            { kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] },
-          ],
-          children: [...inputs, addButton],
-        },
+        createForm,
       ],
     },
   };
