@@ -1,0 +1,24 @@
+{
+  "name": "@vow/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's MCP server — an agent operates the studio (structure via @vow/core, data via @vow/db) over stdio.",
+  "type": "module",
+  "exports": {
+    ".": "./src/server.ts"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types src/server.ts",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@vow/core": "workspace:*",
+    "@vow/db": "workspace:*",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -50,5 +50,6 @@ vow is a pnpm monorepo of small, focused packages, split by **kind** (see [Archi
 | `@vow/docs`        | the docs-chrome layer — scans markdown into a generated doc app  | [The doc-system](/guide/doc-system)                                     |
 | `@vow/markdown`    | markdown → vow's UiNode model (+ Shiki, `:::`, `:badge`/`:icon`) | [The doc-system](/guide/doc-system)                                     |
 | `@vow/vite-plugin` | the plugin that loads `app/`, generates, and serves              | [Architecture](/guide/architecture) · [App structure](/guide/structure) |
+| `@vow/mcp`         | the MCP server — an agent operates the studio (structure + data) | [The MCP server](/guide/mcp)                                            |
 
 The split is by kind, never by feature — `@vow/headless` never holds a component or CSS, the look is a swappable layer, and a new framework is just another adapter. The package boundaries stay flat (no nesting); this page is the directory.
