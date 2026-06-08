@@ -27,7 +27,7 @@ const checkbox: Component = {
     { from: "@vow/headless", names: ["checkbox"] },
   ],
   props: [
-    { name: "modelValue", tsType: "boolean" },
+    { name: "modelValue", tsType: "boolean", optional: true, default: "false" },
     { name: "label", tsType: "string" },
     { name: "disabled", tsType: "boolean", optional: true },
   ],
@@ -345,7 +345,7 @@ const selectComponent: Component = {
     { from: "@vow/headless", names: ["select"] },
   ],
   props: [
-    { name: "modelValue", tsType: "string" },
+    { name: "modelValue", tsType: "string", optional: true, default: '""' },
     { name: "options", tsType: "{ value: string; label: string }[]" },
     { name: "label", tsType: "string" },
     { name: "disabled", tsType: "boolean", optional: true },

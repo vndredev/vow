@@ -14,7 +14,7 @@ test("emitCheckboxSfc generates a Vue adapter over the headless core with class 
   // uses the agnostic core (logic + a11y live there)
   expect(sfc).toContain('import { checkbox } from "@vow/headless";');
   expect(sfc).toContain(
-    "defineProps<{ modelValue: boolean; label: string; disabled?: boolean }>()",
+    "withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean }>(), { modelValue: false })",
   );
   expect(sfc).toContain('emit("update:modelValue", next.checked)');
   // a <button role=checkbox> control (Reka-style) wrapping an indicator part; spreads the core's props
@@ -162,7 +162,7 @@ const EXPECTED_SELECT = [
   `import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";`,
   `import { select } from "@vow/headless";`,
   ``,
-  `const props = defineProps<{ modelValue: string; options: { value: string; label: string }[]; label: string; disabled?: boolean }>();`,
+  `const props = withDefaults(defineProps<{ modelValue?: string; options: { value: string; label: string }[]; label: string; disabled?: boolean }>(), { modelValue: "" });`,
   `const emit = defineEmits<{ "update:modelValue": [string] }>();`,
   ``,
   `const uid = useId();`,
