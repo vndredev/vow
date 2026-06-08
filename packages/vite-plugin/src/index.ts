@@ -24,9 +24,12 @@ import {
   statsComponentName,
   statsRefs,
   VOW_ENV_DTS,
+  emitTimelineSfc,
+  usesTimeline,
   viewComponentName,
 } from "@vow/emit-view";
 import { layoutSfcs } from "@vow/layout";
+import { gitRemoteUrl, gitTimeline } from "@vow/observability";
 
 /**
  * vow as a Vite plugin — the heart of the closed cap.
@@ -109,6 +112,7 @@ export function generateFiles(
     group: v.nav?.group,
   });
   let needsLayout = false; // any `emit view` pulls in the layout primitives
+  let needsTimeline = false; // any `timeline:` view pulls in the git-derived VowTimeline
 
   for (const v of all) {
     const f = v.fulfills;
@@ -132,6 +136,7 @@ export function generateFiles(
       for (const ref of boardRefs(v)) boardByKey.set(`${ref.of}.${ref.by}`, ref); // board compositions
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       if (v.root !== true) pages.push(navPage(v)); // a non-root view → a route
+      if (usesTimeline(v)) needsTimeline = true; // the git-derived roadmap view
       needsLayout = true;
     } else if (f.kind === "emit" && f.as === "form") {
       const file = join(outDir, `${v.slug}.vue`);
@@ -196,6 +201,14 @@ export function generateFiles(
     writeFileSync(file, emitEntityBoard(entity, by), "utf8");
     written.push(file);
     needed.add("Card").add("CardHeader").add("CardBody"); // the board composition composes the Card parts
+  }
+
+  // A `timeline:` view → the git-derived VowTimeline, baked from `git log` at generate time (once).
+  if (needsTimeline) {
+    const file = join(outDir, "VowTimeline.vue");
+    writeFileSync(file, emitTimelineSfc(gitTimeline(srcDir), gitRemoteUrl(srcDir)), "utf8");
+    written.push(file);
+    needed.add("Badge").add("Collapsible"); // the timeline composes Badge + Collapsible
   }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {

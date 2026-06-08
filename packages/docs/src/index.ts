@@ -24,15 +24,9 @@ import {
   emitTabsSfc,
   PRIMITIVE_ADAPTERS,
 } from "@vow/emit-primitive";
-import { emitProse } from "@vow/emit-view";
+import { emitProse, emitTimelineSfc } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
-import {
-  type BadgeVariant,
-  gitRemoteUrl,
-  gitTimeline,
-  type TimelineEntry,
-  variantForType,
-} from "@vow/observability";
+import { gitRemoteUrl, gitTimeline } from "@vow/observability";
 
 export type { TocEntry } from "@vow/markdown";
 
@@ -320,69 +314,6 @@ export function buildLlms(
     index.push("");
   }
   return { index: `${index.join("\n").trimEnd()}\n`, full: `${full.join("\n").trimEnd()}\n` };
-}
-
-/**
- * The `::: timeline` component — the git-derived history, **baked in** at generate time, grouped by date,
- * each change a type [Badge](/guide/primitives/badge) + a link to its PR. So the roadmap renders the real
- * timeline (generated from `git log`, vow's own primitives), never a hand-typed list that could drift.
- */
-export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: string): string {
-  interface Item {
-    title: string;
-    type?: string;
-    variant?: BadgeVariant;
-    pr?: number;
-  }
-  const groups: { date: string; items: Item[] }[] = [];
-  for (const e of entries) {
-    const item: Item = { title: e.title };
-    if (e.type !== undefined) {
-      item.type = e.type;
-      item.variant = variantForType(e.type); // the shared type → variant map (single source)
-    }
-    if (e.pr !== undefined) item.pr = e.pr;
-    const last = groups[groups.length - 1];
-    if (last !== undefined && last.date === e.date) last.items.push(item);
-    else groups.push({ date: e.date, items: [item] });
-  }
-  const groupsType =
-    "{ date: string; items: { title: string; type?: string; " +
-    "variant?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger'; pr?: number }[] }[]";
-  // each date is a Collapsible — all closed except the most recent (the first group)
-  const initialOpen = JSON.stringify(groups.map((_, i) => i === 0));
-  return [
-    `<script setup lang="ts">`,
-    `// Generated from git by @vow/docs — the derived timeline. The history is the source; do not edit.`,
-    `import { ref } from "vue";`,
-    `import Badge from "./Badge.vue";`,
-    `import Collapsible from "./Collapsible.vue";`,
-    `const groups: ${groupsType} = ${JSON.stringify(groups)};`,
-    `const repo = ${JSON.stringify(repoUrl ?? "")};`,
-    `const open = ref<boolean[]>(${initialOpen});`,
-    `</script>`,
-    ``,
-    `<template>`,
-    `  <div class="vow-timeline">`,
-    `    <Collapsible`,
-    `      v-for="(g, gi) in groups"`,
-    `      :key="g.date"`,
-    `      v-model="open[gi]"`,
-    `      :label="g.date + ' · ' + g.items.length + ' changes'"`,
-    `      class="vow-timeline__group"`,
-    `    >`,
-    `      <ul class="vow-timeline__items">`,
-    `        <li v-for="(e, i) in g.items" :key="i" class="vow-timeline__item">`,
-    `          <Badge v-if="e.type" :label="e.type" :variant="e.variant" />`,
-    `          <span class="vow-timeline__title">{{ e.title }}</span>`,
-    `          <a v-if="e.pr && repo" class="vow-timeline__pr" :href="repo + '/pull/' + e.pr">#{{ e.pr }}</a>`,
-    `        </li>`,
-    `      </ul>`,
-    `    </Collapsible>`,
-    `  </div>`,
-    `</template>`,
-    ``,
-  ].join("\n");
 }
 
 /**

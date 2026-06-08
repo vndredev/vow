@@ -9,6 +9,7 @@ import {
 import type { Field, Vow } from "@vow/core";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
+import { variantForType, type BadgeVariant, type TimelineEntry } from "@vow/observability";
 
 /** The primitive names a `## view` may reference directly (the closed registry, from @vow/emit-primitive). */
 const PRIMITIVES: readonly string[] = Object.keys(PRIMITIVE_ADAPTERS);
@@ -987,6 +988,10 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     }
     return comp(boardComponentName(of, by), sliceAttrs(o), []);
   }
+  if (type === "timeline") {
+    // the git-derived roadmap — a `<VowTimeline>` the plugin materialises from `git log`
+    return comp("VowTimeline", [], []);
+  }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);
     return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
@@ -1171,6 +1176,26 @@ export function cardsRefs(view: Vow): string[] {
   return [...found];
 }
 
+/** Whether a `## view` renders the git-derived `timeline:` — so the plugin materialises VowTimeline. */
+export function usesTimeline(view: Vow): boolean {
+  let found = false;
+  const walk = (type: string, value: unknown): void => {
+    if (type === "timeline") {
+      found = true;
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return found;
+}
+
 /** The `board: { of, by }` references a `## view` makes — so the plugin can emit each composition. */
 export function boardRefs(view: Vow): { of: string; by: string }[] {
   const found: { of: string; by: string }[] = [];
@@ -1328,3 +1353,66 @@ export const VOW_ENV_DTS = [
   `declare module "*.css";`,
   ``,
 ].join("\n");
+
+/**
+ * The git-derived timeline as a generated SFC — the history baked in at generate time, grouped by date,
+ * each date a Collapsible, type Badges + PR links. Shared by @vow/docs (`::: timeline`) and the app
+ * generator (a `timeline:` view) — built from `gitTimeline`, vow's own primitives, never hand-typed.
+ */
+export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: string): string {
+  interface Item {
+    title: string;
+    type?: string;
+    variant?: BadgeVariant;
+    pr?: number;
+  }
+  const groups: { date: string; items: Item[] }[] = [];
+  for (const e of entries) {
+    const item: Item = { title: e.title };
+    if (e.type !== undefined) {
+      item.type = e.type;
+      item.variant = variantForType(e.type); // the shared type → variant map (single source)
+    }
+    if (e.pr !== undefined) item.pr = e.pr;
+    const last = groups[groups.length - 1];
+    if (last !== undefined && last.date === e.date) last.items.push(item);
+    else groups.push({ date: e.date, items: [item] });
+  }
+  const groupsType =
+    "{ date: string; items: { title: string; type?: string; " +
+    "variant?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger'; pr?: number }[] }[]";
+  // each date is a Collapsible — all closed except the most recent (the first group)
+  const initialOpen = JSON.stringify(groups.map((_, i) => i === 0));
+  return [
+    `<script setup lang="ts">`,
+    `// Generated from git — the derived timeline. The history is the source; do not edit.`,
+    `import { ref } from "vue";`,
+    `import Badge from "./Badge.vue";`,
+    `import Collapsible from "./Collapsible.vue";`,
+    `const groups: ${groupsType} = ${JSON.stringify(groups)};`,
+    `const repo = ${JSON.stringify(repoUrl ?? "")};`,
+    `const open = ref<boolean[]>(${initialOpen});`,
+    `</script>`,
+    ``,
+    `<template>`,
+    `  <div class="vow-timeline">`,
+    `    <Collapsible`,
+    `      v-for="(g, gi) in groups"`,
+    `      :key="g.date"`,
+    `      v-model="open[gi]"`,
+    `      :label="g.date + ' · ' + g.items.length + ' changes'"`,
+    `      class="vow-timeline__group"`,
+    `    >`,
+    `      <ul class="vow-timeline__items">`,
+    `        <li v-for="(e, i) in g.items" :key="i" class="vow-timeline__item">`,
+    `          <Badge v-if="e.type" :label="e.type" :variant="e.variant" />`,
+    `          <span class="vow-timeline__title">{{ e.title }}</span>`,
+    `          <a v-if="e.pr && repo" class="vow-timeline__pr" :href="repo + '/pull/' + e.pr">#{{ e.pr }}</a>`,
+    `        </li>`,
+    `      </ul>`,
+    `    </Collapsible>`,
+    `  </div>`,
+    `</template>`,
+    ``,
+  ].join("\n");
+}
