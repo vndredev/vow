@@ -1,5 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import {
+  emitButtonSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
@@ -211,4 +212,29 @@ const EXPECTED_SELECT = [
 
 test("emitSelectSfc renders the select adapter byte-for-byte", () => {
   expect(emitSelectSfc()).toBe(EXPECTED_SELECT);
+});
+
+// The byte-stable oracle for the button adapter: a structural <button> with the variant/size hooks +
+// a default slot (label fallback). No headless import — it carries no logic, only the theme surface.
+const EXPECTED_BUTTON = [
+  `<script setup lang="ts">`,
+  `// Generated button — the one structural control with NO headless core (<button> is accessible).`,
+  `// Carries only the variant/size theme surface; vow's base look lives in @vow/theme (swappable).`,
+  ``,
+  `const props = withDefaults(defineProps<{ label?: string; variant?: 'default' | 'outline' | 'ghost'; size?: 'sm' | 'md' | 'lg'; type?: 'button' | 'submit' }>(), { label: '', variant: 'default', size: 'md', type: 'button' });`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <button class="vow-button" :type="type" :data-variant="variant" :data-size="size">`,
+  `    <slot>{{ label }}</slot>`,
+  `  </button>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitButtonSfc renders the structural button adapter byte-for-byte", () => {
+  const sfc = emitButtonSfc();
+  expect(sfc).toBe(EXPECTED_BUTTON);
+  expect(sfc).not.toContain("@vow/headless"); // no headless core — it's structural
+  expect(sfc).not.toContain("<style");
 });

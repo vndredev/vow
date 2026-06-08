@@ -434,3 +434,44 @@ const selectComponent: Component = {
 export function emitSelectSfc(): string {
   return renderVueSfc(selectComponent);
 }
+
+/**
+ * The button adapter — the ONE structural control with no `@vow/headless` core: `<button>` is already
+ * accessible, so there's no a11y logic to prove. It exists only for the variant/size theme surface,
+ * carried as `data-variant`/`data-size` hooks the theme styles (no class strings to merge). A default
+ * slot holds the content, falling back to the `label` prop for the common spec-driven case.
+ */
+const button: Component = {
+  name: "Button",
+  doc: [
+    "Generated button — the one structural control with NO headless core (<button> is accessible).",
+    "Carries only the variant/size theme surface; vow's base look lives in @vow/theme (swappable).",
+  ],
+  props: [
+    { name: "label", tsType: "string", optional: true, default: "''" },
+    {
+      name: "variant",
+      tsType: "'default' | 'outline' | 'ghost'",
+      optional: true,
+      default: "'default'",
+    },
+    { name: "size", tsType: "'sm' | 'md' | 'lg'", optional: true, default: "'md'" },
+    { name: "type", tsType: "'button' | 'submit'", optional: true, default: "'button'" },
+  ],
+  view: {
+    kind: "element",
+    tag: "button",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-button" },
+      { kind: "bound", name: "type", expr: "type" },
+      { kind: "bound", name: "data-variant", expr: "variant" },
+      { kind: "bound", name: "data-size", expr: "size" },
+    ],
+    children: [{ kind: "slot", children: [{ kind: "interp", expr: "label" }] }],
+  },
+};
+
+/** Generate the Vue button adapter (structural — no headless), rendered from the canonical model. */
+export function emitButtonSfc(): string {
+  return renderVueSfc(button);
+}

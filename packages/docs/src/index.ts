@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import {
+  emitButtonSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
@@ -486,6 +487,21 @@ const options = [
 </template>
 `;
 
+const DEMO_BUTTON = `<script setup lang="ts">
+import Button from "./Button.vue";
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Button label="Default" />
+    <Button label="Outline" variant="outline" />
+    <Button label="Ghost" variant="ghost" />
+    <Button label="Small" size="sm" variant="outline" />
+    <Button label="Large" size="lg" variant="outline" />
+  </div>
+</template>
+`;
+
 /** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
 interface Demo {
   readonly sfc: string;
@@ -495,6 +511,7 @@ interface Demo {
 
 /** `::: demo <X>` → the VowDemo<X> component; @vow/docs materialises the wrapper + the adapter. */
 const DEMOS: Record<string, Demo> = {
+  VowDemoButton: { sfc: DEMO_BUTTON, adapter: "Button", emit: emitButtonSfc },
   VowDemoCheckbox: { sfc: DEMO_CHECKBOX, adapter: "Checkbox", emit: emitCheckboxSfc },
   VowDemoCollapsible: { sfc: DEMO_COLLAPSIBLE, adapter: "Collapsible", emit: emitCollapsibleSfc },
   VowDemoTabs: { sfc: DEMO_TABS, adapter: "Tabs", emit: emitTabsSfc },
@@ -505,6 +522,7 @@ const DEMOS: Record<string, Demo> = {
 /** Primitive adapters a page may reference directly (composed from @vow/emit-primitive) — e.g. a
  *  markdown task list (`- [x]`) renders <Checkbox>, and prose can use any primitive by name. */
 const PRIMITIVES: Record<string, () => string> = {
+  Button: emitButtonSfc,
   Checkbox: emitCheckboxSfc,
   Collapsible: emitCollapsibleSfc,
   Tabs: emitTabsSfc,

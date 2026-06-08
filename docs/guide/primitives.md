@@ -5,7 +5,7 @@ order: 1
 
 # Primitives
 
-Some UI can't be plain HTML — a custom checkbox, a dialog, a menu need ARIA, focus handling and keyboard logic. vow builds a primitive **only where the browser can't do it natively**. A `<button>` is already accessible, so there is no Button primitive; a custom-styled checkbox isn't, so it earns one.
+Some UI can't be plain HTML — a custom checkbox, a dialog, a menu need ARIA, focus handling and keyboard logic. vow builds a headless primitive **only where the browser can't do it natively**. A custom-styled checkbox isn't accessible on its own, so it earns a full headless core. A `<button>` _is_ already accessible, so [Button](/guide/primitives/button) is the one exception — a **structural** component with no headless core, there only for a variant/theme surface.
 
 ## Headless core + generated adapter
 
@@ -41,6 +41,7 @@ Each primitive has its own page — the live demo, the contract, props & events,
 
 | Primitive                                    | Status      | For                     |
 | -------------------------------------------- | ----------- | ----------------------- |
+| [Button](/guide/primitives/button)           | ✓ available | an action (structural)  |
 | [Checkbox](/guide/primitives/checkbox)       | ✓ available | a boolean field         |
 | [Collapsible](/guide/primitives/collapsible) | ✓ available | a disclosure / fold-out |
 | [Tabs](/guide/primitives/tabs)               | ✓ available | a tablist over panels   |

@@ -221,6 +221,65 @@
   font-weight: var(--vow-weight-medium);
 }
 
+/* The button primitive — the ONE structural control with no headless core. The variant/size surface is
+   pure theme, hooked via `data-variant` / `data-size` (which compose freely with any `data-state`). */
+.vow-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--vow-space-2);
+  padding: var(--vow-space-2) var(--vow-space-4);
+  border: var(--vow-border) solid transparent;
+  border-radius: var(--vow-radius-1);
+  background: var(--vow-color-ink);
+  color: var(--vow-color-on-accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: var(--vow-weight-medium);
+  line-height: 1.2;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.vow-button:focus-visible {
+  outline: 2px solid var(--vow-color-accent);
+  outline-offset: 1px;
+}
+.vow-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.vow-button[data-variant="default"] {
+  background: var(--vow-color-ink);
+  border-color: var(--vow-color-ink);
+  color: var(--vow-color-on-accent);
+}
+.vow-button[data-variant="outline"] {
+  background: transparent;
+  border-color: var(--vow-color-border);
+  color: var(--vow-color-text);
+}
+.vow-button[data-variant="outline"]:hover {
+  border-color: var(--vow-color-border-hover);
+}
+.vow-button[data-variant="ghost"] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--vow-color-text);
+}
+.vow-button[data-variant="ghost"]:hover {
+  background: var(--vow-color-surface);
+}
+.vow-button[data-size="sm"] {
+  padding: var(--vow-space-1) var(--vow-space-3);
+  font-size: var(--vow-text-sm);
+}
+.vow-button[data-size="lg"] {
+  padding: var(--vow-space-3) var(--vow-space-5);
+  font-size: var(--vow-text-lg);
+}
+
 /* The accessible checkbox primitive (a boolean field), Reka-style: a `<button role="checkbox">`
    control wrapping an indicator part. State is the `data-state` / `data-disabled` hooks the headless
    core emits on each part — nothing is stored here, the theme only reacts to the hooks. The control
