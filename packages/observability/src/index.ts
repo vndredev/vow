@@ -52,15 +52,15 @@ export function gitRemoteUrl(cwd: string): string | undefined {
 }
 
 /**
- * The git timeline for a repo — the first-parent history (so each squashed PR is one entry), newest
- * first. Returns `[]` (never throws) when git or the repo is absent — so a build without git, or a
- * published package, just has no timeline rather than failing.
+ * The git timeline for a repo — the first-parent history of `ref` (default `main`, so only merged work
+ * shows, never an in-flight feature branch), newest first; each squashed PR is one entry. Returns `[]`
+ * (never throws) when git, the repo, or the ref is absent — so a build without git just has no timeline.
  */
-export function gitTimeline(cwd: string): TimelineEntry[] {
+export function gitTimeline(cwd: string, ref = "main"): TimelineEntry[] {
   try {
     const out = execFileSync(
       "git",
-      ["log", "--first-parent", "--format=%ad%x09%s", "--date=short"],
+      ["log", "--first-parent", ref, "--format=%ad%x09%s", "--date=short"],
       { cwd, encoding: "utf8" },
     );
     return parseGitLog(out);

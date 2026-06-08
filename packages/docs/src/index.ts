@@ -348,33 +348,36 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
   const groupsType =
     "{ date: string; items: { title: string; type?: string; " +
     "variant?: 'neutral' | 'accent' | 'success' | 'warning'; pr?: number }[] }[]";
+  // each date is a Collapsible — all closed except the most recent (the first group)
+  const initialOpen = JSON.stringify(groups.map((_, i) => i === 0));
   return [
     `<script setup lang="ts">`,
     `// Generated from git by @vow/docs — the derived timeline. The history is the source; do not edit.`,
+    `import { ref } from "vue";`,
     `import Badge from "./Badge.vue";`,
+    `import Collapsible from "./Collapsible.vue";`,
     `const groups: ${groupsType} = ${JSON.stringify(groups)};`,
     `const repo = ${JSON.stringify(repoUrl ?? "")};`,
+    `const open = ref<boolean[]>(${initialOpen});`,
     `</script>`,
     ``,
     `<template>`,
     `  <div class="vow-timeline">`,
-    `    <section v-for="g in groups" :key="g.date" class="vow-timeline__group">`,
-    `      <time class="vow-timeline__date">{{ g.date }}</time>`,
+    `    <Collapsible`,
+    `      v-for="(g, gi) in groups"`,
+    `      :key="g.date"`,
+    `      v-model="open[gi]"`,
+    `      :label="g.date + ' · ' + g.items.length + ' changes'"`,
+    `      class="vow-timeline__group"`,
+    `    >`,
     `      <ul class="vow-timeline__items">`,
     `        <li v-for="(e, i) in g.items" :key="i" class="vow-timeline__item">`,
     `          <Badge v-if="e.type" :label="e.type" :variant="e.variant" />`,
     `          <span class="vow-timeline__title">{{ e.title }}</span>`,
-    `          <a`,
-    `            v-if="e.pr && repo"`,
-    `            class="vow-timeline__pr"`,
-    `            :href="repo + '/pull/' + e.pr"`,
-    `            target="_blank"`,
-    `            rel="noreferrer"`,
-    `            >#{{ e.pr }}</a`,
-    `          >`,
+    `          <a v-if="e.pr && repo" class="vow-timeline__pr" :href="repo + '/pull/' + e.pr">#{{ e.pr }}</a>`,
     `        </li>`,
     `      </ul>`,
-    `    </section>`,
+    `    </Collapsible>`,
     `  </div>`,
     `</template>`,
     ``,
@@ -504,8 +507,10 @@ export function generateDocs(
     if (PROSE_COMPONENTS[name] !== undefined) writeComp(name, PROSE_COMPONENTS[name]);
     if (PRIMITIVES[name] !== undefined) writeComp(name, PRIMITIVES[name]()); // a primitive used in prose
     if (name === "VowTimeline") {
-      const badge = PRIMITIVES["Badge"];
-      if (badge !== undefined) writeComp("Badge", badge()); // the timeline's type chips
+      for (const dep of ["Badge", "Collapsible"]) {
+        const adapter = PRIMITIVES[dep]; // the timeline's type chips + per-date collapse
+        if (adapter !== undefined) writeComp(dep, adapter());
+      }
       writeComp(name, emitTimelineSfc(gitTimeline(contentDir), gitRemoteUrl(contentDir)));
     }
     const demo = DEMOS[name];
