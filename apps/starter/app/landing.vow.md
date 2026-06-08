@@ -20,6 +20,8 @@ root: true
       body: Generated where deterministic; your own typed code where not. Both compiler-checked.
     - title: Proven, not claimed
       body: Every promised scenario needs a green test, or the scenario-coverage gate turns red.
+- h3: Users
+- list: user
 - h3: Your tasks
 - list: task
 ```

@@ -26,6 +26,12 @@ test("parseVowMd reads a vow from Markdown: frontmatter + # intent + ## proves",
   expect(vow.proof[1]?.claim).toBe("HTML in the text is escaped");
 });
 
+test("a `## fields` reference(entity) parses to a reference field with its target", () => {
+  const md = `---\nid: vow_issue\nfulfills: emit entity\n---\n# An issue\n\n## fields\n- title: text, required\n- assignee: reference(user)\n`;
+  const fields = parseVowMd("issue", md).fields;
+  expect(fields[1]).toEqual({ name: "assignee", type: "reference", required: false, ref: "user" });
+});
+
 test("`fulfills: bind <module>#<export>` parses to a bind fulfilment", () => {
   const md = `---\nid: vow_r\nfulfills: bind @vow/core#rollup\n---\n# Status roll-up\n`;
   const vow = parseVowMd("rollup", md);

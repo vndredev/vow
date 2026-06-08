@@ -54,12 +54,14 @@ function* itemsUnder(body: string, heading: string): Generator<string> {
  * Parse one `## fields` line:
  *   `title: text, required`        → { name, type: "text", required: true }
  *   `status: select(a|b|c)`        → { name, type: "select", options: ["a","b","c"] }
+ *   `assignee: reference(user)`    → { name, type: "reference", ref: "user" }
  */
 function parseFieldLine(item: string): {
   name: string;
   type: string;
   required: boolean;
   options?: string[];
+  ref?: string;
 } {
   const colon = item.indexOf(":");
   if (colon < 0) {
@@ -72,11 +74,16 @@ function parseFieldLine(item: string): {
     .map((s) => s.trim())
     .filter(Boolean);
   const required = attrs.slice(1).includes("required");
-  const select = /^select\((.+)\)$/.exec(attrs[0] ?? "");
+  const head = attrs[0] ?? "";
+  const select = /^select\((.+)\)$/.exec(head);
   if (select?.[1]) {
     return { name, type: "select", required, options: select[1].split("|").map((o) => o.trim()) };
   }
-  return { name, type: attrs[0] ?? "", required };
+  const reference = /^reference\((.+)\)$/.exec(head);
+  if (reference?.[1]) {
+    return { name, type: "reference", required, ref: reference[1].trim() };
+  }
+  return { name, type: head, required };
 }
 
 /**

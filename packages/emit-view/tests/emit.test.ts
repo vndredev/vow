@@ -19,10 +19,9 @@ test("emitEntityList renders an unstyled, hooked CRUD list over the entity", () 
   expect(viewComponentName(entity)).toBe("Task");
   const sfc = emitEntityList(entity);
   expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
+  expect(sfc).toContain('import { useCollection } from "@vow/store";');
   expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
-  expect(sfc).toContain(
-    "const props = withDefaults(defineProps<{ items?: Task[] }>(), { items: () => [] });",
-  );
+  expect(sfc).toContain('const { items: rows, append, removeAt } = useCollection<Task>("task");');
   expect(sfc).toContain('v-for="(item, i) in rows"');
   expect(sfc).toContain("{{ item.title }}");
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
@@ -39,7 +38,7 @@ test("the list carries no heading of its own — the referencing view owns headi
   expect(sfc).not.toContain("<h1");
 });
 
-test("a select field renders as a <select> with options in the create form", () => {
+test("a select field renders via the Select primitive with its options", () => {
   const ticket: VowNode = {
     ...entity,
     id: "vow_ticket",
@@ -49,8 +48,9 @@ test("a select field renders as a <select> with options in the create form", () 
     ],
   };
   const sfc = emitEntityList(ticket);
-  expect(sfc).toContain('<select class="vow-view__input" v-model="draft.status"');
-  expect(sfc).toContain('<option value="todo">todo</option>');
+  expect(sfc).toContain('import Select from "./Select.vue";');
+  expect(sfc).toContain('<Select v-model="draft.status"');
+  expect(sfc).toContain("{ value: 'todo', label: 'todo' }");
 });
 
 test("a date field renders as a native date input in the create form", () => {
@@ -62,6 +62,35 @@ test("a date field renders as a native date input in the create form", () => {
   };
   const sfc = emitEntityList(event);
   expect(sfc).toContain('<input class="vow-view__input" type="date" v-model="draft.starts"');
+});
+
+const issue: VowNode = {
+  ...entity,
+  id: "vow_issue",
+  slug: "issue",
+  fields: [{ name: "assignee", type: "reference", required: false, ref: "user" }],
+};
+
+test("a reference field renders the Select primitive over the target's shared collection", () => {
+  const sfc = emitEntityList(issue); // no byId → label falls back to the id
+  expect(sfc).toContain(
+    'const assigneeOptions = useCollection<{ id: string } & Record<string, unknown>>("user").items;',
+  );
+  expect(sfc).toContain("const assigneeChoices = computed(() =>");
+  expect(sfc).toContain("value: t.id, label: String(t.id)");
+  expect(sfc).toContain('<Select v-model="draft.assignee"');
+  expect(sfc).toContain(':options="assigneeChoices"');
+});
+
+test("a reference dropdown labels items by the target's first text field", () => {
+  const user: VowNode = {
+    ...entity,
+    id: "vow_user",
+    slug: "user",
+    fields: [{ name: "name", type: "text", required: true }],
+  };
+  const sfc = emitEntityList(issue, new Map([["user", user]]));
+  expect(sfc).toContain("label: String(t.name)");
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {

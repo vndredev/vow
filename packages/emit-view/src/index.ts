@@ -26,38 +26,53 @@ import { LAYOUT_PRIMITIVES } from "@vow/layout";
  * (because a view references it), never automatically. Any heading is the referencing view's job, so
  * the list carries none of its own.
  */
-export function emitEntityList(entity: Vow): string {
+export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
     throw new Error(`emit-view: \`list:\` target "${entity.slug}" must be an \`emit entity\``);
   }
   const type = pascalCase(entity.slug);
   const hasBoolean = entity.fields.some((f) => f.type === "boolean");
   const inputFields = entity.fields.filter((f) => f.type !== "boolean");
+  const referenceFields = inputFields.filter((f) => f.type === "reference");
+  // a reference dropdown labels each target item by the target entity's first text field (else its id)
+  const labelField = (ref?: string): string =>
+    byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
+
+  const hasSelectLike = inputFields.some((f) => f.type === "select" || f.type === "reference");
 
   const imports: ImportDecl[] = [
-    { from: "vue", names: ["ref"] },
+    { from: "vue", names: referenceFields.length > 0 ? ["ref", "computed"] : ["ref"] },
+    { from: "@vow/store", names: ["useCollection"] },
     { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
   ];
   if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
+  if (hasSelectLike) imports.push({ from: "./Select.vue", default: "Select" }); // select + reference
 
   const setup: string[] = [
-    // items is optional (default empty) so the view drops into a `## view` as `list: <slug>` with no props
-    `const props = withDefaults(defineProps<{ items?: ${type}[] }>(), { items: () => [] });`,
-    `const rows = ref<${type}[]>(props.items.map((item) => ({ ...item })));`,
+    // the shared store holds the items (one array per slug) — so a reference field can read another
+    // entity's items; the local `ref`-per-view is gone
+    `const { items: rows, append, removeAt } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const draft = ref<Partial<${type}>>({});`,
     ``,
     `function add(): void {`,
     `  try {`,
-    `    rows.value.push(create${type}(draft.value));`,
+    `    append(create${type}(draft.value));`,
     `    draft.value = {};`,
     `  } catch {`,
     `    // invalid draft (e.g. a required field is empty) — ignore until we surface validation`,
     `  }`,
     `}`,
     `function remove(index: number): void {`,
-    `  rows.value.splice(index, 1);`,
+    `  removeAt(index);`,
     `}`,
   ];
+  // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label}
+  for (const f of referenceFields) {
+    setup.push(
+      `const ${f.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(f.ref ?? "")}).items;`,
+      `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
+    );
+  }
 
   // one display cell per field: boolean → <Checkbox>, everything else → a <span> with the value
   const cells: UiNode[] = entity.fields.map(
@@ -99,23 +114,18 @@ export function emitEntityList(entity: Vow): string {
   // one input per non-boolean field: select → inline options, date → date input, else text/number
   const inputs: UiNode[] = inputFields.map((f): UiNode => {
     if (f.type === "select") {
+      const opts = (f.options ?? [])
+        .map((o) => `{ value: '${o.replace(/'/g, "\\'")}', label: '${o.replace(/'/g, "\\'")}' }`)
+        .join(", ");
       return {
-        kind: "element",
-        tag: "select",
-        inline: true,
+        kind: "component",
+        name: "Select",
         attrs: [
-          { kind: "static", name: "class", value: "vow-view__input" },
           { kind: "model", expr: `draft.${f.name}` },
-          { kind: "static", name: "aria-label", value: f.name },
+          { kind: "bound", name: "options", expr: `[${opts}]` },
+          { kind: "static", name: "label", value: f.name },
         ],
-        children: (f.options ?? []).map(
-          (o): UiNode => ({
-            kind: "element",
-            tag: "option",
-            attrs: [{ kind: "static", name: "value", value: o }],
-            children: [{ kind: "text", text: o }],
-          }),
-        ),
+        children: [],
       };
     }
     if (f.type === "date") {
@@ -127,6 +137,20 @@ export function emitEntityList(entity: Vow): string {
           { kind: "static", name: "type", value: "date" },
           { kind: "model", expr: `draft.${f.name}` },
           { kind: "static", name: "aria-label", value: f.name },
+        ],
+        children: [],
+      };
+    }
+    if (f.type === "reference") {
+      // vow's Select primitive over the target entity's shared collection (id → its first text field);
+      // only existing items are selectable, so the reference resolves to a real id
+      return {
+        kind: "component",
+        name: "Select",
+        attrs: [
+          { kind: "model", expr: `draft.${f.name}` },
+          { kind: "bound", name: "options", expr: `${f.name}Choices` },
+          { kind: "static", name: "label", value: f.name },
         ],
         children: [],
       };
@@ -177,7 +201,7 @@ export function emitEntityList(entity: Vow): string {
               kind: "element",
               tag: "li",
               attrs: [{ kind: "static", name: "class", value: "vow-view__row" }],
-              for: { each: "rows", as: "item", index: "i", key: "i" },
+              for: { each: "rows", as: "item", index: "i", key: "item.id" },
               children: [...cells, deleteButton],
             },
           ],

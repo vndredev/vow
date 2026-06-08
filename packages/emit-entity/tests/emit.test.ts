@@ -24,6 +24,12 @@ test("emitEntityModule generates an interface and a validating factory", () => {
   expect(code).toContain("'title' is required");
 });
 
+test("every entity gets an implicit auto-id the factory generates", () => {
+  const code = emitEntityModule(task);
+  expect(code).toContain("id: string;");
+  expect(code).toContain("id: input.id ?? crypto.randomUUID(),");
+});
+
 test("a select field becomes a string-literal union with a default", () => {
   const ticket: VowNode = {
     ...task,
@@ -37,6 +43,21 @@ test("a select field becomes a string-literal union with a default", () => {
   const code = emitEntityModule(ticket);
   expect(code).toContain('status: "todo" | "doing" | "done";');
   expect(code).toContain('status: input.status ?? "todo"');
+});
+
+test("a reference field is the target entity's id (string)", () => {
+  const issue: VowNode = {
+    ...task,
+    id: "vow_issue",
+    slug: "issue",
+    fields: [
+      { name: "title", type: "text", required: true },
+      { name: "assignee", type: "reference", required: false, ref: "user" },
+    ],
+  };
+  const code = emitEntityModule(issue);
+  expect(code).toContain("assignee: string;");
+  expect(code).toContain('assignee: input.assignee ?? ""');
 });
 
 test("a date field is a string field (ISO-8601) with an ISO sample value", () => {
