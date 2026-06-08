@@ -6,5 +6,5 @@ import { vow } from "@vow/vite-plugin";
 // real .vue into ./.generated/ (hidden, gitignored); plugin-vue compiles them. The app is the live
 // projection — the generated .vue are inspectable but never the source.
 export default defineConfig({
-  plugins: [vue(), vow({ title: "Task planner" })],
+  plugins: [vue(), vow({ title: "vow starter" })],
 });

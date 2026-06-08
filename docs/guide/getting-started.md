@@ -37,11 +37,11 @@ yarn vp dev apps/starter
 
 :::
 
-Open the printed URL. You see a dashboard — a left sidebar nav, and a home page with a hero, a "Tasks" heading, a link to the add-task page, then a generated task list — and you never wrote a `.vue` file. It's all from vows: the home page is a [`## view`](/guide/views), and its `list: task` pulls in the task entity's CRUD list. The sidebar is the [app shell](/guide/shell), wrapping every page.
+Open the printed URL. You see the vow starter — a left sidebar (the [app shell](/guide/shell)), a home of three [cards](/guide/primitives/card), and an **Add a task** page with a labelled, validated form — and you never wrote a `.vue` file. It's all from vows: the home is a [`## view`](/guide/views), the form an [`emit form`](/guide/emit) over the `task` entity, and the sidebar nav is built from the pages.
 
 ## Watch the promise keep itself
 
-The task list is generated from one file, `apps/starter/app/task.vow.md`:
+The form is generated from the `task` entity, one file — `apps/starter/app/task.vow.md`:
 
 ```markdown
 ---
@@ -54,8 +54,9 @@ fulfills: emit entity
 ## fields
 
 - title: text, required
-- done: boolean
 - status: select(todo|doing|done)
+- notes: longtext
+- done: boolean
 ```
 
 With `vp dev` still running, add a field under `## fields`:
@@ -64,20 +65,21 @@ With `vp dev` still running, add a field under `## fields`:
 - priority: select(low|high)
 ```
 
-Save. The dev server regenerates `.generated/` and reloads — a `priority` dropdown appears in the create form and a new column in the list. **No `.vue` was touched.** That is the core mechanism: the vow is the truth, the UI is its projection (see [emit](/guide/emit)).
+Save. The dev server regenerates `.generated/` and reloads — a `priority` dropdown appears in the **Add a task** form, validated by the entity's zod schema. **No `.vue` was touched.** That is the core mechanism: the vow is the truth, the UI is its projection (see [emit](/guide/emit)).
 
 ## What just happened
 
 ```
 app/task.vow.md      →  vow() plugin  →  .generated/{ task.ts · task.test.ts }
-app/home.vow.md      →  vow() plugin  →  .generated/{ home.vue · Task.vue · main.ts · … }
+app/add-task.vow.md  →  vow() plugin  →  .generated/{ add-task.vue · Field/Select/Button adapters }
+app/home.vow.md      →  vow() plugin  →  .generated/{ home.vue · the Card parts · main.ts · … }
 ```
 
 - **`task.ts`** — a `Task` type + a validating `createTask` factory
 - **`task.test.ts`** — tests derived from the fields (the [proof](/guide/proof))
-- **`Task.vue`** — the CRUD list, rendered from the [component model](/guide/components)
+- **`add-task.vue`** — the form: labelled `<Field>`s + zod validation, from the [component model](/guide/components)
 
-The entity is a **pure model** — it never renders by itself. `Task.vue` exists only because the home page's `## view` says `list: task`, which pulls the list in. Change the field, and the model, its test, and the list all follow.
+The entity is a **pure model** — it never renders by itself; the form puts it to work (`of: task`). Change a field, and the model, its test, and the form all follow.
 
 You can inspect `.generated/`, but never edit it — change the vow, not the output, and it can't drift.
 
