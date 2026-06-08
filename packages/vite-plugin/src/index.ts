@@ -8,7 +8,10 @@ import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
   emitAppLayout,
   emitAppRoutes,
+  cardsComponentName,
+  cardsRefs,
   emitBoot,
+  emitEntityCards,
   emitEntityList,
   emitEntityStats,
   emitForm,
@@ -89,6 +92,7 @@ export function generateFiles(
   const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
   const statsByKey = new Map<string, { of: string; by: string }>(); // `stats: { of, by }` refs, deduped
+  const cardsBySlug = new Set<string>(); // entity slugs a `## view` renders via `cards:`
   const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
   // non-root views + forms → routes at /<slug>; each carries its `nav:` config for the shell sidebar
   const pages: { slug: string; title: string; icon?: string; order?: number; group?: string }[] =
@@ -120,6 +124,7 @@ export function generateFiles(
       written.push(file);
       for (const slug of listedEntities(v)) listed.add(slug);
       for (const ref of statsRefs(v)) statsByKey.set(`${ref.of}.${ref.by}`, ref); // stats compositions
+      for (const slug of cardsRefs(v)) cardsBySlug.add(slug); // cards compositions
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       if (v.root !== true) pages.push(navPage(v)); // a non-root view → a route
       needsLayout = true;
@@ -166,6 +171,16 @@ export function generateFiles(
     writeFileSync(file, emitEntityStats(entity, by), "utf8");
     written.push(file);
     needed.add("Stats").add("Stat"); // the stats composition composes the Stats/Stat primitives
+  }
+
+  // A view's `cards: <entity>` instantiates a card-per-record composition — emitted here, on demand.
+  for (const slug of cardsBySlug) {
+    const entity = entityBySlug.get(slug);
+    if (!entity) continue; // emitView already validated the reference; defensive
+    const file = join(outDir, `${cardsComponentName(slug)}.vue`);
+    writeFileSync(file, emitEntityCards(entity), "utf8");
+    written.push(file);
+    needed.add("Card").add("CardHeader").add("CardBody"); // the cards composition composes the Card parts
   }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {

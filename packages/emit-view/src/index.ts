@@ -352,6 +352,11 @@ export function statsComponentName(of: string, by: string): string {
   return pascalCase(of) + pascalCase(by) + "Stats";
 }
 
+/** The component name for an entity's card grid (`task` → `TaskCards`). */
+export function cardsComponentName(of: string): string {
+  return pascalCase(of) + "Cards";
+}
+
 /**
  * A stats composition over an entity — one `<Stat>` per option of a `select` field, counting the rows
  * in that group (live from the shared store). A composition, not a primitive: it knows the entity's
@@ -401,6 +406,81 @@ export function emitEntityStats(entity: Vow, by: string): string {
             { kind: "bound", name: "label", expr: "s.label" },
           ],
           children: [],
+        },
+      ],
+    },
+  };
+  return renderVueSfc(component);
+}
+
+/**
+ * A cards composition over an entity — one `<Card>` per record (live from the shared store): its first
+ * text field titles the card, the rest fill the body. A composition, not a primitive: it knows the
+ * entity's fields + binds the store; it composes the `Card`/`CardHeader`/`CardBody` primitives in a Grid.
+ */
+export function emitEntityCards(entity: Vow): string {
+  if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
+    throw new Error(`emit-view: \`cards\` target "${entity.slug}" must be an \`emit entity\``);
+  }
+  const type = pascalCase(entity.slug);
+  const titleField =
+    entity.fields.find((f) => f.type === "text" || f.type === "longtext") ?? entity.fields[0];
+  const bodyFields = entity.fields.filter((f) => f.name !== titleField?.name);
+  const cardChildren: UiNode[] = [];
+  if (titleField !== undefined) {
+    cardChildren.push(
+      comp("CardHeader", [], [{ kind: "interp", expr: `item.${titleField.name}` }]),
+    );
+  }
+  if (bodyFields.length > 0) {
+    cardChildren.push(
+      comp(
+        "CardBody",
+        [],
+        bodyFields.map(
+          (f): UiNode => ({
+            kind: "element",
+            tag: "p",
+            attrs: [{ kind: "static", name: "class", value: "vow-card__field" }],
+            children: [
+              {
+                kind: "element",
+                tag: "strong",
+                attrs: [],
+                children: [{ kind: "text", text: `${f.name}: ` }],
+              },
+              { kind: "interp", expr: `item.${f.name}` },
+            ],
+          }),
+        ),
+      ),
+    );
+  }
+  const component: Component = {
+    name: cardsComponentName(entity.slug),
+    doc: [
+      `Generated from vow "${entity.slug}" — a card per record. The vow is the source — do not edit.`,
+    ],
+    imports: [
+      { from: "@vow/store", names: ["useCollection"] },
+      { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
+      { from: "./Grid.vue", default: "Grid" },
+      { from: "./Card.vue", default: "Card" },
+      { from: "./CardHeader.vue", default: "CardHeader" },
+      { from: "./CardBody.vue", default: "CardBody" },
+    ],
+    setup: [`const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`],
+    view: {
+      kind: "component",
+      name: "Grid",
+      attrs: [bound("columns", "3"), bound("gap", "4")],
+      children: [
+        {
+          kind: "component",
+          name: "Card",
+          for: { each: "rows", as: "item", key: "item.id" },
+          attrs: [],
+          children: cardChildren,
         },
       ],
     },
@@ -671,6 +751,15 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     }
     return comp(pascalCase(slug), [], []);
   }
+  if (type === "cards") {
+    const slug = str(value);
+    if (!entities.includes(slug)) {
+      throw new Error(
+        `emit-view: \`cards: ${slug}\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
+      );
+    }
+    return comp(cardsComponentName(slug), [], []);
+  }
   if (type === "stats") {
     // `stats: { of: <entity>, by: <select field> }` → the entity's counts-by-field composition
     const o = asObject(value);
@@ -845,6 +934,26 @@ export function statsRefs(view: Vow): { of: string; by: string }[] {
   };
   for (const node of view.view ?? []) walk(node.type, node.value);
   return found;
+}
+
+/** The `cards: <entity>` references a `## view` makes — so the plugin can emit each composition. */
+export function cardsRefs(view: Vow): string[] {
+  const found = new Set<string>();
+  const walk = (type: string, value: unknown): void => {
+    if (type === "cards") {
+      found.add(str(value));
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return [...found];
 }
 
 /**

@@ -225,6 +225,15 @@ body {
 .vow-card__body {
   padding: var(--vow-space-4);
 }
+/* a labelled field line inside a generated card body (`cards: <entity>`) */
+.vow-card__field {
+  margin: var(--vow-space-1) 0;
+  font-size: var(--vow-text-sm);
+}
+.vow-card__field strong {
+  color: var(--vow-color-muted);
+  font-weight: var(--vow-weight-medium);
+}
 /* the Stats primitive (Stats > Stat) — a responsive row of metric tiles */
 .vow-stats {
   display: grid;

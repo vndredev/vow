@@ -1,6 +1,8 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow as VowNode } from "@vow/core";
 import {
+  cardsComponentName,
+  emitEntityCards,
   emitEntityList,
   emitEntityStats,
   statsComponentName,
@@ -138,6 +140,27 @@ test("emitEntityStats counts rows per a select field, composing Stats/Stat", () 
   expect(sfc).toContain("rows.filter((r) => r.status === o).length");
   expect(sfc).toContain('<Stat :value="s.value" :label="s.label"');
   expect(() => emitEntityStats(ticket, "title")).toThrow(); // `by` must be a select field of the entity
+});
+
+test("emitEntityCards renders a Card per record, titled by the first text field", () => {
+  const ticket: VowNode = {
+    ...entity,
+    id: "vow_ticket",
+    slug: "ticket",
+    fields: [
+      { name: "title", type: "text", required: true },
+      { name: "status", type: "select", required: false, options: ["todo", "done"] },
+    ],
+  };
+  expect(cardsComponentName("ticket")).toBe("TicketCards");
+  const sfc = emitEntityCards(ticket);
+  expect(sfc).toContain('const { items: rows } = useCollection<Ticket>("ticket");');
+  expect(sfc).toContain('import Card from "./Card.vue";');
+  expect(sfc).toContain('v-for="item in rows"');
+  expect(sfc).toContain("<CardHeader>{{ item.title }}</CardHeader>");
+  expect(sfc).toContain("status: "); // a non-title field, labelled, in the body
+  const notEntity: VowNode = { ...ticket, fulfills: { kind: "emit", as: "view" } };
+  expect(() => emitEntityCards(notEntity)).toThrow();
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {
