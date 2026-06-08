@@ -1,0 +1,21 @@
+{
+  "name": "@vow/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's data layer — a local SQLite DB (node:sqlite) behind the useCollection seam; D1 in prod.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vow/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

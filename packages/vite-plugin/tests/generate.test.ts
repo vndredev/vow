@@ -63,7 +63,7 @@ test("a lone entity is a pure model — only its .ts + .test.ts, no view, no pri
   }
 });
 
-test("a `## view` with `list: task` pulls in the entity's list (+ Checkbox for its boolean)", () => {
+test("a `## view` with `list: task` pulls in the entity's read-only list (Table parts, no form)", () => {
   const page: VowNode = {
     id: "vow_page",
     slug: "page",
@@ -79,7 +79,9 @@ test("a `## view` with `list: task` pulls in the entity's list (+ Checkbox for i
     generateFiles([page, task], dir, dir);
     const files = readdirSync(dir);
     expect(files).toContain("Task.vue"); // emitted because the view lists it
-    expect(files).toContain("Checkbox.vue"); // task has a boolean field
+    expect(files).toContain("Table.vue"); // the read-only list composes the Table parts
+    expect(files).not.toContain("Checkbox.vue"); // read-only: a boolean is Yes/No, not a checkbox
+    expect(files).not.toContain("Field.vue"); // no create form
     const pageVue = readFileSync(join(dir, "page.vue"), "utf8");
     expect(pageVue).toContain("<Task />");
     expect(pageVue).toContain('import Task from "./Task.vue";');

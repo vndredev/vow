@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# vow local data — the SQLite DB + its WAL sidecars
+.vow/
+
 # Editor directories and files
 .vscode/*
 !.vscode/settings.json

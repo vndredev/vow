@@ -17,18 +17,18 @@ const PRIMITIVES: readonly string[] = Object.keys(PRIMITIVE_ADAPTERS);
 /**
  * vow's view emitter — `emit view` made real.
  *
- * Two outputs: a page from a YAML `## view` (`emitView`, below) and the CRUD list of an entity
+ * Two outputs: a page from a YAML `## view` (`emitView`, below) and the read-only list of an entity
  * (`emitEntityList`). The list is emitted **on demand** — only when a `## view` pulls it in via
  * `list: <entity>` — so an `emit entity` stays a pure model, never auto-rendered. Both are built as a
- * canonical `Component` and rendered by the Vue adapter (`renderVueSfc`); the imperative glue (refs,
- * add/remove) lives in `setup`. Boolean fields render as the emitted, accessible `<Checkbox>`. The
- * output is **unstyled** — only class hooks; styling lives in the swappable `@vow/theme`. React/Solid
- * would reuse the same Component via a different adapter.
+ * canonical `Component` and rendered by the Vue adapter (`renderVueSfc`). The list is **read-only** — a
+ * display the agent mutates via the MCP, not an inline form; a boolean cell shows Yes/No. The output is
+ * **unstyled** — only class hooks; styling lives in the swappable `@vow/theme`. React/Solid would reuse
+ * the same Component via a different adapter.
  */
 
 /**
- * The input control for one field — the shared field→control map, reused by the entity list and (later)
- * the standalone form. select + reference render vow's Select primitive; date a native date input;
+ * The input control for one field — the shared field→control map used by the standalone `## form`.
+ * select + reference render vow's Select primitive; date a native date input;
  * longtext a textarea; text/number a native input. `model` is the v-model expression (e.g. `draft.title`);
  * a reference reads its target's `<field>Choices` (a computed the caller defines in setup).
  */
@@ -103,98 +103,55 @@ export function fieldControl(f: Field, model: string): UiNode {
 }
 
 /**
- * The CRUD list of an entity — what a `## view` pulls in via `list: <entity>`. Emitted on demand
- * (because a view references it), never automatically. Any heading is the referencing view's job, so
- * the list carries none of its own.
+ * The read-only list of an entity — what a `## view` pulls in via `list: <entity>`. Emitted on demand
+ * (because a view references it), never automatically. A pure display: no create form, no delete — the
+ * studio is read-only, the agent mutates the data via the MCP. Any heading is the referencing view's job.
  */
 export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
     throw new Error(`emit-view: \`list:\` target "${entity.slug}" must be an \`emit entity\``);
   }
   const type = pascalCase(entity.slug);
-  const nativeFields = entity.fields.filter((f) => f.type !== "boolean"); // each gets a useId for its label
   const referenceFields = entity.fields.filter((f) => f.type === "reference");
-  // a reference dropdown labels each target item by the target entity's first text field (else its id)
+  // a reference cell labels its target by the target entity's first text field (else its id)
   const labelField = (ref?: string): string =>
     byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
 
-  const vueNames = ["ref", "computed"]; // computed: the displayed (filtered/sorted) collection
-  if (nativeFields.length > 0) vueNames.push("useId");
-
   const imports: ImportDecl[] = [
-    { from: "vue", names: vueNames },
-    { from: "zod", names: ["ZodError"] },
+    { from: "vue", names: ["computed"] }, // the displayed (filtered/sorted/grouped) collection
     { from: "@vow/store", names: ["useCollection"] },
-    { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
-    { from: "./Field.vue", default: "Field" },
-    { from: "./Button.vue", default: "Button" },
+    { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
     // the Table primitive — composed (not a primitive itself); the list is a composition over the parts
     { from: "./Table.vue", default: "Table" },
     { from: "./TableRow.vue", default: "TableRow" },
     { from: "./TableHead.vue", default: "TableHead" },
     { from: "./TableCell.vue", default: "TableCell" },
   ];
-  if (entity.fields.some((f) => f.type === "boolean")) {
-    imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
-  }
-  if (entity.fields.some((f) => f.type === "select" || f.type === "reference")) {
-    imports.push({ from: "./Select.vue", default: "Select" });
-  }
   if (entity.fields.some((f) => f.type === "select")) {
     imports.push({ from: "./Badge.vue", default: "Badge" }); // a select value renders as a status chip
   }
 
   const setup: string[] = [
-    // the shared store holds the items (one array per slug) — so a reference field can read another
-    // entity's items; the local `ref`-per-view is gone
-    `const { items: rows, append, removeAt } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
-    `const draft = ref<Partial<${type}>>({});`,
-    `const errors = ref<Record<string, string>>({});`,
+    // the shared store holds the items (one array per slug); the list only READS them — no mutation, no
+    // create form (the studio is a read-only projection; the agent mutates the data via the MCP)
+    `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     ...sliceComputed(type, "displayed"),
     ...groupedLines(type, "displayed"),
   ];
-  for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
-  // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label};
-  // `${f.name}Name` resolves a stored id to the target's display name (referent-display) for the list cell
+  // a reference cell resolves a stored id to the target's display name (referent-display)
   for (const f of referenceFields) {
     setup.push(
       `const ${f.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(f.ref ?? "")}).items;`,
-      `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
       `const ${f.name}Name = (id: unknown): string => String(${f.name}Options.find((t) => t.id === id)?.${labelField(f.ref)} ?? id ?? "");`,
     );
   }
-  setup.push(
-    ``,
-    // the create form validates with the entity's zod schema and surfaces per-field errors (no swallow)
-    `function add(): void {`,
-    `  try {`,
-    `    append(create${type}(draft.value));`,
-    `    draft.value = {};`,
-    `    errors.value = {};`,
-    `  } catch (err) {`,
-    `    if (err instanceof ZodError) {`,
-    `      errors.value = Object.fromEntries(err.issues.map((i) => [String(i.path[0]), i.message]));`,
-    `    }`,
-    `  }`,
-    `}`,
-    `function remove(item: ${type}): void {`,
-    `  removeAt(rows.indexOf(item));`,
-    `}`,
-  );
 
   // one display cell per field: boolean → <Checkbox>; reference → the target's resolved name (not its id);
   // select → a <Badge> status chip; everything else → the value. The <td> is the cell — no span wrapper.
   const cellContent = (f: Field): UiNode => {
     if (f.type === "boolean") {
-      return {
-        kind: "component",
-        name: "Checkbox",
-        attrs: [
-          { kind: "model", expr: `item.${f.name}` },
-          { kind: "static", name: "label", value: f.name },
-        ],
-        children: [],
-      };
+      // read-only display — a plain Yes/No, not an interactive checkbox
+      return { kind: "interp", expr: `item.${f.name} ? "Yes" : "No"` };
     }
     if (f.type === "reference") return { kind: "interp", expr: `${f.name}Name(item.${f.name})` };
     if (f.type === "select") {
@@ -206,45 +163,6 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       };
     }
     return { kind: "interp", expr: `item.${f.name}` };
-  };
-
-  const deleteButton: UiNode = {
-    kind: "element",
-    tag: "button",
-    attrs: [
-      { kind: "static", name: "class", value: "vow-view__delete" },
-      { kind: "static", name: "type", value: "button" },
-      {
-        kind: "bound",
-        name: "aria-label",
-        expr: `'Delete: ' + item.${nativeFields[0]?.name ?? "title"}`,
-      },
-      { kind: "event", name: "click", expr: "remove(item)" },
-    ],
-    children: [{ kind: "text", text: "✕" }],
-  };
-
-  // the create form — the SAME labelled, zod-validated `<Field>` stack as a standalone `## form` (no
-  // squished single row); a boolean self-labels as a `<Checkbox>`.
-  const createForm: UiNode = {
-    kind: "element",
-    tag: "form",
-    attrs: [
-      { kind: "static", name: "class", value: "vow-form vow-view__create" },
-      { kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] },
-    ],
-    children: [
-      ...entity.fields.map(formField),
-      {
-        kind: "component",
-        name: "Button",
-        attrs: [
-          { kind: "static", name: "type", value: "submit" },
-          { kind: "static", name: "label", value: "+ Add" },
-        ],
-        children: [],
-      },
-    ],
   };
 
   const component: Component = {
@@ -273,25 +191,14 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
                   kind: "component",
                   name: "TableRow",
                   attrs: [],
-                  children: [
-                    ...entity.fields.map(
-                      (f): UiNode => ({
-                        kind: "component",
-                        name: "TableHead",
-                        attrs: [{ kind: "static", name: "scope", value: "col" }],
-                        children: [{ kind: "text", text: f.name }],
-                      }),
-                    ),
-                    {
+                  children: entity.fields.map(
+                    (f): UiNode => ({
                       kind: "component",
                       name: "TableHead",
-                      attrs: [
-                        { kind: "static", name: "scope", value: "col" },
-                        { kind: "static", name: "aria-label", value: "Actions" },
-                      ],
-                      children: [],
-                    },
-                  ],
+                      attrs: [{ kind: "static", name: "scope", value: "col" }],
+                      children: [{ kind: "text", text: f.name }],
+                    }),
+                  ),
                 },
               ],
             },
@@ -314,7 +221,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
                         {
                           kind: "static",
                           name: "colspan",
-                          value: String(entity.fields.length + 1),
+                          value: String(entity.fields.length),
                         },
                         { kind: "static", name: "class", value: "vow-table__group" },
                       ],
@@ -327,22 +234,14 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
                   name: "TableRow",
                   attrs: [],
                   for: { each: "grp.items", as: "item", key: "item.id" },
-                  children: [
-                    ...entity.fields.map(
-                      (f): UiNode => ({
-                        kind: "component",
-                        name: "TableCell",
-                        attrs: [{ kind: "static", name: "class", value: `field-${f.name}` }],
-                        children: [cellContent(f)],
-                      }),
-                    ),
-                    {
+                  children: entity.fields.map(
+                    (f): UiNode => ({
                       kind: "component",
                       name: "TableCell",
-                      attrs: [{ kind: "static", name: "class", value: "vow-table__action" }],
-                      children: [deleteButton],
-                    },
-                  ],
+                      attrs: [{ kind: "static", name: "class", value: `field-${f.name}` }],
+                      children: [cellContent(f)],
+                    }),
+                  ),
                 },
               ],
             },
@@ -356,9 +255,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
             { kind: "static", name: "class", value: "vow-empty" },
             { kind: "cond", type: "if", expr: "rows.length === 0" },
           ],
-          children: [{ kind: "text", text: "Nothing here yet — add the first one below." }],
+          children: [{ kind: "text", text: "Nothing here yet." }],
         },
-        createForm,
       ],
     },
   };
@@ -1302,11 +1200,7 @@ export function emitAppLayout(
  * The generated boot — replaces a hand-written `src/main.ts`. Mounts the `root` page on `#app` and
  * imports the default theme. So a vow app needs no boot shell: the entry is a vow (`root: true`).
  */
-export function emitBoot(
-  rootSlug: string,
-  seeds: readonly string[] = [],
-  theme: string | false = "@vow/theme/vow.css",
-): string {
+export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/vow.css"): string {
   const name = pascalCase(rootSlug);
   const lines = [
     `// Generated boot for the root vow "${rootSlug}". The vow is the source — do not edit.`,
@@ -1314,10 +1208,6 @@ export function emitBoot(
     `import { createRouter, type Route } from "@vow/router";`,
     `import ${name} from "./${rootSlug}.vue";`,
   ];
-  if (seeds.length > 0) {
-    lines.push(`import { seed } from "@vow/store";`);
-    for (const slug of seeds) lines.push(`import { ${slug}Seed } from "./${slug}.ts";`);
-  }
   if (theme) lines.push(`import "${theme}";`);
   lines.push(
     ``,
@@ -1334,9 +1224,6 @@ export function emitBoot(
     `];`,
     ``,
   );
-  // seed the store before mounting, so the first render already has data
-  for (const slug of seeds) lines.push(`seed(${JSON.stringify(slug)}, ${slug}Seed);`);
-  if (seeds.length > 0) lines.push(``);
   lines.push(`void createRouter(routes, { layout }).mount("#app");`, ``);
   return lines.join("\n");
 }
