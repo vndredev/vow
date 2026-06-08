@@ -191,12 +191,12 @@ export function generateFiles(
   // to the plugin option) — so the shell title is declared in the vow, not in vite.config.
   const rootVow = all.find((v) => v.root === true && v.view);
   const appTitle = rootVow?.title ?? title;
-  const appVariant = rootVow?.shell; // the shell kind (sidebar today), declared on the root vow
+  const appShell = rootVow?.shell; // the shell layout (nav · width · variant), declared on the root vow
   if (pages.length > 0) {
     const routes = join(outDir, "vow-pages.routes.ts");
     writeFileSync(routes, emitAppRoutes(pages), "utf8");
     const layout = join(outDir, "vow-app.layout.vue");
-    writeFileSync(layout, emitAppLayout(pages, appTitle, appVariant), "utf8");
+    writeFileSync(layout, emitAppLayout(pages, appTitle, appShell), "utf8");
     written.push(routes, layout);
   }
   // Generate the boot (main.ts) + the *.vue/*.css shims, so the app needs no hand-written `src/` shell —

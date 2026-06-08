@@ -882,7 +882,7 @@ export function emitAppLayout(
     group?: string;
   }[],
   title?: string,
-  variant?: string,
+  shell?: { nav?: string; width?: string; variant?: string },
 ): string {
   // Each page becomes a `Page` literal for the shell's sidebar — icon/group/order only when declared.
   const navPages = pages
@@ -894,26 +894,29 @@ export function emitAppLayout(
       return `{ ${parts.join(", ")} }`;
     })
     .join(", ");
-  // <Shell> gets pages + path always; title + variant (the shell kind) only when the root declared them.
-  const shellAttrs = [
-    `:pages="pages"`,
-    `:path="path"`,
-    ...(title === undefined ? [] : [`:title="title"`]),
-    ...(variant === undefined ? [] : [`:variant="variant"`]),
-  ].join(" ");
+  // <Shell> always gets pages + path; title + the shell layout (nav · width · variant) only when declared.
+  const decls = [`const pages = [${navPages}];`];
+  const attrs = [`:pages="pages"`, `:path="path"`];
+  const bind = (name: string, value: string | undefined): void => {
+    if (value === undefined) return;
+    decls.push(`const ${name} = ${JSON.stringify(value)};`);
+    attrs.push(`:${name}="${name}"`);
+  };
+  bind("title", title);
+  bind("nav", shell?.nav);
+  bind("width", shell?.width);
+  bind("variant", shell?.variant);
   return [
     `<script setup lang="ts">`,
     `// Generated app chrome — wraps every page in @vow/shell. The vow tree is the source — do not edit.`,
     `import Shell from "@vow/shell/Shell.vue";`,
     `import "@vow/shell/style.css";`,
     `defineProps<{ path: string }>();`,
-    `const pages = [${navPages}];`,
-    ...(title === undefined ? [] : [`const title = ${JSON.stringify(title)};`]),
-    ...(variant === undefined ? [] : [`const variant = ${JSON.stringify(variant)};`]),
+    ...decls,
     `</script>`,
     ``,
     `<template>`,
-    `  <Shell ${shellAttrs}><slot /></Shell>`,
+    `  <Shell ${attrs.join(" ")}><slot /></Shell>`,
     `</template>`,
     ``,
   ].join("\n");

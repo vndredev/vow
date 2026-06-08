@@ -115,8 +115,12 @@ export interface Vow {
     readonly order?: number;
     readonly group?: string;
   };
-  /** The app-shell kind, on the root vow — `sidebar` today (`top` is the reserved next variant). */
-  readonly shell?: "sidebar";
+  /** The app-shell layout, on the root vow — where the nav lives, the content width, the visual style. */
+  readonly shell?: {
+    readonly nav?: "sidebar-left" | "sidebar-right" | "header" | "footer";
+    readonly width?: "center" | "full";
+    readonly variant?: "bordered" | "seamless" | "cards";
+  };
 }
 
 export const Vow: z.ZodType<Vow> = z.lazy(() =>
@@ -140,6 +144,12 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
         group: z.string().optional(),
       })
       .optional(),
-    shell: z.literal("sidebar").optional(),
+    shell: z
+      .object({
+        nav: z.enum(["sidebar-left", "sidebar-right", "header", "footer"]).optional(),
+        width: z.enum(["center", "full"]).optional(),
+        variant: z.enum(["bordered", "seamless", "cards"]).optional(),
+      })
+      .optional(),
   }),
 );
