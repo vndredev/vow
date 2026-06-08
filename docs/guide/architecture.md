@@ -29,7 +29,7 @@ One plugin (`@vow/vite-plugin`) drives it: it loads `app/`, runs the emitters, w
 | **look**         | `@vow/theme`                                             | the design tokens + the base CSS                                                           |
 | **chrome**       | `@vow/docs` · `@vow/shell`                               | the hand-written Vue frame — the docs site · the app dashboard                             |
 
-The split has one rule: `@vow/headless` holds **only logic** — no component, no CSS. That's why React or Solid would reuse it untouched, and why the look is a swappable layer. (`@vow/markdown` and `@vow/icons` support the docs chrome; `@vow/vite-plugin` is the plugin that drives the path above.)
+The split has one rule: `@vow/headless` holds **only logic** — no component, no CSS. That's why React or Solid would reuse it untouched, and why the look is a swappable layer. (`@vow/markdown` and `@vow/icons` support the docs chrome; `@vow/vite-plugin` is the plugin that drives the path above.) See **[Packages](/guide/packages)** for the full directory — every package and where to learn it.
 
 ## The UI, top down
 
