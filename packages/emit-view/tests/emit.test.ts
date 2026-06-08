@@ -63,16 +63,33 @@ test("a date field renders as a native date input in the create form", () => {
   expect(sfc).toContain('<input class="vow-view__input" type="date" v-model="draft.starts"');
 });
 
-test("a reference field renders as an id input hinting its target", () => {
-  const issue: VowNode = {
+const issue: VowNode = {
+  ...entity,
+  id: "vow_issue",
+  slug: "issue",
+  fields: [{ name: "assignee", type: "reference", required: false, ref: "user" }],
+};
+
+test("a reference field renders as a dropdown over the target's shared collection", () => {
+  const sfc = emitEntityList(issue); // no byId → label falls back to the id
+  expect(sfc).toContain(
+    'const assigneeOptions = useCollection<{ id: string } & Record<string, unknown>>("user").items;',
+  );
+  expect(sfc).toContain('<select class="vow-view__input" v-model="draft.assignee"');
+  expect(sfc).toContain('v-for="(t, ti) in assigneeOptions"');
+  expect(sfc).toContain(':value="t.id"');
+  expect(sfc).toContain("{{ t.id }}");
+});
+
+test("a reference dropdown labels items by the target's first text field", () => {
+  const user: VowNode = {
     ...entity,
-    id: "vow_issue",
-    slug: "issue",
-    fields: [{ name: "assignee", type: "reference", required: false, ref: "user" }],
+    id: "vow_user",
+    slug: "user",
+    fields: [{ name: "name", type: "text", required: true }],
   };
-  const sfc = emitEntityList(issue);
-  expect(sfc).toContain('v-model="draft.assignee"');
-  expect(sfc).toContain('placeholder="assignee (user id)"');
+  const sfc = emitEntityList(issue, new Map([["user", user]]));
+  expect(sfc).toContain("{{ t.name }}");
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {

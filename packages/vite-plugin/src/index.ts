@@ -107,7 +107,7 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
     const entity = entityBySlug.get(slug);
     if (!entity) continue; // emitView already validated the reference; defensive
     const file = join(outDir, `${viewComponentName(entity)}.vue`);
-    writeFileSync(file, emitEntityList(entity), "utf8");
+    writeFileSync(file, emitEntityList(entity, entityBySlug), "utf8");
     written.push(file);
     if (entity.fields.some((fld) => fld.type === "boolean")) needsCheckbox = true;
   }

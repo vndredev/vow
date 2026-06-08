@@ -26,13 +26,17 @@ import { LAYOUT_PRIMITIVES } from "@vow/layout";
  * (because a view references it), never automatically. Any heading is the referencing view's job, so
  * the list carries none of its own.
  */
-export function emitEntityList(entity: Vow): string {
+export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
     throw new Error(`emit-view: \`list:\` target "${entity.slug}" must be an \`emit entity\``);
   }
   const type = pascalCase(entity.slug);
   const hasBoolean = entity.fields.some((f) => f.type === "boolean");
   const inputFields = entity.fields.filter((f) => f.type !== "boolean");
+  const referenceFields = inputFields.filter((f) => f.type === "reference");
+  // a reference dropdown labels each target item by the target entity's first text field (else its id)
+  const labelField = (ref?: string): string =>
+    byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
 
   const imports: ImportDecl[] = [
     { from: "vue", names: ["ref"] },
@@ -59,6 +63,12 @@ export function emitEntityList(entity: Vow): string {
     `  removeAt(index);`,
     `}`,
   ];
+  // a reference dropdown reads the target entity's shared collection (its selectable items)
+  for (const f of referenceFields) {
+    setup.push(
+      `const ${f.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(f.ref ?? "")}).items;`,
+    );
+  }
 
   // one display cell per field: boolean → <Checkbox>, everything else → a <span> with the value
   const cells: UiNode[] = entity.fields.map(
@@ -133,17 +143,32 @@ export function emitEntityList(entity: Vow): string {
       };
     }
     if (f.type === "reference") {
-      // the referent's id (a dropdown of the target's items needs the cross-entity data layer — later)
+      // a dropdown over the target entity's shared collection — only existing items are selectable, so
+      // the reference resolves to a real id (label = the target's first text field, else its id)
       return {
         kind: "element",
-        tag: "input",
+        tag: "select",
+        inline: true,
         attrs: [
           { kind: "static", name: "class", value: "vow-view__input" },
           { kind: "model", expr: `draft.${f.name}` },
-          { kind: "static", name: "placeholder", value: `${f.name} (${f.ref ?? "ref"} id)` },
           { kind: "static", name: "aria-label", value: f.name },
         ],
-        children: [],
+        children: [
+          {
+            kind: "element",
+            tag: "option",
+            attrs: [{ kind: "static", name: "value", value: "" }],
+            children: [{ kind: "text", text: `— ${f.name} —` }],
+          },
+          {
+            kind: "element",
+            tag: "option",
+            for: { each: `${f.name}Options`, as: "t", index: "ti", key: "t.id" },
+            attrs: [{ kind: "bound", name: "value", expr: "t.id" }],
+            children: [{ kind: "interp", expr: `t.${labelField(f.ref)}` }],
+          },
+        ],
       };
     }
     return {

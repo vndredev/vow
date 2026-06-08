@@ -31,13 +31,14 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [x] `@vow/router` — client router (exact match + `/404` + `document.title` + hash anchors + link interception), wired into every generated boot
 - [x] docs chrome, all on vow's own primitives — ⌘K search + mobile nav drawer (both `dialog`), collapsible sidebar, "on this page" TOC, dark-mode toggle, self-hosted Inter
 - [x] `@vow/icons` — a swappable icon adapter (Lucide set live in the chrome)
-- [ ] `reference` field + relations (entity → entity)
+- [x] `reference(entity)` field + a stable auto-id + a relation **dropdown** over the target's items (via the shared store) — referent-display-resolution (show the name, not the id) still to come
+- [x] data adapter (memory): `@vow/store` — shared reactive collections per entity
 - [ ] multi-value fields (e.g. `labels`)
 - [ ] primitive ladder cont'd: switch · table _(complex ones wrap Zag/Ark)_
 - [ ] icons cont'd: config-selection (`icons: "lucide"`), more libs (Heroicons / Phosphor), and the primitive glyphs (`✓` · `×`) onto `<Icon>`
 - [ ] patterns: form · table · detail · board / kanban · stats
 - [ ] multi-view navigation **from vows** (a view links to other views; vow generates the routes)
-- [ ] data adapter: in-memory → Cloudflare D1 (real persistence)
+- [ ] data adapter: Cloudflare D1 (real persistence) behind the `useCollection` seam
 
 **Author layer** — how you write the spec:
 
@@ -71,5 +72,5 @@ The critical path — each element green before the next:
 The dogfood moment: once the board exists, **its first content is the plan for itself** — vow planning its own build, in vow.
 
 ::: warning Honest status
-Today: entity / view / bind + **five proven primitives** (checkbox · collapsible · tabs · dialog · select/combobox) + field types (`text` · `number` · `boolean` · `select` · `date`) + layout (primitives + view `## view` + theme tokens) + scenario-coverage + the docs-drift gate + local-state CRUD + the **docs system** (`@vow/markdown` · `@vow/docs` · `@vow/router` · `@vow/icons`[Lucide]) with ⌘K search, a mobile nav drawer, a dark-mode toggle and Inter — the docs are themselves a generated vow app — all green. Everything unchecked above (`reference` + relations, switch/table, patterns, multi-view nav from vows, the D1 data adapter, the whole author layer + MCP) is planned and built slowly, one element at a time.
+Today: entity / view / bind + **five proven primitives** (checkbox · collapsible · tabs · dialog · select/combobox) + field types (`text` · `number` · `boolean` · `select` · `date` · `reference`) + a stable auto-id + relation **dropdowns** over a shared in-memory store (`@vow/store`) + layout (primitives + view `## view` + theme tokens) + scenario-coverage + the docs-drift gate + the **docs system** (`@vow/markdown` · `@vow/docs` · `@vow/router` · `@vow/icons`[Lucide]) with ⌘K search, a mobile nav drawer, a dark-mode toggle and Inter — the docs are themselves a generated vow app — all green. Everything unchecked above (referent-display-resolution, switch/table, patterns, multi-view nav from vows, the D1 data adapter, the whole author layer + MCP) is planned and built slowly, one element at a time.
 :::
