@@ -2,6 +2,7 @@ import { expect, test } from "vite-plus/test";
 import {
   emitBadgeSfc,
   emitButtonSfc,
+  emitCalloutSfc,
   emitCardBodySfc,
   emitCardHeaderSfc,
   emitCardSfc,
@@ -11,6 +12,8 @@ import {
   emitFieldSfc,
   emitRadioGroupSfc,
   emitSelectSfc,
+  emitStatSfc,
+  emitStatsSfc,
   emitSwitchSfc,
   emitTableCellSfc,
   emitTableHeadSfc,
@@ -360,6 +363,33 @@ test("the card parts render byte-for-byte as structural primitives", () => {
   expect(emitCardHeaderSfc()).toBe(EXPECTED_CARD_HEADER);
   expect(emitCardBodySfc()).toContain(`<div class="vow-card__body">`); // symmetric with the others
   for (const sfc of [emitCardSfc(), emitCardHeaderSfc(), emitCardBodySfc()]) {
+    expect(sfc).not.toContain("@vow/headless");
+    expect(sfc).not.toContain("<style");
+  }
+});
+
+const EXPECTED_STAT = [
+  `<script setup lang="ts">`,
+  `// Generated stat tile — a value + label metric (structural, no headless).`,
+  ``,
+  `const props = defineProps<{ value: string | number; label: string }>();`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-stat">`,
+  `    <span class="vow-stat__value">{{ value }}</span>`,
+  `    <span class="vow-stat__label">{{ label }}</span>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("the data-display parts (stats, callout) render byte-for-byte as structural primitives", () => {
+  expect(emitStatSfc()).toBe(EXPECTED_STAT);
+  expect(emitStatsSfc()).toContain(`<div class="vow-stats">`);
+  expect(emitCalloutSfc()).toContain(`<div class="vow-callout" :data-variant="variant">`);
+  expect(emitCalloutSfc()).toContain(`<p v-if="title" class="vow-callout__title">{{ title }}</p>`);
+  for (const sfc of [emitStatSfc(), emitStatsSfc(), emitCalloutSfc()]) {
     expect(sfc).not.toContain("@vow/headless");
     expect(sfc).not.toContain("<style");
   }

@@ -842,6 +842,91 @@ export function emitCardBodySfc(): string {
   return renderVueSfc(cardBody);
 }
 
+// The stats parts — a metric tile (Stat: value + label) and a responsive container (Stats > Stat).
+const stat: Component = {
+  name: "Stat",
+  doc: ["Generated stat tile — a value + label metric (structural, no headless)."],
+  props: [
+    { name: "value", tsType: "string | number" },
+    { name: "label", tsType: "string" },
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-stat" }],
+    children: [
+      {
+        kind: "element",
+        tag: "span",
+        attrs: [{ kind: "static", name: "class", value: "vow-stat__value" }],
+        children: [{ kind: "interp", expr: "value" }],
+      },
+      {
+        kind: "element",
+        tag: "span",
+        attrs: [{ kind: "static", name: "class", value: "vow-stat__label" }],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+    ],
+  },
+};
+const stats: Component = {
+  name: "Stats",
+  doc: ["Generated stats container — a responsive row of <Stat> tiles (structural)."],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-stats" }],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+export function emitStatSfc(): string {
+  return renderVueSfc(stat);
+}
+export function emitStatsSfc(): string {
+  return renderVueSfc(stats);
+}
+
+// The callout — a structural notice (tip/info/warning/danger); the reusable form of the markdown `:::`.
+const callout: Component = {
+  name: "Callout",
+  doc: [
+    "Generated callout — a structural notice; the variant tints it (the reusable `:::` block).",
+  ],
+  props: [
+    {
+      name: "variant",
+      tsType: "'tip' | 'info' | 'warning' | 'danger'",
+      optional: true,
+      default: "'info'",
+    },
+    { name: "title", tsType: "string", optional: true },
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-callout" },
+      { kind: "bound", name: "data-variant", expr: "variant" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "p",
+        attrs: [
+          { kind: "cond", type: "if", expr: "title" },
+          { kind: "static", name: "class", value: "vow-callout__title" },
+        ],
+        children: [{ kind: "interp", expr: "title" }],
+      },
+      { kind: "slot", children: [] },
+    ],
+  },
+};
+export function emitCalloutSfc(): string {
+  return renderVueSfc(callout);
+}
+
 /**
  * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
  * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
@@ -850,6 +935,7 @@ export function emitCardBodySfc(): string {
 export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   Badge: emitBadgeSfc,
   Button: emitButtonSfc,
+  Callout: emitCalloutSfc,
   Card: emitCardSfc,
   CardBody: emitCardBodySfc,
   CardHeader: emitCardHeaderSfc,
@@ -859,6 +945,8 @@ export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   Field: emitFieldSfc,
   RadioGroup: emitRadioGroupSfc,
   Select: emitSelectSfc,
+  Stat: emitStatSfc,
+  Stats: emitStatsSfc,
   Switch: emitSwitchSfc,
   Table: emitTableSfc,
   TableCell: emitTableCellSfc,

@@ -4,13 +4,23 @@ import type { Plugin } from "vite-plus";
 import {
   emitBadgeSfc,
   emitButtonSfc,
+  emitCalloutSfc,
+  emitCardBodySfc,
+  emitCardHeaderSfc,
+  emitCardSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
   emitFieldSfc,
   emitRadioGroupSfc,
   emitSelectSfc,
+  emitStatSfc,
+  emitStatsSfc,
   emitSwitchSfc,
+  emitTableCellSfc,
+  emitTableHeadSfc,
+  emitTableRowSfc,
+  emitTableSfc,
   emitTabsSfc,
   PRIMITIVE_ADAPTERS,
 } from "@vow/emit-primitive";
@@ -507,6 +517,7 @@ export function generateDocs(
     const demo = DEMOS[name];
     if (demo !== undefined) {
       writeComp(demo.adapter, demo.emit()); // the generated primitive adapter
+      for (const part of demo.also ?? []) writeComp(part.name, part.emit()); // composed: its other parts
       writeComp(name, demo.sfc); // the live demo wrapper
     }
   }
@@ -767,17 +778,128 @@ import Badge from "./Badge.vue";
 </template>
 `;
 
-/** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
+const DEMO_TABLE = `<script setup lang="ts">
+import Table from "./Table.vue";
+import TableRow from "./TableRow.vue";
+import TableHead from "./TableHead.vue";
+import TableCell from "./TableCell.vue";
+import Badge from "./Badge.vue";
+const rows = [
+  { task: "Fix the login flow", status: "blocked", variant: "warning" },
+  { task: "Ship the timeline", status: "done", variant: "success" },
+  { task: "Draft the board", status: "todo", variant: "neutral" },
+];
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Table>
+      <thead>
+        <TableRow>
+          <TableHead scope="col">Task</TableHead>
+          <TableHead scope="col">Status</TableHead>
+        </TableRow>
+      </thead>
+      <tbody>
+        <TableRow v-for="r in rows" :key="r.task">
+          <TableCell>{{ r.task }}</TableCell>
+          <TableCell><Badge :label="r.status" :variant="r.variant" /></TableCell>
+        </TableRow>
+      </tbody>
+    </Table>
+  </div>
+</template>
+`;
+
+const DEMO_CARD = `<script setup lang="ts">
+import Card from "./Card.vue";
+import CardHeader from "./CardHeader.vue";
+import CardBody from "./CardBody.vue";
+import Badge from "./Badge.vue";
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Card>
+      <CardHeader>
+        Fix the login flow
+        <Badge label="blocked" variant="warning" />
+      </CardHeader>
+      <CardBody>A user can't sign in after the redirect — the session is dropped.</CardBody>
+    </Card>
+  </div>
+</template>
+`;
+
+const DEMO_STATS = `<script setup lang="ts">
+import Stats from "./Stats.vue";
+import Stat from "./Stat.vue";
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Stats>
+      <Stat :value="12" label="Open" />
+      <Stat :value="34" label="Done" />
+      <Stat :value="3" label="Blocked" />
+    </Stats>
+  </div>
+</template>
+`;
+
+const DEMO_CALLOUT = `<script setup lang="ts">
+import Callout from "./Callout.vue";
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Callout variant="tip" title="Tip">A table is just composable parts — compose what you need.</Callout>
+    <Callout variant="warning" title="Heads up">The board writes a drag straight back to the vow.</Callout>
+  </div>
+</template>
+`;
+
+/** A live demo: its wrapper SFC + the generated primitive adapter it imports (`also` = extra parts a
+ *  composed primitive needs, e.g. a Card demo materialises Card + CardHeader + CardBody). */
 interface Demo {
   readonly sfc: string;
   readonly adapter: string;
   readonly emit: () => string;
+  readonly also?: readonly { readonly name: string; readonly emit: () => string }[];
 }
 
 /** `::: demo <X>` → the VowDemo<X> component; @vow/docs materialises the wrapper + the adapter. */
 const DEMOS: Record<string, Demo> = {
   VowDemoBadge: { sfc: DEMO_BADGE, adapter: "Badge", emit: emitBadgeSfc },
   VowDemoButton: { sfc: DEMO_BUTTON, adapter: "Button", emit: emitButtonSfc },
+  VowDemoCallout: { sfc: DEMO_CALLOUT, adapter: "Callout", emit: emitCalloutSfc },
+  VowDemoCard: {
+    sfc: DEMO_CARD,
+    adapter: "Card",
+    emit: emitCardSfc,
+    also: [
+      { name: "CardHeader", emit: emitCardHeaderSfc },
+      { name: "CardBody", emit: emitCardBodySfc },
+      { name: "Badge", emit: emitBadgeSfc },
+    ],
+  },
+  VowDemoStats: {
+    sfc: DEMO_STATS,
+    adapter: "Stats",
+    emit: emitStatsSfc,
+    also: [{ name: "Stat", emit: emitStatSfc }],
+  },
+  VowDemoTable: {
+    sfc: DEMO_TABLE,
+    adapter: "Table",
+    emit: emitTableSfc,
+    also: [
+      { name: "TableRow", emit: emitTableRowSfc },
+      { name: "TableHead", emit: emitTableHeadSfc },
+      { name: "TableCell", emit: emitTableCellSfc },
+      { name: "Badge", emit: emitBadgeSfc },
+    ],
+  },
   VowDemoCheckbox: { sfc: DEMO_CHECKBOX, adapter: "Checkbox", emit: emitCheckboxSfc },
   VowDemoCollapsible: { sfc: DEMO_COLLAPSIBLE, adapter: "Collapsible", emit: emitCollapsibleSfc },
   VowDemoTabs: { sfc: DEMO_TABS, adapter: "Tabs", emit: emitTabsSfc },

@@ -43,6 +43,15 @@ App  →  Shell  →  Views (pages)  →  blocks: layout + primitives
 - A [**view**](/guide/views) is a page (a `## view`): a list of blocks — semantic ones (`hero`, `list`), [layout](/guide/views#layout-primitives) ones (`stack`, `grid`), [primitives](/guide/primitives) (`button`, `select`), and `link:`s.
 - A [**primitive**](/guide/primitives) is one control: a framework-free core + a generated Vue adapter.
 
+## Primitive vs composition
+
+The one rule that keeps the UI model clear: **a primitive doesn't know what app it's in. The moment something knows your entities or data, it's a composition.**
+
+- **Primitives** — generic atoms, no app data: _interactive_ (a [headless](/guide/primitives) core + adapter — checkbox, dialog, select), _structural_ (styled wrappers — button, badge, field, [table](/guide/primitives/table), [card](/guide/primitives/card), stats, callout), or [_layout_](/guide/views#layout-primitives) (flex, grid, stack).
+- **Compositions** — primitives **+ data or structure**: the generated **entity list** (`<Task>` composes the Table parts + your fields + the store), the views and forms you write, the docs / shell chrome, the studio surfaces.
+
+`Table` doesn't know `Task`; the entity list does — so `Table` is a primitive and the list is a composition. Build a new primitive only for a generic, reusable control; everything app-specific is a composition over them.
+
 ## The mental model
 
 You write **intent** (a vow) → vow **proves** it (a test per promise) → vow **generates** the app (code you own). You never edit the output; the vow is the truth, and it can't drift.
