@@ -9,6 +9,91 @@
   min-height: 100vh;
 }
 
+/* ── the shell layout system: nav placement · content width · visual variant ────────────────── */
+
+/* nav: sidebar-right — the sidebar moves to the second column, its divider flips to the left edge */
+.vow-shell[data-nav="sidebar-right"] {
+  grid-template-columns: minmax(0, 1fr) 15rem;
+}
+.vow-shell[data-nav="sidebar-right"] .vow-shell__sidebar {
+  order: 2;
+  border-right: 0;
+  border-left: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-shell[data-nav="sidebar-right"] .vow-shell__main {
+  order: 1;
+}
+
+/* nav: header / footer — a horizontal bar stacked above (header) or below (footer) the content */
+.vow-shell[data-nav="header"],
+.vow-shell[data-nav="footer"] {
+  display: flex;
+  flex-direction: column;
+}
+.vow-shell[data-nav="footer"] .vow-shell__topnav {
+  order: 2;
+  border-top: var(--vow-border) solid var(--vow-color-border);
+  border-bottom: 0;
+}
+
+/* the horizontal bar nav (header/footer) — brand · flat links · theme */
+.vow-shell__topnav {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-5);
+  padding: var(--vow-space-3) var(--vow-space-6);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+  background: var(--vow-color-bg);
+}
+.vow-shell__topnav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-1);
+  margin-right: auto;
+}
+/* in the bar the active marker is an underline, not the sidebar's left guide-line */
+.vow-shell__topnav .vow-shell__link {
+  margin-left: 0;
+  border-left: 0;
+  border-bottom: 2px solid transparent;
+}
+.vow-shell__topnav .vow-shell__link.is-active {
+  color: var(--vow-color-accent);
+  border-bottom-color: var(--vow-color-accent);
+}
+
+/* width: full — the content fills the column (the default `center` is a centered max-width) */
+.vow-shell[data-width="full"] .vow-shell__content {
+  max-width: none;
+}
+
+/* variant: seamless — drop every region divider; one continuous surface */
+.vow-shell[data-variant="seamless"] .vow-shell__sidebar,
+.vow-shell[data-variant="seamless"] .vow-shell__topnav,
+.vow-shell[data-variant="seamless"] .vow-shell__bar,
+.vow-shell[data-variant="seamless"] .vow-shell__nav {
+  border: 0;
+}
+
+/* variant: cards — the regions float as rounded cards on a muted page */
+.vow-shell[data-variant="cards"] {
+  gap: var(--vow-space-4);
+  padding: var(--vow-space-4);
+  background: var(--vow-color-surface);
+}
+.vow-shell[data-variant="cards"] .vow-shell__sidebar,
+.vow-shell[data-variant="cards"] .vow-shell__topnav,
+.vow-shell[data-variant="cards"] .vow-shell__main {
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+  background: var(--vow-color-bg);
+  box-shadow: var(--vow-shadow-1);
+}
+.vow-shell[data-variant="cards"] .vow-shell__sidebar {
+  position: static;
+  height: auto;
+}
+
 /* the desktop sidebar — the sticky frame around the nav content */
 .vow-shell__sidebar {
   position: sticky;

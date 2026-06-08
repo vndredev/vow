@@ -225,6 +225,49 @@ body {
 .vow-card__body {
   padding: var(--vow-space-4);
 }
+/* a labelled field line inside a generated card body (`cards: <entity>`) */
+.vow-card__field {
+  margin: var(--vow-space-1) 0;
+  font-size: var(--vow-text-sm);
+}
+.vow-card__field strong {
+  color: var(--vow-color-muted);
+  font-weight: var(--vow-weight-medium);
+}
+/* the kanban board (`board: { of, by }`) — a row of columns, each a drop target for its cards */
+.vow-board {
+  display: flex;
+  gap: var(--vow-space-4);
+  align-items: flex-start;
+  overflow-x: auto;
+}
+.vow-board__col {
+  flex: 1 0 14rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-3);
+  padding: var(--vow-space-3);
+  border-radius: var(--vow-radius-3);
+  background: var(--vow-color-surface);
+}
+.vow-board__col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-semibold);
+  text-transform: capitalize;
+}
+.vow-board__count {
+  color: var(--vow-color-muted);
+  font-weight: var(--vow-weight-medium);
+}
+.vow-board__card {
+  cursor: grab;
+}
+.vow-board__card:active {
+  cursor: grabbing;
+}
 /* the Stats primitive (Stats > Stat) — a responsive row of metric tiles */
 .vow-stats {
   display: grid;

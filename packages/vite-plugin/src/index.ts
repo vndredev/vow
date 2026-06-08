@@ -8,7 +8,13 @@ import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
   emitAppLayout,
   emitAppRoutes,
+  boardComponentName,
+  boardRefs,
+  cardsComponentName,
+  cardsRefs,
   emitBoot,
+  emitEntityBoard,
+  emitEntityCards,
   emitEntityList,
   emitEntityStats,
   emitForm,
@@ -89,6 +95,8 @@ export function generateFiles(
   const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
   const statsByKey = new Map<string, { of: string; by: string }>(); // `stats: { of, by }` refs, deduped
+  const cardsBySlug = new Set<string>(); // entity slugs a `## view` renders via `cards:`
+  const boardByKey = new Map<string, { of: string; by: string }>(); // `board: { of, by }` refs, deduped
   const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
   // non-root views + forms → routes at /<slug>; each carries its `nav:` config for the shell sidebar
   const pages: { slug: string; title: string; icon?: string; order?: number; group?: string }[] =
@@ -120,6 +128,8 @@ export function generateFiles(
       written.push(file);
       for (const slug of listedEntities(v)) listed.add(slug);
       for (const ref of statsRefs(v)) statsByKey.set(`${ref.of}.${ref.by}`, ref); // stats compositions
+      for (const slug of cardsRefs(v)) cardsBySlug.add(slug); // cards compositions
+      for (const ref of boardRefs(v)) boardByKey.set(`${ref.of}.${ref.by}`, ref); // board compositions
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       if (v.root !== true) pages.push(navPage(v)); // a non-root view → a route
       needsLayout = true;
@@ -167,6 +177,26 @@ export function generateFiles(
     written.push(file);
     needed.add("Stats").add("Stat"); // the stats composition composes the Stats/Stat primitives
   }
+
+  // A view's `cards: <entity>` instantiates a card-per-record composition — emitted here, on demand.
+  for (const slug of cardsBySlug) {
+    const entity = entityBySlug.get(slug);
+    if (!entity) continue; // emitView already validated the reference; defensive
+    const file = join(outDir, `${cardsComponentName(slug)}.vue`);
+    writeFileSync(file, emitEntityCards(entity), "utf8");
+    written.push(file);
+    needed.add("Card").add("CardHeader").add("CardBody"); // the cards composition composes the Card parts
+  }
+
+  // A view's `board: { of, by }` instantiates a kanban composition — emitted here, on demand.
+  for (const { of, by } of boardByKey.values()) {
+    const entity = entityBySlug.get(of);
+    if (!entity) continue; // emitView already validated the reference; defensive
+    const file = join(outDir, `${boardComponentName(of, by)}.vue`);
+    writeFileSync(file, emitEntityBoard(entity, by), "utf8");
+    written.push(file);
+    needed.add("Card").add("CardHeader").add("CardBody"); // the board composition composes the Card parts
+  }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {
     const emit = PRIMITIVE_ADAPTERS[name];
@@ -191,11 +221,12 @@ export function generateFiles(
   // to the plugin option) — so the shell title is declared in the vow, not in vite.config.
   const rootVow = all.find((v) => v.root === true && v.view);
   const appTitle = rootVow?.title ?? title;
+  const appShell = rootVow?.shell; // the shell layout (nav · width · variant), declared on the root vow
   if (pages.length > 0) {
     const routes = join(outDir, "vow-pages.routes.ts");
     writeFileSync(routes, emitAppRoutes(pages), "utf8");
     const layout = join(outDir, "vow-app.layout.vue");
-    writeFileSync(layout, emitAppLayout(pages, appTitle), "utf8");
+    writeFileSync(layout, emitAppLayout(pages, appTitle, appShell), "utf8");
     written.push(routes, layout);
   }
   // Generate the boot (main.ts) + the *.vue/*.css shims, so the app needs no hand-written `src/` shell —
@@ -203,7 +234,10 @@ export function generateFiles(
   if (rootVow) {
     const boot = join(outDir, "main.ts");
     const env = join(outDir, "vow-env.d.ts");
-    writeFileSync(boot, emitBoot(rootVow.slug), "utf8");
+    const seeded = [...entityBySlug.values()]
+      .filter((e) => e.seed !== undefined && e.seed.length > 0)
+      .map((e) => e.slug);
+    writeFileSync(boot, emitBoot(rootVow.slug, seeded), "utf8");
     writeFileSync(env, VOW_ENV_DTS, "utf8");
     written.push(boot, env);
   }

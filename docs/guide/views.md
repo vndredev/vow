@@ -41,8 +41,13 @@ The catalog of ready-made components — you name them, vow brings the markup:
   **table** — a header from the fields, a row per record — imported automatically).
 - **`stats: { of: <entity>, by: <select field> }`** — a generated **counts strip**: one
   [`Stat`](/guide/primitives/stats) per option of the field, counting the rows in that group, live from
-  the store (`stats: { of: task, by: status }` → backlog 3 · doing 2 · done 5). More shapes (`cards`,
-  `board`) join over time.
+  the store (`stats: { of: task, by: status }` → backlog 3 · doing 2 · done 5).
+- **`cards: <entity>`** — a generated **card grid**: one [`Card`](/guide/primitives/card) per record
+  (live from the store), titled by the entity's first text field, the rest of the fields in its body
+  (`cards: task`).
+- **`board: { of: <entity>, by: <select field> }`** — a generated **kanban**: a column per option of the
+  field, each record's card in its column (live from the store); **drag** a card to another column and it
+  writes the field back (`board: { of: task, by: status }`).
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
   `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radio` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
   The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only

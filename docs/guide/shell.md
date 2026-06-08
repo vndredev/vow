@@ -14,12 +14,23 @@ It lives in `@vow/shell`, the app-chrome layer — a hand-written `.vue` frame b
 You write nothing structural — the shell is **declared in your vows' frontmatter**, mirroring how the docs sidebar is declared (`title` / `group` / `order`):
 
 ```yaml
-# the root view (home.vow.md) — the app title (the brand)
+# the root view (home.vow.md) — the app title + the shell layout
 title: vow studio
+shell: { nav: sidebar-left, width: full, variant: bordered }
 
 # any other view or form — its sidebar entry
 nav: { label: Tasks, icon: list-checks, order: 1, group: Plan }
 ```
+
+The **`shell`** object on the root vow lays out the chrome on three axes:
+
+| Axis      | Values                                                              | What                                                         |
+| --------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `nav`     | `sidebar-left` · `sidebar-right` · `header` · `footer`              | where the nav lives (a vertical sidebar or a horizontal bar) |
+| `width`   | `center` (max-width + padding) · `full`                             | the content width, for the whole app                         |
+| `variant` | `bordered` (dividers) · `seamless` (flat) · `cards` (regions float) | the chrome's visual style                                    |
+
+A `header`/`footer` bar lists the pages **flat** (groups are a sidebar idea); a sidebar shows them grouped.
 
 When an app has more than its home page, the plugin generates a thin `vow-app.layout.vue` that imports `@vow/shell`'s `Shell.vue` and passes the routed **pages** (each with its `nav` config) + the current **path** + the app **title**; the boot globs it as the layout for every route.
 
@@ -54,7 +65,7 @@ Below 960px the sidebar is hidden and a top **bar** appears with a hamburger. Ta
 `Shell.vue` is built for extension:
 
 - **Slots** — `#sidebar-footer` (extra sidebar content, above the dark toggle) and `#topbar-actions` (the mobile bar's right side) augment the chrome without forking it.
-- **`variant`** — the prop reserves a seam: `sidebar` today, `top` (a top-nav shell) drops in later without a rewrite.
+- **The layout** — the root vow's **`shell:`** lays the chrome out on three axes (`nav` · `width` · `variant`), so one app frame becomes a sidebar dashboard, a top-nav site, or a cards layout — no rewrite.
 - **Swappable** — replace `@vow/shell` wholesale for a different app frame, exactly as you'd swap the theme.
 
 ## Styling hooks
@@ -66,6 +77,7 @@ The shell carries only classes (built on theme tokens), so re-skinning is the to
 | `.vow-shell`                                           | the `sidebar \| main` grid                             |
 | `.vow-shell__sidebar` · `__brand` · `__nav` · `__link` | the sidebar + its nav (active = the accent guide-line) |
 | `.vow-shell__nav-group` · `__link-icon`                | a surface header + a nav link's icon                   |
+| `.vow-shell__topnav` · `__topnav-links`                | the header/footer bar + its flat links                 |
 | `.vow-shell__main` · `__content`                       | the main column (the centered content)                 |
 | `.vow-shell__bar` · `__burger`                         | the mobile top bar + its hamburger (< 960px)           |
 | `.vow-shell-drawer` · `__overlay` · `__panel`          | the mobile nav drawer (the sidebar in a `dialog`)      |

@@ -352,6 +352,54 @@ export function statsComponentName(of: string, by: string): string {
   return pascalCase(of) + pascalCase(by) + "Stats";
 }
 
+/** The component name for an entity's card grid (`task` → `TaskCards`). */
+export function cardsComponentName(of: string): string {
+  return pascalCase(of) + "Cards";
+}
+
+/** The component name for an entity's kanban board (`task`,`status` → `TaskStatusBoard`). */
+export function boardComponentName(of: string, by: string): string {
+  return pascalCase(of) + pascalCase(by) + "Board";
+}
+
+/** The Card header + body for one record in a generated card/board view (title field → header, rest → body). */
+function recordCard(entity: Vow, omit: readonly string[]): UiNode[] {
+  const titleField =
+    entity.fields.find((f) => f.type === "text" || f.type === "longtext") ?? entity.fields[0];
+  const bodyFields = entity.fields.filter(
+    (f) => f.name !== titleField?.name && !omit.includes(f.name),
+  );
+  const children: UiNode[] = [];
+  if (titleField !== undefined) {
+    children.push(comp("CardHeader", [], [{ kind: "interp", expr: `item.${titleField.name}` }]));
+  }
+  if (bodyFields.length > 0) {
+    children.push(
+      comp(
+        "CardBody",
+        [],
+        bodyFields.map(
+          (f): UiNode => ({
+            kind: "element",
+            tag: "p",
+            attrs: [{ kind: "static", name: "class", value: "vow-card__field" }],
+            children: [
+              {
+                kind: "element",
+                tag: "strong",
+                attrs: [],
+                children: [{ kind: "text", text: `${f.name}: ` }],
+              },
+              { kind: "interp", expr: `item.${f.name}` },
+            ],
+          }),
+        ),
+      ),
+    );
+  }
+  return children;
+}
+
 /**
  * A stats composition over an entity — one `<Stat>` per option of a `select` field, counting the rows
  * in that group (live from the shared store). A composition, not a primitive: it knows the entity's
@@ -401,6 +449,138 @@ export function emitEntityStats(entity: Vow, by: string): string {
             { kind: "bound", name: "label", expr: "s.label" },
           ],
           children: [],
+        },
+      ],
+    },
+  };
+  return renderVueSfc(component);
+}
+
+/**
+ * A cards composition over an entity — one `<Card>` per record (live from the shared store): its first
+ * text field titles the card, the rest fill the body. A composition, not a primitive: it knows the
+ * entity's fields + binds the store; it composes the `Card`/`CardHeader`/`CardBody` primitives in a Grid.
+ */
+export function emitEntityCards(entity: Vow): string {
+  if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
+    throw new Error(`emit-view: \`cards\` target "${entity.slug}" must be an \`emit entity\``);
+  }
+  const type = pascalCase(entity.slug);
+  const cardChildren = recordCard(entity, []);
+  const component: Component = {
+    name: cardsComponentName(entity.slug),
+    doc: [
+      `Generated from vow "${entity.slug}" — a card per record. The vow is the source — do not edit.`,
+    ],
+    imports: [
+      { from: "@vow/store", names: ["useCollection"] },
+      { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
+      { from: "./Grid.vue", default: "Grid" },
+      { from: "./Card.vue", default: "Card" },
+      { from: "./CardHeader.vue", default: "CardHeader" },
+      { from: "./CardBody.vue", default: "CardBody" },
+    ],
+    setup: [`const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`],
+    view: {
+      kind: "component",
+      name: "Grid",
+      attrs: [bound("columns", "3"), bound("gap", "4")],
+      children: [
+        {
+          kind: "component",
+          name: "Card",
+          for: { each: "rows", as: "item", key: "item.id" },
+          attrs: [],
+          children: cardChildren,
+        },
+      ],
+    },
+  };
+  return renderVueSfc(component);
+}
+
+/**
+ * A kanban board over an entity — a column per option of a `select` field, the records grouped into
+ * their column (live from the store); dragging a card to another column writes that field back. A
+ * composition: it knows the entity's field + binds the store; it composes the Card primitives.
+ */
+export function emitEntityBoard(entity: Vow, by: string): string {
+  if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
+    throw new Error(`emit-view: \`board\` target "${entity.slug}" must be an \`emit entity\``);
+  }
+  const field = entity.fields.find((f) => f.name === by);
+  if (field === undefined || field.type !== "select") {
+    throw new Error(
+      `emit-view: \`board: { by: ${by} }\` must reference a select field of "${entity.slug}"`,
+    );
+  }
+  const type = pascalCase(entity.slug);
+  const component: Component = {
+    name: boardComponentName(entity.slug, by),
+    doc: [
+      `Generated from vow "${entity.slug}" — a kanban of records by ${by}. The vow is the source — do not edit.`,
+    ],
+    imports: [
+      { from: "vue", names: ["computed", "ref"] },
+      { from: "@vow/store", names: ["useCollection"] },
+      { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
+      { from: "./Card.vue", default: "Card" },
+      { from: "./CardHeader.vue", default: "CardHeader" },
+      { from: "./CardBody.vue", default: "CardBody" },
+    ],
+    setup: [
+      `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+      `const options = ${JSON.stringify(field.options ?? [])};`,
+      `const columns = computed(() =>`,
+      `  options.map((o) => ({ option: o, cards: rows.filter((r) => r.${by} === o) })),`,
+      `);`,
+      `const dragged = ref<${type} | null>(null);`,
+      `function onDrop(option: string): void {`,
+      `  if (dragged.value) dragged.value.${by} = option as ${type}[${JSON.stringify(by)}];`,
+      `  dragged.value = null;`,
+      `}`,
+    ],
+    view: {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "static", name: "class", value: "vow-board" }],
+      children: [
+        {
+          kind: "element",
+          tag: "div",
+          attrs: [
+            { kind: "static", name: "class", value: "vow-board__col" },
+            { kind: "event", name: "dragover", expr: "", modifiers: ["prevent"] },
+            { kind: "event", name: "drop", expr: "onDrop(col.option)" },
+          ],
+          for: { each: "columns", as: "col", key: "col.option" },
+          children: [
+            {
+              kind: "element",
+              tag: "div",
+              attrs: [{ kind: "static", name: "class", value: "vow-board__col-head" }],
+              children: [
+                { kind: "interp", expr: "col.option" },
+                {
+                  kind: "element",
+                  tag: "span",
+                  attrs: [{ kind: "static", name: "class", value: "vow-board__count" }],
+                  children: [{ kind: "interp", expr: "col.cards.length" }],
+                },
+              ],
+            },
+            {
+              kind: "component",
+              name: "Card",
+              for: { each: "col.cards", as: "item", key: "item.id" },
+              attrs: [
+                { kind: "static", name: "class", value: "vow-board__card" },
+                { kind: "static", name: "draggable", value: "true" },
+                { kind: "event", name: "dragstart", expr: "dragged = item" },
+              ],
+              children: recordCard(entity, [by]),
+            },
+          ],
         },
       ],
     },
@@ -671,6 +851,15 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     }
     return comp(pascalCase(slug), [], []);
   }
+  if (type === "cards") {
+    const slug = str(value);
+    if (!entities.includes(slug)) {
+      throw new Error(
+        `emit-view: \`cards: ${slug}\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
+      );
+    }
+    return comp(cardsComponentName(slug), [], []);
+  }
   if (type === "stats") {
     // `stats: { of: <entity>, by: <select field> }` → the entity's counts-by-field composition
     const o = asObject(value);
@@ -682,6 +871,18 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
       );
     }
     return comp(statsComponentName(of, by), [], []);
+  }
+  if (type === "board") {
+    // `board: { of: <entity>, by: <select field> }` → the entity's kanban composition
+    const o = asObject(value);
+    const of = str(o["of"]);
+    const by = str(o["by"]);
+    if (!entities.includes(of)) {
+      throw new Error(
+        `emit-view: \`board: { of: ${of} }\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
+      );
+    }
+    return comp(boardComponentName(of, by), [], []);
   }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);
@@ -847,6 +1048,53 @@ export function statsRefs(view: Vow): { of: string; by: string }[] {
   return found;
 }
 
+/** The `cards: <entity>` references a `## view` makes — so the plugin can emit each composition. */
+export function cardsRefs(view: Vow): string[] {
+  const found = new Set<string>();
+  const walk = (type: string, value: unknown): void => {
+    if (type === "cards") {
+      found.add(str(value));
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return [...found];
+}
+
+/** The `board: { of, by }` references a `## view` makes — so the plugin can emit each composition. */
+export function boardRefs(view: Vow): { of: string; by: string }[] {
+  const found: { of: string; by: string }[] = [];
+  const seen = new Set<string>();
+  const walk = (type: string, value: unknown): void => {
+    if (type === "board") {
+      const o = asObject(value);
+      const ref = { of: str(o["of"]), by: str(o["by"]) };
+      const key = `${ref.of}.${ref.by}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        found.push(ref);
+      }
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return found;
+}
+
 /**
  * The app's route table for non-root pages — every `emit view` / `emit form` vow that isn't the root
  * becomes a route at `/<slug>`, lazily loading its `.vue`. Written as a `*.routes.ts` the boot globs (the
@@ -882,6 +1130,7 @@ export function emitAppLayout(
     group?: string;
   }[],
   title?: string,
+  shell?: { nav?: string; width?: string; variant?: string },
 ): string {
   // Each page becomes a `Page` literal for the shell's sidebar — icon/group/order only when declared.
   const navPages = pages
@@ -893,20 +1142,29 @@ export function emitAppLayout(
       return `{ ${parts.join(", ")} }`;
     })
     .join(", ");
+  // <Shell> always gets pages + path; title + the shell layout (nav · width · variant) only when declared.
+  const decls = [`const pages = [${navPages}];`];
+  const attrs = [`:pages="pages"`, `:path="path"`];
+  const bind = (name: string, value: string | undefined): void => {
+    if (value === undefined) return;
+    decls.push(`const ${name} = ${JSON.stringify(value)};`);
+    attrs.push(`:${name}="${name}"`);
+  };
+  bind("title", title);
+  bind("nav", shell?.nav);
+  bind("width", shell?.width);
+  bind("variant", shell?.variant);
   return [
     `<script setup lang="ts">`,
     `// Generated app chrome — wraps every page in @vow/shell. The vow tree is the source — do not edit.`,
     `import Shell from "@vow/shell/Shell.vue";`,
     `import "@vow/shell/style.css";`,
     `defineProps<{ path: string }>();`,
-    `const pages = [${navPages}];`,
-    ...(title === undefined ? [] : [`const title = ${JSON.stringify(title)};`]),
+    ...decls,
     `</script>`,
     ``,
     `<template>`,
-    title === undefined
-      ? `  <Shell :pages="pages" :path="path"><slot /></Shell>`
-      : `  <Shell :pages="pages" :path="path" :title="title"><slot /></Shell>`,
+    `  <Shell ${attrs.join(" ")}><slot /></Shell>`,
     `</template>`,
     ``,
   ].join("\n");
@@ -916,7 +1174,11 @@ export function emitAppLayout(
  * The generated boot — replaces a hand-written `src/main.ts`. Mounts the `root` page on `#app` and
  * imports the default theme. So a vow app needs no boot shell: the entry is a vow (`root: true`).
  */
-export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/vow.css"): string {
+export function emitBoot(
+  rootSlug: string,
+  seeds: readonly string[] = [],
+  theme: string | false = "@vow/theme/vow.css",
+): string {
   const name = pascalCase(rootSlug);
   const lines = [
     `// Generated boot for the root vow "${rootSlug}". The vow is the source — do not edit.`,
@@ -924,6 +1186,10 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
     `import { createRouter, type Route } from "@vow/router";`,
     `import ${name} from "./${rootSlug}.vue";`,
   ];
+  if (seeds.length > 0) {
+    lines.push(`import { seed } from "@vow/store";`);
+    for (const slug of seeds) lines.push(`import { ${slug}Seed } from "./${slug}.ts";`);
+  }
   if (theme) lines.push(`import "${theme}";`);
   lines.push(
     ``,
@@ -939,9 +1205,11 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
     `  ...docRoutes,`,
     `];`,
     ``,
-    `void createRouter(routes, { layout }).mount("#app");`,
-    ``,
   );
+  // seed the store before mounting, so the first render already has data
+  for (const slug of seeds) lines.push(`seed(${JSON.stringify(slug)}, ${slug}Seed);`);
+  if (seeds.length > 0) lines.push(``);
+  lines.push(`void createRouter(routes, { layout }).mount("#app");`, ``);
   return lines.join("\n");
 }
 

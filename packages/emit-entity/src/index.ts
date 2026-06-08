@@ -107,6 +107,12 @@ export function emitEntityModule(vow: Vow): string {
     out.push(`    ${f.name}: ${value},`);
   }
   out.push(`  });`, `}`, ``);
+  // `## seed` records → a typed seed array (each validated + auto-id'd via the factory); the boot loads it
+  if (vow.seed !== undefined && vow.seed.length > 0) {
+    out.push(`export const ${vow.slug}Seed: ${name}[] = [`);
+    for (const record of vow.seed) out.push(`  create${name}(${JSON.stringify(record)}),`);
+    out.push(`];`, ``);
+  }
   return out.join("\n");
 }
 

@@ -30,3 +30,10 @@ export function useCollection<T>(slug: string): Collection<T> {
     removeAt: (index) => void items.splice(index, 1),
   };
 }
+
+/** Seed a collection once — fills the slug's array with `items` only while it is still empty (idempotent,
+ *  so a reload or HMR never duplicates). The boot calls this for every entity with a `## seed`. */
+export function seed<T>(slug: string, items: readonly T[]): void {
+  const { items: existing } = useCollection<T>(slug);
+  if (existing.length === 0) existing.push(...items);
+}

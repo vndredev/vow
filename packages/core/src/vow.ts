@@ -104,6 +104,8 @@ export interface Vow {
   readonly view?: readonly ViewNode[];
   /** Optional form (`## form`, YAML) — for an `emit form` vow, bound to an entity. */
   readonly form?: FormSpec;
+  /** Sample records (`## seed`, YAML) — an entity's data the boot loads into the store on start. */
+  readonly seed?: readonly Record<string, unknown>[];
   /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
   readonly root?: boolean;
   /** App-shell title (the brand), read from the root vow's frontmatter — replaces `vow({ title })`. */
@@ -114,6 +116,12 @@ export interface Vow {
     readonly icon?: string;
     readonly order?: number;
     readonly group?: string;
+  };
+  /** The app-shell layout, on the root vow — where the nav lives, the content width, the visual style. */
+  readonly shell?: {
+    readonly nav?: "sidebar-left" | "sidebar-right" | "header" | "footer";
+    readonly width?: "center" | "full";
+    readonly variant?: "bordered" | "seamless" | "cards";
   };
 }
 
@@ -128,6 +136,7 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     proof: z.array(Scenario).default([]),
     view: z.array(ViewNode).optional(),
     form: FormSpec.optional(),
+    seed: z.array(z.record(z.string(), z.unknown())).optional(),
     root: z.boolean().optional(),
     title: z.string().optional(),
     nav: z
@@ -136,6 +145,13 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
         icon: z.string().optional(),
         order: z.number().optional(),
         group: z.string().optional(),
+      })
+      .optional(),
+    shell: z
+      .object({
+        nav: z.enum(["sidebar-left", "sidebar-right", "header", "footer"]).optional(),
+        width: z.enum(["center", "full"]).optional(),
+        variant: z.enum(["bordered", "seamless", "cards"]).optional(),
       })
       .optional(),
   }),

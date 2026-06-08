@@ -32,6 +32,8 @@ fulfills: emit entity
 
 An entity is **data, not a screen** — it never renders by itself. To put it on the page, a view lists it.
 
+**Seed data.** An entity may carry a **`## seed`** — a YAML list of sample records. Each is built through the factory (validated + auto-`id`'d) into a `<slug>Seed` array, and the generated boot loads it into the store once on start (idempotent, so a reload never duplicates) — so the list, cards, board and stats open with real data instead of empty.
+
 ## emit view
 
 A view is a page: a **`## view`** block — a YAML list of components (semantic blocks, layout primitives, text). It's the one view path; the full catalog is in [Views](/guide/views). A view that renders an entity's CRUD list references it by slug with `list:`:

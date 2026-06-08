@@ -128,6 +128,14 @@ function parseForm(body: string): FormSpecType | undefined {
   return FormSpec.parse({ of: parsed["of"], submit: parsed["submit"] });
 }
 
+/** Parse a `## seed` YAML block — a list of sample records the boot loads into the store. */
+function parseSeed(body: string): Record<string, unknown>[] | undefined {
+  const m = /##\s+seed\b[^\n]*\n+```ya?ml\n([\s\S]*?)\n```/i.exec(body);
+  if (!m?.[1]) return undefined;
+  const parsed = parseYaml(m[1]);
+  return Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : undefined;
+}
+
 /** Parse one `<slug>.vow.md` into a validated Vow. `slug` is supplied by the loader (the filename). */
 export function parseVowMd(slug: string, content: string): VowNode {
   const fm = FRONTMATTER.exec(content);
@@ -143,8 +151,10 @@ export function parseVowMd(slug: string, content: string): VowNode {
     proof: [...itemsUnder(body, "proves")].map((claim) => ({ claim })),
     view: parseView(body),
     form: parseForm(body),
+    seed: parseSeed(body),
     root: frontmatter["root"],
     title: frontmatter["title"],
     nav: frontmatter["nav"],
+    shell: frontmatter["shell"],
   });
 }

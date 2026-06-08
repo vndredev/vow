@@ -107,6 +107,7 @@ test("frontmatter title + nav round-trip into the Vow (the app shell, declared)"
     "root: true",
     "title: vow studio",
     "nav: { label: Tasks, icon: list-checks, order: 2, group: Plan }",
+    "shell: { nav: sidebar-left, width: full, variant: cards }",
     "---",
     "# Home",
     "",
@@ -118,4 +119,28 @@ test("frontmatter title + nav round-trip into the Vow (the app shell, declared)"
   const vow = parseVowMd("home", md);
   expect(vow.title).toBe("vow studio");
   expect(vow.nav).toEqual({ label: "Tasks", icon: "list-checks", order: 2, group: "Plan" });
+  expect(vow.shell).toEqual({ nav: "sidebar-left", width: "full", variant: "cards" });
+});
+
+test("a ## seed block parses to a list of sample records", () => {
+  const md = [
+    "---",
+    "id: vow_task",
+    "fulfills: emit entity",
+    "---",
+    "# A task",
+    "",
+    "## fields",
+    "- title: text, required",
+    "",
+    "## seed",
+    "```yaml",
+    "- { title: First, status: done }",
+    "- { title: Second, status: todo }",
+    "```",
+  ].join("\n");
+  expect(parseVowMd("task", md).seed).toEqual([
+    { title: "First", status: "done" },
+    { title: "Second", status: "todo" },
+  ]);
 });
