@@ -178,3 +178,11 @@ test("emitAppLayout serialises each page's nav config — icon, group, order (on
   );
   expect(code).toContain('{ path: "/team", title: "Team" }');
 });
+
+test("emitAppLayout passes the shell variant (the kind) only when the root declared it", () => {
+  const withKind = emitAppLayout([{ slug: "team", title: "Team" }], "vow studio", "sidebar");
+  expect(withKind).toContain('const variant = "sidebar";');
+  expect(withKind).toContain(':variant="variant"');
+  const without = emitAppLayout([{ slug: "team", title: "Team" }], "vow studio");
+  expect(without).not.toContain("variant");
+});

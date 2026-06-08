@@ -3,6 +3,7 @@ id: vow_home
 fulfills: emit view
 root: true
 title: vow studio
+shell: sidebar
 ---
 
 # The studio home — your work at a glance

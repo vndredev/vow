@@ -882,6 +882,7 @@ export function emitAppLayout(
     group?: string;
   }[],
   title?: string,
+  variant?: string,
 ): string {
   // Each page becomes a `Page` literal for the shell's sidebar — icon/group/order only when declared.
   const navPages = pages
@@ -893,6 +894,13 @@ export function emitAppLayout(
       return `{ ${parts.join(", ")} }`;
     })
     .join(", ");
+  // <Shell> gets pages + path always; title + variant (the shell kind) only when the root declared them.
+  const shellAttrs = [
+    `:pages="pages"`,
+    `:path="path"`,
+    ...(title === undefined ? [] : [`:title="title"`]),
+    ...(variant === undefined ? [] : [`:variant="variant"`]),
+  ].join(" ");
   return [
     `<script setup lang="ts">`,
     `// Generated app chrome — wraps every page in @vow/shell. The vow tree is the source — do not edit.`,
@@ -901,12 +909,11 @@ export function emitAppLayout(
     `defineProps<{ path: string }>();`,
     `const pages = [${navPages}];`,
     ...(title === undefined ? [] : [`const title = ${JSON.stringify(title)};`]),
+    ...(variant === undefined ? [] : [`const variant = ${JSON.stringify(variant)};`]),
     `</script>`,
     ``,
     `<template>`,
-    title === undefined
-      ? `  <Shell :pages="pages" :path="path"><slot /></Shell>`
-      : `  <Shell :pages="pages" :path="path" :title="title"><slot /></Shell>`,
+    `  <Shell ${shellAttrs}><slot /></Shell>`,
     `</template>`,
     ``,
   ].join("\n");

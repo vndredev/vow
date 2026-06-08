@@ -146,5 +146,6 @@ export function parseVowMd(slug: string, content: string): VowNode {
     root: frontmatter["root"],
     title: frontmatter["title"],
     nav: frontmatter["nav"],
+    shell: frontmatter["shell"],
   });
 }

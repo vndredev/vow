@@ -107,6 +107,7 @@ test("frontmatter title + nav round-trip into the Vow (the app shell, declared)"
     "root: true",
     "title: vow studio",
     "nav: { label: Tasks, icon: list-checks, order: 2, group: Plan }",
+    "shell: sidebar",
     "---",
     "# Home",
     "",
@@ -118,4 +119,5 @@ test("frontmatter title + nav round-trip into the Vow (the app shell, declared)"
   const vow = parseVowMd("home", md);
   expect(vow.title).toBe("vow studio");
   expect(vow.nav).toEqual({ label: "Tasks", icon: "list-checks", order: 2, group: "Plan" });
+  expect(vow.shell).toBe("sidebar");
 });

@@ -115,6 +115,8 @@ export interface Vow {
     readonly order?: number;
     readonly group?: string;
   };
+  /** The app-shell kind, on the root vow — `sidebar` today (`top` is the reserved next variant). */
+  readonly shell?: "sidebar";
 }
 
 export const Vow: z.ZodType<Vow> = z.lazy(() =>
@@ -138,5 +140,6 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
         group: z.string().optional(),
       })
       .optional(),
+    shell: z.literal("sidebar").optional(),
   }),
 );

@@ -14,8 +14,9 @@ It lives in `@vow/shell`, the app-chrome layer — a hand-written `.vue` frame b
 You write nothing structural — the shell is **declared in your vows' frontmatter**, mirroring how the docs sidebar is declared (`title` / `group` / `order`):
 
 ```yaml
-# the root view (home.vow.md) — the app title (the brand)
+# the root view (home.vow.md) — the app title (the brand) + the shell kind
 title: vow studio
+shell: sidebar
 
 # any other view or form — its sidebar entry
 nav: { label: Tasks, icon: list-checks, order: 1, group: Plan }
@@ -54,7 +55,7 @@ Below 960px the sidebar is hidden and a top **bar** appears with a hamburger. Ta
 `Shell.vue` is built for extension:
 
 - **Slots** — `#sidebar-footer` (extra sidebar content, above the dark toggle) and `#topbar-actions` (the mobile bar's right side) augment the chrome without forking it.
-- **`variant`** — the prop reserves a seam: `sidebar` today, `top` (a top-nav shell) drops in later without a rewrite.
+- **`variant`** — the shell **kind**, declared on the root vow as **`shell:`** (`sidebar` today; `top`, a top-nav shell, is the reserved next variant — it drops in without a rewrite).
 - **Swappable** — replace `@vow/shell` wholesale for a different app frame, exactly as you'd swap the theme.
 
 ## Styling hooks
