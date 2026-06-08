@@ -11,14 +11,19 @@ It lives in `@vow/shell`, the app-chrome layer — a hand-written `.vue` frame b
 
 ## How it's wired
 
-You write nothing. When an app has more than its home page, the plugin generates a thin `vow-app.layout.vue` that imports `@vow/shell`'s `Shell.vue`, passes the routed **pages** + the current **path** + the app **title**, and the boot globs it as the layout for every route:
+You write nothing structural — the shell is **declared in your vows' frontmatter**, mirroring how the docs sidebar is declared (`title` / `group` / `order`):
 
-```ts
-// vite.config.ts — set the brand
-vow({ title: "Task planner" });
+```yaml
+# the root view (home.vow.md) — the app title (the brand)
+title: vow studio
+
+# any other view or form — its sidebar entry
+nav: { label: Tasks, icon: list-checks, order: 1, group: Plan }
 ```
 
-The sidebar nav is **data-driven** from the routed pages (`Home` + every non-root view/form), active-marked by the path. No nav to hand-maintain — add a page (a view or a `## form`), and it appears.
+When an app has more than its home page, the plugin generates a thin `vow-app.layout.vue` that imports `@vow/shell`'s `Shell.vue` and passes the routed **pages** (each with its `nav` config) + the current **path** + the app **title**; the boot globs it as the layout for every route.
+
+The sidebar nav is built from those pages: **Home** first, then the ungrouped pages, then each **`group:`** (a _surface_) as its own titled section — ordered by `order` then title, each with its optional **`icon:`** (a `@vow/icons` glyph). Every `nav` field is optional: a view with no `nav:` still appears, labelled by its `# intent`. Add a page, and it joins the nav — none to hand-maintain. (`vow({ title })` in `vite.config` still works as a fallback brand.)
 
 ## The container model
 
@@ -60,6 +65,7 @@ The shell carries only classes (built on theme tokens), so re-skinning is the to
 | ------------------------------------------------------ | ------------------------------------------------------ |
 | `.vow-shell`                                           | the `sidebar \| main` grid                             |
 | `.vow-shell__sidebar` · `__brand` · `__nav` · `__link` | the sidebar + its nav (active = the accent guide-line) |
+| `.vow-shell__nav-group` · `__link-icon`                | a surface header + a nav link's icon                   |
 | `.vow-shell__main` · `__content`                       | the main column (the centered content)                 |
 | `.vow-shell__bar` · `__burger`                         | the mobile top bar + its hamburger (< 960px)           |
 | `.vow-shell-drawer` · `__overlay` · `__panel`          | the mobile nav drawer (the sidebar in a `dialog`)      |
