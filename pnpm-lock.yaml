@@ -293,6 +293,9 @@ importers:
       '@vow/layout':
         specifier: workspace:*
         version: link:../layout
+      '@vow/observability':
+        specifier: workspace:*
+        version: link:../observability
     devDependencies:
       vite-plus:
         specifier: 'catalog:'
@@ -438,6 +441,9 @@ importers:
       '@vow/layout':
         specifier: workspace:*
         version: link:../layout
+      '@vow/observability':
+        specifier: workspace:*
+        version: link:../observability
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@latest
         version: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.1)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.0)'

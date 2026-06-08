@@ -17,4 +17,5 @@ export type IconName =
   | "home"
   | "list-checks"
   | "users"
-  | "layers";
+  | "layers"
+  | "git-commit";

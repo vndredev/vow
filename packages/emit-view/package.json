@@ -15,7 +15,8 @@
     "@vow/component": "workspace:*",
     "@vow/core": "workspace:*",
     "@vow/emit-primitive": "workspace:*",
-    "@vow/layout": "workspace:*"
+    "@vow/layout": "workspace:*",
+    "@vow/observability": "workspace:*"
   },
   "devDependencies": {
     "vite-plus": "catalog:"
