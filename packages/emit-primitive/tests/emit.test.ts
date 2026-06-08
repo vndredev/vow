@@ -1,5 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import {
+  emitBadgeSfc,
   emitButtonSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
@@ -242,6 +243,32 @@ test("emitButtonSfc renders the structural button adapter byte-for-byte", () => 
   const sfc = emitButtonSfc();
   expect(sfc).toBe(EXPECTED_BUTTON);
   expect(sfc).not.toContain("@vow/headless"); // no headless core — it's structural
+  expect(sfc).not.toContain("<style");
+});
+
+const EXPECTED_BADGE = [
+  `<script setup lang="ts">`,
+  `// Generated badge — a structural status/label chip (no headless core; it's inert text).`,
+  `// Carries only the variant theme surface; vow's base look lives in @vow/theme (swappable).`,
+  `import Icon from "@vow/icons/Icon.vue";`,
+  `import { type IconName } from "@vow/icons";`,
+  ``,
+  `const props = withDefaults(defineProps<{ label?: string; icon?: IconName; variant?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger' }>(), { label: '', variant: 'neutral' });`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <span class="vow-badge" :data-variant="variant">`,
+  `    <Icon v-if="icon" :name="icon" />`,
+  `    <slot>{{ label }}</slot>`,
+  `  </span>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitBadgeSfc renders the structural badge adapter byte-for-byte", () => {
+  const sfc = emitBadgeSfc();
+  expect(sfc).toBe(EXPECTED_BADGE);
+  expect(sfc).not.toContain("@vow/headless"); // structural — no logic
   expect(sfc).not.toContain("<style");
 });
 

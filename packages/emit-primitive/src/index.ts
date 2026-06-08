@@ -493,6 +493,57 @@ export function emitButtonSfc(): string {
 }
 
 /**
+ * The badge adapter — a structural status/label chip with NO headless core (it's inert text). Carries
+ * only the variant theme surface (status colours) + an optional leading icon; the look lives in @vow/theme.
+ */
+const badge: Component = {
+  name: "Badge",
+  doc: [
+    "Generated badge — a structural status/label chip (no headless core; it's inert text).",
+    "Carries only the variant theme surface; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "@vow/icons/Icon.vue", default: "Icon" },
+    { from: "@vow/icons", names: ["type IconName"] },
+  ],
+  props: [
+    { name: "label", tsType: "string", optional: true, default: "''" },
+    { name: "icon", tsType: "IconName", optional: true },
+    {
+      name: "variant",
+      tsType: "'neutral' | 'accent' | 'success' | 'warning' | 'danger'",
+      optional: true,
+      default: "'neutral'",
+    },
+  ],
+  view: {
+    kind: "element",
+    tag: "span",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-badge" },
+      { kind: "bound", name: "data-variant", expr: "variant" },
+    ],
+    children: [
+      {
+        kind: "component",
+        name: "Icon",
+        attrs: [
+          { kind: "cond", type: "if", expr: "icon" },
+          { kind: "bound", name: "name", expr: "icon" },
+        ],
+        children: [],
+      },
+      { kind: "slot", children: [{ kind: "interp", expr: "label" }] },
+    ],
+  },
+};
+
+/** Generate the Vue badge adapter (structural — no headless), rendered from the canonical model. */
+export function emitBadgeSfc(): string {
+  return renderVueSfc(badge);
+}
+
+/**
  * The field adapter — a structural label + control + optional description and error, with no headless
  * core. The control is the default slot; the caller (a form) owns the id and passes it as `controlId`,
  * so the `<label for>` and the control's `id` line up. The error is a live `role="alert"` region keyed
@@ -696,6 +747,7 @@ export function emitRadioGroupSfc(): string {
  * materialises each referenced adapter into `.generated/` on demand, and the docs reuse it for prose.
  */
 export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
+  Badge: emitBadgeSfc,
   Button: emitButtonSfc,
   Checkbox: emitCheckboxSfc,
   Collapsible: emitCollapsibleSfc,

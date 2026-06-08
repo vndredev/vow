@@ -33,13 +33,14 @@ Both write the same vows. The **core** is the single guarantee (errors → 0), r
 - [x] `@vow/icons` — a swappable icon adapter (Lucide set live in the chrome)
 - [x] `reference(entity)` field + a stable auto-id + a relation **dropdown** over the target's items (via the shared store) — referent-display-resolution (show the name, not the id) still to come
 - [x] data adapter (memory): `@vow/store` — shared reactive collections per entity
-- [x] primitives cont'd: **Button** (structural + a token-driven `variant`/`size` system) · **Switch** · **Radio group** · **Field** — nine primitives now
+- [x] primitives cont'd: **Button** (structural + a token-driven `variant`/`size` system) · **Switch** · **Radio group** · **Field** — bringing the set to nine
 - [x] primitives as `## view` vocabulary (a closed registry) + a `model:` binding + a `link:` node + a **Stack** layout primitive
 - [x] `emit form` — a **bound, validated form** (`## form` of `<Field>`s, zod `.parse()`, per-field errors); the entity list's create form shares it
 - [x] **zod** schema per entity (`z.object` + inferred type; `create<Name>` is `.parse`)
 - [x] multi-view navigation **from vows** — non-root views + forms become routed pages (`/<slug>`), with a generated nav
 - [x] `@vow/shell` — a dashboard-sidebar app chrome (sidebar nav + content) wrapping every page
 - [x] **icons in the app** — an `icon:` view node + an `icon` on Button/Link, from the swappable `@vow/icons` (set widened: `plus` · `trash` · `pencil` · `arrow-right`)
+- [x] **Badge** — a structural status/label chip (`variant` colour tints + an optional icon) — ten primitives now
 - [ ] referent-display-resolution — show a reference's target name in place of the id
 - [ ] multi-value fields (e.g. `labels`)
 - [ ] primitive ladder cont'd: `table` _(complex ones wrap Zag/Ark)_
@@ -79,5 +80,5 @@ The critical path — each element green before the next:
 The dogfood moment: once the board exists, **its first content is the plan for itself** — vow planning its own build, in vow.
 
 ::: warning Honest status
-Today: entity / view / **form** / bind + **nine proven primitives** (checkbox · collapsible · tabs · dialog · select/combobox · switch · radio-group · button · field) + field types (`text` · `longtext` · `number` · `boolean` · `select` · `date` · `reference`) + a stable auto-id + per-entity **zod** schemas + relation **dropdowns** over a shared in-memory store (`@vow/store`) + a validated **`## form`** (labelled `<Field>`s + per-field errors) + layout (primitives incl. **Stack** + `## view` with the primitive/`link:` vocabulary + theme tokens) + **multi-view nav from vows** (non-root pages → `/<slug>` routes) + a **`@vow/shell`** dashboard chrome + scenario-coverage + the docs-drift gate + the **docs system** (`@vow/markdown` · `@vow/docs` · `@vow/router` · `@vow/icons`[Lucide]) with ⌘K search, a mobile nav drawer, a dark-mode toggle, Inter and a generated **`llms.txt`** — the docs are themselves a generated vow app — all green. Everything unchecked above (referent-display-resolution, table/detail/board/kanban/stats patterns, the D1 data adapter, the whole author layer + MCP) is planned and built slowly, one element at a time.
+Today: entity / view / **form** / bind + **ten primitives** (checkbox · collapsible · tabs · dialog · select/combobox · switch · radio-group · button · field · badge) + **icons in views** (`icon:` + an `icon` on Button/Link) + field types (`text` · `longtext` · `number` · `boolean` · `select` · `date` · `reference`) + a stable auto-id + per-entity **zod** schemas + relation **dropdowns** over a shared in-memory store (`@vow/store`) + a validated **`## form`** (labelled `<Field>`s + per-field errors) + layout (primitives incl. **Stack** + `## view` with the primitive/`link:` vocabulary + theme tokens) + **multi-view nav from vows** (non-root pages → `/<slug>` routes) + a **`@vow/shell`** dashboard chrome + scenario-coverage + the docs-drift gate + the **docs system** (`@vow/markdown` · `@vow/docs` · `@vow/router` · `@vow/icons`[Lucide]) with ⌘K search, a mobile nav drawer, a dark-mode toggle, Inter and a generated **`llms.txt`** — the docs are themselves a generated vow app — all green. Everything unchecked above (referent-display-resolution, table/detail/board/kanban/stats patterns, the D1 data adapter, the whole author layer + MCP) is planned and built slowly, one element at a time.
 :::

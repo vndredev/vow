@@ -2,6 +2,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import {
+  emitBadgeSfc,
   emitButtonSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
@@ -666,6 +667,23 @@ const options = ["todo", "doing", "done"];
 </template>
 `;
 
+const DEMO_BADGE = `<script setup lang="ts">
+import Badge from "./Badge.vue";
+</script>
+
+<template>
+  <div class="vow-demo">
+    <div class="vow-demo__row">
+      <Badge label="Backlog" />
+      <Badge label="In review" variant="accent" />
+      <Badge label="Done" variant="success" icon="check" />
+      <Badge label="At risk" variant="warning" />
+      <Badge label="Blocked" variant="danger" icon="x" />
+    </div>
+  </div>
+</template>
+`;
+
 /** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
 interface Demo {
   readonly sfc: string;
@@ -675,6 +693,7 @@ interface Demo {
 
 /** `::: demo <X>` → the VowDemo<X> component; @vow/docs materialises the wrapper + the adapter. */
 const DEMOS: Record<string, Demo> = {
+  VowDemoBadge: { sfc: DEMO_BADGE, adapter: "Badge", emit: emitBadgeSfc },
   VowDemoButton: { sfc: DEMO_BUTTON, adapter: "Button", emit: emitButtonSfc },
   VowDemoCheckbox: { sfc: DEMO_CHECKBOX, adapter: "Checkbox", emit: emitCheckboxSfc },
   VowDemoCollapsible: { sfc: DEMO_COLLAPSIBLE, adapter: "Collapsible", emit: emitCollapsibleSfc },
