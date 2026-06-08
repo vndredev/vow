@@ -38,12 +38,15 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   const labelField = (ref?: string): string =>
     byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
 
+  const hasSelectLike = inputFields.some((f) => f.type === "select" || f.type === "reference");
+
   const imports: ImportDecl[] = [
-    { from: "vue", names: ["ref"] },
+    { from: "vue", names: referenceFields.length > 0 ? ["ref", "computed"] : ["ref"] },
     { from: "@vow/store", names: ["useCollection"] },
     { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
   ];
   if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
+  if (hasSelectLike) imports.push({ from: "./Select.vue", default: "Select" }); // select + reference
 
   const setup: string[] = [
     // the shared store holds the items (one array per slug) — so a reference field can read another
@@ -63,10 +66,11 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `  removeAt(index);`,
     `}`,
   ];
-  // a reference dropdown reads the target entity's shared collection (its selectable items)
+  // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label}
   for (const f of referenceFields) {
     setup.push(
       `const ${f.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(f.ref ?? "")}).items;`,
+      `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
     );
   }
 
@@ -110,23 +114,18 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   // one input per non-boolean field: select → inline options, date → date input, else text/number
   const inputs: UiNode[] = inputFields.map((f): UiNode => {
     if (f.type === "select") {
+      const opts = (f.options ?? [])
+        .map((o) => `{ value: '${o.replace(/'/g, "\\'")}', label: '${o.replace(/'/g, "\\'")}' }`)
+        .join(", ");
       return {
-        kind: "element",
-        tag: "select",
-        inline: true,
+        kind: "component",
+        name: "Select",
         attrs: [
-          { kind: "static", name: "class", value: "vow-view__input" },
           { kind: "model", expr: `draft.${f.name}` },
-          { kind: "static", name: "aria-label", value: f.name },
+          { kind: "bound", name: "options", expr: `[${opts}]` },
+          { kind: "static", name: "label", value: f.name },
         ],
-        children: (f.options ?? []).map(
-          (o): UiNode => ({
-            kind: "element",
-            tag: "option",
-            attrs: [{ kind: "static", name: "value", value: o }],
-            children: [{ kind: "text", text: o }],
-          }),
-        ),
+        children: [],
       };
     }
     if (f.type === "date") {
@@ -143,32 +142,17 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       };
     }
     if (f.type === "reference") {
-      // a dropdown over the target entity's shared collection — only existing items are selectable, so
-      // the reference resolves to a real id (label = the target's first text field, else its id)
+      // vow's Select primitive over the target entity's shared collection (id → its first text field);
+      // only existing items are selectable, so the reference resolves to a real id
       return {
-        kind: "element",
-        tag: "select",
-        inline: true,
+        kind: "component",
+        name: "Select",
         attrs: [
-          { kind: "static", name: "class", value: "vow-view__input" },
           { kind: "model", expr: `draft.${f.name}` },
-          { kind: "static", name: "aria-label", value: f.name },
+          { kind: "bound", name: "options", expr: `${f.name}Choices` },
+          { kind: "static", name: "label", value: f.name },
         ],
-        children: [
-          {
-            kind: "element",
-            tag: "option",
-            attrs: [{ kind: "static", name: "value", value: "" }],
-            children: [{ kind: "text", text: `— ${f.name} —` }],
-          },
-          {
-            kind: "element",
-            tag: "option",
-            for: { each: `${f.name}Options`, as: "t", index: "ti", key: "t.id" },
-            attrs: [{ kind: "bound", name: "value", expr: "t.id" }],
-            children: [{ kind: "interp", expr: `t.${labelField(f.ref)}` }],
-          },
-        ],
+        children: [],
       };
     }
     return {

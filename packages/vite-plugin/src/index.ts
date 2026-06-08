@@ -4,7 +4,7 @@ import type { Plugin } from "vite-plus";
 import { loadVowForest, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
-import { emitCheckboxSfc } from "@vow/emit-primitive";
+import { emitCheckboxSfc, emitSelectSfc } from "@vow/emit-primitive";
 import {
   emitBoot,
   emitEntityList,
@@ -101,8 +101,9 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
   }
 
   // A view's `list: <entity>` instantiates that entity's CRUD list — emitted here, on demand. A
-  // boolean field in any listed entity renders as <Checkbox>, so emit the adapter once if needed.
+  // boolean → <Checkbox>; select + reference → <Select>. Emit each adapter once if any listed entity needs it.
   let needsCheckbox = false;
+  let needsSelect = false;
   for (const slug of listed) {
     const entity = entityBySlug.get(slug);
     if (!entity) continue; // emitView already validated the reference; defensive
@@ -110,11 +111,19 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
     writeFileSync(file, emitEntityList(entity, entityBySlug), "utf8");
     written.push(file);
     if (entity.fields.some((fld) => fld.type === "boolean")) needsCheckbox = true;
+    if (entity.fields.some((fld) => fld.type === "select" || fld.type === "reference")) {
+      needsSelect = true;
+    }
   }
   if (needsCheckbox) {
     const cb = join(outDir, "Checkbox.vue");
     writeFileSync(cb, emitCheckboxSfc(), "utf8");
     written.push(cb);
+  }
+  if (needsSelect) {
+    const sel = join(outDir, "Select.vue");
+    writeFileSync(sel, emitSelectSfc(), "utf8");
+    written.push(sel);
   }
   // A `## view` imports `./<Primitive>.vue`; emit the layout primitives so those resolve (and are
   // themselves type-checked by `vp check`). Written wholesale — the unused ones are harmless.

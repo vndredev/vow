@@ -38,7 +38,7 @@ test("the list carries no heading of its own — the referencing view owns headi
   expect(sfc).not.toContain("<h1");
 });
 
-test("a select field renders as a <select> with options in the create form", () => {
+test("a select field renders via the Select primitive with its options", () => {
   const ticket: VowNode = {
     ...entity,
     id: "vow_ticket",
@@ -48,8 +48,9 @@ test("a select field renders as a <select> with options in the create form", () 
     ],
   };
   const sfc = emitEntityList(ticket);
-  expect(sfc).toContain('<select class="vow-view__input" v-model="draft.status"');
-  expect(sfc).toContain('<option value="todo">todo</option>');
+  expect(sfc).toContain('import Select from "./Select.vue";');
+  expect(sfc).toContain('<Select v-model="draft.status"');
+  expect(sfc).toContain("{ value: 'todo', label: 'todo' }");
 });
 
 test("a date field renders as a native date input in the create form", () => {
@@ -70,15 +71,15 @@ const issue: VowNode = {
   fields: [{ name: "assignee", type: "reference", required: false, ref: "user" }],
 };
 
-test("a reference field renders as a dropdown over the target's shared collection", () => {
+test("a reference field renders the Select primitive over the target's shared collection", () => {
   const sfc = emitEntityList(issue); // no byId → label falls back to the id
   expect(sfc).toContain(
     'const assigneeOptions = useCollection<{ id: string } & Record<string, unknown>>("user").items;',
   );
-  expect(sfc).toContain('<select class="vow-view__input" v-model="draft.assignee"');
-  expect(sfc).toContain('v-for="(t, ti) in assigneeOptions"');
-  expect(sfc).toContain(':value="t.id"');
-  expect(sfc).toContain("{{ t.id }}");
+  expect(sfc).toContain("const assigneeChoices = computed(() =>");
+  expect(sfc).toContain("value: t.id, label: String(t.id)");
+  expect(sfc).toContain('<Select v-model="draft.assignee"');
+  expect(sfc).toContain(':options="assigneeChoices"');
 });
 
 test("a reference dropdown labels items by the target's first text field", () => {
@@ -89,7 +90,7 @@ test("a reference dropdown labels items by the target's first text field", () =>
     fields: [{ name: "name", type: "text", required: true }],
   };
   const sfc = emitEntityList(issue, new Map([["user", user]]));
-  expect(sfc).toContain("{{ t.name }}");
+  expect(sfc).toContain("label: String(t.name)");
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {
