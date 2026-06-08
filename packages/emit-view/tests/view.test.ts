@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow } from "@vow/core";
-import { emitForm, emitView, referencedPrimitives } from "../src/index.ts";
+import { emitAppRoutes, emitForm, emitView, referencedPrimitives } from "../src/index.ts";
 
 /** Build a view-only vow (a `## view`) with a given component list. */
 const view = (nodes: Vow["view"]): Vow => ({
@@ -129,4 +129,17 @@ test("emitForm renders a labelled, zod-validated form bound to an entity", () =>
 
 test("emitForm fails fast when its `of` is not a known entity", () => {
   expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/);
+});
+
+test("a link: node renders an internal anchor the router intercepts", () => {
+  const sfc = emitView(view([{ type: "link", value: { to: "/add-task", label: "Add a task" } }]));
+  expect(sfc).toContain('<a class="vow-link" href="/add-task">Add a task</a>');
+});
+
+test("emitAppRoutes maps each non-root page to a /slug route loading its .vue", () => {
+  const code = emitAppRoutes([{ slug: "add-task", title: "Add a task" }]);
+  expect(code).toContain('import type { Route } from "@vow/router";');
+  expect(code).toContain(
+    '{ path: "/add-task", load: () => import("./add-task.vue"), title: "Add a task" },',
+  );
 });

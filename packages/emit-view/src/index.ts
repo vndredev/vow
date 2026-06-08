@@ -522,6 +522,19 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
   if (type === "text") {
     return txt(str(value));
   }
+  if (type === "link") {
+    // an internal link the router intercepts (no full reload): `- link: { to: /add-task, label: … }`
+    const o = asObject(value);
+    return {
+      kind: "element",
+      tag: "a",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-link" },
+        { kind: "static", name: "href", value: str(o["to"]) },
+      ],
+      children: [txt(str(o["label"] ?? o["to"]))],
+    };
+  }
   throw new Error(`emit-view: unknown view component "${type}"`);
 }
 
@@ -620,6 +633,26 @@ export function listedEntities(view: Vow): string[] {
   };
   for (const node of view.view ?? []) walk(node.type, node.value);
   return [...found];
+}
+
+/**
+ * The app's route table for non-root pages — every `emit view` / `emit form` vow that isn't the root
+ * becomes a route at `/<slug>`, lazily loading its `.vue`. Written as a `*.routes.ts` the boot globs (the
+ * same seam @vow/docs uses), so the root page stays `/` and these join it — no hand-written router.
+ */
+export function emitAppRoutes(pages: readonly { slug: string; title: string }[]): string {
+  return [
+    `// Generated routes for the app's pages (views + forms). The vow tree is the source — do not edit.`,
+    `import type { Route } from "@vow/router";`,
+    ``,
+    `export const routes: Route[] = [`,
+    ...pages.map(
+      (p) =>
+        `  { path: "/${p.slug}", load: () => import("./${p.slug}.vue"), title: ${JSON.stringify(p.title)} },`,
+    ),
+    `];`,
+    ``,
+  ].join("\n");
 }
 
 /**

@@ -6,6 +6,7 @@ import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
+  emitAppRoutes,
   emitBoot,
   emitEntityList,
   emitForm,
@@ -77,6 +78,7 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
   const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
   const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
+  const pages: { slug: string; title: string }[] = []; // non-root views + forms → routes at /<slug>
   let needsLayout = false; // any `emit view` pulls in the layout primitives
 
   for (const v of all) {
@@ -97,11 +99,13 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       written.push(file);
       for (const slug of listedEntities(v)) listed.add(slug);
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
+      if (v.root !== true) pages.push({ slug: v.slug, title: v.intent }); // a non-root view → a route
       needsLayout = true;
     } else if (f.kind === "emit" && f.as === "form") {
       const file = join(outDir, `${v.slug}.vue`);
       writeFileSync(file, emitForm(v, entityBySlug), "utf8");
       written.push(file);
+      pages.push({ slug: v.slug, title: v.intent }); // a form is always its own page
       const entity = entityBySlug.get(v.form?.of ?? "");
       needed.add("Field").add("Button"); // a form always wraps fields + a submit button
       if (entity?.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
@@ -144,6 +148,13 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(file, sfc, "utf8");
       written.push(file);
     }
+  }
+  // Non-root views + forms become routes (`/<slug>`) the boot globs via the `*.routes.ts` convention —
+  // so the root page stays `/` and every other page joins it, with no hand-written router.
+  if (pages.length > 0) {
+    const routes = join(outDir, "vow-pages.routes.ts");
+    writeFileSync(routes, emitAppRoutes(pages), "utf8");
+    written.push(routes);
   }
   // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
   // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.

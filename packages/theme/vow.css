@@ -251,6 +251,16 @@
   color: var(--vow-color-danger);
   margin: 0;
 }
+
+/* an internal link in a view — the router intercepts it (no full reload). */
+.vow-link {
+  color: var(--vow-color-accent);
+  text-decoration: none;
+  font-weight: var(--vow-weight-medium);
+}
+.vow-link:hover {
+  text-decoration: underline;
+}
 .vow-view__add {
   padding: var(--vow-space-2) var(--vow-space-4);
   border: var(--vow-border) solid var(--vow-color-ink);

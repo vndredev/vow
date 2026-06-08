@@ -28,5 +28,6 @@ root: true
 - h3: Users
 - list: user
 - h3: Your tasks
+- link: { to: /add-task, label: Add a task on its own page → }
 - list: task
 ```

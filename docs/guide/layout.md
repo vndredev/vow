@@ -43,6 +43,11 @@ The catalog of ready-made components — you name them, vow brings the markup:
   `- checkbox: { label: Subscribe, model: subscribed }`, likewise `select` · `collapsible` · `tabs` · `dialog`.
   The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
   the adapters a view references, and an unknown name fails loud at generate time.
+- **`link: { to, label }`** — an internal link the router intercepts (no full reload).
+
+**Pages & routing.** The `root: true` view is the app's home (`/`); **every other view and every `emit form`
+becomes a page at `/<slug>`** automatically — vow generates the route table, the boot serves them from one
+client router, and a `link:` navigates between them without a reload.
 
 ## Primitives — the escape hatch
 
