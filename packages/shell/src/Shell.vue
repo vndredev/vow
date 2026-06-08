@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import DarkToggle from "./DarkToggle.vue";
+import { ref } from "vue";
+import Drawer from "./Drawer.vue";
+import SidebarNav from "./SidebarNav.vue";
 import type { Page } from "./index.ts";
 
 const props = withDefaults(
@@ -17,34 +18,40 @@ const props = withDefaults(
   { title: "vow app", variant: "sidebar" },
 );
 
-// the nav: Home (the root view) + every routed page; active-marked by the current path
-const links = computed<Page[]>(() => [{ path: "/", title: "Home" }, ...props.pages]);
+const drawerOpen = ref(false);
 </script>
 
 <template>
   <div class="vow-shell" :data-variant="variant">
+    <!-- mobile bar: hamburger + brand (hidden ≥ 960px; the sidebar shows instead) -->
+    <header class="vow-shell__bar">
+      <button
+        type="button"
+        class="vow-shell__burger"
+        aria-label="Open navigation"
+        @click="drawerOpen = true"
+      >
+        <span /><span /><span />
+      </button>
+      <a class="vow-shell__bar-brand" href="/">{{ props.title }}</a>
+      <div class="vow-shell__bar-actions"><slot name="topbar-actions" /></div>
+    </header>
+
+    <!-- desktop sidebar (hidden < 960px; the drawer shows instead) -->
     <aside class="vow-shell__sidebar">
-      <a class="vow-shell__brand" href="/">{{ title }}</a>
-      <nav class="vow-shell__nav">
-        <a
-          v-for="link in links"
-          :key="link.path"
-          class="vow-shell__link"
-          :class="{ 'is-active': path === link.path }"
-          :href="link.path"
-          :aria-current="path === link.path ? 'page' : undefined"
-          >{{ link.title }}</a
-        >
-      </nav>
-      <div class="vow-shell__sidebar-footer">
-        <slot name="sidebar-footer" />
-        <DarkToggle />
-      </div>
+      <SidebarNav :pages="pages" :path="path" :title="props.title">
+        <template #footer><slot name="sidebar-footer" /></template>
+      </SidebarNav>
     </aside>
+
+    <!-- mobile drawer: the same sidebar in a dialog -->
+    <Drawer v-model:open="drawerOpen" :path="path">
+      <SidebarNav :pages="pages" :path="path" :title="props.title">
+        <template #footer><slot name="sidebar-footer" /></template>
+      </SidebarNav>
+    </Drawer>
+
     <main class="vow-shell__main">
-      <header v-if="$slots['topbar-actions']" class="vow-shell__topbar">
-        <slot name="topbar-actions" />
-      </header>
       <div class="vow-shell__content"><slot /></div>
     </main>
   </div>
