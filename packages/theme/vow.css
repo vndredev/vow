@@ -273,6 +273,14 @@ body {
   border-left-color: var(--vow-color-danger);
   background: color-mix(in srgb, var(--vow-color-danger) 8%, var(--vow-color-bg));
 }
+/* the empty state — shown in place of a bare table header when a collection has no rows yet */
+.vow-empty {
+  padding: var(--vow-space-6);
+  text-align: center;
+  color: var(--vow-color-muted);
+  border: var(--vow-border) dashed var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
+}
 .vow-view__delete {
   border: none;
   background: none;

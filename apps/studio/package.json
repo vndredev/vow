@@ -1,8 +1,8 @@
 {
-  "name": "@vow/starter",
+  "name": "@vow/studio-app",
   "version": "0.0.0",
   "private": true,
-  "description": "The vow starter: the bare example — one entity generated from a vow into a typed, validated CRUD app.",
+  "description": "The vow studio — vow's own planning/build/design surface, generated from vows and composed entirely of vow's own means.",
   "type": "module",
   "scripts": {
     "dev": "vp dev",

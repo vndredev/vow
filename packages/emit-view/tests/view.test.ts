@@ -31,7 +31,7 @@ test("hero expands to a column Flex with eyebrow, title and lead", () => {
   expect(sfc).toContain('import Flex from "./Flex.vue";');
 });
 
-test("features expand to a 3-column Grid of Boxes", () => {
+test("features expand to a 3-column Grid of Cards", () => {
   const sfc = emitView(
     view([
       {
@@ -44,9 +44,9 @@ test("features expand to a 3-column Grid of Boxes", () => {
     ]),
   );
   expect(sfc).toContain('<Grid :columns="3" :gap="4">');
-  expect(sfc).toContain('<Box :p="5">');
-  expect(sfc).toContain("<h3>A</h3>");
-  expect(sfc).toContain("<p>aa</p>");
+  expect(sfc).toContain("<Card>");
+  expect(sfc).toContain("<CardHeader>A</CardHeader>");
+  expect(sfc).toContain("<CardBody>aa</CardBody>");
 });
 
 test("list references a generated view by entity slug and imports it", () => {
@@ -163,4 +163,18 @@ test("emitAppLayout omits the title when none is given (the shell's own fallback
   const code = emitAppLayout([{ slug: "users", title: "Team" }]);
   expect(code).not.toContain("const title");
   expect(code).toContain('<Shell :pages="pages" :path="path"><slot /></Shell>');
+});
+
+test("emitAppLayout serialises each page's nav config — icon, group, order (only when set)", () => {
+  const code = emitAppLayout(
+    [
+      { slug: "tasks", title: "Tasks", icon: "list-checks", group: "Work", order: 2 },
+      { slug: "team", title: "Team" }, // bare — no extra keys emitted
+    ],
+    "vow studio",
+  );
+  expect(code).toContain(
+    '{ path: "/tasks", title: "Tasks", icon: "list-checks", group: "Work", order: 2 }',
+  );
+  expect(code).toContain('{ path: "/team", title: "Team" }');
 });

@@ -41,6 +41,9 @@
   border-left: var(--vow-border) solid var(--vow-color-border);
 }
 .vow-shell__link {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
   margin-left: -1px; /* sits on the guide line */
   padding: var(--vow-space-1) var(--vow-space-4);
   border-left: var(--vow-border) solid transparent;
@@ -51,6 +54,19 @@
   transition:
     color 0.15s,
     border-color 0.15s;
+}
+.vow-shell__link-icon {
+  flex: none;
+  font-size: 1.05em;
+  opacity: 0.8;
+}
+.vow-shell__nav-group {
+  margin: var(--vow-space-4) 0 var(--vow-space-1) var(--vow-space-4);
+  font-size: var(--vow-text-xs);
+  font-weight: var(--vow-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vow-color-muted);
 }
 .vow-shell__link:hover {
   color: var(--vow-color-text);

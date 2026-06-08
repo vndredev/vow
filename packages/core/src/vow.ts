@@ -106,6 +106,15 @@ export interface Vow {
   readonly form?: FormSpec;
   /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
   readonly root?: boolean;
+  /** App-shell title (the brand), read from the root vow's frontmatter — replaces `vow({ title })`. */
+  readonly title?: string;
+  /** Nav entry in the app shell (frontmatter) — label · icon · order · group (a surface). */
+  readonly nav?: {
+    readonly label?: string;
+    readonly icon?: string;
+    readonly order?: number;
+    readonly group?: string;
+  };
 }
 
 export const Vow: z.ZodType<Vow> = z.lazy(() =>
@@ -120,5 +129,14 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     view: z.array(ViewNode).optional(),
     form: FormSpec.optional(),
     root: z.boolean().optional(),
+    title: z.string().optional(),
+    nav: z
+      .object({
+        label: z.string().optional(),
+        icon: z.string().optional(),
+        order: z.number().optional(),
+        group: z.string().optional(),
+      })
+      .optional(),
   }),
 );

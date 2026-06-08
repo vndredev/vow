@@ -98,3 +98,24 @@ test("a ## view item with more than one key fails fast", () => {
   ].join("\n");
   expect(() => parseVowMd("bad", md)).toThrow();
 });
+
+test("frontmatter title + nav round-trip into the Vow (the app shell, declared)", () => {
+  const md = [
+    "---",
+    "id: vow_home",
+    "fulfills: emit view",
+    "root: true",
+    "title: vow studio",
+    "nav: { label: Tasks, icon: list-checks, order: 2, group: Plan }",
+    "---",
+    "# Home",
+    "",
+    "## view",
+    "```yaml",
+    "- h1: Hi",
+    "```",
+  ].join("\n");
+  const vow = parseVowMd("home", md);
+  expect(vow.title).toBe("vow studio");
+  expect(vow.nav).toEqual({ label: "Tasks", icon: "list-checks", order: 2, group: "Plan" });
+});

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import { loadVows, validateReferences, type Vow as VowNode } from "@vow/core";
@@ -10,10 +10,13 @@ import {
   emitAppRoutes,
   emitBoot,
   emitEntityList,
+  emitEntityStats,
   emitForm,
   emitView,
   listedEntities,
   referencedPrimitives,
+  statsComponentName,
+  statsRefs,
   VOW_ENV_DTS,
   viewComponentName,
 } from "@vow/emit-view";
@@ -85,8 +88,18 @@ export function generateFiles(
   );
   const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
+  const statsByKey = new Map<string, { of: string; by: string }>(); // `stats: { of, by }` refs, deduped
   const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
-  const pages: { slug: string; title: string }[] = []; // non-root views + forms → routes at /<slug>
+  // non-root views + forms → routes at /<slug>; each carries its `nav:` config for the shell sidebar
+  const pages: { slug: string; title: string; icon?: string; order?: number; group?: string }[] =
+    [];
+  const navPage = (v: VowNode) => ({
+    slug: v.slug,
+    title: v.nav?.label ?? v.intent,
+    icon: v.nav?.icon,
+    order: v.nav?.order,
+    group: v.nav?.group,
+  });
   let needsLayout = false; // any `emit view` pulls in the layout primitives
 
   for (const v of all) {
@@ -106,14 +119,15 @@ export function generateFiles(
       writeFileSync(file, emitView(v, entities), "utf8");
       written.push(file);
       for (const slug of listedEntities(v)) listed.add(slug);
+      for (const ref of statsRefs(v)) statsByKey.set(`${ref.of}.${ref.by}`, ref); // stats compositions
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
-      if (v.root !== true) pages.push({ slug: v.slug, title: v.intent }); // a non-root view → a route
+      if (v.root !== true) pages.push(navPage(v)); // a non-root view → a route
       needsLayout = true;
     } else if (f.kind === "emit" && f.as === "form") {
       const file = join(outDir, `${v.slug}.vue`);
       writeFileSync(file, emitForm(v, entityBySlug), "utf8");
       written.push(file);
-      pages.push({ slug: v.slug, title: v.intent }); // a form is always its own page
+      pages.push(navPage(v)); // a form is always its own page
       const entity = entityBySlug.get(v.form?.of ?? "");
       needed.add("Field").add("Button"); // a form always wraps fields + a submit button
       if (entity?.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
@@ -143,6 +157,16 @@ export function generateFiles(
     }
     if (entity.fields.some((fld) => fld.type === "select")) needed.add("Badge"); // a select cell → <Badge>
   }
+
+  // A view's `stats: { of, by }` instantiates a counts-by-field composition — emitted here, on demand.
+  for (const { of, by } of statsByKey.values()) {
+    const entity = entityBySlug.get(of);
+    if (!entity) continue; // emitView already validated the reference; defensive
+    const file = join(outDir, `${statsComponentName(of, by)}.vue`);
+    writeFileSync(file, emitEntityStats(entity, by), "utf8");
+    written.push(file);
+    needed.add("Stats").add("Stat"); // the stats composition composes the Stats/Stat primitives
+  }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {
     const emit = PRIMITIVE_ADAPTERS[name];
@@ -163,16 +187,19 @@ export function generateFiles(
   // Non-root views + forms become routes (`/<slug>`) the boot globs via the `*.routes.ts` convention —
   // so the root page stays `/` and every other page joins it, with no hand-written router. With more than
   // the home page, also emit a shared chrome (`*.layout.vue`) — a nav over every page.
+  // The app's entry: a `root: true` page. Its frontmatter `title:` is the app-shell brand (falling back
+  // to the plugin option) — so the shell title is declared in the vow, not in vite.config.
+  const rootVow = all.find((v) => v.root === true && v.view);
+  const appTitle = rootVow?.title ?? title;
   if (pages.length > 0) {
     const routes = join(outDir, "vow-pages.routes.ts");
     writeFileSync(routes, emitAppRoutes(pages), "utf8");
     const layout = join(outDir, "vow-app.layout.vue");
-    writeFileSync(layout, emitAppLayout(pages, title), "utf8");
+    writeFileSync(layout, emitAppLayout(pages, appTitle), "utf8");
     written.push(routes, layout);
   }
-  // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
-  // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.
-  const rootVow = all.find((v) => v.root === true && v.view);
+  // Generate the boot (main.ts) + the *.vue/*.css shims, so the app needs no hand-written `src/` shell —
+  // index.html loads `.generated/main.ts`.
   if (rootVow) {
     const boot = join(outDir, "main.ts");
     const env = join(outDir, "vow-env.d.ts");
@@ -200,10 +227,17 @@ export function vow(options: VowOptions = {}): Plugin {
   let vows: readonly VowNode[] = options.vows ?? [];
   let vowDir = dirOpt;
   let genDir = outOpt;
+  let lastWritten = new Set<string>(); // what this plugin wrote last run — to clean up deleted vows
 
   const regenerate = (): void => {
     vows = options.vows ?? loadVows(vowDir);
-    generateFiles(vows, genDir, vowDir, options.title);
+    const written = generateFiles(vows, genDir, vowDir, options.title);
+    // a vow's `.md` was deleted → remove the files this plugin wrote before but not now, so generated
+    // output never outlives its source. Only our own files are touched — another plugin's stay (e.g.
+    // `@vow/docs` shares `.generated/`).
+    const current = new Set(written);
+    for (const file of lastWritten) if (!current.has(file)) rmSync(file, { force: true });
+    lastWritten = current;
   };
 
   return {

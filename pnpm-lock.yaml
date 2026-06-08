@@ -144,6 +144,52 @@ importers:
         specifier: 'catalog:'
         version: 0.1.24(@types/node@25.9.1)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.1)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.0))(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(yaml@2.9.0)
 
+  apps/studio:
+    dependencies:
+      '@vow/headless':
+        specifier: workspace:*
+        version: link:../../packages/headless
+      '@vow/icons':
+        specifier: workspace:*
+        version: link:../../packages/icons
+      '@vow/router':
+        specifier: workspace:*
+        version: link:../../packages/router
+      '@vow/shell':
+        specifier: workspace:*
+        version: link:../../packages/shell
+      '@vow/store':
+        specifier: workspace:*
+        version: link:../../packages/store
+      '@vow/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
+      vue:
+        specifier: ^3.5.13
+        version: 3.5.35(typescript@6.0.3)
+      zod:
+        specifier: ^4.1.13
+        version: 4.4.3
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: 'catalog:'
+        version: 6.0.7(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.1)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.0))(vue@3.5.35(typescript@6.0.3))
+      '@vow/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@vow/gate':
+        specifier: workspace:*
+        version: link:../../packages/gate
+      '@vow/vite-plugin':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin
+      vite:
+        specifier: npm:@voidzero-dev/vite-plus-core@latest
+        version: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.1)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.0)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.24(@types/node@25.9.1)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.9.1)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.0))(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(yaml@2.9.0)
+
   packages/component:
     devDependencies:
       vite-plus:

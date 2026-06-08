@@ -260,7 +260,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
         {
           kind: "component",
           name: "Table",
-          attrs: [],
+          attrs: [{ kind: "cond", type: "if", expr: "rows.length > 0" }],
           children: [
             {
               kind: "element",
@@ -324,6 +324,16 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
             },
           ],
         },
+        {
+          // when the collection is empty, a bare header is pointless — show a friendly empty state
+          kind: "element",
+          tag: "p",
+          attrs: [
+            { kind: "static", name: "class", value: "vow-empty" },
+            { kind: "cond", type: "if", expr: "rows.length === 0" },
+          ],
+          children: [{ kind: "text", text: "Nothing here yet — add the first one below." }],
+        },
         createForm,
       ],
     },
@@ -335,6 +345,67 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
 /** The PascalCase component name for an entity's list view (`task` → `Task`). */
 export function viewComponentName(entity: Vow): string {
   return pascalCase(entity.slug);
+}
+
+/** The component name for an entity's counts-by-field stats (`task`,`status` → `TaskStatusStats`). */
+export function statsComponentName(of: string, by: string): string {
+  return pascalCase(of) + pascalCase(by) + "Stats";
+}
+
+/**
+ * A stats composition over an entity — one `<Stat>` per option of a `select` field, counting the rows
+ * in that group (live from the shared store). A composition, not a primitive: it knows the entity's
+ * field + binds the store; it composes the `Stats`/`Stat` primitives.
+ */
+export function emitEntityStats(entity: Vow, by: string): string {
+  if (entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
+    throw new Error(`emit-view: \`stats\` target "${entity.slug}" must be an \`emit entity\``);
+  }
+  const field = entity.fields.find((f) => f.name === by);
+  if (field === undefined || field.type !== "select") {
+    throw new Error(
+      `emit-view: \`stats: { by: ${by} }\` must reference a select field of "${entity.slug}"`,
+    );
+  }
+  const type = pascalCase(entity.slug);
+  const component: Component = {
+    name: statsComponentName(entity.slug, by),
+    doc: [
+      `Generated from vow "${entity.slug}" — a count of rows per ${by}. The vow is the source — do not edit.`,
+    ],
+    imports: [
+      { from: "vue", names: ["computed"] },
+      { from: "@vow/store", names: ["useCollection"] },
+      { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
+      { from: "./Stats.vue", default: "Stats" },
+      { from: "./Stat.vue", default: "Stat" },
+    ],
+    setup: [
+      `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+      `const options = ${JSON.stringify(field.options ?? [])};`,
+      `const stats = computed(() =>`,
+      `  options.map((o) => ({ label: o, value: rows.filter((r) => r.${by} === o).length })),`,
+      `);`,
+    ],
+    view: {
+      kind: "component",
+      name: "Stats",
+      attrs: [],
+      children: [
+        {
+          kind: "component",
+          name: "Stat",
+          for: { each: "stats", as: "s", key: "s.label" },
+          attrs: [
+            { kind: "bound", name: "value", expr: "s.value" },
+            { kind: "bound", name: "label", expr: "s.label" },
+          ],
+          children: [],
+        },
+      ],
+    },
+  };
+  return renderVueSfc(component);
 }
 
 /** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set. */
@@ -581,12 +652,13 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     return comp("Flex", [bound("direction", "'column'"), bound("gap", "3")], kids);
   }
   if (type === "features") {
+    // a responsive grid of vow's own Card primitive — title → CardHeader, body → CardBody
     const cards = (Array.isArray(value) ? value : []).map((it) => {
       const o = asObject(it);
       const inner: UiNode[] = [];
-      if (o["title"] !== undefined) inner.push(el("h3", [txt(str(o["title"]))]));
-      if (o["body"] !== undefined) inner.push(el("p", [txt(str(o["body"]))]));
-      return comp("Box", [bound("p", "5")], inner);
+      if (o["title"] !== undefined) inner.push(comp("CardHeader", [], [txt(str(o["title"]))]));
+      if (o["body"] !== undefined) inner.push(comp("CardBody", [], [txt(str(o["body"]))]));
+      return comp("Card", [], inner);
     });
     return comp("Grid", [bound("columns", "3"), bound("gap", "4")], cards);
   }
@@ -598,6 +670,18 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
       );
     }
     return comp(pascalCase(slug), [], []);
+  }
+  if (type === "stats") {
+    // `stats: { of: <entity>, by: <select field> }` → the entity's counts-by-field composition
+    const o = asObject(value);
+    const of = str(o["of"]);
+    const by = str(o["by"]);
+    if (!entities.includes(of)) {
+      throw new Error(
+        `emit-view: \`stats: { of: ${of} }\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
+      );
+    }
+    return comp(statsComponentName(of, by), [], []);
   }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);
@@ -736,6 +820,33 @@ export function listedEntities(view: Vow): string[] {
   return [...found];
 }
 
+/** The `stats: { of, by }` references a `## view` makes — so the plugin can emit each composition. */
+export function statsRefs(view: Vow): { of: string; by: string }[] {
+  const found: { of: string; by: string }[] = [];
+  const seen = new Set<string>();
+  const walk = (type: string, value: unknown): void => {
+    if (type === "stats") {
+      const o = asObject(value);
+      const ref = { of: str(o["of"]), by: str(o["by"]) };
+      const key = `${ref.of}.${ref.by}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        found.push(ref);
+      }
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return found;
+}
+
 /**
  * The app's route table for non-root pages — every `emit view` / `emit form` vow that isn't the root
  * becomes a route at `/<slug>`, lazily loading its `.vue`. Written as a `*.routes.ts` the boot globs (the
@@ -763,11 +874,24 @@ export function emitAppRoutes(pages: readonly { slug: string; title: string }[])
  * only the generated wiring. Emitted only when the app has more than the home page.
  */
 export function emitAppLayout(
-  pages: readonly { slug: string; title: string }[],
+  pages: readonly {
+    slug: string;
+    title: string;
+    icon?: string;
+    order?: number;
+    group?: string;
+  }[],
   title?: string,
 ): string {
+  // Each page becomes a `Page` literal for the shell's sidebar — icon/group/order only when declared.
   const navPages = pages
-    .map((p) => `{ path: "/${p.slug}", title: ${JSON.stringify(p.title)} }`)
+    .map((p) => {
+      const parts = [`path: "/${p.slug}"`, `title: ${JSON.stringify(p.title)}`];
+      if (p.icon !== undefined) parts.push(`icon: ${JSON.stringify(p.icon)}`);
+      if (p.group !== undefined) parts.push(`group: ${JSON.stringify(p.group)}`);
+      if (p.order !== undefined) parts.push(`order: ${p.order}`);
+      return `{ ${parts.join(", ")} }`;
+    })
     .join(", ");
   return [
     `<script setup lang="ts">`,
@@ -815,7 +939,7 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
     `  ...docRoutes,`,
     `];`,
     ``,
-    `createRouter(routes, { layout }).mount("#app");`,
+    `void createRouter(routes, { layout }).mount("#app");`,
     ``,
   );
   return lines.join("\n");

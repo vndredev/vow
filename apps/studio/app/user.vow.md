@@ -3,7 +3,7 @@ id: vow_user
 fulfills: emit entity
 ---
 
-# A user who can be assigned work
+# A person who can own work
 
 ## fields
 

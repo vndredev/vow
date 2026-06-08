@@ -1,6 +1,11 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow as VowNode } from "@vow/core";
-import { emitEntityList, viewComponentName } from "../src/index.ts";
+import {
+  emitEntityList,
+  emitEntityStats,
+  statsComponentName,
+  viewComponentName,
+} from "../src/index.ts";
 
 const entity: VowNode = {
   id: "vow_task",
@@ -115,6 +120,24 @@ test("a reference dropdown labels items by the target's first text field", () =>
   };
   const sfc = emitEntityList(issue, new Map([["user", user]]));
   expect(sfc).toContain("label: String(t.name)");
+});
+
+test("emitEntityStats counts rows per a select field, composing Stats/Stat", () => {
+  const ticket: VowNode = {
+    ...entity,
+    id: "vow_ticket",
+    slug: "ticket",
+    fields: [
+      { name: "status", type: "select", required: false, options: ["todo", "doing", "done"] },
+    ],
+  };
+  expect(statsComponentName("ticket", "status")).toBe("TicketStatusStats");
+  const sfc = emitEntityStats(ticket, "status");
+  expect(sfc).toContain('const { items: rows } = useCollection<Ticket>("ticket");');
+  expect(sfc).toContain('const options = ["todo","doing","done"];');
+  expect(sfc).toContain("rows.filter((r) => r.status === o).length");
+  expect(sfc).toContain('<Stat :value="s.value" :label="s.label"');
+  expect(() => emitEntityStats(ticket, "title")).toThrow(); // `by` must be a select field of the entity
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {

@@ -38,8 +38,11 @@ The catalog of ready-made components — you name them, vow brings the markup:
 - **`hero`** — `{ eyebrow?, title?, lead? }` → a column with an eyebrow, headline and lead.
 - **`features`** — a list of `{ title?, body? }` → a three-column grid of cards.
 - **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its full CRUD
-  **table** — a header from the fields, a row per record — imported automatically). More data shapes
-  (`cards`, `board`, `stats`) join over time.
+  **table** — a header from the fields, a row per record — imported automatically).
+- **`stats: { of: <entity>, by: <select field> }`** — a generated **counts strip**: one
+  [`Stat`](/guide/primitives/stats) per option of the field, counting the rows in that group, live from
+  the store (`stats: { of: task, by: status }` → backlog 3 · doing 2 · done 5). More shapes (`cards`,
+  `board`) join over time.
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
   `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radio` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
   The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
