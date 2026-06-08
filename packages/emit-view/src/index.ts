@@ -117,9 +117,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   const labelField = (ref?: string): string =>
     byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
 
-  const vueNames = ["ref"];
+  const vueNames = ["ref", "computed"]; // computed: the displayed (filtered/sorted) collection
   if (nativeFields.length > 0) vueNames.push("useId");
-  if (referenceFields.length > 0) vueNames.push("computed");
 
   const imports: ImportDecl[] = [
     { from: "vue", names: vueNames },
@@ -150,6 +149,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `const { items: rows, append, removeAt } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const draft = ref<Partial<${type}>>({});`,
     `const errors = ref<Record<string, string>>({});`,
+    ...sliceComputed(type, "displayed"),
   ];
   for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
   // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label};
@@ -175,8 +175,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `    }`,
     `  }`,
     `}`,
-    `function remove(index: number): void {`,
-    `  removeAt(index);`,
+    `function remove(item: ${type}): void {`,
+    `  removeAt(rows.indexOf(item));`,
     `}`,
   );
 
@@ -217,7 +217,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
         name: "aria-label",
         expr: `'Delete: ' + item.${nativeFields[0]?.name ?? "title"}`,
       },
-      { kind: "event", name: "click", expr: "remove(i)" },
+      { kind: "event", name: "click", expr: "remove(item)" },
     ],
     children: [{ kind: "text", text: "✕" }],
   };
@@ -302,7 +302,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
                   kind: "component",
                   name: "TableRow",
                   attrs: [],
-                  for: { each: "rows", as: "item", index: "i", key: "item.id" },
+                  for: { each: "displayed", as: "item", key: "item.id" },
                   children: [
                     ...entity.fields.map(
                       (f): UiNode => ({
@@ -473,6 +473,7 @@ export function emitEntityCards(entity: Vow): string {
       `Generated from vow "${entity.slug}" — a card per record. The vow is the source — do not edit.`,
     ],
     imports: [
+      { from: "vue", names: ["computed"] },
       { from: "@vow/store", names: ["useCollection"] },
       { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
       { from: "./Grid.vue", default: "Grid" },
@@ -480,7 +481,10 @@ export function emitEntityCards(entity: Vow): string {
       { from: "./CardHeader.vue", default: "CardHeader" },
       { from: "./CardBody.vue", default: "CardBody" },
     ],
-    setup: [`const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`],
+    setup: [
+      `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+      ...sliceComputed(type, "displayed"),
+    ],
     view: {
       kind: "component",
       name: "Grid",
@@ -489,7 +493,7 @@ export function emitEntityCards(entity: Vow): string {
         {
           kind: "component",
           name: "Card",
-          for: { each: "rows", as: "item", key: "item.id" },
+          for: { each: "displayed", as: "item", key: "item.id" },
           attrs: [],
           children: cardChildren,
         },
@@ -529,18 +533,9 @@ export function emitEntityBoard(entity: Vow, by: string): string {
       { from: "./CardBody.vue", default: "CardBody" },
     ],
     setup: [
-      `const props = defineProps<{ filter?: Record<string, unknown>; sort?: keyof ${type} }>();`,
       `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
       `const options = ${JSON.stringify(field.options ?? [])};`,
-      `const visible = computed(() => {`,
-      `  const f = props.filter;`,
-      `  let r = f`,
-      `    ? rows.filter((x) => Object.entries(f).every(([k, v]) => (x as Record<string, unknown>)[k] === v))`,
-      `    : rows;`,
-      `  const s = props.sort;`,
-      `  if (s) r = [...r].sort((a, b) => String(a[s]).localeCompare(String(b[s])));`,
-      `  return r;`,
-      `});`,
+      ...sliceComputed(type, "visible"),
       `const columns = computed(() =>`,
       `  options.map((o) => ({ option: o, cards: visible.value.filter((r) => r.${by} === o) })),`,
       `);`,
@@ -803,6 +798,23 @@ function sliceAttrs(o: Record<string, unknown>): Attr[] {
   return attrs;
 }
 
+/** Setup lines for a sliced collection — the `filter`/`sort` props + a `<name>` computed over `rows`
+ *  (filter by `{ field: value }`, then sort by a field). Shared by the list, cards and board. */
+function sliceComputed(type: string, name: string): string[] {
+  return [
+    `const props = defineProps<{ filter?: Record<string, unknown>; sort?: keyof ${type} }>();`,
+    `const ${name} = computed(() => {`,
+    `  const f = props.filter;`,
+    `  let r = f`,
+    `    ? rows.filter((x) => Object.entries(f).every(([k, v]) => (x as Record<string, unknown>)[k] === v))`,
+    `    : rows;`,
+    `  const s = props.sort;`,
+    `  if (s) r = [...r].sort((a, b) => String(a[s]).localeCompare(String(b[s])));`,
+    `  return r;`,
+    `});`,
+  ];
+}
+
 /** A raw YAML value as an object (props + optional `children`); non-objects → empty. */
 function asObject(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -870,22 +882,26 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     return comp("Grid", [bound("columns", "3"), bound("gap", "4")], cards);
   }
   if (type === "list") {
-    const slug = str(value);
+    // scalar `list: task` or sliced `list: { of: task, sort?, filter? }`
+    const o = typeof value === "string" ? { of: value } : asObject(value);
+    const slug = str(o["of"]);
     if (!entities.includes(slug)) {
       throw new Error(
         `emit-view: \`list: ${slug}\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
       );
     }
-    return comp(pascalCase(slug), [], []);
+    return comp(pascalCase(slug), sliceAttrs(o), []);
   }
   if (type === "cards") {
-    const slug = str(value);
+    // scalar `cards: task` or sliced `cards: { of: task, sort?, filter? }`
+    const o = typeof value === "string" ? { of: value } : asObject(value);
+    const slug = str(o["of"]);
     if (!entities.includes(slug)) {
       throw new Error(
         `emit-view: \`cards: ${slug}\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
       );
     }
-    return comp(cardsComponentName(slug), [], []);
+    return comp(cardsComponentName(slug), sliceAttrs(o), []);
   }
   if (type === "stats") {
     // `stats: { of: <entity>, by: <select field> }` → the entity's counts-by-field composition
@@ -1033,7 +1049,7 @@ export function listedEntities(view: Vow): string[] {
   const found = new Set<string>();
   const walk = (type: string, value: unknown): void => {
     if (type === "list") {
-      found.add(str(value));
+      found.add(typeof value === "string" ? value : str(asObject(value)["of"]));
       return;
     }
     const kids = asObject(value)["children"];
@@ -1080,7 +1096,7 @@ export function cardsRefs(view: Vow): string[] {
   const found = new Set<string>();
   const walk = (type: string, value: unknown): void => {
     if (type === "cards") {
-      found.add(str(value));
+      found.add(typeof value === "string" ? value : str(asObject(value)["of"]));
       return;
     }
     const kids = asObject(value)["children"];
