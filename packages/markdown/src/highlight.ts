@@ -20,9 +20,12 @@ export async function getHighlighter(): Promise<Highlighter> {
  * `v-pre` so an adapter never interprets `{{ … }}` inside a code sample.
  */
 export function highlight(hl: Highlighter, code: string, lang: string): string {
-  const known = hl.getLoadedLanguages().includes(lang);
+  // A `vue` snippet without an SFC block (`<template>` / `<script>`) is a bare template fragment — the
+  // vue grammar only colours the outermost tag, so highlight it as `html` (every tag gets coloured).
+  const effective = lang === "vue" && !/<(template|script)[\s>]/.test(code) ? "html" : lang;
+  const known = hl.getLoadedLanguages().includes(effective);
   return hl.codeToHtml(code, {
-    lang: known ? lang : "text",
+    lang: known ? effective : "text",
     themes: THEMES,
     defaultColor: false,
     transformers: [
