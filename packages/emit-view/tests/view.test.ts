@@ -164,3 +164,17 @@ test("emitAppLayout omits the title when none is given (the shell's own fallback
   expect(code).not.toContain("const title");
   expect(code).toContain('<Shell :pages="pages" :path="path"><slot /></Shell>');
 });
+
+test("emitAppLayout serialises each page's nav config — icon, group, order (only when set)", () => {
+  const code = emitAppLayout(
+    [
+      { slug: "tasks", title: "Tasks", icon: "list-checks", group: "Work", order: 2 },
+      { slug: "team", title: "Team" }, // bare — no extra keys emitted
+    ],
+    "vow studio",
+  );
+  expect(code).toContain(
+    '{ path: "/tasks", title: "Tasks", icon: "list-checks", group: "Work", order: 2 }',
+  );
+  expect(code).toContain('{ path: "/team", title: "Team" }');
+});

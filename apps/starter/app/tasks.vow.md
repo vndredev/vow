@@ -1,6 +1,7 @@
 ---
 id: vow_tasks
 fulfills: emit view
+nav: { icon: list-checks }
 ---
 
 # Tasks

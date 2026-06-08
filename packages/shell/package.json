@@ -9,6 +9,10 @@
     "./Shell.vue": "./src/Shell.vue",
     "./style.css": "./src/style.css"
   },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
   "dependencies": {
     "@vow/headless": "workspace:*",
     "@vow/icons": "workspace:*",

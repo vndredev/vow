@@ -13,4 +13,7 @@ export type IconName =
   | "plus"
   | "trash"
   | "pencil"
-  | "arrow-right";
+  | "arrow-right"
+  | "home"
+  | "list-checks"
+  | "users";

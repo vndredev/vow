@@ -874,11 +874,24 @@ export function emitAppRoutes(pages: readonly { slug: string; title: string }[])
  * only the generated wiring. Emitted only when the app has more than the home page.
  */
 export function emitAppLayout(
-  pages: readonly { slug: string; title: string }[],
+  pages: readonly {
+    slug: string;
+    title: string;
+    icon?: string;
+    order?: number;
+    group?: string;
+  }[],
   title?: string,
 ): string {
+  // Each page becomes a `Page` literal for the shell's sidebar — icon/group/order only when declared.
   const navPages = pages
-    .map((p) => `{ path: "/${p.slug}", title: ${JSON.stringify(p.title)} }`)
+    .map((p) => {
+      const parts = [`path: "/${p.slug}"`, `title: ${JSON.stringify(p.title)}`];
+      if (p.icon !== undefined) parts.push(`icon: ${JSON.stringify(p.icon)}`);
+      if (p.group !== undefined) parts.push(`group: ${JSON.stringify(p.group)}`);
+      if (p.order !== undefined) parts.push(`order: ${p.order}`);
+      return `{ ${parts.join(", ")} }`;
+    })
     .join(", ");
   return [
     `<script setup lang="ts">`,

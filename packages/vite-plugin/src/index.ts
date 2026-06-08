@@ -90,7 +90,16 @@ export function generateFiles(
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
   const statsByKey = new Map<string, { of: string; by: string }>(); // `stats: { of, by }` refs, deduped
   const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
-  const pages: { slug: string; title: string }[] = []; // non-root views + forms → routes at /<slug>
+  // non-root views + forms → routes at /<slug>; each carries its `nav:` config for the shell sidebar
+  const pages: { slug: string; title: string; icon?: string; order?: number; group?: string }[] =
+    [];
+  const navPage = (v: VowNode) => ({
+    slug: v.slug,
+    title: v.nav?.label ?? v.intent,
+    icon: v.nav?.icon,
+    order: v.nav?.order,
+    group: v.nav?.group,
+  });
   let needsLayout = false; // any `emit view` pulls in the layout primitives
 
   for (const v of all) {
@@ -112,13 +121,13 @@ export function generateFiles(
       for (const slug of listedEntities(v)) listed.add(slug);
       for (const ref of statsRefs(v)) statsByKey.set(`${ref.of}.${ref.by}`, ref); // stats compositions
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
-      if (v.root !== true) pages.push({ slug: v.slug, title: v.intent }); // a non-root view → a route
+      if (v.root !== true) pages.push(navPage(v)); // a non-root view → a route
       needsLayout = true;
     } else if (f.kind === "emit" && f.as === "form") {
       const file = join(outDir, `${v.slug}.vue`);
       writeFileSync(file, emitForm(v, entityBySlug), "utf8");
       written.push(file);
-      pages.push({ slug: v.slug, title: v.intent }); // a form is always its own page
+      pages.push(navPage(v)); // a form is always its own page
       const entity = entityBySlug.get(v.form?.of ?? "");
       needed.add("Field").add("Button"); // a form always wraps fields + a submit button
       if (entity?.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");

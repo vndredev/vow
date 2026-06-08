@@ -1,6 +1,7 @@
 ---
 id: vow_team
 fulfills: emit view
+nav: { icon: users }
 ---
 
 # Team
