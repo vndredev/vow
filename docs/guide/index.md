@@ -5,7 +5,7 @@ order: 0
 
 # What is vow?
 
-vow is a **spec-driven, LLM-first** layer on top of the [VoidZero](https://voidzero.dev/) toolchain (Vite+, Vitest, oxlint). You describe your app as a tree of **vows** — promises — and vow generates a type-safe Vue app that you own. No runtime lock-in: the generated code is plain Vue.
+vow is a **spec-driven, LLM-first generator** on the [VoidZero](https://voidzero.dev/) toolchain (Vite+, Vitest, oxlint). You describe your app as a tree of **vows** — promises — and vow generates a type-safe app that you own. No runtime, no lock-in: the generated code is yours. It's **Vue today**, but the component model is **framework-agnostic** — React and Solid are adapters over the same core, not a rewrite.
 
 ::: warning Foundation phase
 vow is young. The core mechanism on these pages works end-to-end; the surface (UI patterns, persistence, a CLI) is still growing. These docs are kept in sync as it does.
@@ -31,6 +31,6 @@ The visible `app/` folder holds the vows. The generated `.vue` / `.ts` lives in 
 
 - **No drift.** What can be generated is never the source. The vow is the single truth; the code is a projection.
 - **Governed.** Every promise carries a proof; an unproven claim can't go green (see [proof](/guide/proof)).
-- **Yours.** vow is a generator, not a runtime — the output is plain Vue, yours to keep.
+- **Yours.** vow is a generator, not a runtime — the output is plain code (Vue today), yours to keep.
 
 Next: [Getting started →](/guide/getting-started)

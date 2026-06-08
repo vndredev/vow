@@ -5,80 +5,53 @@ order: 0
 
 # Roadmap
 
-vow's goal: a complete **dashboard / planning-system app**, operable by a person and an LLM alike. It's built piece by piece — each element green, proven, and documented before the next.
+## The north star: a studio
 
-## Two ways to work with vow
+vow's goal isn't a dashboard — it's a **studio**: the one connected place where you **build**, **plan** and **design** an app, all from the **same vows**. A vow is a unit of work, a design spec, and an app feature at once, so the three surfaces are **views of one truth** and move together. Anyone working with vow works in the studio.
 
-Same truth, same guarantee — two interfaces:
+The dogfood: vow's own studio is built in vow — vow is planned, designed and developed in it. This page is the first proof of it.
 
-- **Free** — the LLM reads one `llms.txt` (the whole concept), then writes `.vow.md` directly. Works with any model, no tooling. The core secures it: parse + the gate + tsgo catch invalid input with **self-healing errors**, so the LLM corrects until green.
-- **MCP** — a typed toolbox (`createEntity`, `addField`, …) for token-efficient, direct work, validated _before_ writing.
+## The roadmap derives itself
 
-Both write the same vows. The **core** is the single guarantee (errors → 0), regardless of the path — the safety lives in the core, not in the interface.
+A roadmap you hand-maintain drifts — exactly like GitHub Projects' one status field. vow's doesn't: it's **read off the truth**, the same way a vow's status is derived from its proof, never stored.
 
-## Two strands
+- **Done** is the **git history** — every merged change (day 1 → now), each carrying its proof + CI.
+- **In flight** is the open vows — declared, not yet green.
+- **Next** is the path below.
 
-**Generation** — what vow emits:
+So there is no second copy to keep in sync: the studio's planning **is** this roadmap, and this roadmap is read from the same place the app is. (Turning git + coverage + CI into the timeline is the **observability adapter** in the path — today this is the concept, shown with the real history.)
 
-- [x] `entity` — a model: type + factory + derived tests (no UI by itself)
-- [x] `view` — a page from a `## view`; `list:` renders an entity's CRUD list
-- [x] `bind` — hand-written logic, tsgo-verified seam
-- [x] component model + Vue adapter — one agnostic model, many framework adapters
-- [x] swappable theme + layout primitives (Flex / Grid / Box / Container) + view `## view` + tokens
-- [x] field types: `text` · `longtext` · `number` · `boolean` · `select` · `date`
-- [x] primitives — **checkbox · collapsible · tabs · dialog · select/combobox**: agnostic core (`@vow/headless`) + emitted adapter, a11y proven against the platform
-- [x] docs system — the docs are themselves a **generated vow app**: `@vow/markdown` (md → UiNode + Shiki + `:::` containers + `<<<` snippets + TOC) → `@vow/docs` (md → prose `.vue` + manifest)
-- [x] `@vow/router` — client router (exact match + `/404` + `document.title` + hash anchors + link interception), wired into every generated boot
-- [x] docs chrome, all on vow's own primitives — ⌘K search + mobile nav drawer (both `dialog`), collapsible sidebar, "on this page" TOC, dark-mode toggle, self-hosted Inter
-- [x] `@vow/icons` — a swappable icon adapter (Lucide set live in the chrome)
-- [x] `reference(entity)` field + a stable auto-id + a relation **dropdown** over the target's items (via the shared store) — referent-display-resolution (show the name, not the id) still to come
-- [x] data adapter (memory): `@vow/store` — shared reactive collections per entity
-- [x] primitives cont'd: **Button** (structural + a token-driven `variant`/`size` system) · **Switch** · **Radio group** · **Field** — bringing the set to nine
-- [x] primitives as `## view` vocabulary (a closed registry) + a `model:` binding + a `link:` node + a **Stack** layout primitive
-- [x] `emit form` — a **bound, validated form** (`## form` of `<Field>`s, zod `.parse()`, per-field errors); the entity list's create form shares it
-- [x] **zod** schema per entity (`z.object` + inferred type; `create<Name>` is `.parse`)
-- [x] multi-view navigation **from vows** — non-root views + forms become routed pages (`/<slug>`), with a generated nav
-- [x] `@vow/shell` — a dashboard-sidebar app chrome (sidebar nav + content) wrapping every page
-- [x] **icons in the app** — an `icon:` view node + an `icon` on Button/Link, from the swappable `@vow/icons` (set widened: `plus` · `trash` · `pencil` · `arrow-right`)
-- [x] **Badge** — a structural status/label chip (`variant` colour tints + an optional icon) — ten primitives now
-- [ ] referent-display-resolution — show a reference's target name in place of the id
-- [ ] multi-value fields (e.g. `labels`)
-- [ ] primitive ladder cont'd: `table` _(complex ones wrap Zag/Ark)_
-- [ ] icons cont'd: config-selection (`icons: "lucide"`), more libs (Heroicons / Phosphor), and the primitive glyphs (`✓` · `×`) onto `<Icon>`
-- [ ] patterns: table · detail · board / kanban · stats
-- [ ] data adapter: Cloudflare D1 (real persistence) behind the `useCollection` seam
+## The three surfaces
 
-**Author layer** — how you write the spec:
+All over the same vows:
 
-- [x] `llms.txt` (the free way) — `@vow/docs` generates `/llms.txt` (index) + `/llms-full.txt` (the whole docs in one file) on every build
-- [ ] `serialize` (Vow → vow.md)
-- [ ] typed mutation API (`addEntity` / `addField` / …)
-- [ ] vow MCP server (typed tools over the mutation API)
+- **Build** — describe the app as vows; vow generates it (entities · views · forms), type-checked and proven. _Largely here today._
+- **Plan** — a board / roadmap over the vows. **Derived status** (`proposed → building → proving → done / blocked`, from proof + git + CI) is read-only; **intentional status** (priority · iteration · assignee · labels, order) is draggable and writes back into the vow.
+- **Design** — components, tokens and the look are vows too: see, compose and tune the design system in place.
+- **Connected + operated** — one source; edit one surface, the others follow; operated by a **person or an LLM** (the author layer + MCP).
 
-## The reference product — a planning dashboard
+## The path to the studio
 
-The driving goal: a **GitHub-Projects-class planning board**, generated by vow and operable by a human (clicks) and an LLM (operates the spec). It's the example that hardens the generator — a real, demanding target surfaces exactly which capabilities vow needs.
+**Phase 1 — Data-display primitives.** `Table` (header · rows · cells, then sort/filter) · `Card` · `Stats` · `Callout`. The entity list becomes a real **Table**. → see your vows as data.
 
-The key idea: **two kinds of status.** GitHub Projects keeps one hand-maintained status field that drifts. vow splits them:
+**Phase 2 — View patterns + slicing.** The `## view` vocabulary gains `table` · `cards` · `board` · `detail` · `stats`; **group-by · sort · filter**. → slice the data on any field.
 
-- **Derived status** (the truth) — `proposed → building → proving → done / blocked`, read off `fulfills` + `proof` + git + CI + coverage. Never stored, can't lie. Read-only on the board; cards move themselves as work lands.
-- **Intentional status** (the plan) — `priority`, `iteration`, `assignee`, `labels`, order. Set by a human/agent. Editable, draggable; a drag writes back into the vow.
+**Phase 3 — The plan surface.** Kanban — group a view by a field → lanes; **drag** a card → writes back. The two kinds of status come alive: derived = read-only, intentional = draggable. `rollup` bubbles derived status **vow → epic → roadmap**.
 
-Group a view by a derived field → an observability board; group by an intentional field → a draggable Kanban that writes back.
+**Phase 4 — Connected + real.** in-memory → **Cloudflare D1** behind the `useCollection` seam; the **observability adapter** (git + coverage + CI → the derived timeline — _this is what makes the roadmap derive itself_); the **GitHub adapter** (issues / PRs / CI).
 
-### Build order
+**Phase 5 — Operated by an LLM.** `serialize` (Vow → vow.md) · a typed **mutation API** · the **vow MCP server** — so a person or an agent drives the studio, validated _before_ writing.
 
-The critical path — each element green before the next:
+**The design surface** runs alongside: the remaining UI primitives the patterns pull in (`Callout` · `Avatar` · `Tooltip` · `Menu` · `Toast` · `Pagination` · `Breadcrumb` · `Empty-state`), multi-value fields, field-presentation control, the value→variant map for status badges — all visible and tunable in the studio.
 
-1. **`date`** — iterations, due dates · **done**
-2. **`reference` + relations** — item → epic, item → iteration
-3. **`rollup`** — the derived lifecycle (the heart); status bubbles vow → epic → roadmap
-4. **board / table / roadmap views** — group-by · sort · filter · drag
-5. **observability adapter** — read git + coverage (+ CI) behind the data-adapter seam
-6. **GitHub adapter** — sync issues / PRs / CI status; manual trigger first, webhook later
+## Where we are (the derived timeline)
 
-The dogfood moment: once the board exists, **its first content is the plan for itself** — vow planning its own build, in vow.
+The truth, read from git — day 1 (5 Jun 2026) to now:
 
-::: warning Honest status
-Today: entity / view / **form** / bind + **ten primitives** (checkbox · collapsible · tabs · dialog · select/combobox · switch · radio-group · button · field · badge) + **icons in views** (`icon:` + an `icon` on Button/Link) + field types (`text` · `longtext` · `number` · `boolean` · `select` · `date` · `reference`) + a stable auto-id + per-entity **zod** schemas + relation **dropdowns** over a shared in-memory store (`@vow/store`) + a validated **`## form`** (labelled `<Field>`s + per-field errors) + layout (primitives incl. **Stack** + `## view` with the primitive/`link:` vocabulary + theme tokens) + **multi-view nav from vows** (non-root pages → `/<slug>` routes) + a **`@vow/shell`** dashboard chrome + scenario-coverage + the docs-drift gate + the **docs system** (`@vow/markdown` · `@vow/docs` · `@vow/router` · `@vow/icons`[Lucide]) with ⌘K search, a mobile nav drawer, a dark-mode toggle, Inter and a generated **`llms.txt`** — the docs are themselves a generated vow app — all green. Everything unchecked above (referent-display-resolution, table/detail/board/kanban/stats patterns, the D1 data adapter, the whole author layer + MCP) is planned and built slowly, one element at a time.
+- **The core** _(5–6 Jun)_ — the framework-agnostic [component model](/guide/components) + Vue adapter; the `## view` layout path + [layout primitives](/guide/views); [theme tokens](/guide/theming); the boot generated from a `root` vow (no hand-written `src/`).
+- **The spec hardens** _(7 Jun)_ — YAML `## view`; entity decoupled from its rendering (entity = model); a token-driven theme over the whole surface; the **self-documenting [docs system](/guide/doc-system)** + a full hardening pass (the language + drift gates).
+- **Toward the studio** _(8 Jun)_ — `reference` fields + the shared [store](/guide/data); the UI foundation ([primitives](/guide/primitives) · variants · [forms](/guide/emit) · routing); the [app shell](/guide/shell) + an [architecture](/guide/architecture) overhaul + `llms.txt`; icons + [badge](/guide/primitives/badge) + referent-display + docs dogfooding.
+
+::: warning Foundation phase
+Everything in the timeline is green and live; everything in **the path** is declared, not yet shipped. These docs stay 1:1 with what git actually records — the roadmap can't oversell, because it's derived.
 :::
