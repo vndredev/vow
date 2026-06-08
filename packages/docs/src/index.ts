@@ -2,11 +2,16 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import {
+  emitButtonSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
+  emitFieldSfc,
+  emitRadioGroupSfc,
   emitSelectSfc,
+  emitSwitchSfc,
   emitTabsSfc,
+  PRIMITIVE_ADAPTERS,
 } from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
@@ -486,6 +491,69 @@ const options = [
 </template>
 `;
 
+const DEMO_BUTTON = `<script setup lang="ts">
+import Button from "./Button.vue";
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Button label="Default" />
+    <Button label="Outline" variant="outline" />
+    <Button label="Ghost" variant="ghost" />
+    <Button label="Small" size="sm" variant="outline" />
+    <Button label="Large" size="lg" variant="outline" />
+  </div>
+</template>
+`;
+
+const DEMO_FIELD = `<script setup lang="ts">
+import { ref } from "vue";
+import Field from "./Field.vue";
+const name = ref("");
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Field label="Project name" control-id="demo-name" description="Shown across your dashboard.">
+      <input id="demo-name" class="vow-input" v-model="name" placeholder="Acme Inc." />
+    </Field>
+    <Field label="Work email" control-id="demo-email" error="Enter a valid email address.">
+      <input id="demo-email" class="vow-input" value="not-an-email" aria-invalid="true" aria-describedby="demo-email-error" />
+    </Field>
+  </div>
+</template>
+`;
+
+const DEMO_SWITCH = `<script setup lang="ts">
+import { ref } from "vue";
+import Switch from "./Switch.vue";
+const notifications = ref(true);
+const sync = ref(false);
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Switch v-model="notifications" label="Notifications" />
+    <Switch v-model="sync" label="Background sync" />
+    <Switch :model-value="false" label="Locked (disabled)" disabled />
+  </div>
+</template>
+`;
+
+const DEMO_RADIO = `<script setup lang="ts">
+import { ref } from "vue";
+import RadioGroup from "./RadioGroup.vue";
+const status = ref("doing");
+const options = ["todo", "doing", "done"];
+</script>
+
+<template>
+  <div class="vow-demo">
+    <RadioGroup v-model="status" :options="options" label="Status" />
+  </div>
+</template>
+`;
+
 /** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
 interface Demo {
   readonly sfc: string;
@@ -495,22 +563,21 @@ interface Demo {
 
 /** `::: demo <X>` → the VowDemo<X> component; @vow/docs materialises the wrapper + the adapter. */
 const DEMOS: Record<string, Demo> = {
+  VowDemoButton: { sfc: DEMO_BUTTON, adapter: "Button", emit: emitButtonSfc },
   VowDemoCheckbox: { sfc: DEMO_CHECKBOX, adapter: "Checkbox", emit: emitCheckboxSfc },
   VowDemoCollapsible: { sfc: DEMO_COLLAPSIBLE, adapter: "Collapsible", emit: emitCollapsibleSfc },
   VowDemoTabs: { sfc: DEMO_TABS, adapter: "Tabs", emit: emitTabsSfc },
   VowDemoDialog: { sfc: DEMO_DIALOG, adapter: "Dialog", emit: emitDialogSfc },
+  VowDemoField: { sfc: DEMO_FIELD, adapter: "Field", emit: emitFieldSfc },
+  VowDemoRadio: { sfc: DEMO_RADIO, adapter: "RadioGroup", emit: emitRadioGroupSfc },
   VowDemoSelect: { sfc: DEMO_SELECT, adapter: "Select", emit: emitSelectSfc },
+  VowDemoSwitch: { sfc: DEMO_SWITCH, adapter: "Switch", emit: emitSwitchSfc },
 };
 
-/** Primitive adapters a page may reference directly (composed from @vow/emit-primitive) — e.g. a
- *  markdown task list (`- [x]`) renders <Checkbox>, and prose can use any primitive by name. */
-const PRIMITIVES: Record<string, () => string> = {
-  Checkbox: emitCheckboxSfc,
-  Collapsible: emitCollapsibleSfc,
-  Tabs: emitTabsSfc,
-  Dialog: emitDialogSfc,
-  Select: emitSelectSfc,
-};
+/** Primitive adapters a page may reference directly — the closed registry from @vow/emit-primitive
+ *  (one source of truth, shared with the `## view` vocabulary). A markdown task list (`- [x]`) renders
+ *  <Checkbox>; prose can use any primitive by name. */
+const PRIMITIVES = PRIMITIVE_ADAPTERS;
 
 /** A Vite plugin: scan `content` into generated prose pages; pre-warm Shiki once; reload on `.md` edit. */
 export function vowDocs(options: VowDocsOptions): Plugin {
@@ -535,14 +602,25 @@ export function vowDocs(options: VowDocsOptions): Plugin {
         : join(config.root, options.content);
       genDir = isAbsolute(outOpt) ? outOpt : join(config.root, outOpt);
       highlighter = await getHighlighter(); // pre-warm once, so generation stays sync
-      regenerate();
+      try {
+        regenerate();
+      } catch (err) {
+        config.logger.error(`[vow:docs] generation failed: ${(err as Error).message}`);
+      }
     },
     configureServer(server) {
       server.watcher.add(contentDir);
       const onChange = (file: string): void => {
-        if (file.startsWith(contentDir) && file.endsWith(".md")) {
+        if (!file.startsWith(contentDir) || !file.endsWith(".md")) return;
+        try {
           regenerate();
           server.ws.send({ type: "full-reload" });
+        } catch (err) {
+          // a bad save mid-edit must NOT crash the dev server — show it in the Vite error overlay and
+          // keep serving the last good docs; the next valid save clears it.
+          const e = err as Error;
+          server.config.logger.error(`[vow:docs] generation failed: ${e.message}`);
+          server.ws.send({ type: "error", err: { message: e.message, stack: e.stack ?? "" } });
         }
       };
       server.watcher.on("add", onChange);

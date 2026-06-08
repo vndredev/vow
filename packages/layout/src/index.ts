@@ -80,6 +80,33 @@ const flex: Component = {
   },
 };
 
+/** A vertical stack — a flex column with a gap. The most common page/form arrangement, as sugar. */
+const stack: Component = {
+  name: "Stack",
+  doc: [
+    "Layout primitive: a vertical stack (a flex column with a gap) — the common page/form arrangement.",
+    "Pure structure (no a11y); `gap` maps to a @vow/theme spacing token.",
+  ],
+  imports: [{ from: "vue", names: ["computed"] }],
+  props: [{ name: "gap", tsType: "number", optional: true, default: "4" }],
+  setup: [
+    "const style = computed(() =>",
+    "  ['display: flex', 'flex-direction: column', props.gap ? `gap: var(--vow-space-${props.gap})` : '']",
+    "    .filter(Boolean)",
+    "    .join('; '),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-stack" },
+      { kind: "bound", name: "style", expr: "style" },
+    ],
+    children: [{ kind: "slot", children: [] }],
+  },
+};
+
 /** A grid container. `columns` is a count (→ equal tracks) or a raw `grid-template-columns` string. */
 const grid: Component = {
   name: "Grid",
@@ -196,6 +223,11 @@ export function emitFlexSfc(): string {
   return renderVueSfc(flex);
 }
 
+/** Generate the Vue SFC for the Stack layout primitive (a flex column). */
+export function emitStackSfc(): string {
+  return renderVueSfc(stack);
+}
+
 /** Generate the Vue SFC for the Grid layout primitive. */
 export function emitGridSfc(): string {
   return renderVueSfc(grid);
@@ -215,6 +247,7 @@ export function emitContainerSfc(): string {
 export function layoutSfcs(): { readonly name: string; readonly sfc: string }[] {
   return [
     { name: "Flex", sfc: emitFlexSfc() },
+    { name: "Stack", sfc: emitStackSfc() },
     { name: "Grid", sfc: emitGridSfc() },
     { name: "Box", sfc: emitBoxSfc() },
     { name: "Container", sfc: emitContainerSfc() },
@@ -222,4 +255,4 @@ export function layoutSfcs(): { readonly name: string; readonly sfc: string }[] 
 }
 
 /** The component names vow provides as layout primitives — the `## view` vocabulary. */
-export const LAYOUT_PRIMITIVES: readonly string[] = ["Flex", "Grid", "Box", "Container"];
+export const LAYOUT_PRIMITIVES: readonly string[] = ["Flex", "Stack", "Grid", "Box", "Container"];

@@ -1,6 +1,12 @@
 import { expect, test } from "vite-plus/test";
 import { type Vow } from "@vow/core";
-import { emitView } from "../src/index.ts";
+import {
+  emitAppLayout,
+  emitAppRoutes,
+  emitForm,
+  emitView,
+  referencedPrimitives,
+} from "../src/index.ts";
 
 /** Build a view-only vow (a `## view`) with a given component list. */
 const view = (nodes: Vow["view"]): Vow => ({
@@ -62,10 +68,94 @@ test("primitives are the escape hatch: flex with props + children", () => {
   expect(sfc).toContain('<Flex :direction="\'column\'" :gap="4">hi</Flex>');
 });
 
-test("an unknown component throws", () => {
+test("a primitive placed directly in a view renders as its component + imports its adapter", () => {
+  const sfc = emitView(view([{ type: "button", value: { variant: "outline", label: "Save" } }]));
+  expect(sfc).toContain('import Button from "./Button.vue";');
+  expect(sfc).toContain(`<Button :variant="'outline'" :label="'Save'" />`);
+});
+
+test("the reserved model: key on a view primitive becomes a v-model", () => {
+  const sfc = emitView(
+    view([{ type: "checkbox", value: { label: "Subscribe", model: "subscribed" } }]),
+  );
+  expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
+  expect(sfc).toContain('v-model="subscribed"');
+});
+
+test("referencedPrimitives lists the primitives a view places directly (the closed registry)", () => {
+  const v = view([
+    { type: "button", value: { label: "Go" } },
+    { type: "text", value: "hi" },
+  ]);
+  expect(referencedPrimitives(v)).toEqual(["Button"]);
+});
+
+test("an unknown component throws (the closed primitive/view vocabulary)", () => {
   expect(() => emitView(view([{ type: "nope", value: {} }]))).toThrow(/unknown view component/);
 });
 
 test("the view is wrapped in a vow-app root", () => {
   expect(emitView(view([{ type: "text", value: "hello" }]))).toContain('<div class="vow-app">');
+});
+
+const taskEntity: Vow = {
+  id: "vow_task",
+  slug: "task",
+  intent: "A task",
+  children: [],
+  fields: [
+    { name: "title", type: "text", required: true },
+    { name: "done", type: "boolean", required: false },
+  ],
+  proof: [],
+  fulfills: { kind: "emit", as: "entity" },
+};
+const addTaskForm: Vow = {
+  id: "vow_addtask",
+  slug: "add-task",
+  intent: "Add a task",
+  children: [],
+  fields: [],
+  proof: [],
+  fulfills: { kind: "emit", as: "form" },
+  form: { of: "task", submit: "Add task" },
+};
+
+test("emitForm renders a labelled, zod-validated form bound to an entity", () => {
+  const sfc = emitForm(addTaskForm, new Map([["task", taskEntity]]));
+  expect(sfc).toContain('import { ZodError } from "zod";');
+  expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
+  expect(sfc).toContain('<form class="vow-form" @submit.prevent="submit">');
+  expect(sfc).toContain('<Field label="title" :control-id="titleId" :error="errors.title">');
+  expect(sfc).toContain('<Checkbox v-model="draft.done" label="done" />'); // a boolean self-labels
+  expect(sfc).toContain("append(createTask(draft.value));");
+  expect(sfc).toContain("err instanceof ZodError"); // per-field errors from the zod schema
+  expect(sfc).toContain('<Button type="submit" label="Add task" />');
+});
+
+test("emitForm fails fast when its `of` is not a known entity", () => {
+  expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/);
+});
+
+test("a link: node renders an internal anchor the router intercepts", () => {
+  const sfc = emitView(view([{ type: "link", value: { to: "/add-task", label: "Add a task" } }]));
+  expect(sfc).toContain('<a class="vow-link" href="/add-task">Add a task</a>');
+});
+
+test("emitAppRoutes maps each non-root page to a /slug route loading its .vue", () => {
+  const code = emitAppRoutes([{ slug: "add-task", title: "Add a task" }]);
+  expect(code).toContain('import type { Route } from "@vow/router";');
+  expect(code).toContain(
+    '{ path: "/add-task", load: () => import("./add-task.vue"), title: "Add a task" },',
+  );
+});
+
+test("emitAppLayout renders a nav of home + every page, active by path", () => {
+  const code = emitAppLayout([{ slug: "add-task", title: "Add a task" }]);
+  expect(code).toContain("defineProps<{ path: string }>();");
+  expect(code).toContain(`:class="{ 'is-active': path === '/' }" href="/">Home</a>`);
+  expect(code).toContain(
+    `:class="{ 'is-active': path === '/add-task' }" href="/add-task">Add a task</a>`,
+  );
+  expect(code).toContain("<slot />");
 });

@@ -41,7 +41,15 @@ export const Scenario = z.object({ claim: Line });
 export type Scenario = z.infer<typeof Scenario>;
 
 /** The primitive types a field can take — the seam the entity emitter turns into TS + validation. */
-export const FieldType = z.enum(["text", "number", "boolean", "select", "date", "reference"]);
+export const FieldType = z.enum([
+  "text",
+  "longtext",
+  "number",
+  "boolean",
+  "select",
+  "date",
+  "reference",
+]);
 export type FieldType = z.infer<typeof FieldType>;
 
 /** A field on an `entity` vow: a camelCase name, a type, and whether it's required. */
@@ -71,6 +79,17 @@ export interface ViewNode {
 
 export const ViewNode = z.object({ type: z.string(), value: z.unknown() });
 
+/** An `emit form` spec (a `## form`): a form bound to an entity (`of: <slug>`), with a submit label. */
+export interface FormSpec {
+  readonly of?: string;
+  readonly submit: string;
+}
+
+export const FormSpec = z.object({
+  of: z.string().optional(),
+  submit: z.string().default("Submit"),
+});
+
 export interface Vow {
   readonly id: string;
   readonly slug: string;
@@ -83,6 +102,8 @@ export interface Vow {
   readonly proof: readonly Scenario[];
   /** Optional view (`## view`, YAML) — a list of components (semantic blocks + primitive escape). */
   readonly view?: readonly ViewNode[];
+  /** Optional form (`## form`, YAML) — for an `emit form` vow, bound to an entity. */
+  readonly form?: FormSpec;
   /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
   readonly root?: boolean;
 }
@@ -97,6 +118,7 @@ export const Vow: z.ZodType<Vow> = z.lazy(() =>
     fields: z.array(Field).default([]),
     proof: z.array(Scenario).default([]),
     view: z.array(ViewNode).optional(),
+    form: FormSpec.optional(),
     root: z.boolean().optional(),
   }),
 );

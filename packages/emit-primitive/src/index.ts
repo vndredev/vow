@@ -27,7 +27,7 @@ const checkbox: Component = {
     { from: "@vow/headless", names: ["checkbox"] },
   ],
   props: [
-    { name: "modelValue", tsType: "boolean" },
+    { name: "modelValue", tsType: "boolean", optional: true, default: "false" },
     { name: "label", tsType: "string" },
     { name: "disabled", tsType: "boolean", optional: true },
   ],
@@ -345,7 +345,7 @@ const selectComponent: Component = {
     { from: "@vow/headless", names: ["select"] },
   ],
   props: [
-    { name: "modelValue", tsType: "string" },
+    { name: "modelValue", tsType: "string", optional: true, default: '""' },
     { name: "options", tsType: "{ value: string; label: string }[]" },
     { name: "label", tsType: "string" },
     { name: "disabled", tsType: "boolean", optional: true },
@@ -434,3 +434,259 @@ const selectComponent: Component = {
 export function emitSelectSfc(): string {
   return renderVueSfc(selectComponent);
 }
+
+/**
+ * The button adapter — the ONE structural control with no `@vow/headless` core: `<button>` is already
+ * accessible, so there's no a11y logic to prove. It exists only for the variant/size theme surface,
+ * carried as `data-variant`/`data-size` hooks the theme styles (no class strings to merge). A default
+ * slot holds the content, falling back to the `label` prop for the common spec-driven case.
+ */
+const button: Component = {
+  name: "Button",
+  doc: [
+    "Generated button — the one structural control with NO headless core (<button> is accessible).",
+    "Carries only the variant/size theme surface; vow's base look lives in @vow/theme (swappable).",
+  ],
+  props: [
+    { name: "label", tsType: "string", optional: true, default: "''" },
+    {
+      name: "variant",
+      tsType: "'default' | 'outline' | 'ghost'",
+      optional: true,
+      default: "'default'",
+    },
+    { name: "size", tsType: "'sm' | 'md' | 'lg'", optional: true, default: "'md'" },
+    { name: "type", tsType: "'button' | 'submit'", optional: true, default: "'button'" },
+  ],
+  view: {
+    kind: "element",
+    tag: "button",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-button" },
+      { kind: "bound", name: "type", expr: "type" },
+      { kind: "bound", name: "data-variant", expr: "variant" },
+      { kind: "bound", name: "data-size", expr: "size" },
+    ],
+    children: [{ kind: "slot", children: [{ kind: "interp", expr: "label" }] }],
+  },
+};
+
+/** Generate the Vue button adapter (structural — no headless), rendered from the canonical model. */
+export function emitButtonSfc(): string {
+  return renderVueSfc(button);
+}
+
+/**
+ * The field adapter — a structural label + control + optional description and error, with no headless
+ * core. The control is the default slot; the caller (a form) owns the id and passes it as `controlId`,
+ * so the `<label for>` and the control's `id` line up. The error is a live `role="alert"` region keyed
+ * `<controlId>-error`, the target for the control's `aria-describedby`. Look lives in @vow/theme.
+ */
+const field: Component = {
+  name: "Field",
+  doc: [
+    "Generated field wrapper — a label + control + optional description and error. No headless core:",
+    "pure structure + a11y wiring (label `for`, error `role=alert`); the look lives in @vow/theme.",
+  ],
+  props: [
+    { name: "label", tsType: "string" },
+    { name: "controlId", tsType: "string" },
+    { name: "description", tsType: "string", optional: true },
+    { name: "error", tsType: "string", optional: true },
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [{ kind: "static", name: "class", value: "vow-field" }],
+    children: [
+      {
+        kind: "element",
+        tag: "label",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-field__label" },
+          { kind: "bound", name: "for", expr: "controlId" },
+        ],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+      { kind: "slot", children: [] },
+      {
+        kind: "element",
+        tag: "p",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-field__desc" },
+          { kind: "cond", type: "if", expr: "description" },
+        ],
+        children: [{ kind: "interp", expr: "description" }],
+      },
+      {
+        kind: "element",
+        tag: "p",
+        attrs: [
+          { kind: "static", name: "class", value: "vow-field__error" },
+          { kind: "bound", name: "id", expr: "controlId + '-error'" },
+          { kind: "static", name: "role", value: "alert" },
+          { kind: "cond", type: "if", expr: "error" },
+        ],
+        children: [{ kind: "interp", expr: "error" }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue field wrapper (structural — no headless), rendered from the canonical model. */
+export function emitFieldSfc(): string {
+  return renderVueSfc(field);
+}
+
+/** The switch (toggle) adapter as a canonical Component: a `<button role=switch>` track + a thumb part. */
+const switchComponent: Component = {
+  name: "Switch",
+  doc: [
+    "Generated switch adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed"] },
+    { from: "@vow/headless", names: ["switch_"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "boolean", optional: true, default: "false" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "boolean" }],
+  setup: [
+    "const api = computed(() =>",
+    "  switch_({ checked: props.modelValue, disabled: props.disabled }, (next) =>",
+    '    emit("update:modelValue", next.checked),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "span",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "class", value: "vow-switch" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.controlProps" },
+          { kind: "bound", name: "aria-label", expr: "label" },
+          { kind: "static", name: "class", value: "vow-switch__control" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [
+              { kind: "spread", expr: "api.thumbProps" },
+              { kind: "static", name: "class", value: "vow-switch__thumb" },
+            ],
+            children: [],
+          },
+        ],
+      },
+      {
+        kind: "element",
+        tag: "span",
+        attrs: [
+          { kind: "spread", expr: "api.labelProps" },
+          { kind: "static", name: "class", value: "vow-switch__label" },
+        ],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue switch adapter (over @vow/headless), rendered from the canonical model. */
+export function emitSwitchSfc(): string {
+  return renderVueSfc(switchComponent);
+}
+
+/** The radio-group adapter as a canonical Component: a `role=radiogroup` of `role=radio` buttons. */
+const radioGroupComponent: Component = {
+  name: "RadioGroup",
+  doc: [
+    "Generated radio-group adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed"] },
+    { from: "@vow/headless", names: ["radioGroup"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "string", optional: true, default: '""' },
+    { name: "options", tsType: "string[]" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "string" }],
+  setup: [
+    "const api = computed(() =>",
+    "  radioGroup({ value: props.modelValue, options: props.options, disabled: props.disabled }, (next) =>",
+    '    emit("update:modelValue", next.value),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "div",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "bound", name: "aria-label", expr: "label" },
+      { kind: "static", name: "class", value: "vow-radio" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.radioProps(option)" },
+          { kind: "static", name: "class", value: "vow-radio__option" },
+        ],
+        for: { each: "options", as: "option", key: "option" },
+        children: [
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [{ kind: "static", name: "class", value: "vow-radio__dot" }],
+            children: [],
+          },
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [{ kind: "static", name: "class", value: "vow-radio__label" }],
+            children: [{ kind: "interp", expr: "option" }],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue radio-group adapter (over @vow/headless), rendered from the canonical model. */
+export function emitRadioGroupSfc(): string {
+  return renderVueSfc(radioGroupComponent);
+}
+
+/**
+ * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
+ * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
+ * materialises each referenced adapter into `.generated/` on demand, and the docs reuse it for prose.
+ */
+export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
+  Button: emitButtonSfc,
+  Checkbox: emitCheckboxSfc,
+  Collapsible: emitCollapsibleSfc,
+  Dialog: emitDialogSfc,
+  Field: emitFieldSfc,
+  RadioGroup: emitRadioGroupSfc,
+  Select: emitSelectSfc,
+  Switch: emitSwitchSfc,
+  Tabs: emitTabsSfc,
+};

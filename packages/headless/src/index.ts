@@ -75,6 +75,67 @@ export function checkbox(state: CheckboxState, set: (next: CheckboxState) => voi
   };
 }
 
+export interface SwitchState {
+  readonly checked: boolean;
+  readonly disabled?: boolean;
+}
+
+export interface SwitchApi {
+  readonly checked: boolean;
+  /** Props for the outer wrapper that groups control + label (carries the state hooks for theming). */
+  readonly rootProps: Record<string, unknown>;
+  /** Props for the focusable control — a `<button role="switch">` (the track). */
+  readonly controlProps: Record<string, unknown>;
+  /** Props for the sliding thumb part (shown via `data-state`, hidden from a11y). */
+  readonly thumbProps: Record<string, unknown>;
+  /** Props for the text label. */
+  readonly labelProps: Record<string, unknown>;
+  toggle(): void;
+}
+
+/**
+ * The switch (toggle) primitive — a boolean with on/off semantics, WAI-ARIA APG conformant. HTML has no
+ * stylable native switch, so it earns one: the control is a `<button role="switch">` carrying
+ * `aria-checked`; **Space** and **Enter** toggle (both `preventDefault`ed so the native activation can't
+ * fire a second toggle). `disabled` uses the native button `disabled`. State is mirrored onto each part
+ * as `data-state="checked|unchecked"` / `data-disabled` for the theme to hook, never stored.
+ */
+export function switch_(state: SwitchState, set: (next: SwitchState) => void): SwitchApi {
+  const dataState = state.checked ? "checked" : "unchecked";
+  const toggle = (): void => {
+    if (state.disabled) return;
+    set({ ...state, checked: !state.checked });
+  };
+  return {
+    checked: state.checked,
+    rootProps: {
+      "data-state": dataState,
+      "data-disabled": state.disabled ? "" : undefined,
+    },
+    controlProps: {
+      type: "button",
+      role: "switch",
+      "aria-checked": state.checked,
+      "data-state": dataState,
+      "data-disabled": state.disabled ? "" : undefined,
+      disabled: state.disabled || undefined,
+      onClick: toggle,
+      onKeydown: (event: KeyboardEvent): void => {
+        if (event.key === " " || event.key === "Enter") {
+          event.preventDefault();
+          toggle();
+        }
+      },
+    },
+    thumbProps: {
+      "data-state": dataState,
+      "aria-hidden": "true",
+    },
+    labelProps: { onClick: toggle },
+    toggle,
+  };
+}
+
 export interface CollapsibleState {
   readonly open: boolean;
   /** A stable base id to wire the trigger ↔ content (aria-controls / aria-labelledby). */
@@ -451,5 +512,83 @@ export function select(state: SelectState, set: (next: SelectState) => void): Se
     },
     select: (value: string): void => commit(value),
     close,
+  };
+}
+
+export interface RadioGroupState {
+  readonly value: string;
+  readonly options: readonly string[];
+  readonly disabled?: boolean;
+}
+
+export interface RadioGroupApi {
+  readonly value: string;
+  /** Props for the group wrapper — a `role="radiogroup"`. */
+  readonly rootProps: Record<string, unknown>;
+  /** Per-option props (roving focus + selection) for the radio with this value. */
+  radioProps(option: string): Record<string, unknown>;
+  select(option: string): void;
+}
+
+/** The next option for an arrow/Home/End key in a radio group (wraps both ways), else undefined. */
+function nextRadioValue(
+  key: string,
+  current: string,
+  options: readonly string[],
+): string | undefined {
+  const i = options.indexOf(current);
+  if (i === -1) return undefined;
+  const last = options.length - 1;
+  if (key === "ArrowDown" || key === "ArrowRight") return options[i === last ? 0 : i + 1];
+  if (key === "ArrowUp" || key === "ArrowLeft") return options[i === 0 ? last : i - 1];
+  if (key === "Home") return options[0];
+  if (key === "End") return options[last];
+  return undefined;
+}
+
+/**
+ * The radio-group primitive — WAI-ARIA APG, Reka-style. A `role="radiogroup"` of `role="radio"` buttons
+ * with **roving focus**: only the checked option (or the first, if none) is tabbable (`tabindex` 0, the
+ * rest -1); an Arrow key moves focus AND selects (APG radio behaviour), wrapping. State is mirrored as
+ * `data-state="checked|unchecked"` / `data-disabled` for the theme, never stored.
+ */
+export function radioGroup(
+  state: RadioGroupState,
+  set: (next: RadioGroupState) => void,
+): RadioGroupApi {
+  const select = (option: string): void => {
+    if (!state.disabled && option !== state.value) set({ ...state, value: option });
+  };
+  // the tabbable option: the checked one, or the first when nothing is checked yet
+  const tabbable = state.options.includes(state.value) ? state.value : state.options[0];
+  return {
+    value: state.value,
+    rootProps: {
+      role: "radiogroup",
+      "data-disabled": state.disabled ? "" : undefined,
+    },
+    radioProps(option) {
+      const checked = option === state.value;
+      return {
+        type: "button",
+        role: "radio",
+        "aria-checked": checked,
+        tabindex: option === tabbable ? 0 : -1,
+        "data-state": checked ? "checked" : "unchecked",
+        "data-disabled": state.disabled ? "" : undefined,
+        disabled: state.disabled || undefined,
+        onClick: (): void => select(option),
+        onKeydown: (event: KeyboardEvent): void => {
+          const next = nextRadioValue(event.key, option, state.options);
+          if (next === undefined) return;
+          event.preventDefault();
+          select(next);
+          const group = (event.currentTarget as HTMLElement | null)?.closest('[role="radiogroup"]');
+          const radios = group?.querySelectorAll<HTMLElement>('[role="radio"]');
+          radios?.[state.options.indexOf(next)]?.focus();
+        },
+      };
+    },
+    select,
   };
 }

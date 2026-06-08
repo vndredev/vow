@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { LAYOUT_PRIMITIVES, emitContainerSfc, layoutSfcs } from "../src/index.ts";
+import { LAYOUT_PRIMITIVES, emitContainerSfc, emitStackSfc, layoutSfcs } from "../src/index.ts";
 
 test("Container centers a max-width step from the theme", () => {
   const sfc = emitContainerSfc();
@@ -12,7 +12,15 @@ test("Container centers a max-width step from the theme", () => {
   expect(sfc).toContain('<div class="vow-container" :style="style">');
 });
 
-test("layoutSfcs and LAYOUT_PRIMITIVES cover all four primitives in order", () => {
-  expect(layoutSfcs().map((s) => s.name)).toEqual(["Flex", "Grid", "Box", "Container"]);
-  expect(LAYOUT_PRIMITIVES).toEqual(["Flex", "Grid", "Box", "Container"]);
+test("Stack is a flex column with a gap (the common page/form arrangement)", () => {
+  const sfc = emitStackSfc();
+  expect(sfc).toContain("const props = withDefaults(defineProps<{ gap?: number }>(), { gap: 4 });");
+  expect(sfc).toContain("'flex-direction: column'");
+  expect(sfc).toContain("props.gap ? `gap: var(--vow-space-${props.gap})` : ''");
+  expect(sfc).toContain('<div class="vow-stack" :style="style">');
+});
+
+test("layoutSfcs and LAYOUT_PRIMITIVES cover all five primitives in order", () => {
+  expect(layoutSfcs().map((s) => s.name)).toEqual(["Flex", "Stack", "Grid", "Box", "Container"]);
+  expect(LAYOUT_PRIMITIVES).toEqual(["Flex", "Stack", "Grid", "Box", "Container"]);
 });

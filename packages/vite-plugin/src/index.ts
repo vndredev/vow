@@ -4,12 +4,16 @@ import type { Plugin } from "vite-plus";
 import { loadVows, validateReferences, type Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "@vow/emit-bind";
 import { emitEntityModule, emitEntityTest } from "@vow/emit-entity";
-import { emitCheckboxSfc, emitSelectSfc } from "@vow/emit-primitive";
+import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import {
+  emitAppLayout,
+  emitAppRoutes,
   emitBoot,
   emitEntityList,
+  emitForm,
   emitView,
   listedEntities,
+  referencedPrimitives,
   VOW_ENV_DTS,
   viewComponentName,
 } from "@vow/emit-view";
@@ -74,6 +78,8 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
   );
   const entities = [...entityBySlug.keys()]; // slugs a `## view`'s `list:` may reference
   const listed = new Set<string>(); // entity slugs a `## view` actually renders via `list:`
+  const needed = new Set<string>(); // primitive adapters to materialise (field-driven + view-referenced)
+  const pages: { slug: string; title: string }[] = []; // non-root views + forms → routes at /<slug>
   let needsLayout = false; // any `emit view` pulls in the layout primitives
 
   for (const v of all) {
@@ -93,7 +99,20 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(file, emitView(v, entities), "utf8");
       written.push(file);
       for (const slug of listedEntities(v)) listed.add(slug);
+      for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
+      if (v.root !== true) pages.push({ slug: v.slug, title: v.intent }); // a non-root view → a route
       needsLayout = true;
+    } else if (f.kind === "emit" && f.as === "form") {
+      const file = join(outDir, `${v.slug}.vue`);
+      writeFileSync(file, emitForm(v, entityBySlug), "utf8");
+      written.push(file);
+      pages.push({ slug: v.slug, title: v.intent }); // a form is always its own page
+      const entity = entityBySlug.get(v.form?.of ?? "");
+      needed.add("Field").add("Button"); // a form always wraps fields + a submit button
+      if (entity?.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
+      if (entity?.fields.some((fld) => fld.type === "select" || fld.type === "reference")) {
+        needed.add("Select");
+      }
     } else if (f.kind === "bind") {
       const file = join(outDir, `${v.slug}.bind.ts`);
       writeFileSync(file, emitBindAnchor(v, bindSpecifier(f.module, outDir, srcDir)), "utf8");
@@ -101,30 +120,26 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
     }
   }
 
-  // A view's `list: <entity>` instantiates that entity's CRUD list — emitted here, on demand. A
-  // boolean → <Checkbox>; select + reference → <Select>. Emit each adapter once if any listed entity needs it.
-  let needsCheckbox = false;
-  let needsSelect = false;
+  // A view's `list: <entity>` instantiates that entity's CRUD list — emitted here, on demand. Its field
+  // types pull in adapters too: boolean → <Checkbox>, select/reference → <Select>.
   for (const slug of listed) {
     const entity = entityBySlug.get(slug);
     if (!entity) continue; // emitView already validated the reference; defensive
     const file = join(outDir, `${viewComponentName(entity)}.vue`);
     writeFileSync(file, emitEntityList(entity, entityBySlug), "utf8");
     written.push(file);
-    if (entity.fields.some((fld) => fld.type === "boolean")) needsCheckbox = true;
+    if (entity.fields.some((fld) => fld.type === "boolean")) needed.add("Checkbox");
     if (entity.fields.some((fld) => fld.type === "select" || fld.type === "reference")) {
-      needsSelect = true;
+      needed.add("Select");
     }
   }
-  if (needsCheckbox) {
-    const cb = join(outDir, "Checkbox.vue");
-    writeFileSync(cb, emitCheckboxSfc(), "utf8");
-    written.push(cb);
-  }
-  if (needsSelect) {
-    const sel = join(outDir, "Select.vue");
-    writeFileSync(sel, emitSelectSfc(), "utf8");
-    written.push(sel);
+  // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
+  for (const name of needed) {
+    const emit = PRIMITIVE_ADAPTERS[name];
+    if (emit === undefined) continue; // closed registry — defensive
+    const file = join(outDir, `${name}.vue`);
+    writeFileSync(file, emit(), "utf8");
+    written.push(file);
   }
   // A `## view` imports `./<Primitive>.vue`; emit the layout primitives so those resolve (and are
   // themselves type-checked by `vp check`). Written wholesale — the unused ones are harmless.
@@ -134,6 +149,16 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
       writeFileSync(file, sfc, "utf8");
       written.push(file);
     }
+  }
+  // Non-root views + forms become routes (`/<slug>`) the boot globs via the `*.routes.ts` convention —
+  // so the root page stays `/` and every other page joins it, with no hand-written router. With more than
+  // the home page, also emit a shared chrome (`*.layout.vue`) — a nav over every page.
+  if (pages.length > 0) {
+    const routes = join(outDir, "vow-pages.routes.ts");
+    writeFileSync(routes, emitAppRoutes(pages), "utf8");
+    const layout = join(outDir, "vow-app.layout.vue");
+    writeFileSync(layout, emitAppLayout(pages), "utf8");
+    written.push(routes, layout);
   }
   // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
   // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.
@@ -176,16 +201,29 @@ export function vow(options: VowOptions = {}): Plugin {
     configResolved(config) {
       vowDir = isAbsolute(dirOpt) ? dirOpt : join(config.root, dirOpt);
       genDir = isAbsolute(outOpt) ? outOpt : join(config.root, outOpt);
-      regenerate();
+      try {
+        regenerate();
+      } catch (err) {
+        // a broken vow at startup shouldn't abort the dev server — log it; the watcher recovers on the
+        // next save (and `vp build` still fails loud, so it can't ship).
+        config.logger.error(`[vow] generation failed: ${(err as Error).message}`);
+      }
     },
     configureServer(server) {
       // Watch the `app/` source (not in the module graph) → regenerate the `.vue` on change.
       // Rewriting the .vue then triggers plugin-vue's HMR; a full reload covers added/removed vows.
       server.watcher.add(vowDir);
       const onVowChange = (file: string): void => {
-        if (file.startsWith(vowDir) && file.endsWith(".md")) {
+        if (!file.startsWith(vowDir) || !file.endsWith(".md")) return;
+        try {
           regenerate();
           server.ws.send({ type: "full-reload" });
+        } catch (err) {
+          // a bad save mid-edit must NOT crash the server — surface it in the Vite error overlay and
+          // keep serving the last good output; the next valid save clears it.
+          const e = err as Error;
+          server.config.logger.error(`[vow] generation failed: ${e.message}`);
+          server.ws.send({ type: "error", err: { message: e.message, stack: e.stack ?? "" } });
         }
       };
       server.watcher.on("add", onVowChange);

@@ -1,9 +1,13 @@
 import { expect, test } from "vite-plus/test";
 import {
+  emitButtonSfc,
   emitCheckboxSfc,
   emitCollapsibleSfc,
   emitDialogSfc,
+  emitFieldSfc,
+  emitRadioGroupSfc,
   emitSelectSfc,
+  emitSwitchSfc,
   emitTabsSfc,
 } from "../src/index.ts";
 
@@ -12,7 +16,7 @@ test("emitCheckboxSfc generates a Vue adapter over the headless core with class 
   // uses the agnostic core (logic + a11y live there)
   expect(sfc).toContain('import { checkbox } from "@vow/headless";');
   expect(sfc).toContain(
-    "defineProps<{ modelValue: boolean; label: string; disabled?: boolean }>()",
+    "withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean }>(), { modelValue: false })",
   );
   expect(sfc).toContain('emit("update:modelValue", next.checked)');
   // a <button role=checkbox> control (Reka-style) wrapping an indicator part; spreads the core's props
@@ -160,7 +164,7 @@ const EXPECTED_SELECT = [
   `import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";`,
   `import { select } from "@vow/headless";`,
   ``,
-  `const props = defineProps<{ modelValue: string; options: { value: string; label: string }[]; label: string; disabled?: boolean }>();`,
+  `const props = withDefaults(defineProps<{ modelValue?: string; options: { value: string; label: string }[]; label: string; disabled?: boolean }>(), { modelValue: "" });`,
   `const emit = defineEmits<{ "update:modelValue": [string] }>();`,
   ``,
   `const uid = useId();`,
@@ -211,4 +215,123 @@ const EXPECTED_SELECT = [
 
 test("emitSelectSfc renders the select adapter byte-for-byte", () => {
   expect(emitSelectSfc()).toBe(EXPECTED_SELECT);
+});
+
+// The byte-stable oracle for the button adapter: a structural <button> with the variant/size hooks +
+// a default slot (label fallback). No headless import — it carries no logic, only the theme surface.
+const EXPECTED_BUTTON = [
+  `<script setup lang="ts">`,
+  `// Generated button — the one structural control with NO headless core (<button> is accessible).`,
+  `// Carries only the variant/size theme surface; vow's base look lives in @vow/theme (swappable).`,
+  ``,
+  `const props = withDefaults(defineProps<{ label?: string; variant?: 'default' | 'outline' | 'ghost'; size?: 'sm' | 'md' | 'lg'; type?: 'button' | 'submit' }>(), { label: '', variant: 'default', size: 'md', type: 'button' });`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <button class="vow-button" :type="type" :data-variant="variant" :data-size="size">`,
+  `    <slot>{{ label }}</slot>`,
+  `  </button>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitButtonSfc renders the structural button adapter byte-for-byte", () => {
+  const sfc = emitButtonSfc();
+  expect(sfc).toBe(EXPECTED_BUTTON);
+  expect(sfc).not.toContain("@vow/headless"); // no headless core — it's structural
+  expect(sfc).not.toContain("<style");
+});
+
+// The byte-stable oracle for the field wrapper: label + slotted control + description + error. Structural,
+// no headless — its a11y is the emitted markup (label `for`, error `role=alert` keyed for aria-describedby).
+const EXPECTED_FIELD = [
+  `<script setup lang="ts">`,
+  `// Generated field wrapper — a label + control + optional description and error. No headless core:`,
+  `// pure structure + a11y wiring (label \`for\`, error \`role=alert\`); the look lives in @vow/theme.`,
+  ``,
+  `const props = defineProps<{ label: string; controlId: string; description?: string; error?: string }>();`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div class="vow-field">`,
+  `    <label class="vow-field__label" :for="controlId">{{ label }}</label>`,
+  `    <slot />`,
+  `    <p class="vow-field__desc" v-if="description">{{ description }}</p>`,
+  `    <p class="vow-field__error" :id="controlId + '-error'" role="alert" v-if="error">{{ error }}</p>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitFieldSfc renders the structural field wrapper byte-for-byte", () => {
+  const sfc = emitFieldSfc();
+  expect(sfc).toBe(EXPECTED_FIELD);
+  expect(sfc).not.toContain("@vow/headless"); // structural — no headless core
+  expect(sfc).not.toContain("<style");
+});
+
+// The byte-stable oracle for the switch adapter: a <button role=switch> track + a thumb part.
+const EXPECTED_SWITCH = [
+  `<script setup lang="ts">`,
+  `// Generated switch adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed } from "vue";`,
+  `import { switch_ } from "@vow/headless";`,
+  ``,
+  `const props = withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean }>(), { modelValue: false });`,
+  `const emit = defineEmits<{ "update:modelValue": [boolean] }>();`,
+  ``,
+  `const api = computed(() =>`,
+  `  switch_({ checked: props.modelValue, disabled: props.disabled }, (next) =>`,
+  `    emit("update:modelValue", next.checked),`,
+  `  ),`,
+  `);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <span v-bind="api.rootProps" class="vow-switch">`,
+  `    <button v-bind="api.controlProps" :aria-label="label" class="vow-switch__control">`,
+  `      <span v-bind="api.thumbProps" class="vow-switch__thumb" />`,
+  `    </button>`,
+  `    <span v-bind="api.labelProps" class="vow-switch__label">{{ label }}</span>`,
+  `  </span>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitSwitchSfc renders the switch adapter byte-for-byte", () => {
+  expect(emitSwitchSfc()).toBe(EXPECTED_SWITCH);
+});
+
+// The byte-stable oracle for the radio-group adapter: a role=radiogroup of role=radio buttons.
+const EXPECTED_RADIO = [
+  `<script setup lang="ts">`,
+  `// Generated radio-group adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed } from "vue";`,
+  `import { radioGroup } from "@vow/headless";`,
+  ``,
+  `const props = withDefaults(defineProps<{ modelValue?: string; options: string[]; label: string; disabled?: boolean }>(), { modelValue: "" });`,
+  `const emit = defineEmits<{ "update:modelValue": [string] }>();`,
+  ``,
+  `const api = computed(() =>`,
+  `  radioGroup({ value: props.modelValue, options: props.options, disabled: props.disabled }, (next) =>`,
+  `    emit("update:modelValue", next.value),`,
+  `  ),`,
+  `);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <div v-bind="api.rootProps" :aria-label="label" class="vow-radio">`,
+  `    <button v-bind="api.radioProps(option)" class="vow-radio__option" v-for="option in options" :key="option">`,
+  `      <span class="vow-radio__dot" />`,
+  `      <span class="vow-radio__label">{{ option }}</span>`,
+  `    </button>`,
+  `  </div>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitRadioGroupSfc renders the radio-group adapter byte-for-byte", () => {
+  expect(emitRadioGroupSfc()).toBe(EXPECTED_RADIO);
 });

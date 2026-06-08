@@ -6,8 +6,12 @@ import {
   type ImportDecl,
   type UiNode,
 } from "@vow/component";
-import type { Vow } from "@vow/core";
+import type { Field, Vow } from "@vow/core";
+import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
+
+/** The primitive names a `## view` may reference directly (the closed registry, from @vow/emit-primitive). */
+const PRIMITIVES: readonly string[] = Object.keys(PRIMITIVE_ADAPTERS);
 
 /**
  * vow's view emitter — `emit view` made real.
@@ -22,6 +26,82 @@ import { LAYOUT_PRIMITIVES } from "@vow/layout";
  */
 
 /**
+ * The input control for one field — the shared field→control map, reused by the entity list and (later)
+ * the standalone form. select + reference render vow's Select primitive; date a native date input;
+ * longtext a textarea; text/number a native input. `model` is the v-model expression (e.g. `draft.title`);
+ * a reference reads its target's `<field>Choices` (a computed the caller defines in setup).
+ */
+export function fieldControl(f: Field, model: string): UiNode {
+  if (f.type === "select") {
+    const opts = (f.options ?? [])
+      .map((o) => `{ value: '${o.replace(/'/g, "\\'")}', label: '${o.replace(/'/g, "\\'")}' }`)
+      .join(", ");
+    return {
+      kind: "component",
+      name: "Select",
+      attrs: [
+        { kind: "model", expr: model },
+        { kind: "bound", name: "options", expr: `[${opts}]` },
+        { kind: "static", name: "label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  if (f.type === "reference") {
+    // vow's Select primitive over the target entity's shared collection (only existing items selectable)
+    return {
+      kind: "component",
+      name: "Select",
+      attrs: [
+        { kind: "model", expr: model },
+        { kind: "bound", name: "options", expr: `${f.name}Choices` },
+        { kind: "static", name: "label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  if (f.type === "date") {
+    return {
+      kind: "element",
+      tag: "input",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-input" },
+        { kind: "static", name: "type", value: "date" },
+        { kind: "model", expr: model },
+        { kind: "static", name: "aria-label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  if (f.type === "longtext") {
+    return {
+      kind: "element",
+      tag: "textarea",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-input vow-textarea" },
+        { kind: "model", expr: model },
+        { kind: "static", name: "placeholder", value: f.name },
+        { kind: "static", name: "aria-label", value: f.name },
+      ],
+      children: [],
+    };
+  }
+  return {
+    kind: "element",
+    tag: "input",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-input" },
+      f.type === "number"
+        ? { kind: "model", expr: model, modifiers: ["number"] }
+        : { kind: "model", expr: model },
+      { kind: "static", name: "placeholder", value: f.name },
+      { kind: "static", name: "aria-label", value: f.name },
+    ],
+    children: [],
+  };
+}
+
+/**
  * The CRUD list of an entity — what a `## view` pulls in via `list: <entity>`. Emitted on demand
  * (because a view references it), never automatically. Any heading is the referencing view's job, so
  * the list carries none of its own.
@@ -31,41 +111,39 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     throw new Error(`emit-view: \`list:\` target "${entity.slug}" must be an \`emit entity\``);
   }
   const type = pascalCase(entity.slug);
-  const hasBoolean = entity.fields.some((f) => f.type === "boolean");
-  const inputFields = entity.fields.filter((f) => f.type !== "boolean");
-  const referenceFields = inputFields.filter((f) => f.type === "reference");
+  const nativeFields = entity.fields.filter((f) => f.type !== "boolean"); // each gets a useId for its label
+  const referenceFields = entity.fields.filter((f) => f.type === "reference");
   // a reference dropdown labels each target item by the target entity's first text field (else its id)
   const labelField = (ref?: string): string =>
     byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
 
-  const hasSelectLike = inputFields.some((f) => f.type === "select" || f.type === "reference");
+  const vueNames = ["ref"];
+  if (nativeFields.length > 0) vueNames.push("useId");
+  if (referenceFields.length > 0) vueNames.push("computed");
 
   const imports: ImportDecl[] = [
-    { from: "vue", names: referenceFields.length > 0 ? ["ref", "computed"] : ["ref"] },
+    { from: "vue", names: vueNames },
+    { from: "zod", names: ["ZodError"] },
     { from: "@vow/store", names: ["useCollection"] },
     { from: `./${entity.slug}.ts`, names: [`create${type}`, `type ${type}`] },
+    { from: "./Field.vue", default: "Field" },
+    { from: "./Button.vue", default: "Button" },
   ];
-  if (hasBoolean) imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
-  if (hasSelectLike) imports.push({ from: "./Select.vue", default: "Select" }); // select + reference
+  if (entity.fields.some((f) => f.type === "boolean")) {
+    imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
+  }
+  if (entity.fields.some((f) => f.type === "select" || f.type === "reference")) {
+    imports.push({ from: "./Select.vue", default: "Select" });
+  }
 
   const setup: string[] = [
     // the shared store holds the items (one array per slug) — so a reference field can read another
     // entity's items; the local `ref`-per-view is gone
     `const { items: rows, append, removeAt } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const draft = ref<Partial<${type}>>({});`,
-    ``,
-    `function add(): void {`,
-    `  try {`,
-    `    append(create${type}(draft.value));`,
-    `    draft.value = {};`,
-    `  } catch {`,
-    `    // invalid draft (e.g. a required field is empty) — ignore until we surface validation`,
-    `  }`,
-    `}`,
-    `function remove(index: number): void {`,
-    `  removeAt(index);`,
-    `}`,
+    `const errors = ref<Record<string, string>>({});`,
   ];
+  for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
   // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label}
   for (const f of referenceFields) {
     setup.push(
@@ -73,6 +151,24 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
     );
   }
+  setup.push(
+    ``,
+    // the create form validates with the entity's zod schema and surfaces per-field errors (no swallow)
+    `function add(): void {`,
+    `  try {`,
+    `    append(create${type}(draft.value));`,
+    `    draft.value = {};`,
+    `    errors.value = {};`,
+    `  } catch (err) {`,
+    `    if (err instanceof ZodError) {`,
+    `      errors.value = Object.fromEntries(err.issues.map((i) => [String(i.path[0]), i.message]));`,
+    `    }`,
+    `  }`,
+    `}`,
+    `function remove(index: number): void {`,
+    `  removeAt(index);`,
+    `}`,
+  );
 
   // one display cell per field: boolean → <Checkbox>, everything else → a <span> with the value
   const cells: UiNode[] = entity.fields.map(
@@ -104,80 +200,34 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
       {
         kind: "bound",
         name: "aria-label",
-        expr: `'Delete: ' + item.${inputFields[0]?.name ?? "title"}`,
+        expr: `'Delete: ' + item.${nativeFields[0]?.name ?? "title"}`,
       },
       { kind: "event", name: "click", expr: "remove(i)" },
     ],
     children: [{ kind: "text", text: "✕" }],
   };
 
-  // one input per non-boolean field: select → inline options, date → date input, else text/number
-  const inputs: UiNode[] = inputFields.map((f): UiNode => {
-    if (f.type === "select") {
-      const opts = (f.options ?? [])
-        .map((o) => `{ value: '${o.replace(/'/g, "\\'")}', label: '${o.replace(/'/g, "\\'")}' }`)
-        .join(", ");
-      return {
-        kind: "component",
-        name: "Select",
-        attrs: [
-          { kind: "model", expr: `draft.${f.name}` },
-          { kind: "bound", name: "options", expr: `[${opts}]` },
-          { kind: "static", name: "label", value: f.name },
-        ],
-        children: [],
-      };
-    }
-    if (f.type === "date") {
-      return {
-        kind: "element",
-        tag: "input",
-        attrs: [
-          { kind: "static", name: "class", value: "vow-view__input" },
-          { kind: "static", name: "type", value: "date" },
-          { kind: "model", expr: `draft.${f.name}` },
-          { kind: "static", name: "aria-label", value: f.name },
-        ],
-        children: [],
-      };
-    }
-    if (f.type === "reference") {
-      // vow's Select primitive over the target entity's shared collection (id → its first text field);
-      // only existing items are selectable, so the reference resolves to a real id
-      return {
-        kind: "component",
-        name: "Select",
-        attrs: [
-          { kind: "model", expr: `draft.${f.name}` },
-          { kind: "bound", name: "options", expr: `${f.name}Choices` },
-          { kind: "static", name: "label", value: f.name },
-        ],
-        children: [],
-      };
-    }
-    return {
-      kind: "element",
-      tag: "input",
-      attrs: [
-        { kind: "static", name: "class", value: "vow-view__input" },
-        f.type === "number"
-          ? { kind: "model", expr: `draft.${f.name}`, modifiers: ["number"] }
-          : { kind: "model", expr: `draft.${f.name}` },
-        { kind: "static", name: "placeholder", value: f.name },
-        { kind: "static", name: "aria-label", value: f.name },
-      ],
-      children: [],
-    };
-  });
-
-  const addButton: UiNode = {
+  // the create form — the SAME labelled, zod-validated `<Field>` stack as a standalone `## form` (no
+  // squished single row); a boolean self-labels as a `<Checkbox>`.
+  const createForm: UiNode = {
     kind: "element",
-    tag: "button",
+    tag: "form",
     attrs: [
-      { kind: "static", name: "class", value: "vow-view__add" },
-      { kind: "static", name: "type", value: "submit" },
+      { kind: "static", name: "class", value: "vow-form vow-view__create" },
+      { kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] },
     ],
-    children: [{ kind: "text", text: "+ Add" }],
+    children: [
+      ...entity.fields.map(formField),
+      {
+        kind: "component",
+        name: "Button",
+        attrs: [
+          { kind: "static", name: "type", value: "submit" },
+          { kind: "static", name: "label", value: "+ Add" },
+        ],
+        children: [],
+      },
+    ],
   };
 
   const component: Component = {
@@ -206,15 +256,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
             },
           ],
         },
-        {
-          kind: "element",
-          tag: "form",
-          attrs: [
-            { kind: "static", name: "class", value: "vow-view__create" },
-            { kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] },
-          ],
-          children: [...inputs, addButton],
-        },
+        createForm,
       ],
     },
   };
@@ -225,6 +267,161 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
 /** The PascalCase component name for an entity's list view (`task` → `Task`). */
 export function viewComponentName(entity: Vow): string {
   return pascalCase(entity.slug);
+}
+
+/** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set. */
+function errorNode(name: string): UiNode {
+  return {
+    kind: "element",
+    tag: "p",
+    attrs: [
+      { kind: "static", name: "class", value: "vow-field__error" },
+      { kind: "static", name: "role", value: "alert" },
+      { kind: "cond", type: "if", expr: `errors.${name}` },
+    ],
+    children: [{ kind: "interp", expr: `errors.${name}` }],
+  };
+}
+
+/** Wire a native control to its field: the shared id (for the label), aria-describedby, aria-invalid. A
+ *  Select component keeps its own aria-label, so it's returned unchanged. */
+function withControlId(control: UiNode, name: string): UiNode {
+  if (control.kind !== "element") return control;
+  return {
+    ...control,
+    attrs: [
+      ...control.attrs,
+      { kind: "bound", name: "id", expr: `${name}Id` },
+      { kind: "bound", name: "aria-describedby", expr: `${name}Id + '-error'` },
+      { kind: "bound", name: "aria-invalid", expr: `!!errors.${name}` },
+    ],
+  };
+}
+
+/** One field in a form: a boolean self-labels as a <Checkbox>; everything else is a labelled <Field>. */
+function formField(f: Field): UiNode {
+  if (f.type === "boolean") {
+    return {
+      kind: "element",
+      tag: "div",
+      attrs: [{ kind: "static", name: "class", value: "vow-field" }],
+      children: [
+        {
+          kind: "component",
+          name: "Checkbox",
+          attrs: [
+            { kind: "model", expr: `draft.${f.name}` },
+            { kind: "static", name: "label", value: f.name },
+          ],
+          children: [],
+        },
+        errorNode(f.name),
+      ],
+    };
+  }
+  return {
+    kind: "component",
+    name: "Field",
+    attrs: [
+      { kind: "static", name: "label", value: f.name },
+      { kind: "bound", name: "control-id", expr: `${f.name}Id` },
+      { kind: "bound", name: "error", expr: `errors.${f.name}` },
+    ],
+    children: [withControlId(fieldControl(f, `draft.${f.name}`), f.name)],
+  };
+}
+
+/**
+ * A form from a `## form` (an `emit form` vow), bound to an entity via `of:`. Each entity field renders
+ * as a labelled `<Field>` (a boolean self-labels as `<Checkbox>`); on submit it validates with the
+ * entity's zod schema (via `create<Name>`) and surfaces the per-field errors. `byId` resolves the bound
+ * entity and any reference targets.
+ */
+export function emitForm(form: Vow, byId: Map<string, Vow>): string {
+  const spec = form.form;
+  if (!spec?.of) {
+    throw new Error(`emit-form: "${form.slug}" needs a \`## form\` with \`of: <entity>\``);
+  }
+  const entity = byId.get(spec.of);
+  if (!entity || entity.fulfills?.kind !== "emit" || entity.fulfills.as !== "entity") {
+    throw new Error(`emit-form: "${form.slug}" form \`of: ${spec.of}\` is not a known entity`);
+  }
+  const name = pascalCase(spec.of);
+  const fields = entity.fields;
+  const referenceFields = fields.filter((f) => f.type === "reference");
+  const nativeFields = fields.filter((f) => f.type !== "boolean"); // each gets a useId for its label
+  const labelField = (ref?: string): string =>
+    byId.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
+
+  const vueNames = referenceFields.length > 0 ? ["ref", "useId", "computed"] : ["ref", "useId"];
+  const imports: ImportDecl[] = [
+    { from: "vue", names: vueNames },
+    { from: "zod", names: ["ZodError"] },
+    { from: `./${spec.of}.ts`, names: [`create${name}`, `type ${name}`] },
+    { from: "@vow/store", names: ["useCollection"] },
+    { from: "./Field.vue", default: "Field" },
+    { from: "./Button.vue", default: "Button" },
+  ];
+  if (fields.some((f) => f.type === "boolean")) {
+    imports.push({ from: "./Checkbox.vue", default: "Checkbox" });
+  }
+  if (fields.some((f) => f.type === "select" || f.type === "reference")) {
+    imports.push({ from: "./Select.vue", default: "Select" });
+  }
+
+  const setup: string[] = [
+    `const { append } = useCollection<${name}>(${JSON.stringify(spec.of)});`,
+    `const draft = ref<Partial<${name}>>({});`,
+    `const errors = ref<Record<string, string>>({});`,
+  ];
+  for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
+  for (const f of referenceFields) {
+    setup.push(
+      `const ${f.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(f.ref ?? "")}).items;`,
+      `const ${f.name}Choices = computed(() => ${f.name}Options.map((t) => ({ value: t.id, label: String(t.${labelField(f.ref)}) })));`,
+    );
+  }
+  setup.push(
+    ``,
+    `function submit(): void {`,
+    `  try {`,
+    `    append(create${name}(draft.value));`,
+    `    draft.value = {};`,
+    `    errors.value = {};`,
+    `  } catch (err) {`,
+    `    if (err instanceof ZodError) {`,
+    `      errors.value = Object.fromEntries(err.issues.map((i) => [String(i.path[0]), i.message]));`,
+    `    }`,
+    `  }`,
+    `}`,
+  );
+
+  const submitButton: UiNode = {
+    kind: "component",
+    name: "Button",
+    attrs: [
+      { kind: "static", name: "type", value: "submit" },
+      { kind: "static", name: "label", value: spec.submit },
+    ],
+    children: [],
+  };
+
+  const component: Component = {
+    name: pascalCase(form.slug),
+    doc: [`Generated from vow "${form.slug}" (a form over the "${spec.of}" entity). Do not edit.`],
+    imports,
+    setup,
+    view: {
+      kind: "element",
+      tag: "form",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-form" },
+        { kind: "event", name: "submit", expr: "submit", modifiers: ["prevent"] },
+      ],
+      children: [...fields.map(formField), submitButton],
+    },
+  };
+  return renderVueSfc(component);
 }
 
 /**
@@ -267,12 +464,18 @@ function asObject(value: unknown): Record<string, unknown> {
     : {};
 }
 
-/** Map raw props (every key but `children`) to bound attrs: numbers stay numbers, else string literals. */
+/**
+ * Map raw props (every key but `children`) to bound attrs: numbers stay numbers, else string literals.
+ * The reserved `model:` key becomes a two-way binding (`v-model="<expr>"`) — its value is the expression.
+ */
 function propsToAttrs(value: Record<string, unknown>): Attr[] {
   return Object.entries(value)
     .filter(([k]) => k !== "children")
-    .map(([name, v]) =>
-      bound(name, typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "\\'")}'`),
+    .map(
+      ([name, v]): Attr =>
+        name === "model"
+          ? { kind: "model", expr: String(v) }
+          : bound(name, typeof v === "number" ? String(v) : `'${String(v).replace(/'/g, "\\'")}'`),
     );
 }
 
@@ -326,11 +529,29 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     const o = asObject(value);
     return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
   }
+  if (PRIMITIVES.includes(pascalCase(type))) {
+    // a UI primitive placed directly in a view (e.g. `- button: { variant: outline, label: Save }`)
+    const o = asObject(value);
+    return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
+  }
   if (TEXT_TAGS.includes(type)) {
     return el(type, [txt(str(value))]);
   }
   if (type === "text") {
     return txt(str(value));
+  }
+  if (type === "link") {
+    // an internal link the router intercepts (no full reload): `- link: { to: /add-task, label: … }`
+    const o = asObject(value);
+    return {
+      kind: "element",
+      tag: "a",
+      attrs: [
+        { kind: "static", name: "class", value: "vow-link" },
+        { kind: "static", name: "href", value: str(o["to"]) },
+      ],
+      children: [txt(str(o["label"] ?? o["to"]))],
+    };
   }
   throw new Error(`emit-view: unknown view component "${type}"`);
 }
@@ -342,6 +563,14 @@ function componentsIn(node: UiNode, acc: Set<string> = new Set()): Set<string> {
     for (const c of node.children) componentsIn(c, acc);
   }
   return acc;
+}
+
+/** The primitives a `## view` references directly — so the plugin can materialise each adapter on demand. */
+export function referencedPrimitives(view: Vow, entities: readonly string[] = []): string[] {
+  if (!view.view) return [];
+  const acc = new Set<string>();
+  for (const vn of view.view) componentsIn(mapNode(vn.type, vn.value, entities), acc);
+  return [...acc].filter((n) => PRIMITIVES.includes(n));
 }
 
 /**
@@ -422,6 +651,60 @@ export function listedEntities(view: Vow): string[] {
   };
   for (const node of view.view ?? []) walk(node.type, node.value);
   return [...found];
+}
+
+/**
+ * The app's route table for non-root pages — every `emit view` / `emit form` vow that isn't the root
+ * becomes a route at `/<slug>`, lazily loading its `.vue`. Written as a `*.routes.ts` the boot globs (the
+ * same seam @vow/docs uses), so the root page stays `/` and these join it — no hand-written router.
+ */
+export function emitAppRoutes(pages: readonly { slug: string; title: string }[]): string {
+  return [
+    `// Generated routes for the app's pages (views + forms). The vow tree is the source — do not edit.`,
+    `import type { Route } from "@vow/router";`,
+    ``,
+    `export const routes: Route[] = [`,
+    ...pages.map(
+      (p) =>
+        `  { path: "/${p.slug}", load: () => import("./${p.slug}.vue"), title: ${JSON.stringify(p.title)} },`,
+    ),
+    `];`,
+    ``,
+  ].join("\n");
+}
+
+/**
+ * The app's shared chrome — a nav (home + every page) wrapping each route's content. Written as a
+ * `*.layout.vue` the boot globs (the same seam @vow/docs uses); it gets the current `path` to mark the
+ * active link. Generated only when the app has more than the home page.
+ */
+export function emitAppLayout(pages: readonly { slug: string; title: string }[]): string {
+  const esc = (s: string): string =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const links = [
+    { to: "/", label: "Home" },
+    ...pages.map((p) => ({ to: `/${p.slug}`, label: p.title })),
+  ];
+  const nav = links.map(
+    (l) =>
+      `      <a class="vow-shell__link" :class="{ 'is-active': path === '${l.to}' }" href="${l.to}">${esc(l.label)}</a>`,
+  );
+  return [
+    `<script setup lang="ts">`,
+    `// Generated app chrome — a nav over every page. The vow tree is the source — do not edit.`,
+    `defineProps<{ path: string }>();`,
+    `</script>`,
+    ``,
+    `<template>`,
+    `  <div class="vow-shell">`,
+    `    <nav class="vow-shell__nav">`,
+    ...nav,
+    `    </nav>`,
+    `    <main class="vow-shell__main"><slot /></main>`,
+    `  </div>`,
+    `</template>`,
+    ``,
+  ].join("\n");
 }
 
 /**

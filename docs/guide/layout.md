@@ -39,6 +39,15 @@ The catalog of ready-made components — you name them, vow brings the markup:
 - **`features`** — a list of `{ title?, body? }` → a three-column grid of cards.
 - **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its full CRUD
   list, imported automatically). More data shapes (`table`, `cards`, `board`, `stats`) join over time.
+- **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
+  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `select` · `collapsible` · `tabs` · `dialog`.
+  The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
+  the adapters a view references, and an unknown name fails loud at generate time.
+- **`link: { to, label }`** — an internal link the router intercepts (no full reload).
+
+**Pages & routing.** The `root: true` view is the app's home (`/`); **every other view and every `emit form`
+becomes a page at `/<slug>`** automatically — vow generates the route table, the boot serves them from one
+client router, and a `link:` navigates between them without a reload.
 
 ## Primitives — the escape hatch
 
@@ -56,6 +65,12 @@ carries props plus an optional `children:` list (more components):
 
 A numeric prop is passed as a number (`gap: 4` → `:gap="4"`), anything else as a string. Text tags
 `h1` · `h2` · `h3` · `p` · `span` wrap their value; `text` is a bare string node.
+
+### Stack
+
+A vertical stack — a flex column with a gap, the most common page/form arrangement. Sugar for
+`flex: { direction: column }`: `- stack: { gap: 4, children: [...] }`. Its one prop is `gap` (a step on
+the spacing scale, default `4`).
 
 ### Flex
 
