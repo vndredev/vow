@@ -5,7 +5,7 @@ order: 2
 
 # Data
 
-`@vow/store` is vow's data layer — a shared, reactive **in-memory collection per entity slug**. Every generated view that lists the same entity reads **one array**, so a `reference` field can resolve another entity's items.
+`@vow/store` is vow's data layer — a shared, reactive **collection per entity slug**, backed by a local **SQLite DB**. Every generated view that lists the same entity reads **one array**, so a `reference` field can resolve another entity's items.
 
 ## `useCollection`
 
@@ -17,7 +17,7 @@ const { items, append, removeAt } = useCollection<Task>("task");
 
 ## The seam
 
-`useCollection` is the **data-adapter seam**. Today it's in-memory — state lives for the session. The same signature backs the planned **Cloudflare D1** adapter for real persistence (see the [roadmap](/guide/roadmap)): views don't change, only what's behind the seam does.
+`useCollection` is the **data-adapter seam** — now backed by a **local SQLite DB** (`@vow/db`, `node:sqlite`). The store loads each collection from the dev API (`/__vow/db/<slug>`) on first use, writes mutations through (`append` · `update` · `removeAt`), and refetches on focus + a light interval so an out-of-band write (the agent) shows up. Records persist across reloads in `.vow/data.db` (gitignored), seeded once from each entity's `## seed`. The generated views don't change — only what's behind the seam does. In prod the **same `/__vow/db` routes** are served by a Worker over **Cloudflare D1** (D1 is SQLite), so a vow app is byte-identical local ↔ hosted.
 
 ## Routing
 

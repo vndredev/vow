@@ -104,7 +104,7 @@ export interface Vow {
   readonly view?: readonly ViewNode[];
   /** Optional form (`## form`, YAML) — for an `emit form` vow, bound to an entity. */
   readonly form?: FormSpec;
-  /** Sample records (`## seed`, YAML) — an entity's data the boot loads into the store on start. */
+  /** Sample records (`## seed`, YAML) — bootstrapped into the DB once, if the entity's table is empty. */
   readonly seed?: readonly Record<string, unknown>[];
   /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
   readonly root?: boolean;

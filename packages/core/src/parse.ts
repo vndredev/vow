@@ -128,7 +128,7 @@ function parseForm(body: string): FormSpecType | undefined {
   return FormSpec.parse({ of: parsed["of"], submit: parsed["submit"] });
 }
 
-/** Parse a `## seed` YAML block — a list of sample records the boot loads into the store. */
+/** Parse a `## seed` YAML block — sample records bootstrapped into the DB (once, if its table is empty). */
 function parseSeed(body: string): Record<string, unknown>[] | undefined {
   const m = /##\s+seed\b[^\n]*\n+```ya?ml\n([\s\S]*?)\n```/i.exec(body);
   if (!m?.[1]) return undefined;

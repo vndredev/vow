@@ -18,16 +18,15 @@ test("the router boot folds in optional routes + chrome via the *.routes / *.lay
 });
 
 test("emitBoot can omit the theme", () => {
-  const boot = emitBoot("home", [], false);
+  const boot = emitBoot("home", false);
   expect(boot).not.toContain(".css");
   expect(boot).toContain('import Home from "./home.vue";');
 });
 
-test("emitBoot seeds the store from each seeded entity before mounting", () => {
-  const boot = emitBoot("home", ["task"]);
-  expect(boot).toContain('import { seed } from "@vow/store";');
-  expect(boot).toContain('import { taskSeed } from "./task.ts";');
-  expect(boot).toContain('seed("task", taskSeed);');
+test("the boot no longer seeds — records load from the DB through the store, not at boot", () => {
+  const boot = emitBoot("home");
+  expect(boot).not.toContain("@vow/store");
+  expect(boot).not.toContain("seed");
 });
 
 test("the env shims declare the *.vue and *.css modules tsgo needs", () => {
