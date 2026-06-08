@@ -13,7 +13,7 @@ order: 2
 const { items, append, removeAt } = useCollection<Task>("task");
 ```
 
-`items` is a reactive array (the same one for every caller of the slug); `append` / `removeAt` mutate it. The generated entity list, its create form, and a `reference` dropdown all call `useCollection` for the same slug — so adding a user on the Team page makes it selectable as a task's `assignee` on another, and the list resolves the stored id to the user's **name** (see [referent-display](/guide/emit)).
+`items` is a reactive array (the same one for every caller of the slug); `append` / `update` / `removeAt` write through to the DB. The generated entity list (read-only) and a `reference` cell both call `useCollection` for the same slug — so a user the agent adds is selectable as a task's `assignee`, and the list resolves the stored id to the user's **name** (see [referent-display](/guide/emit)).
 
 ## The seam
 

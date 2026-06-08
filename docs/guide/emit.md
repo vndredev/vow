@@ -55,7 +55,7 @@ with the page's components under `## view`:
 - list: task
 ```
 
-→ a `.vue` for the page and — **because the view asked for it** — the entity's CRUD **table** (`Task.vue`): a real `<table>` with a header from the field names and a row per record — read · create (inline form) · toggle · delete on local state. Boolean fields become the emitted, accessible [`<Checkbox>`](/guide/primitives). No `list:`, no table — the entity stays a pure model.
+→ a `.vue` for the page and — **because the view asked for it** — the entity's **read-only table** (`Task.vue`): a real `<table>` with a header from the field names and a row per record (a select value as a [`<Badge>`](/guide/primitives), a reference resolved to its target's **name**, a boolean as Yes/No). The list only _displays_ — the studio is read-only; the agent mutates the data via the MCP. No `list:`, no table — the entity stays a pure model.
 
 ## emit form
 

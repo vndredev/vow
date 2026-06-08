@@ -7,6 +7,7 @@ import {
   emitEntityCards,
   emitEntityList,
   emitEntityStats,
+  fieldControl,
   statsComponentName,
   viewComponentName,
 } from "../src/index.ts";
@@ -24,35 +25,31 @@ const entity: VowNode = {
   fulfills: { kind: "emit", as: "entity" },
 };
 
-test("emitEntityList renders an unstyled, hooked CRUD table over the entity", () => {
+test("emitEntityList renders an unstyled, read-only table over the entity", () => {
   expect(viewComponentName(entity)).toBe("Task");
   const sfc = emitEntityList(entity);
-  expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
+  expect(sfc).toContain('import { type Task } from "./task.ts";');
   expect(sfc).toContain('import { useCollection } from "@vow/store";');
-  expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
-  expect(sfc).toContain('const { items: rows, append, removeAt } = useCollection<Task>("task");');
-  // composes the Table primitive (a composition, not a primitive): a header from the field names,
-  // one <TableRow> per record, each value in its own <TableCell>
+  expect(sfc).toContain('const { items: rows } = useCollection<Task>("task");');
+  // composes the Table primitive: a header from the field names, one <TableRow> per record (grouped —
+  // one <tbody> when ungrouped), each value in its own <TableCell>
   expect(sfc).toContain('import Table from "./Table.vue";');
   expect(sfc).toContain('<TableHead scope="col">title</TableHead>');
-  expect(sfc).toContain('v-for="grp in grouped"'); // group-by: a <tbody> per group (one when ungrouped)
-  expect(sfc).toContain('v-for="item in grp.items"'); // the sliced collection, per group
+  expect(sfc).toContain('v-for="grp in grouped"');
+  expect(sfc).toContain('v-for="item in grp.items"');
   expect(sfc).toContain('<TableCell class="field-title">{{ item.title }}</TableCell>');
-  expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
-  expect(sfc).toContain('v-model="draft.title"');
-  expect(sfc).toContain('@submit.prevent="add"');
-  expect(sfc).toContain("createTask(draft.value)");
-  expect(sfc).toContain('@click="remove(item)"'); // delete by item (the index is into `displayed`)
+  expect(sfc).toContain('{{ item.done ? "Yes" : "No" }}'); // boolean: read-only, not a checkbox
   expect(sfc).not.toContain("<style");
 });
 
-test("the create form is a validated <Field> stack (converged with the ## form treatment)", () => {
+test("the read-only list has no create form and no delete — the agent mutates via the MCP", () => {
   const sfc = emitEntityList(entity);
-  expect(sfc).toContain('import Field from "./Field.vue";');
-  expect(sfc).toContain('import { ZodError } from "zod";');
-  expect(sfc).toContain('<form class="vow-form vow-view__create"'); // a stacked form, not a flex row
-  expect(sfc).toContain('<Field label="title" :control-id="titleId" :error="errors.title">');
-  expect(sfc).toContain("err instanceof ZodError"); // per-field errors, no silent swallow
+  expect(sfc).not.toContain("vow-view__create"); // no inline create form
+  expect(sfc).not.toContain("vow-view__delete"); // no delete button
+  expect(sfc).not.toContain("draft"); // no editable draft
+  expect(sfc).not.toContain("@submit"); // nothing submits
+  expect(sfc).not.toContain("createTask"); // the list never creates
+  expect(sfc).not.toContain('from "zod"'); // no validation in a read-only view
 });
 
 test("the list carries no heading of its own — the referencing view owns headings", () => {
@@ -61,7 +58,7 @@ test("the list carries no heading of its own — the referencing view owns headi
   expect(sfc).not.toContain("<h1");
 });
 
-test("a select field renders via the Select primitive with its options", () => {
+test("a select field renders read-only as a Badge cell", () => {
   const ticket: VowNode = {
     ...entity,
     id: "vow_ticket",
@@ -71,31 +68,34 @@ test("a select field renders via the Select primitive with its options", () => {
     ],
   };
   const sfc = emitEntityList(ticket);
-  expect(sfc).toContain('import Select from "./Select.vue";');
-  expect(sfc).toContain('<Select v-model="draft.status"');
-  expect(sfc).toContain("{ value: 'todo', label: 'todo' }");
+  expect(sfc).toContain('import Badge from "./Badge.vue";');
+  expect(sfc).toContain('<Badge :label="String(item.status)" />');
+  expect(sfc).not.toContain("./Select.vue"); // no form control in a read-only list
 });
 
-test("a date field renders as a native date input in the create form", () => {
-  const event: VowNode = {
-    ...entity,
-    id: "vow_event",
-    slug: "event",
-    fields: [{ name: "starts", type: "date", required: true }],
-  };
-  const sfc = emitEntityList(event);
-  expect(sfc).toContain('<input class="vow-input" type="date" v-model="draft.starts"');
-});
-
-test("a longtext field renders as a textarea (the shared fieldControl)", () => {
-  const note: VowNode = {
-    ...entity,
-    id: "vow_note",
-    slug: "note",
-    fields: [{ name: "body", type: "longtext", required: false }],
-  };
-  const sfc = emitEntityList(note);
-  expect(sfc).toContain('<textarea class="vow-input vow-textarea" v-model="draft.body"');
+test("fieldControl renders the right input per field type (the form control map)", () => {
+  const date = JSON.stringify(
+    fieldControl({ name: "starts", type: "date", required: true }, "draft.starts"),
+  );
+  expect(date).toContain('"value":"date"'); // a native date input
+  const longtext = JSON.stringify(
+    fieldControl({ name: "body", type: "longtext", required: false }, "draft.body"),
+  );
+  expect(longtext).toContain('"tag":"textarea"');
+  const select = JSON.stringify(
+    fieldControl(
+      { name: "status", type: "select", required: false, options: ["a"] },
+      "draft.status",
+    ),
+  );
+  expect(select).toContain('"name":"Select"');
+  const reference = JSON.stringify(
+    fieldControl(
+      { name: "assignee", type: "reference", required: false, ref: "user" },
+      "draft.assignee",
+    ),
+  );
+  expect(reference).toContain("assigneeChoices"); // reads the target's <field>Choices computed
 });
 
 const issue: VowNode = {
@@ -105,18 +105,17 @@ const issue: VowNode = {
   fields: [{ name: "assignee", type: "reference", required: false, ref: "user" }],
 };
 
-test("a reference field renders the Select primitive over the target's shared collection", () => {
+test("a reference cell resolves the stored id to the target's display name (not the id)", () => {
   const sfc = emitEntityList(issue); // no byId → label falls back to the id
   expect(sfc).toContain(
     'const assigneeOptions = useCollection<{ id: string } & Record<string, unknown>>("user").items;',
   );
-  expect(sfc).toContain("const assigneeChoices = computed(() =>");
-  expect(sfc).toContain("value: t.id, label: String(t.id)");
-  expect(sfc).toContain('<Select v-model="draft.assignee"');
-  expect(sfc).toContain(':options="assigneeChoices"');
+  expect(sfc).toContain("const assigneeName = (id: unknown): string =>");
+  expect(sfc).toContain("{{ assigneeName(item.assignee) }}"); // the resolved name in the cell
+  expect(sfc).not.toContain("assigneeChoices"); // no form dropdown in a read-only list
 });
 
-test("a reference dropdown labels items by the target's first text field", () => {
+test("a reference cell labels its target by the target's first text field", () => {
   const user: VowNode = {
     ...entity,
     id: "vow_user",
@@ -124,7 +123,7 @@ test("a reference dropdown labels items by the target's first text field", () =>
     fields: [{ name: "name", type: "text", required: true }],
   };
   const sfc = emitEntityList(issue, new Map([["user", user]]));
-  expect(sfc).toContain("label: String(t.name)");
+  expect(sfc).toContain("?.name ?? id"); // the resolver reads the target's `name`
 });
 
 test("emitEntityStats counts rows per a select field, composing Stats/Stat", () => {
