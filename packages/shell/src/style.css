@@ -1,0 +1,79 @@
+/* @vow/shell — the app-chrome (dashboard shell) stylesheet, built entirely on @vow/theme tokens.
+   The shell owns the page width: pages render inside `.vow-shell__content` (one centered column), so
+   `.vow-app`/`.vow-form` no longer self-center (see @vow/theme/vow.css). */
+
+.vow-shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+/* the sidebar — sticky, full height: brand at top, nav, a footer (dark toggle) pinned to the bottom */
+.vow-shell__sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-6);
+  padding: var(--vow-space-5);
+  border-right: var(--vow-border) solid var(--vow-color-border);
+  background: var(--vow-color-bg);
+}
+.vow-shell__brand {
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-bold);
+  color: var(--vow-color-text);
+  text-decoration: none;
+  letter-spacing: var(--vow-tracking-tight);
+}
+.vow-shell__nav {
+  display: flex;
+  flex-direction: column;
+  border-left: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-shell__link {
+  margin-left: -1px; /* sits on the guide line */
+  padding: var(--vow-space-1) var(--vow-space-4);
+  border-left: var(--vow-border) solid transparent;
+  color: var(--vow-color-muted);
+  text-decoration: none;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.vow-shell__link:hover {
+  color: var(--vow-color-text);
+}
+.vow-shell__link.is-active {
+  color: var(--vow-color-accent);
+  border-left-color: var(--vow-color-accent);
+}
+.vow-shell__sidebar-footer {
+  margin-top: auto;
+}
+
+/* the main column — a slim (optional) top bar + a centered, max-width content column */
+.vow-shell__main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.vow-shell__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--vow-space-3);
+  min-height: 3.5rem;
+  padding: 0 var(--vow-space-6);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-shell__content {
+  width: 100%;
+  max-width: var(--vow-container-3);
+  margin: 0 auto;
+  padding: var(--vow-space-7) var(--vow-space-6) var(--vow-space-9);
+}

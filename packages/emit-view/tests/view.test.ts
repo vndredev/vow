@@ -150,12 +150,17 @@ test("emitAppRoutes maps each non-root page to a /slug route loading its .vue", 
   );
 });
 
-test("emitAppLayout renders a nav of home + every page, active by path", () => {
-  const code = emitAppLayout([{ slug: "add-task", title: "Add a task" }]);
-  expect(code).toContain("defineProps<{ path: string }>();");
-  expect(code).toContain(`:class="{ 'is-active': path === '/' }" href="/">Home</a>`);
-  expect(code).toContain(
-    `:class="{ 'is-active': path === '/add-task' }" href="/add-task">Add a task</a>`,
-  );
-  expect(code).toContain("<slot />");
+test("emitAppLayout wraps pages in the @vow/shell dashboard, passing pages + path + title", () => {
+  const code = emitAppLayout([{ slug: "add-task", title: "Add a task" }], "Task planner");
+  expect(code).toContain('import Shell from "@vow/shell/Shell.vue";');
+  expect(code).toContain('import "@vow/shell/style.css";');
+  expect(code).toContain('const pages = [{ path: "/add-task", title: "Add a task" }];');
+  expect(code).toContain('const title = "Task planner";');
+  expect(code).toContain('<Shell :pages="pages" :path="path" :title="title"><slot /></Shell>');
+});
+
+test("emitAppLayout omits the title when none is given (the shell's own fallback applies)", () => {
+  const code = emitAppLayout([{ slug: "users", title: "Team" }]);
+  expect(code).not.toContain("const title");
+  expect(code).toContain('<Shell :pages="pages" :path="path"><slot /></Shell>');
 });

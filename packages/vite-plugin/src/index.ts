@@ -38,6 +38,8 @@ export interface VowOptions {
   readonly outDir?: string;
   /** Inline vows, bypassing `dir` — for tests. */
   readonly vows?: readonly VowNode[];
+  /** The app name, shown as the shell brand (default: the shell's own fallback). */
+  readonly title?: string;
 }
 
 /** Flatten the tree into every vow, depth-first. */
@@ -66,7 +68,12 @@ function bindSpecifier(module: string, outDir: string, srcDir: string): string {
  * the entity is never auto-rendered. `srcDir` is where the vows + hand-written bind code live (to
  * resolve relative bind modules). Returns the written paths.
  */
-export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: string): string[] {
+export function generateFiles(
+  vows: readonly VowNode[],
+  outDir: string,
+  srcDir: string,
+  title?: string,
+): string[] {
   validateReferences(vows); // fail loud on a dangling `reference(<entity>)` before generating anything
   mkdirSync(outDir, { recursive: true });
   const written: string[] = [];
@@ -157,7 +164,7 @@ export function generateFiles(vows: readonly VowNode[], outDir: string, srcDir: 
     const routes = join(outDir, "vow-pages.routes.ts");
     writeFileSync(routes, emitAppRoutes(pages), "utf8");
     const layout = join(outDir, "vow-app.layout.vue");
-    writeFileSync(layout, emitAppLayout(pages), "utf8");
+    writeFileSync(layout, emitAppLayout(pages, title), "utf8");
     written.push(routes, layout);
   }
   // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
@@ -193,7 +200,7 @@ export function vow(options: VowOptions = {}): Plugin {
 
   const regenerate = (): void => {
     vows = options.vows ?? loadVows(vowDir);
-    generateFiles(vows, genDir, vowDir);
+    generateFiles(vows, genDir, vowDir, options.title);
   };
 
   return {

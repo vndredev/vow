@@ -100,6 +100,7 @@
 }
 html {
   scrollbar-gutter: stable;
+  overscroll-behavior: none;
 }
 body {
   margin: 0;
@@ -109,17 +110,13 @@ body {
   background: var(--vow-color-bg);
 }
 
-/* `.vow-app` wraps a `## view` — a centered, stacked page. Layout primitives are structural (inline
-   style only); the theme dresses the page's text by tag *within* `.vow-app` (so the hero/features
-   read as a real page) and gives Box a card look. Scoped to `.vow-app` so an embedded `.vow-view`
-   keeps its own style. */
+/* `.vow-app` wraps a `## view` — a stacked page that FILLS its column. The shell (`@vow/shell`) owns the
+   page width + centering + padding (one container, not three); `.vow-app` only stacks the page's blocks
+   and dresses its text by tag (so the hero/features read as a real page). Scoped to `.vow-app` so an
+   embedded `.vow-view` keeps its own style. */
 .vow-app {
   font-family: var(--vow-font-sans);
   color: var(--vow-color-text);
-  background: var(--vow-color-bg);
-  max-width: var(--vow-container-3);
-  margin: 0 auto;
-  padding: var(--vow-space-9) var(--vow-space-4);
   display: flex;
   flex-direction: column;
   gap: var(--vow-space-7);
@@ -269,27 +266,7 @@ body {
   text-decoration: underline;
 }
 
-/* the app shell — a shared top nav over every routed page. */
-.vow-shell__nav {
-  display: flex;
-  gap: var(--vow-space-4);
-  align-items: center;
-  padding: var(--vow-space-3) var(--vow-space-5);
-  border-bottom: var(--vow-border) solid var(--vow-color-border);
-}
-.vow-shell__link {
-  color: var(--vow-color-muted);
-  text-decoration: none;
-  font-size: var(--vow-text-sm);
-  font-weight: var(--vow-weight-medium);
-}
-.vow-shell__link:hover,
-.vow-shell__link.is-active {
-  color: var(--vow-color-text);
-}
-.vow-shell__main {
-  padding: var(--vow-space-6) var(--vow-space-5);
-}
+/* the app shell lives in its own swappable layer — see @vow/shell/style.css (the `.vow-shell*` chrome). */
 .vow-view__add {
   padding: var(--vow-space-2) var(--vow-space-4);
   border: var(--vow-border) solid var(--vow-color-ink);
