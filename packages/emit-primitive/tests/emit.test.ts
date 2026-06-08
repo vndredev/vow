@@ -6,6 +6,7 @@ import {
   emitDialogSfc,
   emitFieldSfc,
   emitSelectSfc,
+  emitSwitchSfc,
   emitTabsSfc,
 } from "../src/index.ts";
 
@@ -266,4 +267,37 @@ test("emitFieldSfc renders the structural field wrapper byte-for-byte", () => {
   expect(sfc).toBe(EXPECTED_FIELD);
   expect(sfc).not.toContain("@vow/headless"); // structural — no headless core
   expect(sfc).not.toContain("<style");
+});
+
+// The byte-stable oracle for the switch adapter: a <button role=switch> track + a thumb part.
+const EXPECTED_SWITCH = [
+  `<script setup lang="ts">`,
+  `// Generated switch adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
+  `// Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).`,
+  `import { computed } from "vue";`,
+  `import { switch_ } from "@vow/headless";`,
+  ``,
+  `const props = withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean }>(), { modelValue: false });`,
+  `const emit = defineEmits<{ "update:modelValue": [boolean] }>();`,
+  ``,
+  `const api = computed(() =>`,
+  `  switch_({ checked: props.modelValue, disabled: props.disabled }, (next) =>`,
+  `    emit("update:modelValue", next.checked),`,
+  `  ),`,
+  `);`,
+  `</script>`,
+  ``,
+  `<template>`,
+  `  <span v-bind="api.rootProps" class="vow-switch">`,
+  `    <button v-bind="api.controlProps" :aria-label="label" class="vow-switch__control">`,
+  `      <span v-bind="api.thumbProps" class="vow-switch__thumb" />`,
+  `    </button>`,
+  `    <span v-bind="api.labelProps" class="vow-switch__label">{{ label }}</span>`,
+  `  </span>`,
+  `</template>`,
+  ``,
+].join("\n");
+
+test("emitSwitchSfc renders the switch adapter byte-for-byte", () => {
+  expect(emitSwitchSfc()).toBe(EXPECTED_SWITCH);
 });

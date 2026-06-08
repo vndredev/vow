@@ -8,6 +8,7 @@ import {
   emitDialogSfc,
   emitFieldSfc,
   emitSelectSfc,
+  emitSwitchSfc,
   emitTabsSfc,
   PRIMITIVE_ADAPTERS,
 } from "@vow/emit-primitive";
@@ -522,6 +523,22 @@ const name = ref("");
 </template>
 `;
 
+const DEMO_SWITCH = `<script setup lang="ts">
+import { ref } from "vue";
+import Switch from "./Switch.vue";
+const notifications = ref(true);
+const sync = ref(false);
+</script>
+
+<template>
+  <div class="vow-demo">
+    <Switch v-model="notifications" label="Notifications" />
+    <Switch v-model="sync" label="Background sync" />
+    <Switch :model-value="false" label="Locked (disabled)" disabled />
+  </div>
+</template>
+`;
+
 /** A live demo: its wrapper SFC + the generated primitive adapter it imports. */
 interface Demo {
   readonly sfc: string;
@@ -538,6 +555,7 @@ const DEMOS: Record<string, Demo> = {
   VowDemoDialog: { sfc: DEMO_DIALOG, adapter: "Dialog", emit: emitDialogSfc },
   VowDemoField: { sfc: DEMO_FIELD, adapter: "Field", emit: emitFieldSfc },
   VowDemoSelect: { sfc: DEMO_SELECT, adapter: "Select", emit: emitSelectSfc },
+  VowDemoSwitch: { sfc: DEMO_SWITCH, adapter: "Switch", emit: emitSwitchSfc },
 };
 
 /** Primitive adapters a page may reference directly — the closed registry from @vow/emit-primitive

@@ -75,6 +75,67 @@ export function checkbox(state: CheckboxState, set: (next: CheckboxState) => voi
   };
 }
 
+export interface SwitchState {
+  readonly checked: boolean;
+  readonly disabled?: boolean;
+}
+
+export interface SwitchApi {
+  readonly checked: boolean;
+  /** Props for the outer wrapper that groups control + label (carries the state hooks for theming). */
+  readonly rootProps: Record<string, unknown>;
+  /** Props for the focusable control — a `<button role="switch">` (the track). */
+  readonly controlProps: Record<string, unknown>;
+  /** Props for the sliding thumb part (shown via `data-state`, hidden from a11y). */
+  readonly thumbProps: Record<string, unknown>;
+  /** Props for the text label. */
+  readonly labelProps: Record<string, unknown>;
+  toggle(): void;
+}
+
+/**
+ * The switch (toggle) primitive — a boolean with on/off semantics, WAI-ARIA APG conformant. HTML has no
+ * stylable native switch, so it earns one: the control is a `<button role="switch">` carrying
+ * `aria-checked`; **Space** and **Enter** toggle (both `preventDefault`ed so the native activation can't
+ * fire a second toggle). `disabled` uses the native button `disabled`. State is mirrored onto each part
+ * as `data-state="checked|unchecked"` / `data-disabled` for the theme to hook, never stored.
+ */
+export function switch_(state: SwitchState, set: (next: SwitchState) => void): SwitchApi {
+  const dataState = state.checked ? "checked" : "unchecked";
+  const toggle = (): void => {
+    if (state.disabled) return;
+    set({ ...state, checked: !state.checked });
+  };
+  return {
+    checked: state.checked,
+    rootProps: {
+      "data-state": dataState,
+      "data-disabled": state.disabled ? "" : undefined,
+    },
+    controlProps: {
+      type: "button",
+      role: "switch",
+      "aria-checked": state.checked,
+      "data-state": dataState,
+      "data-disabled": state.disabled ? "" : undefined,
+      disabled: state.disabled || undefined,
+      onClick: toggle,
+      onKeydown: (event: KeyboardEvent): void => {
+        if (event.key === " " || event.key === "Enter") {
+          event.preventDefault();
+          toggle();
+        }
+      },
+    },
+    thumbProps: {
+      "data-state": dataState,
+      "aria-hidden": "true",
+    },
+    labelProps: { onClick: toggle },
+    toggle,
+  };
+}
+
 export interface CollapsibleState {
   readonly open: boolean;
   /** A stable base id to wire the trigger ↔ content (aria-controls / aria-labelledby). */

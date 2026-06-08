@@ -538,6 +538,76 @@ export function emitFieldSfc(): string {
   return renderVueSfc(field);
 }
 
+/** The switch (toggle) adapter as a canonical Component: a `<button role=switch>` track + a thumb part. */
+const switchComponent: Component = {
+  name: "Switch",
+  doc: [
+    "Generated switch adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  imports: [
+    { from: "vue", names: ["computed"] },
+    { from: "@vow/headless", names: ["switch_"] },
+  ],
+  props: [
+    { name: "modelValue", tsType: "boolean", optional: true, default: "false" },
+    { name: "label", tsType: "string" },
+    { name: "disabled", tsType: "boolean", optional: true },
+  ],
+  events: [{ name: "update:modelValue", payload: "boolean" }],
+  setup: [
+    "const api = computed(() =>",
+    "  switch_({ checked: props.modelValue, disabled: props.disabled }, (next) =>",
+    '    emit("update:modelValue", next.checked),',
+    "  ),",
+    ");",
+  ],
+  view: {
+    kind: "element",
+    tag: "span",
+    attrs: [
+      { kind: "spread", expr: "api.rootProps" },
+      { kind: "static", name: "class", value: "vow-switch" },
+    ],
+    children: [
+      {
+        kind: "element",
+        tag: "button",
+        attrs: [
+          { kind: "spread", expr: "api.controlProps" },
+          { kind: "bound", name: "aria-label", expr: "label" },
+          { kind: "static", name: "class", value: "vow-switch__control" },
+        ],
+        children: [
+          {
+            kind: "element",
+            tag: "span",
+            attrs: [
+              { kind: "spread", expr: "api.thumbProps" },
+              { kind: "static", name: "class", value: "vow-switch__thumb" },
+            ],
+            children: [],
+          },
+        ],
+      },
+      {
+        kind: "element",
+        tag: "span",
+        attrs: [
+          { kind: "spread", expr: "api.labelProps" },
+          { kind: "static", name: "class", value: "vow-switch__label" },
+        ],
+        children: [{ kind: "interp", expr: "label" }],
+      },
+    ],
+  },
+};
+
+/** Generate the Vue switch adapter (over @vow/headless), rendered from the canonical model. */
+export function emitSwitchSfc(): string {
+  return renderVueSfc(switchComponent);
+}
+
 /**
  * The closed primitive registry — PascalCase name → its Vue SFC emitter. The single source of vow's
  * primitive vocabulary: `emit-view` validates `## view` references against these names, the vite-plugin
@@ -550,5 +620,6 @@ export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   Dialog: emitDialogSfc,
   Field: emitFieldSfc,
   Select: emitSelectSfc,
+  Switch: emitSwitchSfc,
   Tabs: emitTabsSfc,
 };
