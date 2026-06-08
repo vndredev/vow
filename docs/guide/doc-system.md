@@ -20,7 +20,8 @@ sidebar, this "on this page" rail — is built from vow's own packages. The docs
 emitters use) — not an HTML blob, not a Vue-locked SFC. Headings, paragraphs, lists and inline marks
 become element + text nodes; fenced code becomes a raw, Shiki-highlighted node. On top of that it adds
 the doc features: `:::` callouts, `::: code-group`, `<<<` file snippets, `::: demo`, inline
-`:badge[Done]{variant=success}` + `:icon[plus]` (vow's own Badge/Icon, right in prose), and the
+`:badge[Done]{variant=success}` + `:icon[plus]` (vow's own Badge/Icon, right in prose), `::: timeline`
+(the [roadmap](/guide/roadmap)'s history, generated from `git log` via `@vow/observability`), and the
 h2/h3 headings that feed this page's TOC.
 
 ## The docs feature: `@vow/docs`

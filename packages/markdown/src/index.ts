@@ -7,7 +7,7 @@ import { getHighlighter, highlight } from "./highlight.ts";
 export { getHighlighter, highlight } from "./highlight.ts";
 
 /** The `:::` container kinds: callouts, code-group (a tab switcher), and demo (a live primitive). */
-const CONTAINERS = ["tip", "info", "warning", "danger", "code-group", "demo"];
+const CONTAINERS = ["tip", "info", "warning", "danger", "code-group", "demo", "timeline"];
 
 /** PascalCase a word (`checkbox` → `Checkbox`, `code-group` → `CodeGroup`). */
 const pascal = (s: string): string =>
@@ -208,6 +208,9 @@ function blockToNodes(tokens: readonly Tok[], hl?: Highlighter, toc?: TocEntry[]
         // `::: demo <primitive>` → a live demo component (@vow/docs generates it). No raw Vue.
         const demo = "VowDemo" + pascal(t.info.trim().slice("demo".length).trim());
         stack.push({ kids: [], build: () => comp(demo, [], []) });
+      } else if (name === "timeline") {
+        // `::: timeline` → the git-derived timeline (@vow/docs bakes the entries in). No hand-typed list.
+        stack.push({ kids: [], build: () => comp("VowTimeline", [], []) });
       } else {
         const title = t.info.trim().slice(name.length).trim();
         stack.push({ kids: [], build: (k) => calloutNode(name, title, k) });

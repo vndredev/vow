@@ -186,6 +186,9 @@ importers:
       '@vow/markdown':
         specifier: workspace:*
         version: link:../markdown
+      '@vow/observability':
+        specifier: workspace:*
+        version: link:../observability
       '@vow/router':
         specifier: workspace:*
         version: link:../router
@@ -318,6 +321,15 @@ importers:
       '@types/markdown-it-container':
         specifier: ^2.0.10
         version: 2.0.11
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)
+
+  packages/observability:
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.1
       vite-plus:
         specifier: 'catalog:'
         version: 0.1.24(@types/node@25.9.1)(jiti@2.7.0)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@25.9.1)(jiti@2.7.0)(yaml@2.9.0))(yaml@2.9.0)

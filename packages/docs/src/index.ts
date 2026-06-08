@@ -16,6 +16,7 @@ import {
 } from "@vow/emit-primitive";
 import { emitProse } from "@vow/emit-view";
 import { getHighlighter, markdownToNodesSync, type TocEntry } from "@vow/markdown";
+import { gitRemoteUrl, gitTimeline, type TimelineEntry } from "@vow/observability";
 
 export type { TocEntry } from "@vow/markdown";
 
@@ -259,7 +260,7 @@ function firstSentence(body: string): string {
 /** Strip doc-only blocks (the whole live `::: demo … :::` placeholder) — no text for an LLM reader. */
 const cleanBody = (body: string): string =>
   body
-    .replace(/^::: ?demo\b[\s\S]*?\n:::[ \t]*$/gm, "")
+    .replace(/^::: ?(?:demo|timeline)\b[\s\S]*?\n:::[ \t]*$/gm, "")
     .replace(/:badge\[([^\]]+)\](?:\{[^}]*\})?/g, "$1") // an inline badge → its label
     .replace(/:icon\[[^\]]+\]\s?/g, "") // an inline icon → dropped (it's decorative)
     .replace(/\n{3,}/g, "\n\n")
@@ -303,6 +304,84 @@ export function buildLlms(
     index.push("");
   }
   return { index: `${index.join("\n").trimEnd()}\n`, full: `${full.join("\n").trimEnd()}\n` };
+}
+
+/** The Badge variant for a conventional-commit type — vow's own status colours, dogfooded. */
+function timelineVariant(type: string | undefined): "neutral" | "accent" | "success" | "warning" {
+  switch (type) {
+    case "feat":
+      return "success";
+    case "fix":
+      return "warning";
+    case "refactor":
+    case "perf":
+      return "accent";
+    default:
+      return "neutral";
+  }
+}
+
+/**
+ * The `::: timeline` component — the git-derived history, **baked in** at generate time, grouped by date,
+ * each change a type [Badge](/guide/primitives/badge) + a link to its PR. So the roadmap renders the real
+ * timeline (generated from `git log`, vow's own primitives), never a hand-typed list that could drift.
+ */
+export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: string): string {
+  interface Item {
+    title: string;
+    type?: string;
+    variant?: "neutral" | "accent" | "success" | "warning";
+    pr?: number;
+  }
+  const groups: { date: string; items: Item[] }[] = [];
+  for (const e of entries) {
+    const item: Item = { title: e.title };
+    if (e.type !== undefined) {
+      item.type = e.type;
+      item.variant = timelineVariant(e.type);
+    }
+    if (e.pr !== undefined) item.pr = e.pr;
+    const last = groups[groups.length - 1];
+    if (last !== undefined && last.date === e.date) last.items.push(item);
+    else groups.push({ date: e.date, items: [item] });
+  }
+  const groupsType =
+    "{ date: string; items: { title: string; type?: string; " +
+    "variant?: 'neutral' | 'accent' | 'success' | 'warning'; pr?: number }[] }[]";
+  // each date is a Collapsible — all closed except the most recent (the first group)
+  const initialOpen = JSON.stringify(groups.map((_, i) => i === 0));
+  return [
+    `<script setup lang="ts">`,
+    `// Generated from git by @vow/docs — the derived timeline. The history is the source; do not edit.`,
+    `import { ref } from "vue";`,
+    `import Badge from "./Badge.vue";`,
+    `import Collapsible from "./Collapsible.vue";`,
+    `const groups: ${groupsType} = ${JSON.stringify(groups)};`,
+    `const repo = ${JSON.stringify(repoUrl ?? "")};`,
+    `const open = ref<boolean[]>(${initialOpen});`,
+    `</script>`,
+    ``,
+    `<template>`,
+    `  <div class="vow-timeline">`,
+    `    <Collapsible`,
+    `      v-for="(g, gi) in groups"`,
+    `      :key="g.date"`,
+    `      v-model="open[gi]"`,
+    `      :label="g.date + ' · ' + g.items.length + ' changes'"`,
+    `      class="vow-timeline__group"`,
+    `    >`,
+    `      <ul class="vow-timeline__items">`,
+    `        <li v-for="(e, i) in g.items" :key="i" class="vow-timeline__item">`,
+    `          <Badge v-if="e.type" :label="e.type" :variant="e.variant" />`,
+    `          <span class="vow-timeline__title">{{ e.title }}</span>`,
+    `          <a v-if="e.pr && repo" class="vow-timeline__pr" :href="repo + '/pull/' + e.pr">#{{ e.pr }}</a>`,
+    `        </li>`,
+    `      </ul>`,
+    `    </Collapsible>`,
+    `  </div>`,
+    `</template>`,
+    ``,
+  ].join("\n");
 }
 
 /**
@@ -427,6 +506,13 @@ export function generateDocs(
   for (const name of used) {
     if (PROSE_COMPONENTS[name] !== undefined) writeComp(name, PROSE_COMPONENTS[name]);
     if (PRIMITIVES[name] !== undefined) writeComp(name, PRIMITIVES[name]()); // a primitive used in prose
+    if (name === "VowTimeline") {
+      for (const dep of ["Badge", "Collapsible"]) {
+        const adapter = PRIMITIVES[dep]; // the timeline's type chips + per-date collapse
+        if (adapter !== undefined) writeComp(dep, adapter());
+      }
+      writeComp(name, emitTimelineSfc(gitTimeline(contentDir), gitRemoteUrl(contentDir)));
+    }
     const demo = DEMOS[name];
     if (demo !== undefined) {
       writeComp(demo.adapter, demo.emit()); // the generated primitive adapter
@@ -438,6 +524,7 @@ export function generateDocs(
   const unknown = [...used].filter(
     (n) =>
       n !== "Icon" && // imported from @vow/icons (a package), not materialised into .generated
+      n !== "VowTimeline" && // materialised above from the git-derived timeline
       PROSE_COMPONENTS[n] === undefined &&
       DEMOS[n] === undefined &&
       PRIMITIVES[n] === undefined,

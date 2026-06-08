@@ -46,11 +46,10 @@ All over the same vows:
 
 ## Where we are (the derived timeline)
 
-The truth, read from git — day 1 (5 Jun 2026) to now:
+The truth, read from git — every merged change, day 1 to now. **This list is generated, not typed**: `@vow/observability` reads `git log` at build time, the same way a vow's status is read off its proof. It can't drift, because there's nothing to hand-maintain.
 
-- **The core** _(5–6 Jun)_ — the framework-agnostic [component model](/guide/components) + Vue adapter; the `## view` layout path + [layout primitives](/guide/views); [theme tokens](/guide/theming); the boot generated from a `root` vow (no hand-written `src/`).
-- **The spec hardens** _(7 Jun)_ — YAML `## view`; entity decoupled from its rendering (entity = model); a token-driven theme over the whole surface; the **self-documenting [docs system](/guide/doc-system)** + a full hardening pass (the language + drift gates).
-- **Toward the studio** _(8 Jun)_ — `reference` fields + the shared [store](/guide/data); the UI foundation ([primitives](/guide/primitives) · variants · [forms](/guide/emit) · routing); the [app shell](/guide/shell) + an [architecture](/guide/architecture) overhaul + `llms.txt`; icons + [badge](/guide/primitives/badge) + referent-display + docs dogfooding.
+::: timeline
+:::
 
 ::: warning Foundation phase
 Everything in the timeline is green and live; everything in **the path** is declared, not yet shipped. These docs stay 1:1 with what git actually records — the roadmap can't oversell, because it's derived.

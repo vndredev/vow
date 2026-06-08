@@ -1,0 +1,18 @@
+{
+  "name": "@vow/observability",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's observability adapter — reads the truth (git today; coverage + CI next) into a derived timeline.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
