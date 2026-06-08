@@ -815,7 +815,7 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
     `  ...docRoutes,`,
     `];`,
     ``,
-    `createRouter(routes, { layout }).mount("#app");`,
+    `void createRouter(routes, { layout }).mount("#app");`,
     ``,
   );
   return lines.join("\n");
