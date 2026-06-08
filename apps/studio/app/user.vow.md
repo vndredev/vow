@@ -8,3 +8,10 @@ fulfills: emit entity
 ## fields
 
 - name: text, required
+
+## seed
+
+```yaml
+- { name: Andre }
+- { name: Claude }
+```
