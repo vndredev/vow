@@ -178,16 +178,19 @@ export function generateFiles(
   // Non-root views + forms become routes (`/<slug>`) the boot globs via the `*.routes.ts` convention —
   // so the root page stays `/` and every other page joins it, with no hand-written router. With more than
   // the home page, also emit a shared chrome (`*.layout.vue`) — a nav over every page.
+  // The app's entry: a `root: true` page. Its frontmatter `title:` is the app-shell brand (falling back
+  // to the plugin option) — so the shell title is declared in the vow, not in vite.config.
+  const rootVow = all.find((v) => v.root === true && v.view);
+  const appTitle = rootVow?.title ?? title;
   if (pages.length > 0) {
     const routes = join(outDir, "vow-pages.routes.ts");
     writeFileSync(routes, emitAppRoutes(pages), "utf8");
     const layout = join(outDir, "vow-app.layout.vue");
-    writeFileSync(layout, emitAppLayout(pages, title), "utf8");
+    writeFileSync(layout, emitAppLayout(pages, appTitle), "utf8");
     written.push(routes, layout);
   }
-  // The app's entry: a `root: true` page. Generate the boot (main.ts) + the *.vue/*.css shims, so the
-  // app needs no hand-written `src/` shell — index.html loads `.generated/main.ts`.
-  const rootVow = all.find((v) => v.root === true && v.view);
+  // Generate the boot (main.ts) + the *.vue/*.css shims, so the app needs no hand-written `src/` shell —
+  // index.html loads `.generated/main.ts`.
   if (rootVow) {
     const boot = join(outDir, "main.ts");
     const env = join(outDir, "vow-env.d.ts");

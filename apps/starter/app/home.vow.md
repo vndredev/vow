@@ -2,6 +2,7 @@
 id: vow_home
 fulfills: emit view
 root: true
+title: vow starter
 ---
 
 # Home
