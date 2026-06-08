@@ -16,4 +16,5 @@ export type IconName =
   | "arrow-right"
   | "home"
   | "list-checks"
-  | "users";
+  | "users"
+  | "layers";
