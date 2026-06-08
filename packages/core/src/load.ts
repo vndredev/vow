@@ -10,7 +10,7 @@ import type { Vow } from "./vow.ts";
  * versioned, git-diffable, human- and LLM-readable. (Node-side only; runs in vite.config / vp.)
  */
 
-const SUFFIX = ".vow.md";
+export const SUFFIX = ".vow.md";
 
 /** Load one vow: its `<slug>.vow.md` in `dir`, plus children from a sibling `<slug>/` folder. */
 export function loadVow(dir: string, slug: string): Vow {
