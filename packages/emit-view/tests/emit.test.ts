@@ -35,13 +35,14 @@ test("emitEntityList renders an unstyled, hooked CRUD table over the entity", ()
   // one <TableRow> per record, each value in its own <TableCell>
   expect(sfc).toContain('import Table from "./Table.vue";');
   expect(sfc).toContain('<TableHead scope="col">title</TableHead>');
-  expect(sfc).toContain('v-for="(item, i) in rows"');
+  expect(sfc).toContain('v-for="grp in grouped"'); // group-by: a <tbody> per group (one when ungrouped)
+  expect(sfc).toContain('v-for="item in grp.items"'); // the sliced collection, per group
   expect(sfc).toContain('<TableCell class="field-title">{{ item.title }}</TableCell>');
   expect(sfc).toContain('<Checkbox v-model="item.done" label="done" />');
   expect(sfc).toContain('v-model="draft.title"');
   expect(sfc).toContain('@submit.prevent="add"');
   expect(sfc).toContain("createTask(draft.value)");
-  expect(sfc).toContain('@click="remove(i)"');
+  expect(sfc).toContain('@click="remove(item)"'); // delete by item (the index is into `displayed`)
   expect(sfc).not.toContain("<style");
 });
 
@@ -158,7 +159,8 @@ test("emitEntityCards renders a Card per record, titled by the first text field"
   const sfc = emitEntityCards(ticket);
   expect(sfc).toContain('const { items: rows } = useCollection<Ticket>("ticket");');
   expect(sfc).toContain('import Card from "./Card.vue";');
-  expect(sfc).toContain('v-for="item in rows"');
+  expect(sfc).toContain('v-for="grp in grouped"'); // group-by: a section per group (one when ungrouped)
+  expect(sfc).toContain('v-for="item in grp.items"');
   expect(sfc).toContain("<CardHeader>{{ item.title }}</CardHeader>");
   expect(sfc).toContain("status: "); // a non-title field, labelled, in the body
   const notEntity: VowNode = { ...ticket, fulfills: { kind: "emit", as: "view" } };
@@ -178,13 +180,18 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
   expect(boardComponentName("ticket", "status")).toBe("TicketStatusBoard");
   const sfc = emitEntityBoard(ticket, "status");
   expect(sfc).toContain('const options = ["todo","done"];');
-  expect(sfc).toContain("rows.filter((r) => r.status === o)"); // grouped into columns
   expect(sfc).toContain('v-for="col in columns"');
   expect(sfc).toContain('draggable="true"');
   expect(sfc).toContain("@dragover.prevent");
   expect(sfc).toContain('@dragstart="dragged = item"');
   expect(sfc).toContain('@drop="onDrop(col.option)"'); // a drop writes the field back
   expect(sfc).toContain('dragged.value.status = option as Ticket["status"]');
+  // slicing: a `filter` / `sort` prop narrows + orders the visible cards before they're grouped
+  expect(sfc).toContain(
+    "defineProps<{ filter?: Record<string, unknown>; sort?: keyof Ticket; group?: keyof Ticket }>",
+  );
+  expect(sfc).toContain("const visible = computed(()");
+  expect(sfc).toContain("visible.value.filter((r) => r.status === o)");
   expect(() => emitEntityBoard(ticket, "title")).toThrow(); // `by` must be a select field
 });
 

@@ -210,6 +210,13 @@ body {
   white-space: nowrap;
   text-align: right;
 }
+/* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
+.vow-table__group {
+  font-weight: var(--vow-weight-semibold);
+  text-transform: capitalize;
+  color: var(--vow-color-muted);
+  background: var(--vow-color-surface);
+}
 /* the Card primitive (Card > CardHeader + CardBody) — a bordered content surface; the theme hooks the parts */
 .vow-card {
   border: var(--vow-border) solid var(--vow-color-border);
@@ -267,6 +274,17 @@ body {
 }
 .vow-board__card:active {
   cursor: grabbing;
+}
+/* group-by sections (`cards: { of, group }`) — a heading, then the group's grid of cards */
+.vow-cards-group + .vow-cards-group {
+  margin-top: var(--vow-space-5);
+}
+.vow-cards-group__head {
+  margin: 0 0 var(--vow-space-3);
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-semibold);
+  text-transform: capitalize;
+  color: var(--vow-color-muted);
 }
 /* the Stats primitive (Stats > Stat) — a responsive row of metric tiles */
 .vow-stats {

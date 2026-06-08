@@ -117,9 +117,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
   const labelField = (ref?: string): string =>
     byId?.get(ref ?? "")?.fields.find((tf) => tf.type === "text")?.name ?? "id";
 
-  const vueNames = ["ref"];
+  const vueNames = ["ref", "computed"]; // computed: the displayed (filtered/sorted) collection
   if (nativeFields.length > 0) vueNames.push("useId");
-  if (referenceFields.length > 0) vueNames.push("computed");
 
   const imports: ImportDecl[] = [
     { from: "vue", names: vueNames },
@@ -150,6 +149,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `const { items: rows, append, removeAt } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const draft = ref<Partial<${type}>>({});`,
     `const errors = ref<Record<string, string>>({});`,
+    ...sliceComputed(type, "displayed"),
+    ...groupedLines(type, "displayed"),
   ];
   for (const f of nativeFields) setup.push(`const ${f.name}Id = useId();`);
   // a reference dropdown reads the target entity's shared collection, mapped to Select {value,label};
@@ -175,8 +176,8 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
     `    }`,
     `  }`,
     `}`,
-    `function remove(index: number): void {`,
-    `  removeAt(index);`,
+    `function remove(item: ${type}): void {`,
+    `  removeAt(rows.indexOf(item));`,
     `}`,
   );
 
@@ -217,7 +218,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
         name: "aria-label",
         expr: `'Delete: ' + item.${nativeFields[0]?.name ?? "title"}`,
       },
-      { kind: "event", name: "click", expr: "remove(i)" },
+      { kind: "event", name: "click", expr: "remove(item)" },
     ],
     children: [{ kind: "text", text: "✕" }],
   };
@@ -297,12 +298,34 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
               kind: "element",
               tag: "tbody",
               attrs: [],
+              for: { each: "grouped", as: "grp", key: "grp.key ?? '_'" },
               children: [
+                {
+                  // a group-header row (only when grouped) spanning every column
+                  kind: "component",
+                  name: "TableRow",
+                  attrs: [{ kind: "cond", type: "if", expr: "grp.key !== null" }],
+                  children: [
+                    {
+                      kind: "component",
+                      name: "TableCell",
+                      attrs: [
+                        {
+                          kind: "static",
+                          name: "colspan",
+                          value: String(entity.fields.length + 1),
+                        },
+                        { kind: "static", name: "class", value: "vow-table__group" },
+                      ],
+                      children: [{ kind: "interp", expr: "grp.key" }],
+                    },
+                  ],
+                },
                 {
                   kind: "component",
                   name: "TableRow",
                   attrs: [],
-                  for: { each: "rows", as: "item", index: "i", key: "item.id" },
+                  for: { each: "grp.items", as: "item", key: "item.id" },
                   children: [
                     ...entity.fields.map(
                       (f): UiNode => ({
@@ -473,6 +496,7 @@ export function emitEntityCards(entity: Vow): string {
       `Generated from vow "${entity.slug}" — a card per record. The vow is the source — do not edit.`,
     ],
     imports: [
+      { from: "vue", names: ["computed"] },
       { from: "@vow/store", names: ["useCollection"] },
       { from: `./${entity.slug}.ts`, names: [`type ${type}`] },
       { from: "./Grid.vue", default: "Grid" },
@@ -480,18 +504,39 @@ export function emitEntityCards(entity: Vow): string {
       { from: "./CardHeader.vue", default: "CardHeader" },
       { from: "./CardBody.vue", default: "CardBody" },
     ],
-    setup: [`const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`],
+    setup: [
+      `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+      ...sliceComputed(type, "displayed"),
+      ...groupedLines(type, "displayed"),
+    ],
     view: {
-      kind: "component",
-      name: "Grid",
-      attrs: [bound("columns", "3"), bound("gap", "4")],
+      kind: "element",
+      tag: "section",
+      attrs: [{ kind: "static", name: "class", value: "vow-cards-group" }],
+      for: { each: "grouped", as: "grp", key: "grp.key ?? '_'" },
       children: [
         {
+          kind: "element",
+          tag: "h3",
+          attrs: [
+            { kind: "static", name: "class", value: "vow-cards-group__head" },
+            { kind: "cond", type: "if", expr: "grp.key !== null" },
+          ],
+          children: [{ kind: "interp", expr: "grp.key" }],
+        },
+        {
           kind: "component",
-          name: "Card",
-          for: { each: "rows", as: "item", key: "item.id" },
-          attrs: [],
-          children: cardChildren,
+          name: "Grid",
+          attrs: [bound("columns", "3"), bound("gap", "4")],
+          children: [
+            {
+              kind: "component",
+              name: "Card",
+              for: { each: "grp.items", as: "item", key: "item.id" },
+              attrs: [],
+              children: cardChildren,
+            },
+          ],
         },
       ],
     },
@@ -531,8 +576,9 @@ export function emitEntityBoard(entity: Vow, by: string): string {
     setup: [
       `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
       `const options = ${JSON.stringify(field.options ?? [])};`,
+      ...sliceComputed(type, "visible"),
       `const columns = computed(() =>`,
-      `  options.map((o) => ({ option: o, cards: rows.filter((r) => r.${by} === o) })),`,
+      `  options.map((o) => ({ option: o, cards: visible.value.filter((r) => r.${by} === o) })),`,
       `);`,
       `const dragged = ref<${type} | null>(null);`,
       `function onDrop(option: string): void {`,
@@ -776,6 +822,59 @@ const comp = (name: string, attrs: Attr[], children: UiNode[]): UiNode => ({
 });
 const bound = (name: string, expr: string): Attr => ({ kind: "bound", name, expr });
 
+/** A JS object-literal expression with single-quoted string values — safe inside a `:attr="..."`. */
+function objectExpr(obj: Record<string, unknown>): string {
+  const entries = Object.entries(obj).map(
+    ([k, v]) =>
+      `${k}: ${typeof v === "string" ? `'${v.replace(/'/g, "\\'")}'` : JSON.stringify(v)}`,
+  );
+  return `{ ${entries.join(", ")} }`;
+}
+
+/** The `sort` / `filter` slice attrs for a sliced view node (`{ of, ..., sort?, filter? }`). */
+function sliceAttrs(o: Record<string, unknown>): Attr[] {
+  const attrs: Attr[] = [];
+  if (o["sort"] !== undefined) attrs.push({ kind: "static", name: "sort", value: str(o["sort"]) });
+  if (o["group"] !== undefined)
+    attrs.push({ kind: "static", name: "group", value: str(o["group"]) });
+  if (o["filter"] !== undefined) attrs.push(bound("filter", objectExpr(asObject(o["filter"]))));
+  return attrs;
+}
+
+/** Setup lines for a sliced collection — the `filter`/`sort`/`group` props + a `<name>` computed over
+ *  `rows` (filter by `{ field: value }`, then sort by a field). Shared by the list, cards and board. */
+function sliceComputed(type: string, name: string): string[] {
+  return [
+    `const props = defineProps<{ filter?: Record<string, unknown>; sort?: keyof ${type}; group?: keyof ${type} }>();`,
+    `const ${name} = computed(() => {`,
+    `  const f = props.filter;`,
+    `  let r = f`,
+    `    ? rows.filter((x) => Object.entries(f).every(([k, v]) => (x as Record<string, unknown>)[k] === v))`,
+    `    : rows;`,
+    `  const s = props.sort;`,
+    `  if (s) r = [...r].sort((a, b) => String(a[s]).localeCompare(String(b[s])));`,
+    `  return r;`,
+    `});`,
+  ];
+}
+
+/** Setup lines for `group-by` — a `grouped` computed that sections `${src}` by `props.group` (or one
+ *  unlabelled section when no group is set). Each section is `{ key: string | null, items }`. */
+function groupedLines(type: string, src: string): string[] {
+  return [
+    `const grouped = computed(() => {`,
+    `  const g = props.group;`,
+    `  if (!g) return [{ key: null as string | null, items: ${src}.value }];`,
+    `  const m = new Map<string, ${type}[]>();`,
+    `  for (const it of ${src}.value) {`,
+    `    const k = String(it[g] ?? "");`,
+    `    m.set(k, [...(m.get(k) ?? []), it]);`,
+    `  }`,
+    `  return [...m.entries()].map(([key, items]) => ({ key: key as string | null, items }));`,
+    `});`,
+  ];
+}
+
 /** A raw YAML value as an object (props + optional `children`); non-objects → empty. */
 function asObject(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -843,22 +942,26 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     return comp("Grid", [bound("columns", "3"), bound("gap", "4")], cards);
   }
   if (type === "list") {
-    const slug = str(value);
+    // scalar `list: task` or sliced `list: { of: task, sort?, filter? }`
+    const o = typeof value === "string" ? { of: value } : asObject(value);
+    const slug = str(o["of"]);
     if (!entities.includes(slug)) {
       throw new Error(
         `emit-view: \`list: ${slug}\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
       );
     }
-    return comp(pascalCase(slug), [], []);
+    return comp(pascalCase(slug), sliceAttrs(o), []);
   }
   if (type === "cards") {
-    const slug = str(value);
+    // scalar `cards: task` or sliced `cards: { of: task, sort?, filter? }`
+    const o = typeof value === "string" ? { of: value } : asObject(value);
+    const slug = str(o["of"]);
     if (!entities.includes(slug)) {
       throw new Error(
         `emit-view: \`cards: ${slug}\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
       );
     }
-    return comp(cardsComponentName(slug), [], []);
+    return comp(cardsComponentName(slug), sliceAttrs(o), []);
   }
   if (type === "stats") {
     // `stats: { of: <entity>, by: <select field> }` → the entity's counts-by-field composition
@@ -882,7 +985,7 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
         `emit-view: \`board: { of: ${of} }\` references an unknown entity (known: ${entities.join(", ") || "none"})`,
       );
     }
-    return comp(boardComponentName(of, by), [], []);
+    return comp(boardComponentName(of, by), sliceAttrs(o), []);
   }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);
@@ -1006,7 +1109,7 @@ export function listedEntities(view: Vow): string[] {
   const found = new Set<string>();
   const walk = (type: string, value: unknown): void => {
     if (type === "list") {
-      found.add(str(value));
+      found.add(typeof value === "string" ? value : str(asObject(value)["of"]));
       return;
     }
     const kids = asObject(value)["children"];
@@ -1053,7 +1156,7 @@ export function cardsRefs(view: Vow): string[] {
   const found = new Set<string>();
   const walk = (type: string, value: unknown): void => {
     if (type === "cards") {
-      found.add(str(value));
+      found.add(typeof value === "string" ? value : str(asObject(value)["of"]));
       return;
     }
     const kids = asObject(value)["children"];
