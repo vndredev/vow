@@ -9,6 +9,5 @@ fulfills: emit entity
 
 - title: text, required
 - status: select(todo|doing|done)
-- assignee: reference(user)
 - notes: longtext
 - done: boolean

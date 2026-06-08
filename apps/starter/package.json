@@ -2,7 +2,7 @@
   "name": "@vow/starter",
   "version": "0.0.0",
   "private": true,
-  "description": "The vow starter: a Vue app generated from vows — a landing page plus a generated view.",
+  "description": "The vow starter: the bare example — one entity generated from a vow into a typed, validated CRUD app.",
   "type": "module",
   "scripts": {
     "dev": "vp dev",

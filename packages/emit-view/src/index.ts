@@ -260,7 +260,7 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
         {
           kind: "component",
           name: "Table",
-          attrs: [],
+          attrs: [{ kind: "cond", type: "if", expr: "rows.length > 0" }],
           children: [
             {
               kind: "element",
@@ -323,6 +323,16 @@ export function emitEntityList(entity: Vow, byId?: Map<string, Vow>): string {
               ],
             },
           ],
+        },
+        {
+          // when the collection is empty, a bare header is pointless — show a friendly empty state
+          kind: "element",
+          tag: "p",
+          attrs: [
+            { kind: "static", name: "class", value: "vow-empty" },
+            { kind: "cond", type: "if", expr: "rows.length === 0" },
+          ],
+          children: [{ kind: "text", text: "Nothing here yet — add the first one below." }],
         },
         createForm,
       ],
@@ -642,12 +652,13 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     return comp("Flex", [bound("direction", "'column'"), bound("gap", "3")], kids);
   }
   if (type === "features") {
+    // a responsive grid of vow's own Card primitive — title → CardHeader, body → CardBody
     const cards = (Array.isArray(value) ? value : []).map((it) => {
       const o = asObject(it);
       const inner: UiNode[] = [];
-      if (o["title"] !== undefined) inner.push(el("h3", [txt(str(o["title"]))]));
-      if (o["body"] !== undefined) inner.push(el("p", [txt(str(o["body"]))]));
-      return comp("Box", [bound("p", "5")], inner);
+      if (o["title"] !== undefined) inner.push(comp("CardHeader", [], [txt(str(o["title"]))]));
+      if (o["body"] !== undefined) inner.push(comp("CardBody", [], [txt(str(o["body"]))]));
+      return comp("Card", [], inner);
     });
     return comp("Grid", [bound("columns", "3"), bound("gap", "4")], cards);
   }
