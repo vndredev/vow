@@ -1,6 +1,6 @@
 ---
 group: UI
-order: 1.1
+order: 3.1
 ---
 
 # Checkbox
@@ -29,11 +29,11 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 
 Derived from the adapter's `Component` definition — the same shape you see in the generated code below:
 
-| Prop         | Type                 | Purpose                                         |
-| ------------ | -------------------- | ----------------------------------------------- |
-| `modelValue` | `boolean`            | the checked state — use with `v-model`          |
-| `label`      | `string`             | visible text, and the control's `aria-label`    |
-| `disabled`   | `boolean` (optional) | block interaction and remove from the tab order |
+| Prop         | Type                                  | Purpose                                         |
+| ------------ | ------------------------------------- | ----------------------------------------------- |
+| `modelValue` | `boolean` (optional, default `false`) | the checked state — use with `v-model`          |
+| `label`      | `string`                              | visible text, and the control's `aria-label`    |
+| `disabled`   | `boolean` (optional)                  | block interaction and remove from the tab order |
 
 Emits `update:modelValue: boolean` on every toggle.
 

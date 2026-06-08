@@ -1,6 +1,6 @@
 ---
 group: UI
-order: 1.5
+order: 3.5
 ---
 
 # Tabs

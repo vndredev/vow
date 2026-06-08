@@ -1,6 +1,6 @@
 ---
 group: UI
-order: 1.4
+order: 3.4
 ---
 
 # Select
@@ -30,7 +30,7 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 
 | Prop         | Type                                 | Purpose                                 |
 | ------------ | ------------------------------------ | --------------------------------------- |
-| `modelValue` | `string`                             | the selected value — use with `v-model` |
+| `modelValue` | `string` (optional, default `""`)    | the selected value — use with `v-model` |
 | `options`    | `{ value: string; label: string }[]` | the choices                             |
 | `label`      | `string`                             | the combobox's accessible name          |
 | `disabled`   | `boolean` (optional)                 | block interaction                       |

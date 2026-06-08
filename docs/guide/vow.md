@@ -26,7 +26,8 @@ fulfills: emit entity
 - **frontmatter** — the non-prosaic truth: `id` (immutable, `<prefix>_<suffix>`), `fulfills`, optional `root: true` (marks the entry page).
 - **`#` heading** — the _intent_: the promise, human- and LLM-readable.
 - **`## fields`** — the data shape (for `emit entity`).
-- **`## view`** — the page's components, as YAML (for `emit view`; see [Views](/guide/layout)).
+- **`## view`** — the page's components, as YAML (for `emit view`; see [Views](/guide/views)).
+- **`## form`** — a form bound to an entity (`of:`), as YAML (for `emit form`; see [emit](/guide/emit)).
 - **`## proves`** — the scenarios that must hold (for `bind`; for `emit` they're derived).
 
 ## Nesting

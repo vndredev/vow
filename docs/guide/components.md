@@ -1,6 +1,6 @@
 ---
 group: UI
-order: 0
+order: 4
 ---
 
 # The component model
@@ -25,7 +25,14 @@ interface Component {
 }
 
 type UiNode =
-  | { kind: "element"; tag: string; attrs: Attr[]; children: UiNode[]; for?: Loop } // for? = v-for
+  | {
+      kind: "element";
+      tag: string;
+      attrs: Attr[];
+      children: UiNode[];
+      for?: Loop;
+      inline?: boolean;
+    } // for? = v-for; inline keeps children on one line
   | { kind: "component"; name: string; attrs: Attr[]; children: UiNode[]; for?: Loop }
   | { kind: "text"; text: string } // an escaped literal
   | { kind: "interp"; expr: string } // an interpolated expression
@@ -56,5 +63,5 @@ The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _w
 `renderVueSfc(component): string` is the Vue adapter — an exhaustive walk over the discriminated unions (a missing node kind is a type error, so drift is a red build). Its output is **byte-stable**, pinned by an equality test against the original hand-written SFC. Adding React later means writing `renderReact(component)` over the same `Component` — no model change.
 
 ::: warning Foundation status
-Both string emitters now build on this model: `emit-primitive` (the checkbox) and `emit-view` (the CRUD list) describe a `Component` and render it via `renderVueSfc` — byte-for-byte identical to the old hand-written output. Today there is **one** adapter (Vue); React/Solid are later additions over the same model. Named slots and prop defaults (`withDefaults`) arrived with the layout step; `state` will grow when first needed.
+Every emitter builds Components and renders them via `renderVueSfc`: the primitives (`@vow/emit-primitive`), the entity lists + forms (`@vow/emit-view`), the layout primitives (`@vow/layout`). Vue is the only adapter today — React or Solid would be a new `renderReact` over the same model, with no change to the IR.
 :::

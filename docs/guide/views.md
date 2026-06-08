@@ -40,7 +40,7 @@ The catalog of ready-made components — you name them, vow brings the markup:
 - **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its full CRUD
   list, imported automatically). More data shapes (`table`, `cards`, `board`, `stats`) join over time.
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
-  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `select` · `collapsible` · `tabs` · `dialog`.
+  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `switch` · `radio` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
   The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
   the adapters a view references, and an unknown name fails loud at generate time.
 - **`link: { to, label }`** — an internal link the router intercepts (no full reload).
@@ -112,7 +112,7 @@ Defaults: `p=0`; `width` / `height` unset unless given.
 | ------ | --------------------- | ------------------------- |
 | `size` | `1` · `2` · `3` · `4` | `max-width` (+ centering) |
 
-Default: `size=3`. (A vertical stack is just `Flex` with `direction: column`.)
+Default: `size=3`. (For a vertical stack, reach for [`Stack`](#stack) — a flex column with a `gap`.)
 
 ## Why this is framework-free and 100% flexible
 

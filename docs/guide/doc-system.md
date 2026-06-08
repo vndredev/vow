@@ -5,10 +5,9 @@ order: 0
 
 # The doc-system
 
-These docs are **not a separate framework** — they are a **generated vow app** (`apps/docs`). The same
-`vow()` plugin that builds the starter generates this site; the doc-specific parts are composed from
-small vow packages, never bent into the generation core. What you are reading was produced by the
-pipeline below.
+These docs are themselves a **generated vow app** (`apps/docs`). The same `vow()` plugin that builds the
+starter builds this site; the doc-specific parts (`:::` callouts, Shiki code, live demos) come from small
+`@vow/*` packages, not from changes to the core. What you're reading was produced by the pipeline below.
 
 ::: tip Dogfooded
 Every feature on this page — callouts, code-groups, the live demos under [UI](/guide/primitives), the

@@ -1,6 +1,6 @@
 ---
 group: UI
-order: 1.2
+order: 3.2
 ---
 
 # Collapsible
