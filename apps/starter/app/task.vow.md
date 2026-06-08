@@ -8,6 +8,7 @@ fulfills: emit entity
 ## fields
 
 - title: text, required
-- done: boolean
 - status: select(todo|doing|done)
 - assignee: reference(user)
+- notes: longtext
+- done: boolean
