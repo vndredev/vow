@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { Plugin } from "vite-plus";
 import { loadVows, validateReferences, type Vow as VowNode } from "@vow/core";
@@ -215,10 +215,17 @@ export function vow(options: VowOptions = {}): Plugin {
   let vows: readonly VowNode[] = options.vows ?? [];
   let vowDir = dirOpt;
   let genDir = outOpt;
+  let lastWritten = new Set<string>(); // what this plugin wrote last run — to clean up deleted vows
 
   const regenerate = (): void => {
     vows = options.vows ?? loadVows(vowDir);
-    generateFiles(vows, genDir, vowDir, options.title);
+    const written = generateFiles(vows, genDir, vowDir, options.title);
+    // a vow's `.md` was deleted → remove the files this plugin wrote before but not now, so generated
+    // output never outlives its source. Only our own files are touched — another plugin's stay (e.g.
+    // `@vow/docs` shares `.generated/`).
+    const current = new Set(written);
+    for (const file of lastWritten) if (!current.has(file)) rmSync(file, { force: true });
+    lastWritten = current;
   };
 
   return {
