@@ -63,6 +63,31 @@ function write(path: string, init: RequestInit): void {
   );
 }
 
+/** One issue on the plan — mirrors `@vow/observability`'s `PlanItem` (the `/__vow/issues` shape; kept
+    local so the browser store pulls in no node code). */
+export interface IssueItem {
+  readonly issue: {
+    readonly number: number;
+    readonly title: string;
+    readonly state: "open" | "closed";
+    readonly labels: readonly string[];
+    readonly assignees: readonly string[];
+  };
+  readonly status: "planned" | "doing" | "done";
+}
+
+const issues = reactive<IssueItem[]>([]) as IssueItem[];
+let issuesLoaded = false;
+
+/** Pull the issue plan from `/__vow/issues` (gh-direct) and replace the shared array (small, read-only). */
+function loadIssues(): void {
+  if (!hasApi) return;
+  void fetch("/__vow/issues")
+    .then((res) => (res.ok ? (res.json() as Promise<IssueItem[]>) : []))
+    .then((plan) => issues.splice(0, issues.length, ...plan))
+    .catch(() => undefined);
+}
+
 let freshness = false;
 /** Refetch every loaded collection on focus + a light visible-tab interval, so an MCP write shows up. */
 function startFreshness(): void {
@@ -71,6 +96,7 @@ function startFreshness(): void {
   const refresh = (): void => {
     if (document.hidden) return;
     for (const [slug, items] of collections) load(slug, items);
+    if (issuesLoaded) loadIssues();
   };
   window.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", refresh);
@@ -107,4 +133,15 @@ export function useCollection<T>(slug: string): Collection<T> {
       if (id !== undefined) write(`${slug}/${id}`, { method: "DELETE" });
     },
   };
+}
+
+/** The shared reactive issue plan, read live from `/__vow/issues` (gh-direct) + polled on focus + the
+ *  interval — so the agent's MCP writes to GitHub show up. Read-only here; GitHub is the source. */
+export function useIssues(): { items: IssueItem[] } {
+  if (!issuesLoaded) {
+    issuesLoaded = true;
+    loadIssues();
+    startFreshness();
+  }
+  return { items: issues };
 }

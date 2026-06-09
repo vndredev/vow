@@ -37,7 +37,9 @@ import {
   statsComponentName,
   statsRefs,
   VOW_ENV_DTS,
+  emitIssueTableSfc,
   emitTimelineSfc,
+  usesIssueTable,
   usesTimeline,
   viewComponentName,
 } from "@vow/emit-view";
@@ -206,6 +208,7 @@ export function generateFiles(
   });
   let needsLayout = false; // any `emit view` pulls in the layout primitives
   let needsTimeline = false; // any `timeline:` view pulls in the git-derived VowTimeline
+  let needsIssueTable = false; // any `table:` view pulls in the live VowIssueTable
 
   for (const v of all) {
     const f = v.fulfills;
@@ -230,6 +233,7 @@ export function generateFiles(
       for (const p of referencedPrimitives(v, entities)) needed.add(p); // primitives placed in the view
       if (v.root !== true) pages.push(navPage(v)); // a non-root view → a route
       if (usesTimeline(v)) needsTimeline = true; // the git-derived roadmap view
+      if (usesIssueTable(v)) needsIssueTable = true; // the live GitHub issue table
       needsLayout = true;
     } else if (f.kind === "emit" && f.as === "form") {
       const file = join(outDir, `${v.slug}.vue`);
@@ -297,6 +301,12 @@ export function generateFiles(
     writeFileSync(file, emitTimelineSfc(gitTimeline(srcDir), gitRemoteUrl(srcDir)), "utf8");
     written.push(file);
     needed.add("Badge").add("Collapsible"); // the timeline composes Badge + Collapsible
+  }
+  if (needsIssueTable) {
+    const file = join(outDir, "VowIssueTable.vue");
+    writeFileSync(file, emitIssueTableSfc(), "utf8"); // a fixed component; reads /__vow/issues live
+    written.push(file);
+    needed.add("Badge"); // the table composes Badge for status + labels
   }
   // Materialise every needed primitive adapter once, from the closed registry (on demand → lean output).
   for (const name of needed) {

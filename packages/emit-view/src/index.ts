@@ -890,6 +890,10 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     // the git-derived roadmap — a `<VowTimeline>` the plugin materialises from `git log`
     return comp("VowTimeline", [], []);
   }
+  if (type === "table") {
+    // the GitHub issue plan — a `<VowIssueTable>` reading useIssues (live, gh-direct)
+    return comp("VowIssueTable", [], []);
+  }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);
     return comp(pascalCase(type), propsToAttrs(o), childrenOf(o, entities));
@@ -1074,11 +1078,11 @@ export function cardsRefs(view: Vow): string[] {
   return [...found];
 }
 
-/** Whether a `## view` renders the git-derived `timeline:` — so the plugin materialises VowTimeline. */
-export function usesTimeline(view: Vow): boolean {
+/** Whether a `## view` (recursively) renders a node of `type`. */
+function usesNode(view: Vow, type: string): boolean {
   let found = false;
-  const walk = (type: string, value: unknown): void => {
-    if (type === "timeline") {
+  const walk = (t: string, value: unknown): void => {
+    if (t === type) {
       found = true;
       return;
     }
@@ -1092,6 +1096,16 @@ export function usesTimeline(view: Vow): boolean {
   };
   for (const node of view.view ?? []) walk(node.type, node.value);
   return found;
+}
+
+/** Whether a `## view` renders the git-derived `timeline:` — so the plugin materialises VowTimeline. */
+export function usesTimeline(view: Vow): boolean {
+  return usesNode(view, "timeline");
+}
+
+/** Whether a `## view` renders the issue `table:` — so the plugin materialises VowIssueTable. */
+export function usesIssueTable(view: Vow): boolean {
+  return usesNode(view, "table");
 }
 
 /** The `board: { of, by }` references a `## view` makes — so the plugin can emit each composition. */
@@ -1299,6 +1313,49 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
     `      </ul>`,
     `    </Collapsible>`,
     `  </div>`,
+    `</template>`,
+    ``,
+  ].join("\n");
+}
+
+/** The issue-table component — a fixed `<VowIssueTable>` reading the live issue plan (`useIssues`,
+    gh-direct). No baked data (unlike the timeline): it fetches `/__vow/issues` and polls. Mirrors a
+    GitHub Projects Table view: number · title · status · labels · assignee. */
+export function emitIssueTableSfc(): string {
+  return [
+    `<script setup lang="ts">`,
+    `// Generated — the GitHub issue plan as a table, read live from /__vow/issues. Do not edit.`,
+    `import { useIssues } from "@vow/store";`,
+    `import Badge from "./Badge.vue";`,
+    ``,
+    `const { items } = useIssues();`,
+    `const variant = (s: string): "neutral" | "accent" | "success" =>`,
+    `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
+    `</script>`,
+    ``,
+    `<template>`,
+    `  <table class="vow-table vow-issue-table">`,
+    `    <thead>`,
+    `      <tr>`,
+    `        <th class="vow-table__head">#</th>`,
+    `        <th class="vow-table__head">Title</th>`,
+    `        <th class="vow-table__head">Status</th>`,
+    `        <th class="vow-table__head">Labels</th>`,
+    `        <th class="vow-table__head">Assignee</th>`,
+    `      </tr>`,
+    `    </thead>`,
+    `    <tbody>`,
+    `      <tr v-for="it in items" :key="it.issue.number" class="vow-table__row">`,
+    `        <td class="vow-table__cell vow-issue-table__num">{{ it.issue.number }}</td>`,
+    `        <td class="vow-table__cell">{{ it.issue.title }}</td>`,
+    `        <td class="vow-table__cell"><Badge :label="it.status" :variant="variant(it.status)" /></td>`,
+    `        <td class="vow-table__cell vow-issue-table__labels">`,
+    `          <Badge v-for="l in it.issue.labels" :key="l" :label="l" variant="neutral" />`,
+    `        </td>`,
+    `        <td class="vow-table__cell">{{ it.issue.assignees.join(", ") }}</td>`,
+    `      </tr>`,
+    `    </tbody>`,
+    `  </table>`,
     `</template>`,
     ``,
   ].join("\n");
