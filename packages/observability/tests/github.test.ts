@@ -53,18 +53,32 @@ test("parseIssues survives a malformed array element (no state, bad labels)", ()
   expect(issues[1]).toMatchObject({ number: 0, title: "x", labels: [] });
 });
 
-test("parseIssues lifts the milestone title when present, omits it when not", () => {
-  const withMs = JSON.stringify([
+test("parseIssues lifts the milestone (title + dueOn) when present, omits it when not", () => {
+  const withDue = JSON.stringify([
     {
       number: 60,
       title: "Roadmap",
       state: "OPEN",
       labels: [],
       assignees: [],
-      milestone: { title: "Phase C" },
+      milestone: { title: "Phase C", dueOn: "2026-06-10T00:00:00Z" },
     },
   ]);
-  expect(parseIssues(withMs)[0]?.milestone).toBe("Phase C");
+  expect(parseIssues(withDue)[0]?.milestone).toEqual({
+    title: "Phase C",
+    dueOn: "2026-06-10T00:00:00Z",
+  });
+  const noDue = JSON.stringify([
+    {
+      number: 7,
+      title: "y",
+      state: "OPEN",
+      labels: [],
+      assignees: [],
+      milestone: { title: "Phase B" },
+    },
+  ]);
+  expect(parseIssues(noDue)[0]?.milestone).toEqual({ title: "Phase B" }); // no dueOn → omitted
   const noMs = JSON.stringify([
     { number: 1, title: "x", state: "OPEN", labels: [], assignees: [] },
   ]);
