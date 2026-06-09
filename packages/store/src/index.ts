@@ -75,7 +75,7 @@ export interface IssueItem {
     readonly state: "open" | "closed";
     readonly labels: readonly string[];
     readonly assignees: readonly string[];
-    readonly milestone?: string;
+    readonly milestone?: { readonly title: string; readonly dueOn?: string };
   };
   readonly status: "planned" | "doing" | "done";
 }

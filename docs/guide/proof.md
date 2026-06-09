@@ -26,4 +26,4 @@ A claim is _covered_ when some test's name contains it; anything else is an unpr
 
 A vow is "proven" only when its scenarios are green — there is no hand-set status to drift. The gate is what makes a promise mean something: you cannot claim behaviour you haven't proven.
 
-`deriveStatus` (`@vow/core`) reads a vow's status straight off this truth: `done` when every claim it promises is covered, `active` when some is, `planned` when none is yet — and a parent rolls its children up. So the [roadmap](/guide/changelog) can derive itself rather than be hand-maintained (`blocked` joins once CI reports a failing test).
+`deriveStatus` (`@vow/core`) reads a vow's status straight off this truth: `done` when every claim it promises is covered, `active` when some is, `planned` when none is yet — and a parent rolls its children up. So the [changelog](/guide/changelog) can derive itself rather than be hand-maintained (`blocked` joins once CI reports a failing test).

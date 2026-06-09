@@ -32,4 +32,4 @@ A row of **metric tiles** — a KPI strip. `Stats` is **structural** (no headles
 
 ## No a11y core — on purpose
 
-Stats is structural — styled `<div>`s, no `@vow/headless` logic. A `stats` view (on the [roadmap](/guide/changelog)) computes the values from an entity's records; that's a **composition** over these tiles. See [Architecture](/guide/architecture).
+Stats is structural — styled `<div>`s, no `@vow/headless` logic. A [`stats` view](/guide/views) computes the values from an entity's records; that's a **composition** over these tiles. See [Architecture](/guide/architecture).
