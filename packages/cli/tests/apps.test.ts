@@ -11,6 +11,11 @@ test("resolveApps: 'all' → every app, in registry order", () => {
   expect(resolveApps(["all"]).map((a) => a.slug)).toEqual(APPS.map((a) => a.slug));
 });
 
+test("resolveApps: 'all' anywhere wins; named apps de-duplicate", () => {
+  expect(resolveApps(["docs", "all"]).map((a) => a.slug)).toEqual(APPS.map((a) => a.slug));
+  expect(resolveApps(["docs", "docs", "studio"]).map((a) => a.slug)).toEqual(["docs", "studio"]);
+});
+
 test("resolveApps: named apps, in the order given", () => {
   expect(resolveApps(["docs", "starter"]).map((a) => a.slug)).toEqual(["docs", "starter"]);
 });

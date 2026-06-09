@@ -45,6 +45,14 @@ test("parseIssues is graceful — malformed input yields []", () => {
   expect(parseIssues("{}")).toEqual([]);
 });
 
+test("parseIssues survives a malformed array element (no state, bad labels)", () => {
+  const json = JSON.stringify([{ number: 5 }, { title: "x", labels: "nope" }]);
+  const issues = parseIssues(json);
+  expect(issues).toHaveLength(2);
+  expect(issues[0]).toMatchObject({ number: 5, state: "open", labels: [] });
+  expect(issues[1]).toMatchObject({ number: 0, title: "x", labels: [] });
+});
+
 test("parseIssues lifts the milestone title when present, omits it when not", () => {
   const withMs = JSON.stringify([
     {

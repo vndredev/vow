@@ -54,7 +54,7 @@ export function parseGitLog(output: string): TimelineEntry[] {
       if (tag?.[1] !== undefined) version = tag[1];
       const pm = /\s*\(#(\d+)\)\s*$/.exec(raw);
       const subject = pm === null ? raw : raw.slice(0, pm.index).trim();
-      const cc = /^(\w+)(?:\([\w-]+\))?: (.+)$/.exec(subject); // type(scope): description
+      const cc = /^(\w+)(?:\([^)]+\))?!?: (.+)$/.exec(subject); // type(scope)!: description (! = breaking)
       return {
         date,
         title: cc?.[2] ?? subject,
