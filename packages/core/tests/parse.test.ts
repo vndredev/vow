@@ -32,6 +32,30 @@ test("a `## fields` reference(entity) parses to a reference field with its targe
   expect(fields[1]).toEqual({ name: "assignee", type: "reference", required: false, ref: "user" });
 });
 
+test("a select keeps its head intact when a comma or `required` follows", () => {
+  const fieldMd = (type: string) =>
+    `---\nid: vow_widget\nfulfills: emit entity\n---\n# Widget\n\n## fields\n- status: ${type}\n`;
+  // a comma INSIDE the parens must not strand the head on "select(a"
+  expect(parseVowMd("widget", fieldMd("select(a, b)")).fields[0]).toEqual({
+    name: "status",
+    type: "select",
+    required: false,
+    options: ["a, b"],
+  });
+  // a real select + a trailing `required` flag
+  expect(parseVowMd("widget", fieldMd("select(low|high), required")).fields[0]).toEqual({
+    name: "status",
+    type: "select",
+    required: true,
+    options: ["low", "high"],
+  });
+});
+
+test("a malformed type with unbalanced parens throws a clear error", () => {
+  const md = `---\nid: vow_widget\nfulfills: emit entity\n---\n# Widget\n\n## fields\n- status: select(a\n`;
+  expect(() => parseVowMd("widget", md)).toThrow(/malformed type/);
+});
+
 test("`fulfills: bind <module>#<export>` parses to a bind fulfilment", () => {
   const md = `---\nid: vow_r\nfulfills: bind @vow/core#rollup\n---\n# Status roll-up\n`;
   const vow = parseVowMd("rollup", md);

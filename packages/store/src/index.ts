@@ -30,13 +30,16 @@ export interface Collection<T> {
 
 /** Reconcile the live array to the fetched rows by id — update in place, add new, drop missing — so Vue
  *  diffs minimally and the shared array identity (relied on by `reference` dropdowns) is preserved. */
-function reconcile(items: Row[], rows: readonly Row[]): void {
+export function reconcile(items: Row[], rows: readonly Row[]): void {
   const byId = new Map(rows.map((r) => [r.id, r]));
   for (let i = items.length - 1; i >= 0; i--) {
     const cur = items[i];
     if (!cur) continue;
     const fresh = byId.get(cur.id);
     if (fresh) {
+      for (const k of Object.keys(cur)) {
+        if (!(k in fresh)) delete (cur as Record<string, unknown>)[k]; // a column dropped upstream
+      }
       Object.assign(cur, fresh);
       byId.delete(cur.id);
     } else {
