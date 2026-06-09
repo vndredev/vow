@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vite-plus/test";
 import { type Vow as VowNode } from "@vow/core";
-import { generateFiles } from "../src/index.ts";
+import { caseCollision, generateFiles } from "../src/index.ts";
 
 /** A `## view`: a list of components; it pulls in the layout primitives it uses. */
 const shell: VowNode = {
@@ -114,4 +114,10 @@ test("a non-root view generates no boot", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("caseCollision flags basenames that differ only by case (the slug-vs-primitive trap)", () => {
+  expect(caseCollision(["/g/table.vue", "/g/Table.vue"])).toEqual(["table.vue", "Table.vue"]);
+  expect(caseCollision(["/g/issues.vue", "/g/Table.vue", "/g/Badge.vue"])).toBeNull();
+  expect(caseCollision(["/g/a.ts", "/g/a.ts"])).toBeNull(); // an exact repeat is not a case clash
 });
