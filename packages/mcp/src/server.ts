@@ -25,6 +25,13 @@ import {
   resolveDbPath,
   update,
 } from "@vow/db";
+import {
+  assignIssue,
+  closeIssue,
+  createIssue,
+  featureIssueBody,
+  issuePlan,
+} from "@vow/observability";
 import { z } from "zod";
 import { summaryOf } from "./tools.ts";
 
@@ -175,6 +182,40 @@ server.tool(
   { entity: z.string(), id: z.string() },
   ({ entity, id }) =>
     text(remove(db, entityOf(entity), id) ? `removed record "${id}"` : `no record "${id}"`),
+);
+
+// — github (the plan lives as issues; gh is the source) —
+server.tool("list_issues", summaryOf("list_issues"), {}, () => json(issuePlan(appDir)));
+server.tool(
+  "add_issue",
+  summaryOf("add_issue"),
+  {
+    title: z.string(),
+    element: z.string(),
+    why: z.string(),
+    labels: z.array(z.string()).optional(),
+  },
+  ({ title, element, why, labels }) => {
+    const url = createIssue(appDir, {
+      title,
+      body: featureIssueBody({ element, why }),
+      labels: ["enhancement", ...(labels ?? [])],
+    });
+    return text(`opened ${url}`);
+  },
+);
+server.tool("close_issue", summaryOf("close_issue"), { number: z.number() }, ({ number }) => {
+  closeIssue(appDir, number);
+  return text(`closed #${number}`);
+});
+server.tool(
+  "assign_issue",
+  summaryOf("assign_issue"),
+  { number: z.number(), assignee: z.string() },
+  ({ number, assignee }) => {
+    assignIssue(appDir, number, assignee);
+    return text(`assigned #${number} to ${assignee}`);
+  },
 );
 
 await server.connect(new StdioServerTransport());

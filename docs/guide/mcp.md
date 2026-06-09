@@ -37,7 +37,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Fourteen tools, in three groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Eighteen tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -67,6 +67,15 @@ Fourteen tools, in three groups. Structure mutations **validate** (the zod schem
 | `add_record`       | Add a record to an entity (an id is minted; absent fields get defaults). |
 | `set_record_field` | Patch one field of a record (e.g. move a task by setting its status).    |
 | `remove_record`    | Delete a record by id.                                                   |
+
+### GitHub — the issue plan
+
+| Tool           |                                                                                 |
+| -------------- | ------------------------------------------------------------------------------- |
+| `list_issues`  | List GitHub issues with their derived status (planned/doing/done).              |
+| `add_issue`    | Open a GitHub issue — fills the feature template, labelled enhancement + yours. |
+| `close_issue`  | Close a GitHub issue (marks it done).                                           |
+| `assign_issue` | Assign a user to a GitHub issue.                                                |
 
 This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
 

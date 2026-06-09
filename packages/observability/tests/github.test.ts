@@ -1,6 +1,7 @@
 import { expect, test } from "vite-plus/test";
 import {
   deriveIssueStatus,
+  featureIssueBody,
   type GitHubIssue,
   linkedIssues,
   parseIssues,
@@ -63,4 +64,11 @@ test("statusVariant maps to the board's colours", () => {
   expect(statusVariant("planned")).toBe("neutral");
   expect(statusVariant("doing")).toBe("accent");
   expect(statusVariant("done")).toBe("success");
+});
+
+test("featureIssueBody fills the feature template's three sections", () => {
+  const body = featureIssueBody({ element: "the GitHub adapter", why: "the plan derives itself" });
+  expect(body).toContain("**Strand / roadmap item**");
+  expect(body).toContain("**The element / function** — the GitHub adapter");
+  expect(body).toContain("**Why** — the plan derives itself");
 });

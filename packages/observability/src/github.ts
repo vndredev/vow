@@ -161,3 +161,49 @@ export function issuePlan(cwd: string): PlanItem[] {
     status: deriveIssueStatus(issue, inProgress),
   }));
 }
+
+// — the write side: the agent acts on the plan. Writes throw on failure (unlike the reads, which
+//   degrade to `[]`) — opening or moving an issue is an effect the caller must know succeeded.
+
+/** The feature-template body (fills `.github/ISSUE_TEMPLATE/feature.md`'s sections), so an issue the
+    agent opens passes the template gate instead of tripping it. Pure. */
+export function featureIssueBody(input: {
+  readonly element: string;
+  readonly why: string;
+  readonly strand?: string;
+}): string {
+  const strand = input.strand ?? "generation · author layer";
+  return [
+    `**Strand / roadmap item** (${strand}) — see the [roadmap](../../docs/guide/roadmap.md)`,
+    ``,
+    `**The element / function** — ${input.element}`,
+    ``,
+    `**Why** — ${input.why}`,
+    ``,
+  ].join("\n");
+}
+
+/** Open an issue via `gh` (title + body + labels) → its URL. Throws on failure. */
+export function createIssue(
+  cwd: string,
+  input: { readonly title: string; readonly body: string; readonly labels?: readonly string[] },
+): string {
+  const args = ["issue", "create", "--title", input.title, "--body", input.body];
+  if (input.labels !== undefined && input.labels.length > 0) {
+    args.push("--label", input.labels.join(","));
+  }
+  return execFileSync("gh", args, { cwd, encoding: "utf8" }).trim();
+}
+
+/** Close an issue via `gh` (→ `done`). Throws on failure. */
+export function closeIssue(cwd: string, issue: number): void {
+  execFileSync("gh", ["issue", "close", String(issue)], { cwd, encoding: "utf8" });
+}
+
+/** Assign a user to an issue via `gh`. Throws on failure. */
+export function assignIssue(cwd: string, issue: number, login: string): void {
+  execFileSync("gh", ["issue", "edit", String(issue), "--add-assignee", login], {
+    cwd,
+    encoding: "utf8",
+  });
+}
