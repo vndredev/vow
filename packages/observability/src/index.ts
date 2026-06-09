@@ -88,3 +88,5 @@ export function gitTimeline(cwd: string, ref = "main"): TimelineEntry[] {
     return [];
   }
 }
+
+export * from "./github.ts"; // the GitHub side — issues, PRs, the derived issue plan
