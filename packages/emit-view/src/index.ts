@@ -1286,7 +1286,7 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
     variant?: BadgeVariant;
     pr?: number;
   }
-  const groups: { date: string; items: Item[] }[] = [];
+  const groups: { version: string; date: string; items: Item[] }[] = [];
   for (const e of entries) {
     const item: Item = { title: e.title };
     if (e.type !== undefined) {
@@ -1294,12 +1294,13 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
       item.variant = variantForType(e.type); // the shared type → variant map (single source)
     }
     if (e.pr !== undefined) item.pr = e.pr;
+    const version = e.version ?? "Unreleased"; // group by release tag, not date — the changelog
     const last = groups[groups.length - 1];
-    if (last !== undefined && last.date === e.date) last.items.push(item);
-    else groups.push({ date: e.date, items: [item] });
+    if (last !== undefined && last.version === version) last.items.push(item);
+    else groups.push({ version, date: e.date, items: [item] });
   }
   const groupsType =
-    "{ date: string; items: { title: string; type?: string; " +
+    "{ version: string; date: string; items: { title: string; type?: string; " +
     "variant?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger'; pr?: number }[] }[]";
   // each date is a Collapsible — all closed except the most recent (the first group)
   const initialOpen = JSON.stringify(groups.map((_, i) => i === 0));
@@ -1318,9 +1319,9 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
     `  <div class="vow-timeline">`,
     `    <Collapsible`,
     `      v-for="(g, gi) in groups"`,
-    `      :key="g.date"`,
+    `      :key="g.version"`,
     `      v-model="open[gi]"`,
-    `      :label="g.date + ' · ' + g.items.length + ' changes'"`,
+    `      :label="g.version + ' · ' + g.date + ' · ' + g.items.length + ' changes'"`,
     `      class="vow-timeline__group"`,
     `    >`,
     `      <ul class="vow-timeline__items">`,

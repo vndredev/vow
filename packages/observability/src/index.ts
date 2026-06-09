@@ -33,18 +33,25 @@ export interface TimelineEntry {
   readonly title: string; // the subject, conventional-commit `type(scope):` prefix stripped
   readonly type?: string; // the conventional-commit type (feat · fix · docs · …), when present
   readonly pr?: number; // the PR number, when the subject ends in "(#N)"
+  readonly version?: string; // the release tag this change shipped in (undefined = Unreleased)
 }
 
-/** Parse `git log --first-parent --format=%ad%x09%s --date=short` output → timeline entries. The
-    trailing `(#N)` of a squash-merge is lifted into `pr` and dropped from the title. Pure. */
+/** Parse `git log --first-parent --format=%ad%x09%D%x09%s --date=short` output → timeline entries.
+    The `%D` ref-decorations carry release tags (`tag: v0.0.1`); walking newest → oldest, each commit
+    inherits the nearest release at/above it (`version`; absent = Unreleased). The trailing `(#N)` of a
+    squash-merge is lifted into `pr` and dropped from the title. Pure. */
 export function parseGitLog(output: string): TimelineEntry[] {
+  let version: string | undefined; // the release a commit shipped in — the nearest tag at/above it
   return output
     .split("\n")
     .filter((line) => line.trim() !== "")
     .map((line): TimelineEntry => {
-      const tab = line.indexOf("\t");
-      const date = tab === -1 ? "" : line.slice(0, tab);
-      const raw = tab === -1 ? line : line.slice(tab + 1);
+      const parts = line.split("\t");
+      const date = parts[0] ?? "";
+      const refs = parts[1] ?? "";
+      const raw = parts.slice(2).join("\t");
+      const tag = /tag: (v[\w.-]+)/.exec(refs); // a release tag decorating this commit
+      if (tag?.[1] !== undefined) version = tag[1];
       const pm = /\s*\(#(\d+)\)\s*$/.exec(raw);
       const subject = pm === null ? raw : raw.slice(0, pm.index).trim();
       const cc = /^(\w+)(?:\([\w-]+\))?: (.+)$/.exec(subject); // type(scope): description
@@ -53,6 +60,7 @@ export function parseGitLog(output: string): TimelineEntry[] {
         title: cc?.[2] ?? subject,
         ...(cc?.[1] !== undefined ? { type: cc[1] } : {}),
         ...(pm?.[1] !== undefined ? { pr: Number(pm[1]) } : {}),
+        ...(version !== undefined ? { version } : {}),
       };
     });
 }
@@ -80,7 +88,7 @@ export function gitTimeline(cwd: string, ref = "main"): TimelineEntry[] {
   try {
     const out = execFileSync(
       "git",
-      ["log", "--first-parent", ref, "--format=%ad%x09%s", "--date=short"],
+      ["log", "--first-parent", ref, "--format=%ad%x09%D%x09%s", "--date=short"],
       { cwd, encoding: "utf8" },
     );
     return parseGitLog(out);
