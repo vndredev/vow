@@ -37,7 +37,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Eighteen tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Nineteen tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -76,6 +76,7 @@ Eighteen tools, in four groups. Structure mutations **validate** (the zod schema
 | `add_issue`    | Open a GitHub issue — fills the feature template, labelled enhancement + yours. |
 | `close_issue`  | Close a GitHub issue (marks it done).                                           |
 | `assign_issue` | Assign a user to a GitHub issue.                                                |
+| `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).    |
 
 This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
 
