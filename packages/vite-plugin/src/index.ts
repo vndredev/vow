@@ -363,7 +363,27 @@ export function generateFiles(
     writeFileSync(env, VOW_ENV_DTS, "utf8");
     written.push(boot, env);
   }
+  const clash = caseCollision(written);
+  if (clash !== null) {
+    throw new Error(
+      `vow: output collision — "${clash[0]}" and "${clash[1]}" differ only in case and would ` +
+        `overwrite each other on a case-insensitive filesystem. Rename the view slug so it doesn't match a component.`,
+    );
+  }
   return written;
+}
+
+/** A case-insensitive output-name collision (macOS/Windows): two basenames equal but for case — a view
+    slug `table` vs the `Table` primitive — would clobber each other. Returns the clashing pair, or null. */
+export function caseCollision(paths: readonly string[]): readonly [string, string] | null {
+  const seen = new Map<string, string>();
+  for (const path of paths) {
+    const base = path.slice(path.lastIndexOf("/") + 1);
+    const prior = seen.get(base.toLowerCase());
+    if (prior !== undefined && prior !== base) return [prior, base];
+    seen.set(base.toLowerCase(), base);
+  }
+  return null;
 }
 
 /** Resolve the tree virtual id to its NUL-prefixed form; ignore everything else. */
