@@ -11,5 +11,5 @@ nav: { label: Table, icon: layers, group: Plan }
 ```yaml
 - h1: Table
 - p: Every GitHub issue with its derived status — the studio's mirror of the Project's Table view, gh-direct.
-- table: {}
+- issues: { as: table }
 ```
