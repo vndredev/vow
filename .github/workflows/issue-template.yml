@@ -1,0 +1,44 @@
+name: Issue template
+
+# Force every issue through a template: blank issues are disabled (ISSUE_TEMPLATE/config.yml), and this
+# gate flags any issue whose body is missing the feature or bug sections — so the studio's plan, which
+# reads these issues, always has structured work.
+
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.issue.body || "";
+            const feature = ["Strand / roadmap item", "The element / function", "Why"];
+            const bug = ["What happened", "Relevant output", "Environment"];
+            const has = (sections) => sections.every((s) => body.includes(s));
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.issue.number;
+            const label = "needs-template";
+            if (has(feature) || has(bug)) {
+              try {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number, name: label });
+              } catch (e) {
+                /* the label was not set — nothing to remove */
+              }
+              return;
+            }
+            await github.rest.issues.addLabels({ owner, repo, issue_number, labels: [label] });
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body:
+                "This issue doesn't follow a template. Please fill a **feature** or **bug** template " +
+                "(see `.github/ISSUE_TEMPLATE/`) — the studio's plan reads these sections.",
+            });
