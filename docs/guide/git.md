@@ -79,3 +79,5 @@ issuePlan(cwd)           ->  [{ issue, status }]      status: planned | doing | 
 - **planned** — open, no PR yet.
 
 `statusVariant` colours each — planned → :badge[planned]{variant=neutral} · doing → :badge[doing]{variant=accent} · done → :badge[done]{variant=success}. Like `gitTimeline`, the reads are **graceful**: no `gh`, no auth, no network ⇒ `[]`, so a build without GitHub simply has no issue plan. This is the read foundation the board + the roadmap's three sections (Done · Doing · Planned) build on.
+
+The studio reads it **live** over `/__vow/issues` — the dev plugin serves `issuePlan` (gh-direct, behind a 10 s cache so a poll never blocks the server); a Worker serves the same over the GitHub API in prod. **GitHub is the single source — there is no local mirror to keep in sync**, so the plan can't drift. The board + roadmap fetch this endpoint and poll it; the agent's MCP writes land on GitHub and the next poll reflects them.
