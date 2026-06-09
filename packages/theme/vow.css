@@ -220,6 +220,13 @@ body {
   flex-wrap: wrap;
   gap: var(--vow-space-1);
 }
+/* the issue board card — the # above the title, muted + tabular */
+.vow-issue-board__num {
+  display: block;
+  color: var(--vow-color-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--vow-text-sm);
+}
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {
   font-weight: var(--vow-weight-semibold);

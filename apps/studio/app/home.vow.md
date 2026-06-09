@@ -11,8 +11,7 @@ shell: { nav: sidebar-left, width: full, variant: seamless }
 ## view
 
 ```yaml
-- h1: Your work
-- stats: { of: task, by: status }
-- p: Every task across the studio — assign it, move it, prove it.
-- list: task
+- h1: The plan
+- p: Every unit of work is a GitHub issue — planned, in progress, done. The studio mirrors it 1:1, gh-direct; the agent operates it over the MCP.
+- issues: { as: table }
 ```

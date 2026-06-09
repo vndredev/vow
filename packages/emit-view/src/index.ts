@@ -890,8 +890,11 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
     // the git-derived roadmap — a `<VowTimeline>` the plugin materialises from `git log`
     return comp("VowTimeline", [], []);
   }
-  if (type === "table") {
-    // the GitHub issue plan — a `<VowIssueTable>` reading useIssues (live, gh-direct)
+  if (type === "issues") {
+    // the GitHub issue plan in one of GitHub's 3 layouts — read live (useIssues, gh-direct)
+    const as = str(asObject(value)["as"]) || "table";
+    if (as === "board") return comp("VowIssueBoard", [], []);
+    if (as === "roadmap") return comp("VowIssueRoadmap", [], []);
     return comp("VowIssueTable", [], []);
   }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
@@ -1103,9 +1106,25 @@ export function usesTimeline(view: Vow): boolean {
   return usesNode(view, "timeline");
 }
 
-/** Whether a `## view` renders the issue `table:` — so the plugin materialises VowIssueTable. */
-export function usesIssueTable(view: Vow): boolean {
-  return usesNode(view, "table");
+/** The issue-plan layouts a `## view` renders (`issues: { as }`) — so the plugin materialises the
+    matching VowIssue* components. Defaults to `table` when `as` is omitted. */
+export function issueLayouts(view: Vow): Set<string> {
+  const found = new Set<string>();
+  const walk = (type: string, value: unknown): void => {
+    if (type === "issues") {
+      found.add(str(asObject(value)["as"]) || "table");
+      return;
+    }
+    const kids = asObject(value)["children"];
+    if (!Array.isArray(kids)) return;
+    for (const kid of kids) {
+      const obj = asObject(kid);
+      const key = Object.keys(obj)[0];
+      if (key !== undefined) walk(key, obj[key]);
+    }
+  };
+  for (const node of view.view ?? []) walk(node.type, node.value);
+  return found;
 }
 
 /** The `board: { of, by }` references a `## view` makes — so the plugin can emit each composition. */
@@ -1356,6 +1375,44 @@ export function emitIssueTableSfc(): string {
     `      </tr>`,
     `    </tbody>`,
     `  </table>`,
+    `</template>`,
+    ``,
+  ].join("\n");
+}
+
+/** The issue-board component — a fixed `<VowIssueBoard>` reading the live issue plan (`useIssues`,
+    gh-direct) as a kanban by derived status. Mirrors a GitHub Projects Board view; reuses the entity
+    board's look (`.vow-board`). */
+export function emitIssueBoardSfc(): string {
+  return [
+    `<script setup lang="ts">`,
+    `// Generated — the GitHub issue plan as a board, read live from /__vow/issues. Do not edit.`,
+    `import { computed } from "vue";`,
+    `import { useIssues } from "@vow/store";`,
+    `import Badge from "./Badge.vue";`,
+    ``,
+    `const { items } = useIssues();`,
+    `const columns = ["planned", "doing", "done"] as const;`,
+    `const variant = (s: string): "neutral" | "accent" | "success" =>`,
+    `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
+    `const grouped = computed(() =>`,
+    `  columns.map((c) => ({ status: c, items: items.filter((it) => it.status === c) })),`,
+    `);`,
+    `</script>`,
+    ``,
+    `<template>`,
+    `  <div class="vow-board vow-issue-board">`,
+    `    <div v-for="col in grouped" :key="col.status" class="vow-board__col">`,
+    `      <div class="vow-board__col-head">`,
+    `        <Badge :label="col.status" :variant="variant(col.status)" />`,
+    `        <span class="vow-board__count">{{ col.items.length }}</span>`,
+    `      </div>`,
+    `      <article v-for="it in col.items" :key="it.issue.number" class="vow-board__card">`,
+    `        <span class="vow-issue-board__num">#{{ it.issue.number }}</span>`,
+    `        <span class="vow-issue-board__title">{{ it.issue.title }}</span>`,
+    `      </article>`,
+    `    </div>`,
+    `  </div>`,
     `</template>`,
     ``,
   ].join("\n");
