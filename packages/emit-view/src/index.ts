@@ -892,10 +892,7 @@ function mapNode(type: string, value: unknown, entities: readonly string[]): UiN
   }
   if (type === "issues") {
     // the GitHub issue plan in one of GitHub's 3 layouts — read live (useIssues, gh-direct)
-    const as = str(asObject(value)["as"]) || "table";
-    if (as === "board") return comp("VowIssueBoard", [], []);
-    if (as === "roadmap") return comp("VowIssueRoadmap", [], []);
-    return comp("VowIssueTable", [], []);
+    return comp(ISSUE_LAYOUTS[issueLayout(value)], [], []);
   }
   if (LAYOUT_PRIMITIVES.includes(pascalCase(type))) {
     const o = asObject(value);
@@ -1106,13 +1103,35 @@ export function usesTimeline(view: Vow): boolean {
   return usesNode(view, "timeline");
 }
 
-/** The issue-plan layouts a `## view` renders (`issues: { as }`) — so the plugin materialises the
-    matching VowIssue* components. Defaults to `table` when `as` is omitted. */
-export function issueLayouts(view: Vow): Set<string> {
-  const found = new Set<string>();
+/** The issue-plan layouts (`issues: { as }`) → the component the plugin materialises for each. The ONE
+    source `mapNode` (what to render) and `issueLayouts` (what to materialise) share, so a layout can never
+    render a component the plugin didn't write. */
+export const ISSUE_LAYOUTS = {
+  table: "VowIssueTable",
+  board: "VowIssueBoard",
+  roadmap: "VowIssueRoadmap",
+} as const;
+export type IssueLayout = keyof typeof ISSUE_LAYOUTS;
+
+/** Resolve + validate an `issues: { as }` value (defaults to `table`); throws on an unknown layout, so a
+    typo is a clear build error rather than a dangling import to a never-materialised component. */
+export function issueLayout(value: unknown): IssueLayout {
+  const as = str(asObject(value)["as"]) || "table";
+  if (!Object.hasOwn(ISSUE_LAYOUTS, as)) {
+    throw new Error(
+      `vow: unknown issues layout "${as}" — use ${Object.keys(ISSUE_LAYOUTS).join(", ")}`,
+    );
+  }
+  return as as IssueLayout;
+}
+
+/** The issue-plan layouts a `## view` renders — so the plugin materialises the matching VowIssue*
+    components. Validated, so the set only ever holds real layouts. */
+export function issueLayouts(view: Vow): Set<IssueLayout> {
+  const found = new Set<IssueLayout>();
   const walk = (type: string, value: unknown): void => {
     if (type === "issues") {
-      found.add(str(asObject(value)["as"]) || "table");
+      found.add(issueLayout(value));
       return;
     }
     const kids = asObject(value)["children"];
