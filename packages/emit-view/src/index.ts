@@ -1338,6 +1338,14 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
   ].join("\n");
 }
 
+/** The status → Badge-variant lines the three issue SFCs share (mirrors @vow/observability's
+    STATUS_VARIANT; the SFCs run in the browser, so they inline it rather than import the node helper).
+    One source — change the mapping here, all three layouts follow. */
+const ISSUE_VARIANT_LINES = [
+  `const variant = (s: string): "neutral" | "accent" | "success" =>`,
+  `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
+];
+
 /** The issue-table component — a fixed `<VowIssueTable>` reading the live issue plan (`useIssues`,
     gh-direct). No baked data (unlike the timeline): it fetches `/__vow/issues` and polls. Mirrors a
     GitHub Projects Table view: number · title · status · labels · assignee. */
@@ -1349,8 +1357,7 @@ export function emitIssueTableSfc(): string {
     `import Badge from "./Badge.vue";`,
     ``,
     `const { items } = useIssues();`,
-    `const variant = (s: string): "neutral" | "accent" | "success" =>`,
-    `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
+    ...ISSUE_VARIANT_LINES,
     `</script>`,
     ``,
     `<template>`,
@@ -1394,8 +1401,7 @@ export function emitIssueBoardSfc(): string {
     ``,
     `const { items } = useIssues();`,
     `const columns = ["planned", "doing", "done"] as const;`,
-    `const variant = (s: string): "neutral" | "accent" | "success" =>`,
-    `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
+    ...ISSUE_VARIANT_LINES,
     `const grouped = computed(() =>`,
     `  columns.map((c) => ({ status: c, items: items.filter((it) => it.status === c) })),`,
     `);`,
@@ -1430,8 +1436,7 @@ export function emitIssueRoadmapSfc(): string {
     `import Badge from "./Badge.vue";`,
     ``,
     `const { items } = useIssues();`,
-    `const variant = (s: string): "neutral" | "accent" | "success" =>`,
-    `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
+    ...ISSUE_VARIANT_LINES,
     `interface Phase { title: string; due: string; dueAt: number; items: IssueItem[] }`,
     `const phases = computed(() => {`,
     `  const by = new Map<string, Phase>();`,
