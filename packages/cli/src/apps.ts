@@ -43,14 +43,3 @@ export function repoRoot(): string {
   }
   throw new Error("vow: could not find the repo root (no pnpm-workspace.yaml above the CLI)");
 }
-
-/** The CLI's dev-state directory — a registry of running apps + their logs, under the repo-root `.vow/`. */
-export function devDir(): string {
-  return join(repoRoot(), ".vow");
-}
-export function registryPath(): string {
-  return join(devDir(), "dev.json");
-}
-export function logPath(slug: string): string {
-  return join(devDir(), "logs", `${slug}.log`);
-}
