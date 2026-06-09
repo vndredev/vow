@@ -31,6 +31,7 @@ import {
   createIssue,
   featureIssueBody,
   issuePlan,
+  syncProjectStatus,
 } from "@vow/observability";
 import { z } from "zod";
 import { summaryOf } from "./tools.ts";
@@ -215,6 +216,18 @@ server.tool(
   ({ number, assignee }) => {
     assignIssue(appDir, number, assignee);
     return text(`assigned #${number} to ${assignee}`);
+  },
+);
+server.tool(
+  "sync_project",
+  summaryOf("sync_project"),
+  { project: z.string().optional() },
+  ({ project }) => {
+    const pid = project ?? process.env["VOW_PROJECT_ID"];
+    if (pid === undefined || pid === "") {
+      return text("set VOW_PROJECT_ID (in .mcp.json) or pass `project` — the Project node id");
+    }
+    return json(syncProjectStatus(appDir, pid));
   },
 );
 

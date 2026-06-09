@@ -6,6 +6,7 @@ import {
   linkedIssues,
   parseIssues,
   parsePrs,
+  statusOption,
   statusVariant,
 } from "../src/github.ts";
 
@@ -71,4 +72,10 @@ test("featureIssueBody fills the feature template's three sections", () => {
   expect(body).toContain("**Strand / roadmap item**");
   expect(body).toContain("**The element / function** — the GitHub adapter");
   expect(body).toContain("**Why** — the plan derives itself");
+});
+
+test("statusOption maps the derived status to the Project's Status options", () => {
+  expect(statusOption("planned")).toBe("Todo");
+  expect(statusOption("doing")).toBe("In Progress");
+  expect(statusOption("done")).toBe("Done");
 });

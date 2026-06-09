@@ -60,6 +60,11 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
   },
   { name: "close_issue", group: "github", summary: "Close a GitHub issue (marks it done)." },
   { name: "assign_issue", group: "github", summary: "Assign a user to a GitHub issue." },
+  {
+    name: "sync_project",
+    group: "github",
+    summary: "Sync the GitHub Project's Status field to the studio's derived status (1:1).",
+  },
 ];
 
 /** The summary for a tool name — the description `server.ts` registers (empty if the name is unknown). */

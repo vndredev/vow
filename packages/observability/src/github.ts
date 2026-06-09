@@ -207,3 +207,89 @@ export function assignIssue(cwd: string, issue: number, login: string): void {
     encoding: "utf8",
   });
 }
+
+// — the Project sync: the studio's derived status is the truth; write it onto the GitHub Project's
+//   Status field so its board/views match 1:1 (catching the drift the Project's own workflows miss).
+
+/** The GitHub Project Status option for a derived status (planned → Todo, doing → In Progress, done →
+    Done). Pure. */
+export function statusOption(status: IssueStatus): string {
+  return status === "done" ? "Done" : status === "doing" ? "In Progress" : "Todo";
+}
+
+/** One item whose Project Status was corrected to match the studio. */
+export interface StatusChange {
+  readonly number: number;
+  readonly from: string;
+  readonly to: string;
+}
+
+/** What a project sync changed: the corrected items + how many already matched. */
+export interface SyncResult {
+  readonly changed: readonly StatusChange[];
+  readonly matched: number;
+}
+
+function ghJson(cwd: string, query: string): { data: Record<string, unknown> } {
+  return JSON.parse(
+    execFileSync("gh", ["api", "graphql", "-f", `query=${query}`], { cwd, encoding: "utf8" }),
+  ) as { data: Record<string, unknown> };
+}
+
+interface StatusField {
+  readonly id: string;
+  readonly options: readonly { readonly id: string; readonly name: string }[];
+}
+interface ProjectItem {
+  readonly id: string;
+  readonly content?: { readonly number?: number };
+  readonly fieldValueByName?: { readonly name?: string };
+}
+
+/**
+ * Sync a GitHub Project's Status field to the studio's derived issue status (the studio is the source of
+ * truth). For every issue on the plan, set its Project Status to match `deriveIssueStatus` — planned →
+ * Todo, doing → In Progress, done → Done — and report what changed. Throws on a `gh` failure.
+ */
+export function syncProjectStatus(cwd: string, projectId: string): SyncResult {
+  const field = (
+    ghJson(
+      cwd,
+      `query{node(id:"${projectId}"){... on ProjectV2{field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}}}}`,
+    ).data.node as { field: StatusField }
+  ).field;
+  const optionId = (name: string): string => {
+    const o = field.options.find((opt) => opt.name === name);
+    if (o === undefined) throw new Error(`the Project has no Status option "${name}"`);
+    return o.id;
+  };
+  const items = (
+    ghJson(
+      cwd,
+      `query{node(id:"${projectId}"){... on ProjectV2{items(first:100){nodes{id content{... on Issue{number}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`,
+    ).data.node as { items: { nodes: ProjectItem[] } }
+  ).items.nodes;
+  const byNumber = new Map<number, { id: string; status?: string }>();
+  for (const it of items) {
+    if (it.content?.number !== undefined) {
+      byNumber.set(it.content.number, { id: it.id, status: it.fieldValueByName?.name });
+    }
+  }
+  const changed: StatusChange[] = [];
+  let matched = 0;
+  for (const p of issuePlan(cwd)) {
+    const item = byNumber.get(p.issue.number);
+    if (item === undefined) continue;
+    const want = statusOption(p.status);
+    if (item.status === want) {
+      matched++;
+      continue;
+    }
+    ghJson(
+      cwd,
+      `mutation{updateProjectV2ItemFieldValue(input:{projectId:"${projectId}",itemId:"${item.id}",fieldId:"${field.id}",value:{singleSelectOptionId:"${optionId(want)}"}}){projectV2Item{id}}}`,
+    );
+    changed.push({ number: p.issue.number, from: item.status ?? "(unset)", to: want });
+  }
+  return { changed, matched };
+}
