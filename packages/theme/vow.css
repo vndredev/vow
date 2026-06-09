@@ -210,6 +210,16 @@ body {
   white-space: nowrap;
   text-align: right;
 }
+/* the GitHub issue table — the entity-table look, with a muted monospace # and gapped label badges */
+.vow-issue-table__num {
+  color: var(--vow-color-muted);
+  font-variant-numeric: tabular-nums;
+}
+.vow-issue-table__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vow-space-1);
+}
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {
   font-weight: var(--vow-weight-semibold);
