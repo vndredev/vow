@@ -5,7 +5,7 @@ order: 0
 
 # Git
 
-vow's git history isn't just bookkeeping — it's the **source the roadmap reads**. Every merged change becomes a line on the [roadmap timeline](/guide/changelog), generated, never hand-typed. So the commit + PR format is **standardized and enforced**, not a convention you have to remember.
+vow's git history isn't just bookkeeping — it's the **source the changelog reads**. Every merged change becomes a line on the [changelog timeline](/guide/changelog), generated, never hand-typed. So the commit + PR format is **standardized and enforced**, not a convention you have to remember.
 
 ## The flow
 
@@ -42,7 +42,7 @@ The `type` set is the single source (`packages/observability/src/commit-types.js
 
 ## The dependency chain
 
-This is why the format matters — the path from a commit to the roadmap:
+This is why the format matters — the path from a commit to the changelog:
 
 ```
 your commit / PR title      type: summary
@@ -57,7 +57,7 @@ main's history              type: summary (#N)
 @vow/docs ::: timeline      a generated VowTimeline.vue
    |
    v
-the roadmap                 a dated, badged, PR-linked entry
+the changelog               a dated, badged, PR-linked entry
 ```
 
 The same `commit-types.json` drives the commitlint `type-enum` **and** the timeline's badge — so the format the git hook guarantees is exactly the format the timeline reads. There is nothing to keep in sync.

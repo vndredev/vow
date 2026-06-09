@@ -17,11 +17,11 @@ The forward plan ends at the merge — which is where the **changelog** begins. 
 
 ## The three surfaces
 
-vow's north star is a **studio** — one connected place where you **build**, **plan** and **design**, all from the **same vows**, operated by a person _or_ an LLM:
+Today one surface ships — **Plan**. The north star is a **studio** that connects all three — **build**, **plan** and **design** — in one place, all from the **same vows**, operated by a person _or_ an LLM:
 
-- **Build** — describe the app as vows; vow generates it (entities · views · forms), type-checked and proven.
-- **Plan** — the GitHub-issue plan (Table · Board · Roadmap), gh-direct and 1:1 synced.
-- **Design** — components, tokens and the look are vows too: see, compose and tune the design system in place.
+- **Plan** _(ships today)_ — the GitHub-issue plan (Table · Board · Roadmap), gh-direct and 1:1 synced.
+- **Build** _(north star)_ — describe the app as vows; vow generates it (entities · views · forms), type-checked and proven.
+- **Design** _(north star)_ — components, tokens and the look are vows too: see, compose and tune the design system in place.
 
 ## The history
 

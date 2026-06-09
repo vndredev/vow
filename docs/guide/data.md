@@ -5,7 +5,7 @@ order: 2
 
 # Data
 
-`@vow/store` is vow's data layer — a shared, reactive **collection per entity slug**, backed by a local **SQLite DB**. Every generated view that lists the same entity reads **one array**, so a `reference` field can resolve another entity's items.
+`@vow/store` is vow's data layer — a shared, reactive **in-memory collection per entity slug** that reads **through to `@vow/db`** (the dev API today, Cloudflare D1 in prod). Every generated view that lists the same entity reads **one array**, so a `reference` field can resolve another entity's items.
 
 ## `useCollection`
 
