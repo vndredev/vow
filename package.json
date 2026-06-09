@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "ready": "vp check && pnpm -r test && vp run -r build",
-    "dev": "vp run website#dev",
+    "dev": "vow dev",
     "prepare": "vp config"
   },
   "devDependencies": {
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
     "@typescript/native-preview": "catalog:",
+    "@vow/cli": "workspace:*",
     "vite-plus": "catalog:"
   },
   "engines": {
