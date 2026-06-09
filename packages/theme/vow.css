@@ -236,7 +236,8 @@ body {
   padding-bottom: var(--vow-space-2);
 }
 .vow-roadmap__phase {
-  flex: 0 0 18rem; /* one fixed column per phase — the timeline track */
+  flex: 1 1 18rem; /* grow to fill the width; 18rem basis, scroll once there are many phases */
+  min-width: 16rem;
   border-left: var(--vow-border) solid var(--vow-color-border);
   padding-left: var(--vow-space-3);
 }
@@ -268,15 +269,26 @@ body {
 }
 .vow-roadmap__item {
   display: flex;
-  align-items: center;
-  gap: var(--vow-space-3);
-  padding: var(--vow-space-3) var(--vow-space-4);
+  flex-direction: column;
+  gap: var(--vow-space-2);
+  padding: var(--vow-space-3);
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-2);
 }
+.vow-roadmap__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vow-space-2);
+}
 .vow-roadmap__num {
+  font-size: var(--vow-text-sm);
   color: var(--vow-color-muted);
   font-variant-numeric: tabular-nums;
+}
+.vow-roadmap__title {
+  font-size: var(--vow-text-sm);
+  line-height: 1.4;
 }
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {
