@@ -42,7 +42,7 @@ import {
   viewComponentName,
 } from "@vow/emit-view";
 import { layoutSfcs } from "@vow/layout";
-import { gitRemoteUrl, gitTimeline } from "@vow/observability";
+import { gitRemoteUrl, gitTimeline, issuePlan, type PlanItem } from "@vow/observability";
 
 /**
  * vow as a Vite plugin — the heart of the closed cap.
@@ -130,6 +130,25 @@ function dataApi(
     } catch (err) {
       send(500, { error: (err as Error).message });
     }
+  };
+}
+
+/**
+ * The dev issue API — `/__vow/issues` serves the GitHub issue plan (`@vow/observability`'s `issuePlan`,
+ * gh-direct). The studio's board + roadmap read this; a Worker serves the same over the GitHub API in
+ * prod. `gh` shells synchronously, so a short TTL cache keeps a poll from blocking the dev server each call.
+ */
+function issuesApi(
+  cwd: string,
+): (req: IncomingMessage, res: ServerResponse, next: (err?: unknown) => void) => void {
+  let cache: { at: number; plan: readonly PlanItem[] } | undefined;
+  return (req, res, next) => {
+    if ((req.method ?? "GET") !== "GET") return next();
+    const now = Date.now();
+    if (cache === undefined || now - cache.at > 10_000) cache = { at: now, plan: issuePlan(cwd) };
+    res.statusCode = 200;
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(cache.plan));
   };
 }
 
@@ -389,6 +408,7 @@ export function vow(options: VowOptions = {}): Plugin {
           () => entities,
         ),
       );
+      server.middlewares.use("/__vow/issues", issuesApi(root)); // the GitHub issue plan, gh-direct
 
       // Watch the `app/` source (not in the module graph) → regenerate the `.vue` on change.
       // Rewriting the .vue then triggers plugin-vue's HMR; a full reload covers added/removed vows.
