@@ -1,0 +1,21 @@
+{
+  "name": "@vow/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's CLI (`vow`) — the dev lifecycle (run/status/logs/stop the apps) + the basics (check/build/test), one front door. The MCP is for LLMs; this is for people.",
+  "bin": {
+    "vow": "./src/cli.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
