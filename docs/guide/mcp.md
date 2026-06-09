@@ -37,14 +37,15 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Nineteen tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Twenty tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
-| Tool        |                                      |
-| ----------- | ------------------------------------ |
-| `list_vows` | List every vow (slug, kind, intent). |
-| `get_vow`   | Get one vow by slug.                 |
+| Tool          |                                                                               |
+| ------------- | ----------------------------------------------------------------------------- |
+| `list_vows`   | List every vow (slug, kind, intent).                                          |
+| `get_vow`     | Get one vow by slug.                                                          |
+| `studio_info` | The studio's paths + structure (app dir, db, repo, project, entities, views). |
 
 ### Structure — the vows
 
@@ -70,13 +71,13 @@ Nineteen tools, in four groups. Structure mutations **validate** (the zod schema
 
 ### GitHub — the issue plan
 
-| Tool           |                                                                                 |
-| -------------- | ------------------------------------------------------------------------------- |
-| `list_issues`  | List GitHub issues with their derived status (planned/doing/done).              |
-| `add_issue`    | Open a GitHub issue — fills the feature template, labelled enhancement + yours. |
-| `close_issue`  | Close a GitHub issue (marks it done).                                           |
-| `assign_issue` | Assign a user to a GitHub issue.                                                |
-| `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).    |
+| Tool           |                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `list_issues`  | List GitHub issues with their derived status (planned/doing/done).                 |
+| `add_issue`    | Open a GitHub issue (feature template + labels) — assigned + added to the Project. |
+| `close_issue`  | Close a GitHub issue (marks it done).                                              |
+| `assign_issue` | Assign a user to a GitHub issue.                                                   |
+| `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).       |
 
 This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
 
