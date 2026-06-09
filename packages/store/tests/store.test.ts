@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { useCollection } from "../src/index.ts";
+import { reconcile, useCollection } from "../src/index.ts";
 
 // The store is DB-backed via fetch; with no dev server the fetch rejects and the optimistic local array
 // is the truth — exactly the shared-array + write-through semantics we unit-test here.
@@ -20,4 +20,21 @@ test("update patches an item in place, by id", () => {
   c.append({ id: "x", n: 1 });
   c.update("x", { n: 2 });
   expect(c.items[0]?.n).toBe(2);
+});
+
+test("reconcile drops a key removed upstream — no stale column lingers", () => {
+  const items = [{ id: "1", title: "a", note: "old" }];
+  reconcile(items, [{ id: "1", title: "b" }]); // `note` is gone upstream
+  expect(items[0]).toEqual({ id: "1", title: "b" }); // note dropped, title updated
+});
+
+test("reconcile patches in place (keeps identity), adds new + drops missing", () => {
+  const items = [{ id: "1", n: 1 }];
+  const first = items[0];
+  reconcile(items, [
+    { id: "1", n: 2 },
+    { id: "2", n: 9 },
+  ]);
+  expect(items[0]).toBe(first); // same object — an in-place patch, not a replace
+  expect(items.map((r) => r.id).sort()).toEqual(["1", "2"]);
 });

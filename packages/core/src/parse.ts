@@ -75,13 +75,20 @@ function parseFieldLine(item: string): {
     throw new Error(`vow: field "${item}" must be "<name>: <type>[, required]"`);
   }
   const name = item.slice(0, colon).trim();
-  const attrs = item
-    .slice(colon + 1)
+  const rest = item.slice(colon + 1).trim();
+  // The head is the type — possibly `select(a|b|c)` / `reference(entity)`, whose parens can hold commas.
+  // Peel a balanced `type(...)` (or a bare `type`) BEFORE splitting the trailing `, required`, so a comma
+  // inside the parens never strands the head on `select(a` and fails Vow.parse on the wrong path.
+  const head = /^(\w+\([^)]*\)|\w+)/.exec(rest)?.[1] ?? "";
+  if (/^\w+\(/.test(rest) && !head.endsWith(")")) {
+    throw new Error(`vow: field "${name}" has a malformed type "${rest}" — unbalanced parentheses`);
+  }
+  const required = rest
+    .slice(head.length)
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean);
-  const required = attrs.slice(1).includes("required");
-  const head = attrs[0] ?? "";
+    .filter(Boolean)
+    .includes("required");
   const select = /^select\((.+)\)$/.exec(head);
   if (select?.[1]) {
     return { name, type: "select", required, options: select[1].split("|").map((o) => o.trim()) };
