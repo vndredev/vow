@@ -45,6 +45,24 @@ test("parseIssues is graceful — malformed input yields []", () => {
   expect(parseIssues("{}")).toEqual([]);
 });
 
+test("parseIssues lifts the milestone title when present, omits it when not", () => {
+  const withMs = JSON.stringify([
+    {
+      number: 60,
+      title: "Roadmap",
+      state: "OPEN",
+      labels: [],
+      assignees: [],
+      milestone: { title: "Phase C" },
+    },
+  ]);
+  expect(parseIssues(withMs)[0]?.milestone).toBe("Phase C");
+  const noMs = JSON.stringify([
+    { number: 1, title: "x", state: "OPEN", labels: [], assignees: [] },
+  ]);
+  expect(parseIssues(noMs)[0]).not.toHaveProperty("milestone");
+});
+
 test("parsePrs keeps number, title, body", () => {
   const json = JSON.stringify([{ number: 9, title: "feat", body: "Closes #56" }]);
   expect(parsePrs(json)).toEqual([{ number: 9, title: "feat", body: "Closes #56" }]);

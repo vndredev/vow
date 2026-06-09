@@ -38,6 +38,7 @@ import {
   statsRefs,
   VOW_ENV_DTS,
   emitIssueBoardSfc,
+  emitIssueRoadmapSfc,
   emitIssueTableSfc,
   emitTimelineSfc,
   issueLayouts,
@@ -312,6 +313,12 @@ export function generateFiles(
   if (issueViews.has("board")) {
     const file = join(outDir, "VowIssueBoard.vue");
     writeFileSync(file, emitIssueBoardSfc(), "utf8"); // the live issue kanban by derived status
+    written.push(file);
+    needed.add("Badge");
+  }
+  if (issueViews.has("roadmap")) {
+    const file = join(outDir, "VowIssueRoadmap.vue");
+    writeFileSync(file, emitIssueRoadmapSfc(), "utf8"); // the live issue roadmap by milestone
     written.push(file);
     needed.add("Badge");
   }
