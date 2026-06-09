@@ -17,6 +17,7 @@ export interface GitHubIssue {
   readonly state: "open" | "closed";
   readonly labels: readonly string[];
   readonly assignees: readonly string[];
+  readonly milestone?: string;
 }
 
 /** An open pull request, reduced to what links it back to its issues. */
@@ -32,6 +33,7 @@ interface RawIssue {
   state: string;
   labels?: { name?: string }[];
   assignees?: { login?: string }[];
+  milestone?: { title?: string } | null;
 }
 
 /** Parse `gh issue list --json number,title,state,labels,assignees` → issues (state lower-cased,
@@ -50,6 +52,7 @@ export function parseIssues(json: string): GitHubIssue[] {
     state: i.state.toLowerCase() === "closed" ? "closed" : "open",
     labels: (i.labels ?? []).map((l) => l.name ?? "").filter((n) => n !== ""),
     assignees: (i.assignees ?? []).map((a) => a.login ?? "").filter((n) => n !== ""),
+    ...(i.milestone?.title !== undefined ? { milestone: i.milestone.title } : {}),
   }));
 }
 
@@ -112,7 +115,7 @@ export function githubIssues(cwd: string): GitHubIssue[] {
         "issue",
         "list",
         "--json",
-        "number,title,state,labels,assignees",
+        "number,title,state,labels,assignees,milestone",
         "--state",
         "all",
         "--limit",

@@ -227,6 +227,40 @@ body {
   font-variant-numeric: tabular-nums;
   font-size: var(--vow-text-sm);
 }
+/* the issue roadmap — phases (milestones) stacked, each a list of issues */
+.vow-roadmap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-6);
+}
+.vow-roadmap__milestone {
+  margin: 0 0 var(--vow-space-3);
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-semibold);
+  color: var(--vow-color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.vow-roadmap__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vow-roadmap__item {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-3);
+  padding: var(--vow-space-3) var(--vow-space-4);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
+}
+.vow-roadmap__num {
+  color: var(--vow-color-muted);
+  font-variant-numeric: tabular-nums;
+}
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {
   font-weight: var(--vow-weight-semibold);
