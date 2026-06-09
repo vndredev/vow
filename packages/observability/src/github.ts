@@ -17,7 +17,7 @@ export interface GitHubIssue {
   readonly state: "open" | "closed";
   readonly labels: readonly string[];
   readonly assignees: readonly string[];
-  readonly milestone?: string;
+  readonly milestone?: { readonly title: string; readonly dueOn?: string };
 }
 
 /** An open pull request, reduced to what links it back to its issues. */
@@ -33,7 +33,7 @@ interface RawIssue {
   state?: string;
   labels?: { name?: string }[];
   assignees?: { login?: string }[];
-  milestone?: { title?: string } | null;
+  milestone?: { title?: string; dueOn?: string | null } | null;
 }
 
 /** Parse `gh issue list --json number,title,state,labels,assignees` → issues (state lower-cased,
@@ -56,7 +56,14 @@ export function parseIssues(json: string): GitHubIssue[] {
     assignees: (Array.isArray(i.assignees) ? i.assignees : [])
       .map((a) => a?.login ?? "")
       .filter((n) => n !== ""),
-    ...(i.milestone?.title !== undefined ? { milestone: i.milestone.title } : {}),
+    ...(typeof i.milestone?.title === "string"
+      ? {
+          milestone: {
+            title: i.milestone.title,
+            ...(typeof i.milestone.dueOn === "string" ? { dueOn: i.milestone.dueOn } : {}),
+          },
+        }
+      : {}),
   }));
 }
 

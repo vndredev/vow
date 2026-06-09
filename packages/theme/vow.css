@@ -227,19 +227,36 @@ body {
   font-variant-numeric: tabular-nums;
   font-size: var(--vow-text-sm);
 }
-/* the issue roadmap — phases (milestones) stacked, each a list of issues */
+/* the issue roadmap — phases (milestones) as columns on a horizontal timeline, ordered by due date */
 .vow-roadmap {
   display: flex;
-  flex-direction: column;
-  gap: var(--vow-space-6);
+  flex-direction: row;
+  gap: var(--vow-space-4);
+  overflow-x: auto;
+  padding-bottom: var(--vow-space-2);
+}
+.vow-roadmap__phase {
+  flex: 0 0 18rem; /* one fixed column per phase — the timeline track */
+  border-left: var(--vow-border) solid var(--vow-color-border);
+  padding-left: var(--vow-space-3);
+}
+.vow-roadmap__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--vow-space-2);
+  margin-bottom: var(--vow-space-3);
 }
 .vow-roadmap__milestone {
-  margin: 0 0 var(--vow-space-3);
+  margin: 0;
   font-size: var(--vow-text-sm);
   font-weight: var(--vow-weight-semibold);
+  color: var(--vow-color-text);
+}
+.vow-roadmap__due {
+  font-size: var(--vow-text-sm);
   color: var(--vow-color-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
 }
 .vow-roadmap__items {
   display: flex;
