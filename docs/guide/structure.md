@@ -37,7 +37,7 @@ my-app/
 └─ package.json             @vow/headless · @vow/store · @vow/router · @vow/shell · @vow/theme · vue · zod
 ```
 
-_A fuller example — it shows every vow type. The minimal [starter](/guide/getting-started) you run is just `home` + `task` + `add-task` (a view, an entity, a form); the [studio](/guide/roadmap) adds the references, lists and stats._
+_A fuller example — it shows every vow type. The minimal [starter](/guide/getting-started) you run is just `home` + `task` + `add-task` (a view, an entity, a form); the [studio](/guide/changelog) adds the references, lists and stats._
 
 The 10 % of hand-written code lives **co-located** — `task-summary.ts` sits right next to the
 `task-summary.vow.md` that binds it, not in a separate `lib/`. The unit is "a feature = its vow + its

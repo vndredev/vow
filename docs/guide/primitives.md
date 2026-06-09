@@ -58,4 +58,4 @@ Each primitive has its own page — the live demo, the contract, props & events,
 | [Stats](/guide/primitives/stats)             | :badge[Available]{variant=success} | a metric-tile strip — composable parts (structural) |
 | [Callout](/guide/primitives/callout)         | :badge[Available]{variant=success} | a tinted notice (structural)                        |
 
-Same headless-core + unstyled-adapter split throughout, hand-rolled (no runtime lock-in). More climb the ladder as the dashboard/planning views need them — see the [Roadmap](/guide/roadmap).
+Same headless-core + unstyled-adapter split throughout, hand-rolled (no runtime lock-in). More climb the ladder as the dashboard/planning views need them — see the [Roadmap](/guide/changelog).

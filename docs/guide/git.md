@@ -5,7 +5,7 @@ order: 0
 
 # Git
 
-vow's git history isn't just bookkeeping — it's the **source the roadmap reads**. Every merged change becomes a line on the [roadmap timeline](/guide/roadmap), generated, never hand-typed. So the commit + PR format is **standardized and enforced**, not a convention you have to remember.
+vow's git history isn't just bookkeeping — it's the **source the roadmap reads**. Every merged change becomes a line on the [roadmap timeline](/guide/changelog), generated, never hand-typed. So the commit + PR format is **standardized and enforced**, not a convention you have to remember.
 
 ## The flow
 

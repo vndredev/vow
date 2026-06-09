@@ -32,4 +32,4 @@ The parts are optional — a `Card` with just a default slot is a plain bordered
 
 ## No a11y core — on purpose
 
-Card is structural — a styled `<div>`, no `@vow/headless` logic. The `cards` view pattern (on the [roadmap](/guide/roadmap)) composes these per record; like the entity list, that is a **composition**, not a primitive. See [Architecture](/guide/architecture).
+Card is structural — a styled `<div>`, no `@vow/headless` logic. The `cards` view pattern (on the [roadmap](/guide/changelog)) composes these per record; like the entity list, that is a **composition**, not a primitive. See [Architecture](/guide/architecture).
