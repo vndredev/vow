@@ -5,7 +5,7 @@ order: 2
 
 # The CLI (`vow`)
 
-The studio is **run by a person** with the `vow` CLI and **operated by an LLM** through the [MCP](/guide/mcp). They split cleanly: `vow` covers the **dev lifecycle** (run · status · logs · stop the apps) and the **basics** (check · build · test) — the process work that doesn't belong in an LLM tool — while the MCP is the authoring surface (vows · data · the plan).
+The studio is **run by a person** with the `vow` CLI and **operated by an LLM** through the [MCP](/guide/mcp). They split cleanly: `vow` covers **running the apps** (run · status · stop) and the **basics** (check · build · test) — the process work that doesn't belong in an LLM tool — while the MCP is the authoring surface (vows · data · the plan).
 
 ## Install
 
@@ -15,18 +15,16 @@ The CLI ships in the repo as `@vow/cli`, wired as a workspace dependency — aft
 pnpm vow            # the help
 ```
 
-## The dev lifecycle
+## Running the apps
 
-`vp dev` runs one app in the foreground; `vow dev` runs them **managed, in the background** — fixed ports, a PID/port registry (`.vow/dev.json`), logs under `.vow/logs/`, and a clean restart every time (it first frees a port held by an orphan, so there's no more `pkill`).
+`vow dev` runs the apps **in the foreground**, streaming their combined logs (each line tagged with the app) — one process, the standard dev-server model. You background it yourself (the harness, `&`, a supervisor); it frees an orphaned port first, so there's no more `pkill`. `vow status` / `vow stop` work off the fixed ports, so they find the apps no matter who started them.
 
 ```bash
-vow dev              # run studio + docs (the default set)
+vow dev              # run studio + docs (the default set), streaming
 vow dev all          # run every app (studio · docs · starter)
 vow dev studio       # run one
-vow status           # which apps are up — port · pid · responding
-vow logs studio      # the recent log
-vow logs studio -f   # follow it
-vow stop             # stop all running apps (terminates the whole process group)
+vow status           # which app ports are responding
+vow stop             # stop every app — frees their ports
 vow stop docs        # stop one
 ```
 
