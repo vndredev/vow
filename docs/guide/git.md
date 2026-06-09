@@ -61,3 +61,21 @@ the roadmap                 a dated, badged, PR-linked entry
 ```
 
 The same `commit-types.json` drives the commitlint `type-enum` **and** the timeline's badge — so the format the git hook guarantees is exactly the format the timeline reads. There is nothing to keep in sync.
+
+## The GitHub side — the issue plan
+
+The timeline above is **Done** — merged history. The forward plan lives the same way, read from the truth: **GitHub issues**. `@vow/observability`'s GitHub side (`github.ts`) reads them via `gh` and **derives** each issue's status — the same "never stored, always derived" rule as a vow's.
+
+```
+gh issue list --json …   ->  parseIssues    ->  { number, title, state, labels, assignees }
+gh pr list   --json …    ->  linkedIssues   ->  the issues an open PR closes (Closes #N)
+   |  deriveIssueStatus
+   v
+issuePlan(cwd)           ->  [{ issue, status }]      status: planned | doing | done
+```
+
+- **done** — the issue is closed.
+- **doing** — open, and an open PR closes it (`Closes #N` · `Fixes #N` · `Resolves #N`).
+- **planned** — open, no PR yet.
+
+`statusVariant` colours each — planned → :badge[planned]{variant=neutral} · doing → :badge[doing]{variant=accent} · done → :badge[done]{variant=success}. Like `gitTimeline`, the reads are **graceful**: no `gh`, no auth, no network ⇒ `[]`, so a build without GitHub simply has no issue plan. This is the read foundation the board + the roadmap's three sections (Done · Doing · Planned) build on.
