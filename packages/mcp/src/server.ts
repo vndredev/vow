@@ -26,13 +26,16 @@ import {
   update,
 } from "@vow/db";
 import { z } from "zod";
+import { summaryOf } from "./tools.ts";
 
 /**
  * vow's MCP server — the agent operates the studio over stdio. It composes the two write sides directly:
  * **structure** (the vows) via `@vow/core`'s mutations + `serialize`, and **data** (records) via
  * `@vow/db`'s CRUD over the shared local SQLite file. A structure write lands in `app/*.vow.md` → a
  * running `vp dev` regenerates; a data write lands in `.vow/data.db` → the studio refetches. The same
- * tools run against D1 on typed.build in prod. Launch: `VOW_APP_DIR=apps/studio/app pnpm --filter @vow/mcp start`.
+ * tools run against D1 on typed.build in prod. Each tool's description is `summaryOf(name)` from the
+ * single-source `tools.ts` catalogue (which the docs list from). Launch via the `start` script or the
+ * project `.mcp.json` (see docs/guide/mcp.md).
  */
 
 const raw = process.env["VOW_APP_DIR"] ?? process.argv[2];
@@ -63,10 +66,10 @@ const json = (data: unknown) => text(JSON.stringify(data, null, 2));
 const server = new McpServer({ name: "vow", version: "0.0.0" });
 
 // — read —
-server.tool("list_vows", "List every vow (slug · kind · intent).", {}, () =>
+server.tool("list_vows", summaryOf("list_vows"), {}, () =>
   json(loadVows(appDir).map((v) => ({ slug: v.slug, fulfills: v.fulfills, intent: v.intent }))),
 );
-server.tool("get_vow", "Get one vow by slug.", { slug: z.string() }, ({ slug }) => {
+server.tool("get_vow", summaryOf("get_vow"), { slug: z.string() }, ({ slug }) => {
   const v = loadVows(appDir).find((x) => x.slug === slug);
   return v ? json(v) : text(`no vow "${slug}"`);
 });
@@ -74,7 +77,7 @@ server.tool("get_vow", "Get one vow by slug.", { slug: z.string() }, ({ slug }) 
 // — structure (the vows) —
 server.tool(
   "add_entity",
-  "Add a new entity (a data model) to the studio.",
+  summaryOf("add_entity"),
   { slug: z.string(), intent: z.string(), fields: z.array(Field).optional() },
   ({ slug, intent, fields }) => {
     const v = addEntity(appDir, { slug, intent, fields });
@@ -84,7 +87,7 @@ server.tool(
 );
 server.tool(
   "add_field",
-  "Add a field to an entity.",
+  summaryOf("add_field"),
   { entity: z.string(), field: Field },
   ({ entity, field }) => {
     addField(appDir, entity, field);
@@ -94,7 +97,7 @@ server.tool(
 );
 server.tool(
   "remove_field",
-  "Remove a field from an entity by name.",
+  summaryOf("remove_field"),
   { entity: z.string(), field: z.string() },
   ({ entity, field }) => {
     removeField(appDir, entity, field);
@@ -103,7 +106,7 @@ server.tool(
 );
 server.tool(
   "add_view",
-  "Add a view (a page). `view` is a list of { type, value } nodes (e.g. { type: list, value: task }).",
+  summaryOf("add_view"),
   {
     slug: z.string(),
     intent: z.string(),
@@ -117,7 +120,7 @@ server.tool(
 );
 server.tool(
   "set_intent",
-  "Set a vow's intent.",
+  summaryOf("set_intent"),
   { slug: z.string(), intent: z.string() },
   ({ slug, intent }) => {
     setIntent(appDir, slug, intent);
@@ -126,25 +129,25 @@ server.tool(
 );
 server.tool(
   "set_nav",
-  "Set a vow's nav entry (label · icon · order · group).",
+  summaryOf("set_nav"),
   { slug: z.string(), nav: z.record(z.string(), z.unknown()) },
   ({ slug, nav }) => {
     setNav(appDir, slug, nav as Vow["nav"]);
     return text(`set nav of "${slug}"`);
   },
 );
-server.tool("remove_vow", "Delete a vow (its .md).", { slug: z.string() }, ({ slug }) => {
+server.tool("remove_vow", summaryOf("remove_vow"), { slug: z.string() }, ({ slug }) => {
   removeVow(appDir, slug);
   return text(`removed vow "${slug}"`);
 });
 
 // — data (the records) —
-server.tool("list_records", "List an entity's records.", { entity: z.string() }, ({ entity }) =>
+server.tool("list_records", summaryOf("list_records"), { entity: z.string() }, ({ entity }) =>
   json(list(db, entityOf(entity))),
 );
 server.tool(
   "get_record",
-  "Get one record by id.",
+  summaryOf("get_record"),
   { entity: z.string(), id: z.string() },
   ({ entity, id }) => {
     const r = get(db, entityOf(entity), id);
@@ -153,13 +156,13 @@ server.tool(
 );
 server.tool(
   "add_record",
-  "Add a record to an entity (an id is minted; absent fields get defaults).",
+  summaryOf("add_record"),
   { entity: z.string(), record: z.record(z.string(), z.unknown()) },
   ({ entity, record }) => json(insert(db, entityOf(entity), record)),
 );
 server.tool(
   "set_record_field",
-  "Patch one field of a record (e.g. move a task by setting its status).",
+  summaryOf("set_record_field"),
   { entity: z.string(), id: z.string(), field: z.string(), value: z.unknown() },
   ({ entity, id, field, value }) => {
     const r = update(db, entityOf(entity), id, { [field]: value });
@@ -168,7 +171,7 @@ server.tool(
 );
 server.tool(
   "remove_record",
-  "Delete a record by id.",
+  summaryOf("remove_record"),
   { entity: z.string(), id: z.string() },
   ({ entity, id }) =>
     text(remove(db, entityOf(entity), id) ? `removed record "${id}"` : `no record "${id}"`),

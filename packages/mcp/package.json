@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node --experimental-strip-types src/server.ts",
+    "test": "vp test",
     "check": "vp check"
   },
   "dependencies": {

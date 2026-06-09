@@ -16,20 +16,66 @@ LLM ──► @vow/mcp ──┬─ structure ─► serialize → app/*.vow.md 
 
 A **structure** write lands in `app/<slug>.vow.md` — a running `vp dev` regenerates the `.vue`. A **data** write lands in `.vow/data.db` — the studio refetches. The same tools run against **D1** in prod, so the agent operates a deployed studio the same way.
 
+## Set up in Claude Code
+
+Add the vow MCP server to [Claude Code](https://claude.com/claude-code) once, from the repo root:
+
+```bash
+claude mcp add vow --scope project --env VOW_APP_DIR=apps/studio/app \
+  -- node --experimental-strip-types packages/mcp/src/server.ts
+```
+
+`--scope project` writes a committed **`.mcp.json`** at the repo root, so everyone who clones gets the same server (this repo already ships it). Verify:
+
+```bash
+claude mcp list          # `vow` should be ✓ Connected
+```
+
+Then run `claude` — the tools below are available. On first use of a project server, approve it at the trust prompt (or run `/mcp` in-session). The server opens the **same** `.vow/data.db` a running `vp dev apps/studio` serves, so the agent and the studio share one source of truth.
+
+> Edited `.mcp.json` by hand? Restart the Claude Code session to load it. Manage: `/mcp` (in-session), `claude mcp get vow`, `claude mcp remove vow --scope project`.
+
 ## The tools
 
-**Structure** (the vows): `add_entity` · `add_field` · `remove_field` · `add_view` · `set_intent` · `set_nav` · `remove_vow`. Each loads the tree, mutates one vow in memory, and **validates** it (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Fourteen tools, in three groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
-**Data** (the records): `list_records` · `get_record` · `add_record` · `set_record_field` · `remove_record`. The board's drag becomes `set_record_field` (status); adding a task becomes `add_record`.
+### Read
 
-**Read**: `list_vows` · `get_vow`.
+| Tool        |                                      |
+| ----------- | ------------------------------------ |
+| `list_vows` | List every vow (slug, kind, intent). |
+| `get_vow`   | Get one vow by slug.                 |
 
-## Run it
+### Structure — the vows
+
+| Tool           |                                                                 |
+| -------------- | --------------------------------------------------------------- |
+| `add_entity`   | Add a new entity (a data model) to the studio.                  |
+| `add_field`    | Add a field to an entity.                                       |
+| `remove_field` | Remove a field from an entity by name.                          |
+| `add_view`     | Add a view (a page); `view` is a list of { type, value } nodes. |
+| `set_intent`   | Set a vow's intent (the `# …` promise).                         |
+| `set_nav`      | Set a vow's nav entry (label, icon, order, group).              |
+| `remove_vow`   | Delete a vow (its `.md`).                                       |
+
+### Data — the records
+
+| Tool               |                                                                          |
+| ------------------ | ------------------------------------------------------------------------ |
+| `list_records`     | List an entity's records.                                                |
+| `get_record`       | Get one record by id.                                                    |
+| `add_record`       | Add a record to an entity (an id is minted; absent fields get defaults). |
+| `set_record_field` | Patch one field of a record (e.g. move a task by setting its status).    |
+| `remove_record`    | Delete a record by id.                                                   |
+
+This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
+
+## Run it standalone
+
+For any other MCP client (or a smoke test):
 
 ```bash
 VOW_APP_DIR=apps/studio/app pnpm --filter @vow/mcp start
 ```
-
-The server opens the **same** `.vow/data.db` the dev server serves (or `$VOW_DB_PATH`), so the agent and the studio share one source of truth. Point your MCP client at that command.
 
 > Built on [`serialize`](/guide/vow) (Vow → vow.md — the inverse of the parser) + the `@vow/core` mutations. The dogfood goal: vow's own roadmap is planned in the studio, operated by the agent — not in a markdown file.
