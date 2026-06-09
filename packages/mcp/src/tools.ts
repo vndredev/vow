@@ -2,11 +2,11 @@
  * The MCP tool catalogue — every tool's name + one-line summary, in one place. This is the SINGLE
  * source: `server.ts` registers each tool with `summaryOf(name)`, and the docs (`docs/guide/mcp.md`)
  * list from it — a test guards that the docs name every tool, so the published list can't drift from
- * the server. Grouped read / structure (the vows) / data (the records).
+ * the server. Grouped read / structure (the vows) / data (the records) / github (the issue plan).
  */
 export interface ToolDoc {
   readonly name: string;
-  readonly group: "read" | "structure" | "data";
+  readonly group: "read" | "structure" | "data" | "github";
   readonly summary: string;
 }
 
@@ -47,6 +47,19 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     summary: "Patch one field of a record (e.g. move a task by setting its status).",
   },
   { name: "remove_record", group: "data", summary: "Delete a record by id." },
+
+  {
+    name: "list_issues",
+    group: "github",
+    summary: "List GitHub issues with their derived status (planned/doing/done).",
+  },
+  {
+    name: "add_issue",
+    group: "github",
+    summary: "Open a GitHub issue — fills the feature template, labelled enhancement + yours.",
+  },
+  { name: "close_issue", group: "github", summary: "Close a GitHub issue (marks it done)." },
+  { name: "assign_issue", group: "github", summary: "Assign a user to a GitHub issue." },
 ];
 
 /** The summary for a tool name — the description `server.ts` registers (empty if the name is unknown). */
