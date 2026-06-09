@@ -28,9 +28,9 @@ export interface GitHubPr {
 }
 
 interface RawIssue {
-  number: number;
-  title: string;
-  state: string;
+  number?: number;
+  title?: string;
+  state?: string;
   labels?: { name?: string }[];
   assignees?: { login?: string }[];
   milestone?: { title?: string } | null;
@@ -47,11 +47,15 @@ export function parseIssues(json: string): GitHubIssue[] {
   }
   if (!Array.isArray(raw)) return [];
   return (raw as RawIssue[]).map((i) => ({
-    number: i.number,
-    title: i.title,
-    state: i.state.toLowerCase() === "closed" ? "closed" : "open",
-    labels: (i.labels ?? []).map((l) => l.name ?? "").filter((n) => n !== ""),
-    assignees: (i.assignees ?? []).map((a) => a.login ?? "").filter((n) => n !== ""),
+    number: typeof i.number === "number" ? i.number : 0,
+    title: typeof i.title === "string" ? i.title : "",
+    state: String(i.state ?? "").toLowerCase() === "closed" ? "closed" : "open",
+    labels: (Array.isArray(i.labels) ? i.labels : [])
+      .map((l) => l?.name ?? "")
+      .filter((n) => n !== ""),
+    assignees: (Array.isArray(i.assignees) ? i.assignees : [])
+      .map((a) => a?.login ?? "")
+      .filter((n) => n !== ""),
     ...(i.milestone?.title !== undefined ? { milestone: i.milestone.title } : {}),
   }));
 }

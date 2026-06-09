@@ -163,9 +163,9 @@ export interface AppStatus {
   readonly port: number;
   readonly responding: boolean;
 }
-export async function status(): Promise<AppStatus[]> {
+export async function status(apps: readonly App[] = APPS): Promise<AppStatus[]> {
   return Promise.all(
-    APPS.map(async (app) => ({
+    apps.map(async (app) => ({
       slug: app.slug,
       port: app.port,
       responding: await portUp(app.port),
