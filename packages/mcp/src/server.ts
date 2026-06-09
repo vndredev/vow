@@ -26,10 +26,12 @@ import {
   update,
 } from "@vow/db";
 import {
+  addToProject,
   assignIssue,
   closeIssue,
   createIssue,
   featureIssueBody,
+  gitRemoteUrl,
   issuePlan,
   syncProjectStatus,
 } from "@vow/observability";
@@ -195,14 +197,20 @@ server.tool(
     element: z.string(),
     why: z.string(),
     labels: z.array(z.string()).optional(),
+    assignee: z.string().optional(),
+    milestone: z.string().optional(),
   },
-  ({ title, element, why, labels }) => {
+  ({ title, element, why, labels, assignee, milestone }) => {
     const url = createIssue(appDir, {
       title,
       body: featureIssueBody({ element, why }),
       labels: ["enhancement", ...(labels ?? [])],
+      assignee: assignee ?? "@me", // the full toolkit: assigned by default
+      ...(milestone !== undefined ? { milestone } : {}),
     });
-    return text(`opened ${url}`);
+    const project = process.env["VOW_PROJECT_ID"];
+    if (project !== undefined && project !== "") addToProject(appDir, project, url);
+    return text(`opened ${url}${project ? " — assigned + added to the Project" : ""}`);
   },
 );
 server.tool("close_issue", summaryOf("close_issue"), { number: z.number() }, ({ number }) => {
@@ -229,6 +237,18 @@ server.tool(
     }
     return json(syncProjectStatus(appDir, pid));
   },
+);
+server.tool("studio_info", summaryOf("studio_info"), {}, () =>
+  json({
+    appDir,
+    dbPath: resolveDbPath(dirname(appDir)),
+    repo: gitRemoteUrl(appDir) ?? null,
+    project: process.env["VOW_PROJECT_ID"] ?? null,
+    entities: entities().map((v) => v.slug),
+    views: loadVows(appDir)
+      .filter((v) => v.fulfills?.kind === "emit" && v.fulfills.as === "view")
+      .map((v) => v.slug),
+  }),
 );
 
 await server.connect(new StdioServerTransport());

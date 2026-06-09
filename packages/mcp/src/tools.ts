@@ -13,6 +13,11 @@ export interface ToolDoc {
 export const TOOL_DOCS: readonly ToolDoc[] = [
   { name: "list_vows", group: "read", summary: "List every vow (slug, kind, intent)." },
   { name: "get_vow", group: "read", summary: "Get one vow by slug." },
+  {
+    name: "studio_info",
+    group: "read",
+    summary: "The studio's paths + structure (app dir, db, repo, project, entities, views).",
+  },
 
   {
     name: "add_entity",
@@ -56,7 +61,7 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
   {
     name: "add_issue",
     group: "github",
-    summary: "Open a GitHub issue — fills the feature template, labelled enhancement + yours.",
+    summary: "Open a GitHub issue (feature template + labels) — assigned + added to the Project.",
   },
   { name: "close_issue", group: "github", summary: "Close a GitHub issue (marks it done)." },
   { name: "assign_issue", group: "github", summary: "Assign a user to a GitHub issue." },

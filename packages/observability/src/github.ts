@@ -186,16 +186,38 @@ export function featureIssueBody(input: {
   ].join("\n");
 }
 
-/** Open an issue via `gh` (title + body + labels) → its URL. Throws on failure. */
+/** Open an issue via `gh` (title + body + labels + assignee + milestone) → its URL. Throws on failure. */
 export function createIssue(
   cwd: string,
-  input: { readonly title: string; readonly body: string; readonly labels?: readonly string[] },
+  input: {
+    readonly title: string;
+    readonly body: string;
+    readonly labels?: readonly string[];
+    readonly assignee?: string;
+    readonly milestone?: string;
+  },
 ): string {
   const args = ["issue", "create", "--title", input.title, "--body", input.body];
   if (input.labels !== undefined && input.labels.length > 0) {
     args.push("--label", input.labels.join(","));
   }
+  if (input.assignee !== undefined) args.push("--assignee", input.assignee);
+  if (input.milestone !== undefined) args.push("--milestone", input.milestone);
   return execFileSync("gh", args, { cwd, encoding: "utf8" }).trim();
+}
+
+/** Add an issue/PR (by URL) to a GitHub Project — resolves the Project's number + owner from its node
+    id, then `gh project item-add`. Throws on failure. */
+export function addToProject(cwd: string, projectId: string, url: string): void {
+  const project = ghJson(
+    cwd,
+    `query{node(id:"${projectId}"){... on ProjectV2{number owner{... on User{login} ... on Organization{login}}}}}`,
+  ).data.node as { number: number; owner: { login: string } };
+  execFileSync(
+    "gh",
+    ["project", "item-add", String(project.number), "--owner", project.owner.login, "--url", url],
+    { cwd, encoding: "utf8" },
+  );
 }
 
 /** Close an issue via `gh` (→ `done`). Throws on failure. */
