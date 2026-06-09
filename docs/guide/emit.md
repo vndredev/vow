@@ -28,7 +28,7 @@ fulfills: emit entity
 - **`task.ts`** — a `Task` interface + a validating `createTask` factory (a missing required field throws). Every entity also gets a stable auto-`id` (the factory generates it) — the identity a `reference` points at.
 - **`task.test.ts`** — a Vitest suite **derived from the fields** (a happy path + one reject per required field). No one writes it; the test names _are_ the proven scenarios (see [proof](/guide/proof)).
 
-**Field types:** `text` · `longtext` (multi-line — a `string`, rendered as a `<textarea>`) · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`) · `reference(entity)` (the target entity's id, typed as `string`; in a view it's a **dropdown** of the target's items via the shared store, labelled by the target's first text field). Resolving a referent for display (showing its name in place of the id) is on the [roadmap](/guide/roadmap).
+**Field types:** `text` · `longtext` (multi-line — a `string`, rendered as a `<textarea>`) · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`) · `reference(entity)` (the target entity's id, typed as `string`; in a view it's a **dropdown** of the target's items via the shared store, labelled by the target's first text field). Resolving a referent for display (showing its name in place of the id) is on the [roadmap](/guide/changelog).
 
 An entity is **data, not a screen** — it never renders by itself. To put it on the page, a view lists it.
 
@@ -77,6 +77,6 @@ of: task
 submit: Add task
 ```
 
-→ a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. The form becomes its **own routed page** at `/<slug>`. (Standalone forms with inline `fields:` are on the [roadmap](/guide/roadmap).)
+→ a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. The form becomes its **own routed page** at `/<slug>`. (Standalone forms with inline `fields:` are on the [roadmap](/guide/changelog).)
 
 Next: [bind →](/guide/bind)

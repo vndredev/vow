@@ -6,7 +6,7 @@ order: 1
 # Getting started
 
 ::: warning Foundation phase
-vow isn't on npm yet — there's no `npm create vow`, and the `@vow/*` packages are workspace-internal. The way to **experience** vow today is to run the starter app in the repo and watch vows become a running UI. A standalone install (published packages + a `vow create` scaffold) is on the [roadmap](/guide/roadmap).
+vow isn't on npm yet — there's no `npm create vow`, and the `@vow/*` packages are workspace-internal. The way to **experience** vow today is to run the starter app in the repo and watch vows become a running UI. A standalone install (published packages + a `vow create` scaffold) is on the [roadmap](/guide/changelog).
 :::
 
 ## Run the starter

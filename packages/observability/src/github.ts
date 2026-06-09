@@ -174,7 +174,7 @@ export function featureIssueBody(input: {
 }): string {
   const strand = input.strand ?? "generation · author layer";
   return [
-    `**Strand / roadmap item** (${strand}) — see the [roadmap](../../docs/guide/roadmap.md)`,
+    `**Strand / roadmap item** (${strand}) — see the [roadmap](../../docs/guide/changelog.md)`,
     ``,
     `**The element / function** — ${input.element}`,
     ``,

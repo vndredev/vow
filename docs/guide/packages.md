@@ -13,7 +13,7 @@ vow is a pnpm monorepo of small, focused packages, split by **kind** (see [Archi
 | -------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------- |
 | `@vow/core`          | the vow primitive — parse + **serialize** `.vow.md`, load the tree, validate | [The Vow primitive](/guide/vow) · [proof](/guide/proof) |
 | `@vow/gate`          | the scenario-coverage gate — every promise needs a green test                | [proof](/guide/proof)                                   |
-| `@vow/observability` | reads the truth (git today; coverage + CI next) into a derived timeline      | [proof](/guide/proof) · [roadmap](/guide/roadmap)       |
+| `@vow/observability` | reads the truth (git today; coverage + CI next) into a derived timeline      | [proof](/guide/proof) · [roadmap](/guide/changelog)     |
 
 ## Model & logic
 
