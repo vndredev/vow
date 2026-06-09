@@ -26,9 +26,10 @@ jobs:
         run: echo "$PR_TITLE" | pnpm exec commitlint
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-      # Generate first: the starter app imports from the gitignored .generated/, which only a
-      # Vite run materializes — so `vp check` (typecheck) needs it to exist beforehand.
+      # Generate first: the apps import from the gitignored .generated/, which only a Vite run
+      # materializes — so `vp check` (typecheck) needs it to exist beforehand.
       - run: vp build apps/starter
+      - run: vp build apps/studio
       - run: vp check
       - run: pnpm -r test
       - run: vp build apps/docs

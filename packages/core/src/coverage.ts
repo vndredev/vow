@@ -1,15 +1,18 @@
 /**
  * scenario-coverage — the gate that keeps a promise from going unproven.
  *
- * Every scenario a vow claims must have a matching test in the corpus. A claim is "covered" when
- * some test name contains it — the emitter names each generated test after the claim, so `emit`
- * vows cover themselves; a `bind` vow's hand-written test must carry the claim as its name. Any
- * uncovered claim is an unproven promise → the gate is red. This also catches a generated test that
- * was never run (e.g. `.generated/` not built): its claim simply shows up uncovered.
+ * Every scenario a vow claims must have a test named EXACTLY that claim. The emitter names each
+ * generated test after the claim (the test names ARE the proven scenarios), so `emit` vows cover
+ * themselves; a `bind` vow's hand-written test must be named the claim verbatim. A claim with no
+ * exact match — or an empty/blank claim — is an unproven promise → the gate is red. This also catches
+ * a generated test that was never run (e.g. `.generated/` not built): its claim shows up uncovered.
  */
 export function uncoveredScenarios(
   expected: readonly string[],
   testNames: readonly string[],
 ): string[] {
-  return expected.filter((claim) => !testNames.some((name) => name.includes(claim)));
+  const names = new Set(testNames);
+  // Exact match — a substring match let an empty claim ride on every test name, and "adds a task"
+  // ride on "readds a task quickly" (both false-greens). A blank claim can never be covered.
+  return expected.filter((claim) => claim.trim() === "" || !names.has(claim));
 }

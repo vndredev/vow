@@ -4,7 +4,7 @@ import commitTypes from "./commit-types.json" with { type: "json" };
 /**
  * @vow/observability — read the truth into a derived timeline. Today it reads **git** (the merged
  * history, day 1 → now); coverage + CI join next (so a vow's derived status can include `blocked`).
- * This is what lets the roadmap derive itself instead of being hand-maintained.
+ * This is what lets the changelog derive itself instead of being hand-maintained.
  */
 
 /** A Badge variant — vow's status colours (see @vow/theme). */
@@ -13,7 +13,7 @@ export type BadgeVariant = "neutral" | "accent" | "success" | "warning" | "dange
 /**
  * The single source for the commit vocabulary: every conventional-commit `type` → its timeline Badge
  * variant (`commit-types.json`). The commit-msg hook (`commitlint.config.js`) enforces a subject uses one
- * of these keys, and the roadmap timeline colours each change by it — so the format the git hook
+ * of these keys, and the changelog timeline colours each change by it — so the format the git hook
  * guarantees is the format the timeline reads, from one definition.
  */
 export const COMMIT_TYPES: Readonly<Record<string, string>> = commitTypes;
@@ -54,7 +54,7 @@ export function parseGitLog(output: string): TimelineEntry[] {
       if (tag?.[1] !== undefined) version = tag[1];
       const pm = /\s*\(#(\d+)\)\s*$/.exec(raw);
       const subject = pm === null ? raw : raw.slice(0, pm.index).trim();
-      const cc = /^(\w+)(?:\([\w-]+\))?: (.+)$/.exec(subject); // type(scope): description
+      const cc = /^(\w+)(?:\([^)]+\))?!?: (.+)$/.exec(subject); // type(scope)!: description (! = breaking)
       return {
         date,
         title: cc?.[2] ?? subject,

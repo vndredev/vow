@@ -27,11 +27,19 @@ export function appBySlug(slug: string): App {
   return app;
 }
 
-/** Resolve the named apps (a list of slugs, or `["all"]`, or empty → the default dev set). */
+/** Resolve the named apps: empty → the default dev set; `all` anywhere → every app; else the named apps,
+    de-duplicated (so `vow dev docs docs` doesn't spawn two servers on the same `--strictPort`). */
 export function resolveApps(names: readonly string[]): readonly App[] {
   if (names.length === 0) return DEFAULT_DEV.map(appBySlug);
-  if (names.length === 1 && names[0] === "all") return APPS;
-  return names.map(appBySlug);
+  if (names.includes("all")) return APPS;
+  const seen = new Set<string>();
+  return names
+    .filter((n) => {
+      if (seen.has(n)) return false;
+      seen.add(n);
+      return true;
+    })
+    .map(appBySlug);
 }
 
 /** The repo root — walk up from this file to the directory holding `pnpm-workspace.yaml`. */

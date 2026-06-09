@@ -39,6 +39,15 @@ test("parseGitLog ignores blank lines", () => {
   expect(parseGitLog("2026-06-08\t\ta\n\n")).toHaveLength(1);
 });
 
+test("parseGitLog reads a breaking `feat!:` and a slashed scope `(ci/cd)`", () => {
+  const out = ["2026-06-09\t\tfeat!: drop the old api", "2026-06-09\t\tfix(ci/cd): the gate"].join(
+    "\n",
+  );
+  const entries = parseGitLog(out);
+  expect(entries[0]).toMatchObject({ type: "feat", title: "drop the old api" });
+  expect(entries[1]).toMatchObject({ type: "fix", title: "the gate" });
+});
+
 test("variantForType maps each commit type to its Badge variant, neutral for the unknown", () => {
   expect(variantForType("feat")).toBe("success");
   expect(variantForType("fix")).toBe("warning");

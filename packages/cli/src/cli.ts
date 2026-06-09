@@ -7,7 +7,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
 
   vow dev [app...]     run app(s) in the foreground, streaming combined logs (default: studio docs;
                        "all" = every app). Background it yourself — the harness, \`&\`, a supervisor.
-  vow status           which app ports are responding
+  vow status [app...]  which app ports are responding (default: all)
   vow stop [app...]    stop app(s) — frees their ports (default: all)
 
   vow check            vp check — fmt + lint + typecheck (forwards flags, e.g. --fix)
@@ -16,8 +16,9 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
 
   apps: ${APPS.map((a) => `${a.slug} (:${a.port})`).join(" · ")}`;
 
-async function showStatus(): Promise<number> {
-  for (const s of await status()) {
+async function showStatus(names: string[]): Promise<number> {
+  const apps = names.length > 0 ? resolveApps(names) : APPS; // bare `vow status` = every app
+  for (const s of await status(apps)) {
     console.log(`${s.slug.padEnd(8)} :${s.port}  ${s.responding ? "up" : "down"}`);
   }
   return 0;
@@ -36,7 +37,7 @@ async function main(): Promise<number> {
       await runDev(resolveApps(rest)); // foreground — returns only on a signal
       return 0;
     case "status":
-      return showStatus();
+      return showStatus(rest);
     case "stop":
       return stop(rest);
     case "check":
