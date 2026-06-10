@@ -1,5 +1,5 @@
 import { allVows, generateFiles } from "@vow/vite-plugin";
-import { defined, loadVows, mapDefined, parseVowMd, uncoveredScenarios } from "@vow/core";
+import { defined, loadVows, mapDefined, parseVowMd, uncoveredScenarios } from "@vow/core/node";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { entityProves } from "@vow/emit-entity";
 import path from "node:path";

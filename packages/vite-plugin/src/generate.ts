@@ -1,7 +1,7 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Artifact, type Contribution, type GroupRef, planVow } from "./plan.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type Maybe, type ReadonlyVow, defined, validateReferences } from "@vow/core";
+import { type Maybe, type ReadonlyVow, defined, validateReferences } from "@vow/core/node";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Page, allVows, entityVows } from "./vows.ts";
 import { VOW_ENV_DTS, emitAppLayout, emitAppRoutes, emitBoot } from "@vow/emit-view";

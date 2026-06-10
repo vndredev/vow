@@ -1,7 +1,7 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Db, openDevDb, syncEntities } from "./dev-db.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type Maybe, type ReadonlyVow, defined, loadVows } from "@vow/core";
+import { type Maybe, type ReadonlyVow, defined, loadVows } from "@vow/core/node";
 import type { Plugin, ViteDevServer } from "vite-plus";
 import { dataApi, issuesApi } from "./dev-api.ts";
 import { loadVowModule, resolveVowId } from "./virtual.ts";

@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { validateReferences } from "../src/index.ts";
+import { validateReferences } from "../src/load.ts";
 
 /** The read-only vow + field shapes, derived from `validateReferences` so only the value is imported. */
 type Vow = Parameters<typeof validateReferences>[0][number];

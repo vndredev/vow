@@ -9,7 +9,7 @@ import {
   removeVow,
   setIntent,
   setNav,
-} from "@vow/core";
+} from "@vow/core/node";
 import {
   bootstrap,
   get,
