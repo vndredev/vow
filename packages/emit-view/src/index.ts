@@ -35,6 +35,12 @@ export {
   usesTimeline,
 } from "./refs.ts";
 export { emitTimelineSfc } from "./timeline.ts";
-export { type RenderScenario, renderScenarios, viewProves } from "./view-scenarios.ts";
-export { emitCompositionTest, emitViewTest } from "./view-test.ts";
+export {
+  type RenderScenario,
+  formProves,
+  formScenarios,
+  renderScenarios,
+  viewProves,
+} from "./view-scenarios.ts";
+export { emitCompositionTest, emitFormTest, emitViewTest } from "./view-test.ts";
 export { emitProse, emitView, referencedPrimitives } from "./view.ts";

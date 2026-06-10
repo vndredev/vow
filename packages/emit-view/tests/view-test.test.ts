@@ -1,4 +1,10 @@
-import { emitViewTest, renderScenarios, viewProves } from "../src/index.ts";
+import {
+  emitFormTest,
+  emitViewTest,
+  formProves,
+  renderScenarios,
+  viewProves,
+} from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import type { Vow } from "@vow/core";
 
@@ -37,4 +43,28 @@ test("emitViewTest mounts the page's .vue + runs axe, named after the scenarios"
   expect(code).toContain(`const wrapper = mount(Tasks);`);
   expect(code).toContain(`test("The Tasks view has no accessibility violations", async () => {`);
   expect(code).toContain(`const results = await axe.run(wrapper.element);`);
+});
+
+/** A form vow over the task entity — only the slug drives the form-test name. */
+const addTaskForm: Vow = {
+  children: [],
+  fields: [],
+  form: { of: "task", submit: "Add task" },
+  fulfills: { as: "form", kind: "emit" },
+  id: "vow_addtask",
+  intent: "Add a task",
+  proof: [],
+  slug: "add-task",
+};
+
+test("formProves derives a form's single interaction scenario", () => {
+  expect(formProves(addTaskForm)).toEqual(["The AddTask form rejects an incomplete submit"]);
+});
+
+test("emitFormTest mounts the form + submits it empty, asserting an error surfaces", () => {
+  const code = emitFormTest(addTaskForm);
+  expect(code).toContain(`import AddTask from "./add-task.vue";`);
+  expect(code).toContain(`test("The AddTask form rejects an incomplete submit", async () => {`);
+  expect(code).toContain(`await wrapper.find("form").trigger("submit");`);
+  expect(code).toContain(`expect(wrapper.find('[role="alert"]').exists()).toBe(true);`);
 });

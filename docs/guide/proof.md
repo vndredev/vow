@@ -29,6 +29,10 @@ Beyond the `emit entity` factory tests, a generated **view** proves itself at ru
 - **`The <View> view renders`** — mounts the component (a broken template throws here)
 - **`The <View> view has no accessibility violations`** — axe finds zero violations on the rendered DOM
 
+A generated **form** proves one thing more — its **validation**:
+
+- **`The <Form> form rejects an incomplete submit`** — mounts the form, submits it empty, and asserts a `role="alert"` error surfaces (the zod factory rejects the draft)
+
 This closes a gap that lint, type-check, and the production build all miss: a generated `.vue` is only _trusted_ until it's actually mounted (the build tree-shakes unused code; unit tests run in Node). _Foundation:_ today it asserts the empty/default state; seeded data is a later step.
 
 ## Status is derived, never set

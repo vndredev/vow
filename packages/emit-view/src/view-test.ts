@@ -1,6 +1,6 @@
+import { formScenarios, renderScenarios } from "./view-scenarios.ts";
 import type { ReadonlyVow } from "./types.ts";
 import { pascalCase } from "@vow/component";
-import { renderScenarios } from "./view-scenarios.ts";
 import { viewComponentName } from "./naming.ts";
 
 /** One render scenario, as `renderScenarios` yields it — the element type of its return. */
@@ -63,4 +63,31 @@ export function emitViewTest(vow: ReadonlyVow): string {
 export function emitCompositionTest(entity: ReadonlyVow): string {
   const name = viewComponentName(entity);
   return emitRenderTest(`${name}.vue`, name, entity.slug);
+}
+
+/** A form-interaction Vitest suite: mount the form, submit it empty, assert validation surfaces an error
+    (the `role="alert"` per-field error). Names the test after the proven scenario. */
+export function emitFormTest(vow: ReadonlyVow): string {
+  const label = pascalCase(vow.slug);
+  const out: string[] = [
+    `// @vitest-environment jsdom`,
+    `import { expect, test } from "vite-plus/test";`,
+    `import { mount } from "@vue/test-utils";`,
+    `import ${label} from "./${vow.slug}.vue";`,
+    ``,
+    `// Generated from vow "${vow.slug}". Each test name IS a proven scenario — do not edit.`,
+  ];
+  for (const scenario of formScenarios(label)) {
+    out.push(
+      ``,
+      `test(${JSON.stringify(scenario.claim)}, async () => {`,
+      `  const wrapper = mount(${label});`,
+      `  await wrapper.find("form").trigger("submit");`,
+      `  expect(wrapper.find('[role="alert"]').exists()).toBe(true);`,
+      `  wrapper.unmount();`,
+      `});`,
+    );
+  }
+  out.push(``);
+  return out.join("\n");
 }

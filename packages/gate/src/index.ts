@@ -1,9 +1,9 @@
 import { allVows, generateFiles } from "@vow/vite-plugin";
 import { defined, loadVows, mapDefined, parseVowMd, uncoveredScenarios } from "@vow/core/node";
+import { formProves, viewProves } from "@vow/emit-view";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { entityProves } from "@vow/emit-entity";
 import path from "node:path";
-import { viewProves } from "@vow/emit-view";
 
 /**
  * Vow's scenario-coverage gate — the tor that keeps a promise from going unproven.
@@ -64,8 +64,15 @@ export function expectedScenarios(vow: ReadonlyVow): string[] {
   if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "entity") {
     return entityProves(widen(vow));
   }
-  if (vow.fulfills?.kind === "emit" && (vow.fulfills.as === "view" || vow.fulfills.as === "form")) {
+  if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "view") {
     return [...vow.proof.map((scenario) => scenario.claim), ...viewProves(widen(vow))];
+  }
+  if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "form") {
+    return [
+      ...vow.proof.map((scenario) => scenario.claim),
+      ...viewProves(widen(vow)),
+      ...formProves(widen(vow)),
+    ];
   }
   return vow.proof.map((scenario) => scenario.claim);
 }
