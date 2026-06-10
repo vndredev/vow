@@ -1,5 +1,3 @@
-import { expect, test } from "vite-plus/test";
-import { type Vow as VowNode } from "@vow/core";
 import {
   boardComponentName,
   cardsComponentName,
@@ -11,198 +9,232 @@ import {
   statsComponentName,
   viewComponentName,
 } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import type { Vow as VowNode } from "@vow/core";
+
+/** Assert every substring is present in the generated SFC — keeps a test body to a few statements. */
+function expectContains(sfc: string, parts: readonly string[]): void {
+  for (const part of parts) {
+    expect(sfc).toContain(part);
+  }
+}
+
+/** Assert none of the substrings is present in the SFC. */
+function expectMissing(sfc: string, parts: readonly string[]): void {
+  for (const part of parts) {
+    expect(sfc).not.toContain(part);
+  }
+}
 
 const entity: VowNode = {
-  id: "vow_task",
-  slug: "task",
-  intent: "A task",
   children: [],
   fields: [
-    { name: "title", type: "text", required: true },
-    { name: "done", type: "boolean", required: false },
+    { name: "title", required: true, type: "text" },
+    { name: "done", required: false, type: "boolean" },
   ],
+  fulfills: { as: "entity", kind: "emit" },
+  id: "vow_task",
+  intent: "A task",
   proof: [],
-  fulfills: { kind: "emit", as: "entity" },
+  slug: "task",
+};
+
+const issue: VowNode = {
+  ...entity,
+  fields: [{ name: "assignee", ref: "user", required: false, type: "reference" }],
+  id: "vow_issue",
+  slug: "issue",
 };
 
 test("emitEntityList renders an unstyled, read-only table over the entity", () => {
   expect(viewComponentName(entity)).toBe("Task");
   const sfc = emitEntityList(entity);
-  expect(sfc).toContain('import { type Task } from "./task.ts";');
-  expect(sfc).toContain('import { useCollection } from "@vow/store";');
-  expect(sfc).toContain('const { items: rows } = useCollection<Task>("task");');
-  // composes the Table primitive: a header from the field names, one <TableRow> per record (grouped —
-  // one <tbody> when ungrouped), each value in its own <TableCell>
-  expect(sfc).toContain('import Table from "./Table.vue";');
-  expect(sfc).toContain('<TableHead scope="col">title</TableHead>');
-  expect(sfc).toContain('v-for="grp in grouped"');
-  expect(sfc).toContain('v-for="item in grp.items"');
-  expect(sfc).toContain('<TableCell class="field-title">{{ item.title }}</TableCell>');
-  expect(sfc).toContain('{{ item.done ? "Yes" : "No" }}'); // boolean: read-only, not a checkbox
+  // Composes the Table primitive: a header from the field names, one <TableRow> per record (grouped).
+  // Each value sits in its own <TableCell>; a boolean cell is read-only (Yes/No), not an input.
+  expectContains(sfc, [
+    'import { type Task } from "./task.ts";',
+    'import { useCollection } from "@vow/store";',
+    'const { items: rows } = useCollection<Task>("task");',
+    'import Table from "./Table.vue";',
+    '<TableHead scope="col">title</TableHead>',
+    'v-for="grp in grouped"',
+    'v-for="item in grp.items"',
+    '<TableCell class="field-title">{{ item.title }}</TableCell>',
+    '{{ item.done ? "Yes" : "No" }}',
+  ]);
   expect(sfc).not.toContain("<style");
 });
 
 test("the read-only list has no create form and no delete — the agent mutates via the MCP", () => {
   const sfc = emitEntityList(entity);
-  expect(sfc).not.toContain("vow-view__create"); // no inline create form
-  expect(sfc).not.toContain("vow-view__delete"); // no delete button
-  expect(sfc).not.toContain("draft"); // no editable draft
-  expect(sfc).not.toContain("@submit"); // nothing submits
-  expect(sfc).not.toContain("createTask"); // the list never creates
-  expect(sfc).not.toContain('from "zod"'); // no validation in a read-only view
+  // No inline create form, no delete, no editable draft, nothing submits, no zod — a read-only view.
+  expectMissing(sfc, [
+    "vow-view__create",
+    "vow-view__delete",
+    "draft",
+    "@submit",
+    "createTask",
+    'from "zod"',
+  ]);
 });
 
 test("the list carries no heading of its own — the referencing view owns headings", () => {
   const sfc = emitEntityList(entity);
-  expect(sfc).not.toContain("vow-view__title");
-  expect(sfc).not.toContain("<h1");
+  expectMissing(sfc, ["vow-view__title", "<h1"]);
 });
 
 test("a select field renders read-only as a Badge cell", () => {
   const ticket: VowNode = {
     ...entity,
+    fields: [
+      { name: "status", options: ["todo", "doing", "done"], required: false, type: "select" },
+    ],
     id: "vow_ticket",
     slug: "ticket",
-    fields: [
-      { name: "status", type: "select", required: false, options: ["todo", "doing", "done"] },
-    ],
   };
   const sfc = emitEntityList(ticket);
-  expect(sfc).toContain('import Badge from "./Badge.vue";');
-  expect(sfc).toContain('<Badge :label="String(item.status)" />');
-  expect(sfc).not.toContain("./Select.vue"); // no form control in a read-only list
+  expectContains(sfc, [
+    'import Badge from "./Badge.vue";',
+    '<Badge :label="String(item.status)" />',
+  ]);
+  // No form control in a read-only list.
+  expect(sfc).not.toContain("./Select.vue");
 });
 
 test("fieldControl renders the right input per field type (the form control map)", () => {
+  // A native date input.
   const date = JSON.stringify(
-    fieldControl({ name: "starts", type: "date", required: true }, "draft.starts"),
+    fieldControl({ name: "starts", required: true, type: "date" }, "draft.starts"),
   );
-  expect(date).toContain('"value":"date"'); // a native date input
+  expect(date).toContain('"value":"date"');
   const longtext = JSON.stringify(
-    fieldControl({ name: "body", type: "longtext", required: false }, "draft.body"),
+    fieldControl({ name: "body", required: false, type: "longtext" }, "draft.body"),
   );
   expect(longtext).toContain('"tag":"textarea"');
   const select = JSON.stringify(
     fieldControl(
-      { name: "status", type: "select", required: false, options: ["a"] },
+      { name: "status", options: ["a"], required: false, type: "select" },
       "draft.status",
     ),
   );
   expect(select).toContain('"name":"Select"');
+  // A reference reads the target's <field>Choices computed.
   const reference = JSON.stringify(
     fieldControl(
-      { name: "assignee", type: "reference", required: false, ref: "user" },
+      { name: "assignee", ref: "user", required: false, type: "reference" },
       "draft.assignee",
     ),
   );
-  expect(reference).toContain("assigneeChoices"); // reads the target's <field>Choices computed
+  expect(reference).toContain("assigneeChoices");
 });
 
-const issue: VowNode = {
-  ...entity,
-  id: "vow_issue",
-  slug: "issue",
-  fields: [{ name: "assignee", type: "reference", required: false, ref: "user" }],
-};
-
 test("a reference cell resolves the stored id to the target's display name (not the id)", () => {
-  const sfc = emitEntityList(issue); // no byId → label falls back to the id
-  expect(sfc).toContain(
+  // No byId → the label falls back to the id; a read-only list has no form dropdown.
+  const sfc = emitEntityList(issue);
+  expectContains(sfc, [
     'const assigneeOptions = useCollection<{ id: string } & Record<string, unknown>>("user").items;',
-  );
-  expect(sfc).toContain("const assigneeName = (id: unknown): string =>");
-  expect(sfc).toContain("{{ assigneeName(item.assignee) }}"); // the resolved name in the cell
-  expect(sfc).not.toContain("assigneeChoices"); // no form dropdown in a read-only list
+    "const assigneeName = (id: unknown): string =>",
+    "{{ assigneeName(item.assignee) }}",
+  ]);
+  expect(sfc).not.toContain("assigneeChoices");
 });
 
 test("a reference cell labels its target by the target's first text field", () => {
   const user: VowNode = {
     ...entity,
+    fields: [{ name: "name", required: true, type: "text" }],
     id: "vow_user",
     slug: "user",
-    fields: [{ name: "name", type: "text", required: true }],
   };
   const sfc = emitEntityList(issue, new Map([["user", user]]));
-  expect(sfc).toContain("?.name ?? id"); // the resolver reads the target's `name`
+  // The resolver reads the target's `name`.
+  expect(sfc).toContain("?.name ?? id");
 });
 
 test("emitEntityStats counts rows per a select field, composing Stats/Stat", () => {
   const ticket: VowNode = {
     ...entity,
+    fields: [
+      { name: "status", options: ["todo", "doing", "done"], required: false, type: "select" },
+    ],
     id: "vow_ticket",
     slug: "ticket",
-    fields: [
-      { name: "status", type: "select", required: false, options: ["todo", "doing", "done"] },
-    ],
   };
   expect(statsComponentName("ticket", "status")).toBe("TicketStatusStats");
   const sfc = emitEntityStats(ticket, "status");
-  expect(sfc).toContain('const { items: rows } = useCollection<Ticket>("ticket");');
-  expect(sfc).toContain('const options = ["todo","doing","done"];');
-  expect(sfc).toContain("rows.filter((r) => r.status === o).length");
-  expect(sfc).toContain('<Stat :value="s.value" :label="s.label"');
-  expect(() => emitEntityStats(ticket, "title")).toThrow(); // `by` must be a select field of the entity
+  expectContains(sfc, [
+    'const { items: rows } = useCollection<Ticket>("ticket");',
+    'const options = ["todo","doing","done"];',
+    "rows.filter((r) => r.status === o).length",
+    '<Stat :value="s.value" :label="s.label"',
+  ]);
+  // `by` must be a select field of the entity.
+  expect(() => emitEntityStats(ticket, "title")).toThrow();
 });
 
 test("emitEntityCards renders a Card per record, titled by the first text field", () => {
   const ticket: VowNode = {
     ...entity,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "status", options: ["todo", "done"], required: false, type: "select" },
+    ],
     id: "vow_ticket",
     slug: "ticket",
-    fields: [
-      { name: "title", type: "text", required: true },
-      { name: "status", type: "select", required: false, options: ["todo", "done"] },
-    ],
   };
   expect(cardsComponentName("ticket")).toBe("TicketCards");
   const sfc = emitEntityCards(ticket);
-  expect(sfc).toContain('const { items: rows } = useCollection<Ticket>("ticket");');
-  expect(sfc).toContain('import Card from "./Card.vue";');
-  expect(sfc).toContain('v-for="grp in grouped"'); // group-by: a section per group (one when ungrouped)
-  expect(sfc).toContain('v-for="item in grp.items"');
-  expect(sfc).toContain("<CardHeader>{{ item.title }}</CardHeader>");
-  expect(sfc).toContain("status: "); // a non-title field, labelled, in the body
-  const notEntity: VowNode = { ...ticket, fulfills: { kind: "emit", as: "view" } };
+  // Group-by: a section per group (one when ungrouped); a non-title field is labelled in the body.
+  expectContains(sfc, [
+    'const { items: rows } = useCollection<Ticket>("ticket");',
+    'import Card from "./Card.vue";',
+    'v-for="grp in grouped"',
+    'v-for="item in grp.items"',
+    "<CardHeader>{{ item.title }}</CardHeader>",
+    "status: ",
+  ]);
+  const notEntity: VowNode = { ...ticket, fulfills: { as: "view", kind: "emit" } };
   expect(() => emitEntityCards(notEntity)).toThrow();
 });
 
 test("emitEntityBoard renders a column per option, draggable cards, a status writeback", () => {
   const ticket: VowNode = {
     ...entity,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "status", options: ["todo", "done"], required: false, type: "select" },
+    ],
     id: "vow_ticket",
     slug: "ticket",
-    fields: [
-      { name: "title", type: "text", required: true },
-      { name: "status", type: "select", required: false, options: ["todo", "done"] },
-    ],
   };
   expect(boardComponentName("ticket", "status")).toBe("TicketStatusBoard");
   const sfc = emitEntityBoard(ticket, "status");
-  expect(sfc).toContain('const options = ["todo","done"];');
-  expect(sfc).toContain('v-for="col in columns"');
-  expect(sfc).toContain('draggable="true"');
-  expect(sfc).toContain("@dragover.prevent");
-  expect(sfc).toContain('@dragstart="dragged = item"');
-  expect(sfc).toContain('@drop="onDrop(col.option)"'); // a drop writes the field back
-  expect(sfc).toContain('dragged.value.status = option as Ticket["status"]');
-  // slicing: a `filter` / `sort` prop narrows + orders the visible cards before they're grouped
-  expect(sfc).toContain(
+  // A drop writes the field back; slicing narrows + orders the visible cards before they're grouped.
+  expectContains(sfc, [
+    'const options = ["todo","done"];',
+    'v-for="col in columns"',
+    'draggable="true"',
+    "@dragover.prevent",
+    '@dragstart="dragged = item"',
+    '@drop="onDrop(col.option)"',
+    'dragged.value.status = option as Ticket["status"]',
     "defineProps<{ filter?: Record<string, unknown>; sort?: keyof Ticket; group?: keyof Ticket }>",
-  );
-  expect(sfc).toContain("const visible = computed(()");
-  expect(sfc).toContain("visible.value.filter((r) => r.status === o)");
-  expect(() => emitEntityBoard(ticket, "title")).toThrow(); // `by` must be a select field
+    "const visible = computed(()",
+    "visible.value.filter((r) => r.status === o)",
+  ]);
+  // `by` must be a select field.
+  expect(() => emitEntityBoard(ticket, "title")).toThrow();
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {
   const view: VowNode = {
-    id: "vow_page",
-    slug: "page",
-    intent: "A page",
     children: [],
     fields: [],
+    fulfills: { as: "view", kind: "emit" },
+    id: "vow_page",
+    intent: "A page",
     proof: [],
-    fulfills: { kind: "emit", as: "view" },
+    slug: "page",
   };
   expect(() => emitEntityList(view)).toThrow();
 });

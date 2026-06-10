@@ -1,7 +1,10 @@
-import { renderVueSfc, type Component } from "@vow/component";
+import { renderVueSfc } from "@vow/component";
+
+/** The canonical component model `renderVueSfc` consumes — derived from its signature, not re-imported. */
+type Component = Parameters<typeof renderVueSfc>[0];
 
 /**
- * vow's layout primitives — structural components for arranging UI (Flex, Grid, Box, Container).
+ * Vow's layout primitives — structural components for arranging UI (Flex, Grid, Box, Container).
  *
  * Per the primitives rule (docs/guide/primitives.md), a `<div style="display:flex">` is something
  * the browser does natively — so these carry NO ARIA, no keyboard logic, no @vow/headless core.
@@ -21,200 +24,200 @@ const EDGE =
 
 /** A flex container. Props mirror the CSS, with ergonomic enum values (Radix-style). */
 const flex: Component = {
-  name: "Flex",
   doc: [
     "Layout primitive: a flex container. Generated from the canonical component model — do not edit.",
     "Pure structure (no a11y); the computed style maps props to CSS, gap to a @vow/theme token.",
   ],
   imports: [{ from: "vue", names: ["computed"] }],
+  name: "Flex",
   props: [
     {
-      name: "direction",
-      tsType: "'row' | 'column' | 'row-reverse' | 'column-reverse'",
-      optional: true,
       default: "'row'",
+      name: "direction",
+      optional: true,
+      tsType: "'row' | 'column' | 'row-reverse' | 'column-reverse'",
     },
     {
-      name: "align",
-      tsType: "'start' | 'center' | 'end' | 'baseline' | 'stretch'",
-      optional: true,
       default: "'stretch'",
+      name: "align",
+      optional: true,
+      tsType: "'start' | 'center' | 'end' | 'baseline' | 'stretch'",
     },
     {
-      name: "justify",
-      tsType: "'start' | 'center' | 'end' | 'between'",
-      optional: true,
       default: "'start'",
+      name: "justify",
+      optional: true,
+      tsType: "'start' | 'center' | 'end' | 'between'",
     },
     {
-      name: "wrap",
-      tsType: "'nowrap' | 'wrap' | 'wrap-reverse'",
-      optional: true,
       default: "'nowrap'",
+      name: "wrap",
+      optional: true,
+      tsType: "'nowrap' | 'wrap' | 'wrap-reverse'",
     },
-    { name: "gap", tsType: "number", optional: true, default: "0" },
+    { default: "0", name: "gap", optional: true, tsType: "number" },
   ],
   setup: [
     EDGE,
     "const style = computed(() =>",
     "  [",
     "    'display: flex',",
-    "    `flex-direction: ${props.direction}`,",
-    "    `align-items: ${edge(props.align)}`,",
-    "    `justify-content: ${edge(props.justify)}`,",
-    "    `flex-wrap: ${props.wrap}`,",
-    "    props.gap ? `gap: var(--vow-space-${props.gap})` : '',",
+    `    \`flex-direction: \${props.direction}\`,`,
+    `    \`align-items: \${edge(props.align)}\`,`,
+    `    \`justify-content: \${edge(props.justify)}\`,`,
+    `    \`flex-wrap: \${props.wrap}\`,`,
+    `    props.gap ? \`gap: var(--vow-space-\${props.gap})\` : '',`,
     "  ]",
     "    .filter(Boolean)",
     "    .join('; '),",
     ");",
   ],
   view: {
-    kind: "element",
-    tag: "div",
     attrs: [
       { kind: "static", name: "class", value: "vow-flex" },
-      { kind: "bound", name: "style", expr: "style" },
+      { expr: "style", kind: "bound", name: "style" },
     ],
-    children: [{ kind: "slot", children: [] }],
+    children: [{ children: [], kind: "slot" }],
+    kind: "element",
+    tag: "div",
   },
 };
 
 /** A vertical stack — a flex column with a gap. The most common page/form arrangement, as sugar. */
 const stack: Component = {
-  name: "Stack",
   doc: [
     "Layout primitive: a vertical stack (a flex column with a gap) — the common page/form arrangement.",
     "Pure structure (no a11y); `gap` maps to a @vow/theme spacing token.",
   ],
   imports: [{ from: "vue", names: ["computed"] }],
-  props: [{ name: "gap", tsType: "number", optional: true, default: "4" }],
+  name: "Stack",
+  props: [{ default: "4", name: "gap", optional: true, tsType: "number" }],
   setup: [
     "const style = computed(() =>",
-    "  ['display: flex', 'flex-direction: column', props.gap ? `gap: var(--vow-space-${props.gap})` : '']",
+    `  ['display: flex', 'flex-direction: column', props.gap ? \`gap: var(--vow-space-\${props.gap})\` : '']`,
     "    .filter(Boolean)",
     "    .join('; '),",
     ");",
   ],
   view: {
-    kind: "element",
-    tag: "div",
     attrs: [
       { kind: "static", name: "class", value: "vow-stack" },
-      { kind: "bound", name: "style", expr: "style" },
+      { expr: "style", kind: "bound", name: "style" },
     ],
-    children: [{ kind: "slot", children: [] }],
+    children: [{ children: [], kind: "slot" }],
+    kind: "element",
+    tag: "div",
   },
 };
 
 /** A grid container. `columns` is a count (→ equal tracks) or a raw `grid-template-columns` string. */
 const grid: Component = {
-  name: "Grid",
   doc: [
     "Layout primitive: a grid container. Generated from the canonical component model — do not edit.",
     "Pure structure (no a11y); columns is a count (equal tracks) or a raw template string.",
   ],
   imports: [{ from: "vue", names: ["computed"] }],
+  name: "Grid",
   props: [
-    { name: "columns", tsType: "number | string", optional: true, default: "1" },
+    { default: "1", name: "columns", optional: true, tsType: "number | string" },
     {
-      name: "align",
-      tsType: "'start' | 'center' | 'end' | 'baseline' | 'stretch'",
-      optional: true,
       default: "'stretch'",
+      name: "align",
+      optional: true,
+      tsType: "'start' | 'center' | 'end' | 'baseline' | 'stretch'",
     },
     {
-      name: "justify",
-      tsType: "'start' | 'center' | 'end' | 'between'",
-      optional: true,
       default: "'start'",
+      name: "justify",
+      optional: true,
+      tsType: "'start' | 'center' | 'end' | 'between'",
     },
-    { name: "gap", tsType: "number", optional: true, default: "0" },
+    { default: "0", name: "gap", optional: true, tsType: "number" },
   ],
   setup: [
     EDGE,
     "const cols = (c: number | string): string =>",
-    "  typeof c === 'number' ? `repeat(${c}, minmax(0, 1fr))` : c;",
+    `  typeof c === 'number' ? \`repeat(\${c}, minmax(0, 1fr))\` : c;`,
     "const style = computed(() =>",
     "  [",
     "    'display: grid',",
-    "    `grid-template-columns: ${cols(props.columns)}`,",
-    "    `align-items: ${edge(props.align)}`,",
-    "    `justify-content: ${edge(props.justify)}`,",
-    "    props.gap ? `gap: var(--vow-space-${props.gap})` : '',",
+    `    \`grid-template-columns: \${cols(props.columns)}\`,`,
+    `    \`align-items: \${edge(props.align)}\`,`,
+    `    \`justify-content: \${edge(props.justify)}\`,`,
+    `    props.gap ? \`gap: var(--vow-space-\${props.gap})\` : '',`,
     "  ]",
     "    .filter(Boolean)",
     "    .join('; '),",
     ");",
   ],
   view: {
-    kind: "element",
-    tag: "div",
     attrs: [
       { kind: "static", name: "class", value: "vow-grid" },
-      { kind: "bound", name: "style", expr: "style" },
+      { expr: "style", kind: "bound", name: "style" },
     ],
-    children: [{ kind: "slot", children: [] }],
+    children: [{ children: [], kind: "slot" }],
+    kind: "element",
+    tag: "div",
   },
 };
 
 /** A generic box: padding from the spacing scale, optional explicit width/height. */
 const box: Component = {
-  name: "Box",
   doc: [
     "Layout primitive: a generic box. Generated from the canonical component model — do not edit.",
     "Pure structure (no a11y); padding maps to a @vow/theme token, width/height pass through.",
   ],
   imports: [{ from: "vue", names: ["computed"] }],
+  name: "Box",
   props: [
-    { name: "p", tsType: "number", optional: true, default: "0" },
-    { name: "width", tsType: "string", optional: true },
-    { name: "height", tsType: "string", optional: true },
+    { default: "0", name: "p", optional: true, tsType: "number" },
+    { name: "width", optional: true, tsType: "string" },
+    { name: "height", optional: true, tsType: "string" },
   ],
   setup: [
     "const style = computed(() =>",
     "  [",
-    "    props.p ? `padding: var(--vow-space-${props.p})` : '',",
-    "    props.width ? `width: ${props.width}` : '',",
-    "    props.height ? `height: ${props.height}` : '',",
+    `    props.p ? \`padding: var(--vow-space-\${props.p})\` : '',`,
+    `    props.width ? \`width: \${props.width}\` : '',`,
+    `    props.height ? \`height: \${props.height}\` : '',`,
     "  ]",
     "    .filter(Boolean)",
     "    .join('; '),",
     ");",
   ],
   view: {
-    kind: "element",
-    tag: "div",
     attrs: [
       { kind: "static", name: "class", value: "vow-box" },
-      { kind: "bound", name: "style", expr: "style" },
+      { expr: "style", kind: "bound", name: "style" },
     ],
-    children: [{ kind: "slot", children: [] }],
+    children: [{ children: [], kind: "slot" }],
+    kind: "element",
+    tag: "div",
   },
 };
 
 /** A centered content frame: a max-width step from the theme, auto horizontal margins. */
 const container: Component = {
-  name: "Container",
   doc: [
     "Layout primitive: a centered content frame. Generated from the canonical model — do not edit.",
     "Pure structure (no a11y); size selects a max-width step from @vow/theme, centered horizontally.",
   ],
   imports: [{ from: "vue", names: ["computed"] }],
-  props: [{ name: "size", tsType: "1 | 2 | 3 | 4", optional: true, default: "3" }],
+  name: "Container",
+  props: [{ default: "3", name: "size", optional: true, tsType: "1 | 2 | 3 | 4" }],
   setup: [
     "const style = computed(() =>",
-    "  `max-width: var(--vow-container-${props.size}); margin-left: auto; margin-right: auto; width: 100%`,",
+    `  \`max-width: var(--vow-container-\${props.size}); margin-left: auto; margin-right: auto; width: 100%\`,`,
     ");",
   ],
   view: {
-    kind: "element",
-    tag: "div",
     attrs: [
       { kind: "static", name: "class", value: "vow-container" },
-      { kind: "bound", name: "style", expr: "style" },
+      { expr: "style", kind: "bound", name: "style" },
     ],
-    children: [{ kind: "slot", children: [] }],
+    children: [{ children: [], kind: "slot" }],
+    kind: "element",
+    tag: "div",
   },
 };
 

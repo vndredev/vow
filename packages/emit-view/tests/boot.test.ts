@@ -1,5 +1,5 @@
-import { expect, test } from "vite-plus/test";
 import { VOW_ENV_DTS, emitBoot } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
 
 test("emitBoot generates a router boot — root route + the theme, mounted on #app", () => {
   const boot = emitBoot("landing");

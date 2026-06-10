@@ -1,5 +1,5 @@
 /**
- * vow's canonical component model — one framework-agnostic description, many adapters.
+ * Vow's canonical component model — one framework-agnostic description, many adapters.
  *
  * A `Component` is plain data: optional doc/imports/props/events/setup + a `view` tree of `UiNode`s.
  * Bindings are carried as adapter-neutral **expression strings** (`expr: "item.done"`); each adapter
@@ -80,12 +80,19 @@ export interface ConditionalAttr {
 
 export type Attr = StaticAttr | BoundAttr | SpreadAttr | EventAttr | ModelAttr | ConditionalAttr;
 
-/** A loop over a node (Vue's `v-for`): the node renders once per item, with an optional `:key`. */
+/**
+ * A loop over a node (Vue's `v-for`): the node renders once per item, with an optional `:key`.
+ *
+ * - `each` — the iterable expression, e.g. "rows".
+ * - `as` — the item binding, e.g. "item".
+ * - `index` — the index binding, e.g. "i".
+ * - `key` — the `:key` expression, e.g. "i".
+ */
 export interface Loop {
-  readonly each: string; // the iterable expression, e.g. "rows"
-  readonly as: string; // the item binding, e.g. "item"
-  readonly index?: string; // the index binding, e.g. "i"
-  readonly key?: string; // the :key expression, e.g. "i"
+  readonly each: string;
+  readonly as: string;
+  readonly index?: string;
+  readonly key?: string;
 }
 
 /** An HTML element node. `inline` keeps children on one line (e.g. `<select>` with `<option>`s). */

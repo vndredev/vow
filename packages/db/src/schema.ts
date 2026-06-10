@@ -1,4 +1,4 @@
-import type { Field, Vow } from "@vow/core";
+import type { ReadonlyField, ReadonlyVow } from "@vow/core";
 
 /**
  * The schema half of `@vow/db` — driver-agnostic SQL + value mapping, derived from an entity's fields.
@@ -7,23 +7,36 @@ import type { Field, Vow } from "@vow/core";
  */
 
 /** A SQLite column type for a field — REAL for number, INTEGER for boolean, else TEXT. */
-export function columnType(f: Field): "TEXT" | "REAL" | "INTEGER" {
-  if (f.type === "number") return "REAL";
-  if (f.type === "boolean") return "INTEGER"; // 0/1, coerced back to a JS bool on read
-  return "TEXT"; // text · longtext · select · date · reference (the target's id)
+export function columnType(field: ReadonlyField): "TEXT" | "REAL" | "INTEGER" {
+  if (field.type === "number") {
+    return "REAL";
+  }
+  // INTEGER 0/1, coerced back to a JS bool on read.
+  if (field.type === "boolean") {
+    return "INTEGER";
+  }
+  // TEXT covers text, longtext, select, date, and reference (the target's id).
+  return "TEXT";
 }
 
 /** The default JS value for an absent field — mirrors the generated `create<Name>` factory exactly. */
-export function defaultValue(f: Field): string | number | boolean {
-  if (f.type === "select") return f.options?.[0] ?? "";
-  if (f.type === "number") return 0;
-  if (f.type === "boolean") return false;
-  return ""; // text · longtext · date · reference
+export function defaultValue(field: ReadonlyField): string | number | boolean {
+  if (field.type === "select") {
+    return field.options?.[0] ?? "";
+  }
+  if (field.type === "number") {
+    return 0;
+  }
+  if (field.type === "boolean") {
+    return false;
+  }
+  // The empty string covers text, longtext, date, and reference.
+  return "";
 }
 
 /** `CREATE TABLE IF NOT EXISTS` for an entity — an `id` primary key plus one column per field. */
-export function createTableSql(entity: Vow): string {
-  const cols = entity.fields.map((f) => `  "${f.name}" ${columnType(f)}`);
+export function createTableSql(entity: ReadonlyVow): string {
+  const cols = entity.fields.map((field) => `  "${field.name}" ${columnType(field)}`);
   const body = ['  "id" TEXT PRIMARY KEY', ...cols].join(",\n");
   return `CREATE TABLE IF NOT EXISTS "${entity.slug}" (\n${body}\n);`;
 }

@@ -1,21 +1,26 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { expect, test } from "vite-plus/test";
 import { buildLlms, buildSidebar, docSlug, generateDocs, routePath } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { tmpdir } from "node:os";
+
+// The page + the routes manifest + the layout — the files a single-page scan writes.
+const SINGLE_PAGE_FILES = 3;
 
 test("buildSidebar groups pages by `group`, ordered by the groups list then by `order`", () => {
   const sidebar = buildSidebar(
     [
-      { path: "/b", file: "b.vue", group: "UI", order: 1, title: "B" },
-      { path: "/a", file: "a.vue", group: "Intro", order: 0, title: "A" },
-      { path: "/c", file: "c.vue", group: "UI", order: 0, title: "C" },
-      { path: "/home", file: "home.vue", order: 0, title: "Home" }, // ungrouped → excluded
+      { file: "b.vue", group: "UI", order: 1, path: "/b", title: "B" },
+      { file: "a.vue", group: "Intro", order: 0, path: "/a", title: "A" },
+      { file: "c.vue", group: "UI", order: 0, path: "/c", title: "C" },
+      // Ungrouped -> excluded
+      { file: "home.vue", order: 0, path: "/home", title: "Home" },
     ],
     ["Intro", "UI"],
   );
-  expect(sidebar.map((g) => g.title)).toEqual(["Intro", "UI"]);
-  expect(sidebar[1]?.items.map((i) => i.title)).toEqual(["C", "B"]); // order 0 before 1
+  expect(sidebar.map((group) => group.title)).toEqual(["Intro", "UI"]);
+  // Order 0 before 1
+  expect(sidebar[1]?.items.map((item) => item.title)).toEqual(["C", "B"]);
 });
 
 test("docSlug derives a unique, path-based doc- slug", () => {
@@ -32,12 +37,12 @@ test("routePath gives a clean URL, collapsing index to its folder", () => {
 test("buildSidebar nests pages under a parent path (subpages under their section)", () => {
   const sidebar = buildSidebar(
     [
-      { path: "/guide/primitives", file: "p.vue", group: "UI", order: 1, title: "Primitives" },
+      { file: "p.vue", group: "UI", order: 1, path: "/guide/primitives", title: "Primitives" },
       {
-        path: "/guide/primitives/checkbox",
         file: "c.vue",
         group: "UI",
         order: 1.1,
+        path: "/guide/primitives/checkbox",
         title: "Checkbox",
       },
     ],
@@ -45,90 +50,108 @@ test("buildSidebar nests pages under a parent path (subpages under their section
   );
   const primitives = sidebar[0]?.items[0];
   expect(primitives?.title).toBe("Primitives");
-  expect(primitives?.items?.map((i) => i.title)).toEqual(["Checkbox"]);
+  expect(primitives?.items?.map((item) => item.title)).toEqual(["Checkbox"]);
 });
 
 test("buildSidebar nests at any depth, regardless of input order", () => {
+  const deepest = 3;
+  const middle = 2;
   const sidebar = buildSidebar(
     [
-      { path: "/g/a/b/c", file: "c.vue", group: "UI", order: 3, title: "C" },
-      { path: "/g/a", file: "a.vue", group: "UI", order: 1, title: "A" },
-      { path: "/g/a/b", file: "b.vue", group: "UI", order: 2, title: "B" },
+      { file: "c.vue", group: "UI", order: deepest, path: "/g/a/b/c", title: "C" },
+      { file: "a.vue", group: "UI", order: 1, path: "/g/a", title: "A" },
+      { file: "b.vue", group: "UI", order: middle, path: "/g/a/b", title: "B" },
     ],
     ["UI"],
   );
-  const a = sidebar[0]?.items[0];
-  expect(a?.title).toBe("A");
-  const b = a?.items?.[0];
-  expect(b?.title).toBe("B");
-  expect(b?.items?.[0]?.title).toBe("C");
+  const first = sidebar[0]?.items[0];
+  expect(first?.title).toBe("A");
+  const second = first?.items?.[0];
+  expect(second?.title).toBe("B");
+  expect(second?.items?.[0]?.title).toBe("C");
 });
 
-test("generateDocs renders each .md into a prose .vue + a routes manifest", () => {
-  const content = mkdtempSync(join(tmpdir(), "vow-docs-content-"));
+/** Write a single `intro.md` into a fresh content dir, generate into a fresh out dir, return both. */
+function generateIntro(): { out: string; written: readonly string[] } {
+  const content = mkdtempSync(path.join(tmpdir(), "vow-docs-content-"));
   writeFileSync(
-    join(content, "intro.md"),
+    path.join(content, "intro.md"),
     "---\ngroup: Intro\n---\n\n# Intro\n\nHello **world**.\n",
   );
-  const out = mkdtempSync(join(tmpdir(), "vow-docs-out-"));
+  const out = mkdtempSync(path.join(tmpdir(), "vow-docs-out-"));
+  // No highlighter -> plain code blocks
+  return { out, written: generateDocs(content, out) };
+}
 
-  const written = generateDocs(content, out); // no highlighter → plain code blocks
-  expect(written).toHaveLength(3); // the page + the routes manifest + the layout
-
-  const vue = readFileSync(join(out, "doc-intro.vue"), "utf8");
+/** Assert the generated prose `.vue` renders the markdown and strips the frontmatter. */
+function expectProse(out: string): void {
+  const vue = readFileSync(path.join(out, "doc-intro.vue"), "utf8");
   expect(vue).toContain('<div class="vow-doc">');
   expect(vue).toContain("<h1>Intro</h1>");
   expect(vue).toContain("<strong>world</strong>");
-  expect(vue).not.toContain("group: Intro"); // frontmatter stripped
+  // Frontmatter stripped
+  expect(vue).not.toContain("group: Intro");
+}
 
-  const manifest = readFileSync(join(out, "vow-docs.routes.ts"), "utf8");
+/** Assert the generated routes manifest carries the route, the import, the title, and the sidebar. */
+function expectManifest(out: string): void {
+  const manifest = readFileSync(path.join(out, "vow-docs.routes.ts"), "utf8");
   expect(manifest).toContain('path: "/intro"');
   expect(manifest).toContain('import("./doc-intro.vue")');
-  expect(manifest).toContain('title: "Intro · Docs"'); // "<page> · <site>"
+  // "<page> · <site>"
+  expect(manifest).toContain('title: "Intro · Docs"');
   expect(manifest).toContain("export const sidebar: SidebarGroup[]");
-  expect(manifest).toContain('"title": "Intro"'); // group from frontmatter, in the sidebar
+  // Group from frontmatter, in the sidebar
+  expect(manifest).toContain('"title": "Intro"');
+}
+
+test("generateDocs renders each .md into a prose .vue + a routes manifest", () => {
+  const { out, written } = generateIntro();
+  expect(written).toHaveLength(SINGLE_PAGE_FILES);
+  expectProse(out);
+  expectManifest(out);
 });
 
 test("buildLlms builds an llms.txt index + a full single-file dump", () => {
-  const { index, full } = buildLlms(
+  const { full, index } = buildLlms(
     [
       {
-        title: "Intro",
-        path: "/guide",
+        body: "Welcome to vow. It generates apps.\n",
         group: "Introduction",
         order: 0,
-        body: "Welcome to vow. It generates apps.\n",
+        path: "/guide",
+        title: "Intro",
       },
       {
-        title: "Primitives",
-        path: "/guide/primitives",
+        body: "# Primitives\n\nControls.\n",
         group: "UI",
         order: 3,
-        body: "# Primitives\n\nControls.\n",
+        path: "/guide/primitives",
+        title: "Primitives",
       },
       {
-        title: "Button",
-        path: "/guide/primitives/button",
-        group: "UI",
-        order: 3.0,
         body: "# Button\n\nA control.\n\n::: demo button\n:::\n",
+        group: "UI",
+        order: 3,
+        path: "/guide/primitives/button",
+        title: "Button",
       },
     ],
-    { title: "vow", description: "LLM-first." },
+    { description: "LLM-first.", title: "vow" },
     ["Introduction", "UI"],
   );
 
-  // the index: header + summary + grouped links, each with a one-line description
+  // The index: header + summary + grouped links, each with a one-line description
   expect(index).toContain("# vow");
   expect(index).toContain("> LLM-first.");
   expect(index).toContain("## Introduction");
   expect(index).toContain("- [Intro](/guide): Welcome to vow.");
-  // a parent page precedes its children on an order tie (path tiebreak): Primitives before Button
+  // A parent page precedes its children on an order tie (path tiebreak): Primitives before Button
   expect(index.indexOf("(/guide/primitives)")).toBeLessThan(
     index.indexOf("(/guide/primitives/button)"),
   );
 
-  // the full dump: every body inlined, live `::: demo` placeholders stripped
+  // The full dump: every body inlined, live `::: demo` placeholders stripped
   expect(full).toContain("# vow — full documentation");
   expect(full).toContain("> Source: /guide/primitives");
   expect(full).toContain("# Button");

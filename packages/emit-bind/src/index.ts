@@ -1,7 +1,7 @@
-import type { Vow } from "@vow/core";
+import type { ReadonlyVow } from "@vow/core";
 
 /**
- * vow's bind verifier — the `bind` fulfilment made safe.
+ * Vow's bind verifier — the `bind` fulfilment made safe.
  *
  * `bind` is the 10% escape hatch: instead of generating the logic, the vow.md points at a real,
  * hand-written export (`fulfills: bind ./logic.ts#fn`). vow doesn't generate the code — it VERIFIES
@@ -12,7 +12,7 @@ import type { Vow } from "@vow/core";
  */
 
 /** A type-anchor that re-exports the bound symbol so tsgo verifies it exists at the declared path. */
-export function emitBindAnchor(vow: Vow, importSpecifier: string): string {
+export function emitBindAnchor(vow: ReadonlyVow, importSpecifier: string): string {
   if (vow.fulfills?.kind !== "bind") {
     throw new Error(`emit-bind: vow "${vow.slug}" has no \`bind\` fulfilment`);
   }

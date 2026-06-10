@@ -1,0 +1,207 @@
+import type { Component, ImportDecl, ReadonlyField, ReadonlyVow, UiNode } from "./types.ts";
+import { pascalCase, renderVueSfc } from "@vow/component";
+import type { EntityLookup } from "./lookup.ts";
+import { defined } from "@vow/core";
+import { fieldControl } from "./field-control.ts";
+
+/** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set. */
+function errorNode(name: string): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-field__error" },
+      { kind: "static", name: "role", value: "alert" },
+      { expr: `errors.${name}`, kind: "cond", type: "if" },
+    ],
+    children: [{ expr: `errors.${name}`, kind: "interp" }],
+    kind: "element",
+    tag: "p",
+  };
+}
+
+/**
+ * Wire a native control to its field: the shared id (for the label), aria-describedby, aria-invalid. A
+ * Select component keeps its own aria-label, so it's returned unchanged.
+ */
+function withControlId(control: UiNode, name: string): UiNode {
+  if (control.kind !== "element") {
+    return control;
+  }
+  return {
+    ...control,
+    attrs: [
+      ...control.attrs,
+      { expr: `${name}Id`, kind: "bound", name: "id" },
+      { expr: `${name}Id + '-error'`, kind: "bound", name: "aria-describedby" },
+      { expr: `!!errors.${name}`, kind: "bound", name: "aria-invalid" },
+    ],
+  };
+}
+
+/** A boolean field — a `<Checkbox>` plus its error node. */
+function booleanField(field: ReadonlyField): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-field" }],
+    children: [
+      {
+        attrs: [
+          { expr: `draft.${field.name}`, kind: "model" },
+          { kind: "static", name: "label", value: field.name },
+        ],
+        children: [],
+        kind: "component",
+        name: "Checkbox",
+      },
+      errorNode(field.name),
+    ],
+    kind: "element",
+    tag: "div",
+  };
+}
+
+/** One field in a form: a boolean self-labels as a `<Checkbox>`; everything else is a labelled `<Field>`. */
+function formField(field: ReadonlyField): UiNode {
+  if (field.type === "boolean") {
+    return booleanField(field);
+  }
+  return {
+    attrs: [
+      { kind: "static", name: "label", value: field.name },
+      { expr: `${field.name}Id`, kind: "bound", name: "control-id" },
+      { expr: `errors.${field.name}`, kind: "bound", name: "error" },
+    ],
+    children: [withControlId(fieldControl(field, `draft.${field.name}`), field.name)],
+    kind: "component",
+    name: "Field",
+  };
+}
+
+/** The resolved entity a form is bound to — throws when the `of:` target is missing or not an entity. */
+function formEntity(form: ReadonlyVow, byId: EntityLookup): ReadonlyVow {
+  const target = form.form?.of;
+  if (!defined(target) || target.length === 0) {
+    throw new Error(`emit-form: "${form.slug}" needs a \`## form\` with \`of: <entity>\``);
+  }
+  const entity = byId.get(target);
+  const emits = entity?.fulfills?.kind === "emit" && entity.fulfills.as === "entity";
+  if (!defined(entity) || !emits) {
+    throw new Error(`emit-form: "${form.slug}" form \`of: ${target}\` is not a known entity`);
+  }
+  return entity;
+}
+
+/** The label field a reference resolves its target by (first text field, else id). */
+function referenceLabel(byId: EntityLookup): (ref?: string) => string {
+  return (ref?: string): string =>
+    byId.get(ref ?? "")?.fields.find((field) => field.type === "text")?.name ?? "id";
+}
+
+/** The control adapters a form's fields pull in (`<Checkbox>` for booleans, `<Select>` for select/ref). */
+function controlImports(entity: ReadonlyVow): ImportDecl[] {
+  const imports: ImportDecl[] = [];
+  if (entity.fields.some((field) => field.type === "boolean")) {
+    imports.push({ default: "Checkbox", from: "./Checkbox.vue" });
+  }
+  if (entity.fields.some((field) => field.type === "select" || field.type === "reference")) {
+    imports.push({ default: "Select", from: "./Select.vue" });
+  }
+  return imports;
+}
+
+/** The form's imports — vue, zod, the entity factory + type, the store, and the used controls. */
+function formImports(entity: ReadonlyVow): ImportDecl[] {
+  const name = pascalCase(entity.slug);
+  const vueNames = ["ref", "useId"];
+  if (entity.fields.some((field) => field.type === "reference")) {
+    vueNames.push("computed");
+  }
+  return [
+    { from: "vue", names: vueNames },
+    { from: "zod", names: ["ZodError"] },
+    { from: `./${entity.slug}.ts`, names: [`create${name}`, `type ${name}`] },
+    { from: "@vow/store", names: ["useCollection"] },
+    { default: "Field", from: "./Field.vue" },
+    { default: "Button", from: "./Button.vue" },
+    ...controlImports(entity),
+  ];
+}
+
+/** The submit handler lines — validate via the zod factory, surface per-field errors. */
+function submitLines(name: string): string[] {
+  return [
+    ``,
+    `function submit(): void {`,
+    `  try {`,
+    `    append(create${name}(draft.value));`,
+    `    draft.value = {};`,
+    `    errors.value = {};`,
+    `  } catch (err) {`,
+    `    if (err instanceof ZodError) {`,
+    `      errors.value = Object.fromEntries(err.issues.map((i) => [String(i.path[0]), i.message]));`,
+    `    }`,
+    `  }`,
+    `}`,
+  ];
+}
+
+/** The form's setup — draft/errors refs, a useId per native field, reference choice computeds, submit. */
+function formSetup(entity: ReadonlyVow, label: (ref?: string) => string): string[] {
+  const name = pascalCase(entity.slug);
+  const setup: string[] = [
+    `const { append } = useCollection<${name}>(${JSON.stringify(entity.slug)});`,
+    `const draft = ref<Partial<${name}>>({});`,
+    `const errors = ref<Record<string, string>>({});`,
+  ];
+  for (const field of entity.fields.filter((candidate) => candidate.type !== "boolean")) {
+    setup.push(`const ${field.name}Id = useId();`);
+  }
+  for (const field of entity.fields.filter((candidate) => candidate.type === "reference")) {
+    setup.push(
+      `const ${field.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(field.ref ?? "")}).items;`,
+      `const ${field.name}Choices = computed(() => ${field.name}Options.map((t) => ({ value: t.id, label: String(t.${label(field.ref)}) })));`,
+    );
+  }
+  setup.push(...submitLines(name));
+  return setup;
+}
+
+/** The submit button — labelled by the `## form`'s `submit:`. */
+function submitButton(form: ReadonlyVow): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "type", value: "submit" },
+      { kind: "static", name: "label", value: form.form?.submit ?? "" },
+    ],
+    children: [],
+    kind: "component",
+    name: "Button",
+  };
+}
+
+/**
+ * A form from a `## form` (an `emit form` vow), bound to an entity via `of:`. Each entity field renders
+ * as a labelled `<Field>` (a boolean self-labels as `<Checkbox>`); on submit it validates with the
+ * entity's zod schema (via `create<Name>`) and surfaces the per-field errors. `byId` resolves the bound
+ * entity and any reference targets.
+ */
+export function emitForm(form: ReadonlyVow, byId: EntityLookup): string {
+  const entity = formEntity(form, byId);
+  const fields: UiNode[] = entity.fields.map((field) => formField(field));
+  const component: Component = {
+    doc: [
+      `Generated from vow "${form.slug}" (a form over the "${entity.slug}" entity). Do not edit.`,
+    ],
+    imports: formImports(entity),
+    name: pascalCase(form.slug),
+    setup: formSetup(entity, referenceLabel(byId)),
+    view: {
+      attrs: [
+        { kind: "static", name: "class", value: "vow-form" },
+        { expr: "submit", kind: "event", modifiers: ["prevent"], name: "submit" },
+      ],
+      children: [...fields, submitButton(form)],
+      kind: "element",
+      tag: "form",
+    },
+  };
+  return renderVueSfc(component);
+}

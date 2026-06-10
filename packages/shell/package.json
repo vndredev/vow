@@ -6,7 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./Shell.vue": "./src/Shell.vue",
+    "./Shell.vue": "./src/shell.vue",
     "./style.css": "./src/style.css"
   },
   "scripts": {
@@ -14,6 +14,7 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@vow/core": "workspace:*",
     "@vow/headless": "workspace:*",
     "@vow/icons": "workspace:*",
     "vue": "^3.5.13"

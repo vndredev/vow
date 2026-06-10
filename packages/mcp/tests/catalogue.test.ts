@@ -1,18 +1,46 @@
 // @vitest-environment node
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { expect, test } from "vite-plus/test";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { Studio } from "../src/types.ts";
 import { TOOL_DOCS } from "../src/tools.ts";
+import { composeTools } from "../src/compose.ts";
 
-// The catalogue (`tools.ts`) is the single source: the server descriptions come from it (`summaryOf`)
-// and the docs list from it. A tool registered but absent from the catalogue would get an empty
-// description silently — so pin server ⟷ catalogue here. The regex tolerates multi-line `server.tool(`.
+/*
+ * The catalogue (`tools.ts`) is the single source: the server descriptions come from it (`summaryOf`)
+ * and the docs list from it. A tool registered but absent from the catalogue would get an empty
+ * description silently — so pin server <-> catalogue here. `composeTools` runs the real registration
+ * over a fresh server; handlers never fire at registration, so the studio's methods are never called.
+ */
+function unused(): never {
+  throw new Error("studio is shape-only at registration");
+}
+
+const STUB_STUDIO: Studio = {
+  addRecord: unused,
+  appDir: "",
+  createEntity: unused,
+  createField: unused,
+  createView: unused,
+  dropField: unused,
+  dropVow: unused,
+  entitySlugs: unused,
+  getRecord: unused,
+  getVow: unused,
+  listRecords: unused,
+  listVows: unused,
+  removeRecord: unused,
+  setIntent: unused,
+  setNav: unused,
+  syncDb: unused,
+  updateRecord: unused,
+  viewSlugs: unused,
+};
+
 test("every registered MCP tool is in the catalogue, and vice versa — no drift", () => {
-  const serverSrc = readFileSync(
-    fileURLToPath(new URL("../src/server.ts", import.meta.url)),
-    "utf8",
-  );
-  const registered = [...serverSrc.matchAll(/server\.tool\(\s*"([^"]+)"/g)].map((m) => m[1]);
-  expect(new Set(registered).size).toBe(registered.length); // no tool registered twice
-  expect([...registered].sort()).toEqual(TOOL_DOCS.map((t) => t.name).sort());
+  const server = new McpServer({ name: "vow", version: "0.0.0" });
+  const registered = composeTools(server, STUB_STUDIO);
+
+  // No tool registered twice.
+  expect(new Set(registered).size).toBe(registered.length);
+  expect([...registered].toSorted()).toEqual(TOOL_DOCS.map((doc) => doc.name).toSorted());
 });

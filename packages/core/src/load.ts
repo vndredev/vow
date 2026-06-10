@@ -1,7 +1,8 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { parseVowMd } from "./parse.ts";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import type { ReadonlyVow } from "./readonly.ts";
 import type { Vow } from "./vow.ts";
+import { parseVowMd } from "./parse.ts";
+import path from "node:path";
 
 /**
  * Load the vow tree from a directory of `<slug>.vow.md` files. The filename IS the slug — visible,
@@ -12,27 +13,33 @@ import type { Vow } from "./vow.ts";
 
 export const SUFFIX = ".vow.md";
 
+/** The slugs of `<slug>.vow.md` files directly under a directory, sorted (deterministic). */
+function childSlugs(dir: string): string[] {
+  if (!existsSync(dir)) {
+    return [];
+  }
+  return readdirSync(dir)
+    .filter((name) => name.endsWith(SUFFIX))
+    .map((name) => name.slice(0, -SUFFIX.length))
+    .toSorted();
+}
+
 /** Load one vow: its `<slug>.vow.md` in `dir`, plus children from a sibling `<slug>/` folder. */
 export function loadVow(dir: string, slug: string): Vow {
-  const self = parseVowMd(slug, readFileSync(join(dir, slug + SUFFIX), "utf8"));
-  const childDir = join(dir, slug);
-  const children = existsSync(childDir) ? loadVows(childDir) : [];
+  const self = parseVowMd(slug, readFileSync(path.join(dir, slug + SUFFIX), "utf8"));
+  const childDir = path.join(dir, slug);
+  const children = childSlugs(childDir).map((childSlug) => loadVow(childDir, childSlug));
   return { ...self, children };
 }
 
 /** Load the vows from `<slug>.vow.md` files directly under a directory (sorted, deterministic). */
 export function loadVows(vowDir: string): Vow[] {
-  if (!existsSync(vowDir)) return [];
-  return readdirSync(vowDir, { withFileTypes: true })
-    .filter((e) => e.isFile() && e.name.endsWith(SUFFIX))
-    .map((e) => e.name.slice(0, -SUFFIX.length))
-    .sort()
-    .map((slug) => loadVow(vowDir, slug));
+  return childSlugs(vowDir).map((slug) => loadVow(vowDir, slug));
 }
 
 /** Every vow, depth-first (the recursive node flattened). */
-function everyVow(vows: readonly Vow[]): Vow[] {
-  return vows.flatMap((v) => [v, ...everyVow(v.children)]);
+function everyVow(vows: readonly ReadonlyVow[]): ReadonlyVow[] {
+  return vows.flatMap((vow) => [vow, ...everyVow(vow.children)]);
 }
 
 /**
@@ -40,16 +47,18 @@ function everyVow(vows: readonly Vow[]): Vow[] {
  * reference is a structural error — fail loud, before anything is generated. Run on the whole vow tree
  * (never a sub-tree), so a reference can target an entity anywhere.
  */
-export function validateReferences(vows: readonly Vow[]): void {
+export function validateReferences(vows: readonly ReadonlyVow[]): void {
   const all = everyVow(vows);
   const entities = new Set(
-    all.filter((v) => v.fulfills?.kind === "emit" && v.fulfills.as === "entity").map((v) => v.slug),
+    all
+      .filter((vow) => vow.fulfills?.kind === "emit" && vow.fulfills.as === "entity")
+      .map((vow) => vow.slug),
   );
-  for (const v of all) {
-    for (const f of v.fields) {
-      if (f.type === "reference" && !entities.has(f.ref ?? "")) {
+  for (const vow of all) {
+    for (const field of vow.fields) {
+      if (field.type === "reference" && !entities.has(field.ref ?? "")) {
         throw new Error(
-          `vow: "${v.slug}.${f.name}" references "${f.ref ?? ""}", which is not a known entity`,
+          `vow: "${vow.slug}.${field.name}" references "${field.ref ?? ""}", which is not a known entity`,
         );
       }
     }

@@ -1,77 +1,85 @@
 // @vitest-environment node
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
-import { expect, test } from "vite-plus/test";
 import {
   checkVowExample,
   germanMarkers,
   germanWords,
+  safeReaddir,
   undocumentedFieldTypes,
   undocumentedKinds,
   vowExamplesIn,
 } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import { readFileSync, statSync } from "node:fs";
+import { defined } from "@vow/core";
+import path from "node:path";
 
-// packages/gate/tests → repo root
-const root = join(import.meta.dirname, "..", "..", "..");
+// From packages/gate/tests up to the repo root.
+const root = path.join(import.meta.dirname, "..", "..", "..");
 
-/** Every `*.md` under a dir, recursively — skipping node_modules and dotfolders. */
-function mdFilesUnder(dir: string): string[] {
+/** A skipped directory entry — `node_modules` or any dotfolder. */
+function isSkipped(name: string): boolean {
+  return name === "node_modules" || name.startsWith(".");
+}
+
+/**
+ * Recursively collect files under `dir` that `keep` accepts, descending into real subdirectories and
+ * skipping node_modules + dotfolders. A missing dir scans nothing. The shared walker keeps both the
+ * `.md`-only and the source-file scans to a single, brace-clean traversal.
+ */
+function filesUnder(dir: string, keep: (name: string) => boolean): string[] {
   const out: string[] = [];
-  const walk = (d: string): void => {
-    let children: string[];
-    try {
-      children = readdirSync(d);
-    } catch {
-      return; // missing dir → nothing to scan
-    }
-    for (const name of children) {
-      if (name === "node_modules" || name.startsWith(".")) continue;
-      const p = join(d, name);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (name.endsWith(".md")) out.push(p);
+  const walk = (directory: string): void => {
+    const live = safeReaddir(directory).filter((name) => !isSkipped(name));
+    for (const name of live) {
+      const child = path.join(directory, name);
+      if (statSync(child).isDirectory()) {
+        walk(child);
+      } else if (keep(name)) {
+        out.push(child);
+      }
     }
   };
   walk(dir);
   return out;
 }
 
+/** Every `*.md` under a dir, recursively — skipping node_modules and dotfolders. */
+function mdFilesUnder(dir: string): string[] {
+  return filesUnder(dir, (name) => name.endsWith(".md"));
+}
+
+/** A `.ts`/`.md`/`.vue` source file name. */
+const SOURCE_FILE = /\.(?:ts|md|vue)$/u;
+
 /** Every `.ts`/`.md`/`.vue` under a dir, recursively — skipping node_modules, dotfolders, dist. */
 function sourceFilesUnder(dir: string): string[] {
-  const out: string[] = [];
-  const walk = (d: string): void => {
-    let children: string[];
-    try {
-      children = readdirSync(d);
-    } catch {
-      return;
-    }
-    for (const name of children) {
-      if (name === "node_modules" || name === "dist" || name.startsWith(".")) continue;
-      const p = join(d, name);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (/\.(ts|md|vue)$/.test(name)) out.push(p);
-    }
-  };
-  walk(dir);
-  return out;
+  return filesUnder(dir, (name) => name !== "dist" && SOURCE_FILE.test(name));
 }
 
 test("every vow.md example in the docs/README parses against the real core (no drift)", () => {
   const files = [
-    join(root, "README.md"),
-    join(root, "CLAUDE.md"),
-    ...mdFilesUnder(join(root, "docs")),
+    path.join(root, "README.md"),
+    path.join(root, "CLAUDE.md"),
+    ...mdFilesUnder(path.join(root, "docs")),
   ];
   const examples = files.flatMap((file) =>
-    vowExamplesIn(readFileSync(file, "utf8")).map((content) => ({ file, content })),
+    vowExamplesIn(readFileSync(file, "utf8")).map((content) => ({ content, file })),
   );
   // Guard against a silent pass: the docs must actually contain examples to check.
   expect(examples.length).toBeGreaterThan(0);
 
   const drift = examples
-    .map(({ file, content }) => ({ file, reason: checkVowExample(content) }))
-    .filter((d) => d.reason !== null)
-    .map((d) => `${d.file.slice(root.length + 1)}: ${d.reason}`);
+    .map((example: Readonly<{ content: string; file: string }>) => ({
+      file: example.file,
+      reason: checkVowExample(example.content),
+    }))
+    .filter((entry: Readonly<{ file: string; reason: string | undefined }>) =>
+      defined(entry.reason),
+    )
+    .map(
+      (entry: Readonly<{ file: string; reason: string | undefined }>) =>
+        `${entry.file.slice(root.length + 1)}: ${entry.reason}`,
+    );
   expect(drift).toEqual([]);
 });
 
@@ -103,7 +111,7 @@ test("checkVowExample fails on a malformed id", () => {
   const content = ["---", "id: vow_two_words", "fulfills: emit entity", "---", "", "# A demo"].join(
     "\n",
   );
-  expect(checkVowExample(content)).not.toBeNull();
+  expect(checkVowExample(content)).toBeDefined();
 });
 
 test("checkVowExample holds for a valid example", () => {
@@ -120,33 +128,33 @@ test("checkVowExample holds for a valid example", () => {
     "- title: text, required",
     "- done: boolean",
   ].join("\n");
-  expect(checkVowExample(content)).toBeNull();
+  expect(checkVowExample(content)).toBeUndefined();
 });
 
 test("every node/attr kind the Vue adapter handles is documented in components.md", () => {
-  const render = readFileSync(join(root, "packages/component/src/render-vue.ts"), "utf8");
-  const doc = readFileSync(join(root, "docs/guide/components.md"), "utf8");
+  const render = readFileSync(path.join(root, "packages/component/src/render-vue.ts"), "utf8");
+  const doc = readFileSync(path.join(root, "docs/guide/components.md"), "utf8");
   expect(undocumentedKinds(render, doc)).toEqual([]);
 });
 
 test("every core field type is documented in emit.md", () => {
-  const core = readFileSync(join(root, "packages/core/src/vow.ts"), "utf8");
-  const doc = readFileSync(join(root, "docs/guide/emit.md"), "utf8");
+  const core = readFileSync(path.join(root, "packages/core/src/vow.ts"), "utf8");
+  const doc = readFileSync(path.join(root, "docs/guide/emit.md"), "utf8");
   expect(undocumentedFieldTypes(core, doc)).toEqual([]);
 });
 
 test("the codebase and docs are English-only (no German umlauts or words)", () => {
   // The gate itself defines + tests the German markers, so it legitimately contains them as data.
   const selfReferential = new Set([
-    join(root, "packages/gate/src/index.ts"),
-    join(root, "packages/gate/tests/docs-drift.test.ts"),
+    path.join(root, "packages/gate/src/index.ts"),
+    path.join(root, "packages/gate/tests/docs-drift.test.ts"),
   ]);
   const scanned = [
-    ...sourceFilesUnder(join(root, "packages")),
-    ...sourceFilesUnder(join(root, "apps")),
-    ...sourceFilesUnder(join(root, "docs/guide")),
-    join(root, "CLAUDE.md"),
-    join(root, "README.md"),
+    ...sourceFilesUnder(path.join(root, "packages")),
+    ...sourceFilesUnder(path.join(root, "apps")),
+    ...sourceFilesUnder(path.join(root, "docs/guide")),
+    path.join(root, "CLAUDE.md"),
+    path.join(root, "README.md"),
   ];
   const offenders = scanned
     .filter((file) => !selfReferential.has(file))
@@ -154,8 +162,13 @@ test("the codebase and docs are English-only (no German umlauts or words)", () =
       const src = readFileSync(file, "utf8");
       return { file, hits: [...germanMarkers(src), ...germanWords(src)] };
     })
-    .filter((o) => o.hits.length > 0)
-    .map((o) => `${o.file.slice(root.length + 1)}: ${o.hits.join(" ")}`);
+    .filter(
+      (offender: Readonly<{ file: string; hits: readonly string[] }>) => offender.hits.length > 0,
+    )
+    .map(
+      (offender: Readonly<{ file: string; hits: readonly string[] }>) =>
+        `${offender.file.slice(root.length + 1)}: ${offender.hits.join(" ")}`,
+    );
   expect(offenders).toEqual([]);
 });
 

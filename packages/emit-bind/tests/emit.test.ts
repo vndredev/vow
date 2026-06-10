@@ -1,15 +1,15 @@
 import { expect, test } from "vite-plus/test";
-import { type Vow as VowNode } from "@vow/core";
+import type { Vow as VowNode } from "@vow/core";
 import { emitBindAnchor } from "../src/index.ts";
 
 const bind: VowNode = {
-  id: "vow_total",
-  slug: "invoice-total",
-  intent: "Invoice total with a discount",
   children: [],
   fields: [],
+  fulfills: { export: "computeTotal", kind: "bind", module: "./logic/invoice-total.ts" },
+  id: "vow_total",
+  intent: "Invoice total with a discount",
   proof: [{ claim: "a discount applies from 10 units" }],
-  fulfills: { kind: "bind", module: "./logic/invoice-total.ts", export: "computeTotal" },
+  slug: "invoice-total",
 };
 
 test("emitBindAnchor re-exports the bound symbol so tsgo verifies it exists", () => {
@@ -18,6 +18,6 @@ test("emitBindAnchor re-exports the bound symbol so tsgo verifies it exists", ()
 });
 
 test("emitBindAnchor fails fast on a non-bind vow", () => {
-  const emit: VowNode = { ...bind, fulfills: { kind: "emit", as: "view" } };
+  const emit: VowNode = { ...bind, fulfills: { as: "view", kind: "emit" } };
   expect(() => emitBindAnchor(emit, "x")).toThrow();
 });

@@ -1,4 +1,5 @@
-import type { Status, Vow } from "./vow.ts";
+import type { ReadonlyVow } from "./readonly.ts";
+import type { Status } from "./vow.ts";
 
 /**
  * Derive a vow's status — **never stored** (see vow.ts). A vow is `done` when everything it promises is
@@ -10,22 +11,39 @@ import type { Status, Vow } from "./vow.ts";
  * `blocked` needs CI (a failing test, not just a missing one) and arrives with the observability
  * adapter; today this returns `planned` · `active` · `done`.
  */
-export function deriveStatus(vow: Vow, covered: (claim: string) => boolean): Status {
-  const claims = vow.proof.map((p) => p.claim);
-  const own: Status | null =
-    claims.length === 0
-      ? null // no promise of its own — its status is its children's (or `done` if it's a leaf)
-      : claims.every(covered)
-        ? "done"
-        : claims.some(covered)
-          ? "active"
-          : "planned";
 
-  const children = vow.children.map((child) => deriveStatus(child, covered));
-  if (children.length === 0) return own ?? "done";
-
-  const parts: Status[] = own === null ? children : [own, ...children];
-  if (parts.every((s) => s === "done")) return "done";
-  if (parts.some((s) => s !== "planned")) return "active";
+/** Roll a set of part-statuses into one: all `done` → `done`, any progress → `active`, else `planned`. */
+function combine(parts: readonly Status[]): Status {
+  if (parts.every((status) => status === "done")) {
+    return "done";
+  }
+  if (parts.some((status) => status !== "planned")) {
+    return "active";
+  }
   return "planned";
+}
+
+/** One claim's part-status: `done` when covered, `planned` when not. */
+function claimStatus(covered: boolean): Status {
+  if (covered) {
+    return "done";
+  }
+  return "planned";
+}
+
+export function deriveStatus(vow: ReadonlyVow, covered: (claim: string) => boolean): Status {
+  const parts: Status[] = [];
+  // A vow's OWN proof contributes one rolled-up part — only when it makes a claim of its own.
+  if (vow.proof.length > 0) {
+    parts.push(combine(vow.proof.map((scenario) => claimStatus(covered(scenario.claim)))));
+  }
+  for (const child of vow.children) {
+    parts.push(deriveStatus(child, covered));
+  }
+
+  // A leaf that makes no promise of its own is `done` — it exists and compiles.
+  if (parts.length === 0) {
+    return "done";
+  }
+  return combine(parts);
 }

@@ -1,12 +1,12 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { expect, test } from "vite-plus/test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { serialize, writeVow } from "../src/serialize.ts";
 import { loadVow } from "../src/load.ts";
 import { parseVowMd } from "../src/parse.ts";
-import { serialize, writeVow } from "../src/serialize.ts";
+import path from "node:path";
+import { tmpdir } from "node:os";
 
-// serialize is the exact inverse of parse: re-parsing serialized output yields the same Vow.
+// Serialize is the exact inverse of parse: re-parsing serialized output yields the same Vow.
 const roundtrips = (slug: string, md: string): void => {
   const vow = parseVowMd(slug, md);
   expect(parseVowMd(slug, serialize(vow))).toEqual(vow);
@@ -122,11 +122,11 @@ test("writeVow saves a vow that loadVow reads back identically", () => {
       "",
     ].join("\n"),
   );
-  const dir = mkdtempSync(join(tmpdir(), "vow-ser-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "vow-ser-"));
   try {
     writeVow(dir, vow);
     expect(loadVow(dir, "task")).toEqual(vow);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });

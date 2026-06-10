@@ -1,18 +1,18 @@
-import { expect, test } from "vite-plus/test";
-import { type Vow as VowNode } from "@vow/core";
 import { emitEntityModule, emitEntityTest, entityProves } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import type { Vow as VowNode } from "@vow/core";
 
 const task: VowNode = {
-  id: "vow_task",
-  slug: "task",
-  intent: "A task someone must do",
   children: [],
   fields: [
-    { name: "title", type: "text", required: true },
-    { name: "done", type: "boolean", required: false },
+    { name: "title", required: true, type: "text" },
+    { name: "done", required: false, type: "boolean" },
   ],
+  fulfills: { as: "entity", kind: "emit" },
+  id: "vow_task",
+  intent: "A task someone must do",
   proof: [],
-  fulfills: { kind: "emit", as: "entity" },
+  slug: "task",
 };
 
 test("emitEntityModule generates a zod schema, its inferred type, and a validating factory", () => {
@@ -24,7 +24,8 @@ test("emitEntityModule generates a zod schema, its inferred type, and a validati
   expect(code).toContain("export type Task = z.infer<typeof TaskSchema>;");
   expect(code).toContain("export function createTask(input: Partial<Task>): Task");
   expect(code).toContain("return TaskSchema.parse({");
-  expect(code).toContain("title: input.title,"); // required → passed raw, so zod rejects it
+  // Required -> passed raw, so zod rejects it.
+  expect(code).toContain("title: input.title,");
 });
 
 test("every entity gets an implicit auto-id the factory generates", () => {
@@ -36,12 +37,12 @@ test("every entity gets an implicit auto-id the factory generates", () => {
 test("a select field becomes a string-literal union with a default", () => {
   const ticket: VowNode = {
     ...task,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "status", options: ["todo", "doing", "done"], required: false, type: "select" },
+    ],
     id: "vow_ticket",
     slug: "ticket",
-    fields: [
-      { name: "title", type: "text", required: true },
-      { name: "status", type: "select", required: false, options: ["todo", "doing", "done"] },
-    ],
   };
   const code = emitEntityModule(ticket);
   expect(code).toContain('status: z.enum(["todo", "doing", "done"]),');
@@ -51,12 +52,12 @@ test("a select field becomes a string-literal union with a default", () => {
 test("a reference field is the target entity's id (string)", () => {
   const issue: VowNode = {
     ...task,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "assignee", ref: "user", required: false, type: "reference" },
+    ],
     id: "vow_issue",
     slug: "issue",
-    fields: [
-      { name: "title", type: "text", required: true },
-      { name: "assignee", type: "reference", required: false, ref: "user" },
-    ],
   };
   const code = emitEntityModule(issue);
   expect(code).toContain("assignee: z.string(),");
@@ -66,12 +67,12 @@ test("a reference field is the target entity's id (string)", () => {
 test("a date field is a string field (ISO-8601) with an ISO sample value", () => {
   const event: VowNode = {
     ...task,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "starts", required: true, type: "date" },
+    ],
     id: "vow_event",
     slug: "event",
-    fields: [
-      { name: "title", type: "text", required: true },
-      { name: "starts", type: "date", required: true },
-    ],
   };
   const code = emitEntityModule(event);
   expect(code).toContain('starts: z.string().min(1, "starts is required"),');
@@ -84,9 +85,9 @@ test("a date field is a string field (ISO-8601) with an ISO sample value", () =>
 test("a longtext field is a non-empty string in the schema (a textarea in the UI)", () => {
   const note: VowNode = {
     ...task,
+    fields: [{ name: "body", required: true, type: "longtext" }],
     id: "vow_note",
     slug: "note",
-    fields: [{ name: "body", type: "longtext", required: true }],
   };
   const code = emitEntityModule(note);
   expect(code).toContain('body: z.string().min(1, "body is required"),');
@@ -108,7 +109,7 @@ test("emitEntityTest names each generated test after its proven scenario", () =>
 });
 
 test("the entity emitters fail fast on a non-entity vow", () => {
-  const bound: VowNode = { ...task, fulfills: { kind: "bind", module: "x", export: "y" } };
+  const bound: VowNode = { ...task, fulfills: { export: "y", kind: "bind", module: "x" } };
   expect(() => emitEntityModule(bound)).toThrow();
   expect(() => emitEntityTest(bound)).toThrow();
 });

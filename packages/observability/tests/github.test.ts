@@ -1,41 +1,45 @@
-import { expect, test } from "vite-plus/test";
 import {
   deriveIssueStatus,
   featureIssueBody,
-  type GitHubIssue,
   linkedIssues,
   parseIssues,
   parsePrs,
-  statusOption,
   statusVariant,
 } from "../src/github.ts";
+import { expect, test } from "vite-plus/test";
+import type { GitHubIssue } from "../src/types.ts";
+import { statusOption } from "../src/project.ts";
+
+const ISSUE_A = 56;
+const ISSUE_B = 57;
+const TWO = 2;
 
 const issue = (over: Partial<GitHubIssue> = {}): GitHubIssue => ({
-  number: 1,
-  title: "x",
-  state: "open",
-  labels: [],
   assignees: [],
+  labels: [],
+  number: 1,
+  state: "open",
+  title: "x",
   ...over,
 });
 
 test("parseIssues flattens gh's shape — state lower-cased, labels/assignees to names", () => {
   const json = JSON.stringify([
     {
-      number: 56,
-      title: "GitHub adapter",
-      state: "OPEN",
-      labels: [{ name: "enhancement" }, { name: "area: github" }],
       assignees: [{ login: "vndredev" }],
+      labels: [{ name: "enhancement" }, { name: "area: github" }],
+      number: 56,
+      state: "OPEN",
+      title: "GitHub adapter",
     },
   ]);
   expect(parseIssues(json)).toEqual([
     {
-      number: 56,
-      title: "GitHub adapter",
-      state: "open",
-      labels: ["enhancement", "area: github"],
       assignees: ["vndredev"],
+      labels: ["enhancement", "area: github"],
+      number: 56,
+      state: "open",
+      title: "GitHub adapter",
     },
   ]);
 });
@@ -46,59 +50,60 @@ test("parseIssues is graceful — malformed input yields []", () => {
 });
 
 test("parseIssues survives a malformed array element (no state, bad labels)", () => {
-  const json = JSON.stringify([{ number: 5 }, { title: "x", labels: "nope" }]);
+  const json = JSON.stringify([{ number: 5 }, { labels: "nope", title: "x" }]);
   const issues = parseIssues(json);
-  expect(issues).toHaveLength(2);
-  expect(issues[0]).toMatchObject({ number: 5, state: "open", labels: [] });
-  expect(issues[1]).toMatchObject({ number: 0, title: "x", labels: [] });
+  expect(issues).toHaveLength(TWO);
+  expect(issues[0]).toMatchObject({ labels: [], number: 5, state: "open" });
+  expect(issues[1]).toMatchObject({ labels: [], number: 0, title: "x" });
 });
 
 test("parseIssues lifts the milestone (title + dueOn) when present, omits it when not", () => {
   const withDue = JSON.stringify([
     {
-      number: 60,
-      title: "Roadmap",
-      state: "OPEN",
-      labels: [],
       assignees: [],
-      milestone: { title: "Phase C", dueOn: "2026-06-10T00:00:00Z" },
+      labels: [],
+      milestone: { dueOn: "2026-06-10T00:00:00Z", title: "Phase C" },
+      number: 60,
+      state: "OPEN",
+      title: "Roadmap",
     },
   ]);
   expect(parseIssues(withDue)[0]?.milestone).toEqual({
-    title: "Phase C",
     dueOn: "2026-06-10T00:00:00Z",
+    title: "Phase C",
   });
   const noDue = JSON.stringify([
     {
-      number: 7,
-      title: "y",
-      state: "OPEN",
-      labels: [],
       assignees: [],
+      labels: [],
       milestone: { title: "Phase B" },
+      number: 7,
+      state: "OPEN",
+      title: "y",
     },
   ]);
-  expect(parseIssues(noDue)[0]?.milestone).toEqual({ title: "Phase B" }); // no dueOn → omitted
+  // No dueOn -> omitted.
+  expect(parseIssues(noDue)[0]?.milestone).toEqual({ title: "Phase B" });
   const noMs = JSON.stringify([
-    { number: 1, title: "x", state: "OPEN", labels: [], assignees: [] },
+    { assignees: [], labels: [], number: 1, state: "OPEN", title: "x" },
   ]);
   expect(parseIssues(noMs)[0]).not.toHaveProperty("milestone");
 });
 
 test("parsePrs keeps number, title, body", () => {
-  const json = JSON.stringify([{ number: 9, title: "feat", body: "Closes #56" }]);
-  expect(parsePrs(json)).toEqual([{ number: 9, title: "feat", body: "Closes #56" }]);
+  const json = JSON.stringify([{ body: "Closes #56", number: 9, title: "feat" }]);
+  expect(parsePrs(json)).toEqual([{ body: "Closes #56", number: 9, title: "feat" }]);
 });
 
 test("linkedIssues lifts every closing keyword, deduped; a bare mention is ignored", () => {
-  expect(linkedIssues("Closes #56, fixes #57 and Resolves #56")).toEqual([56, 57]);
+  expect(linkedIssues("Closes #56, fixes #57 and Resolves #56")).toEqual([ISSUE_A, ISSUE_B]);
   expect(linkedIssues("just mentions #99, no keyword")).toEqual([]);
 });
 
 test("deriveIssueStatus: closed -> done, open+PR -> doing, open -> planned", () => {
-  expect(deriveIssueStatus(issue({ state: "closed" }), new Set())).toBe("done");
-  expect(deriveIssueStatus(issue({ number: 56 }), new Set([56]))).toBe("doing");
-  expect(deriveIssueStatus(issue({ number: 56 }), new Set())).toBe("planned");
+  expect(deriveIssueStatus(issue({ state: "closed" }), [])).toBe("done");
+  expect(deriveIssueStatus(issue({ number: ISSUE_A }), [ISSUE_A])).toBe("doing");
+  expect(deriveIssueStatus(issue({ number: ISSUE_A }), [])).toBe("planned");
 });
 
 test("statusVariant maps to the board's colours", () => {

@@ -5,74 +5,74 @@
  * the server. Grouped read / structure (the vows) / data (the records) / github (the issue plan).
  */
 export interface ToolDoc {
+  readonly group: "data" | "github" | "read" | "structure";
   readonly name: string;
-  readonly group: "read" | "structure" | "data" | "github";
   readonly summary: string;
 }
 
 export const TOOL_DOCS: readonly ToolDoc[] = [
-  { name: "list_vows", group: "read", summary: "List every vow (slug, kind, intent)." },
-  { name: "get_vow", group: "read", summary: "Get one vow by slug." },
+  { group: "read", name: "list_vows", summary: "List every vow (slug, kind, intent)." },
+  { group: "read", name: "get_vow", summary: "Get one vow by slug." },
   {
-    name: "studio_info",
     group: "read",
+    name: "studio_info",
     summary: "The studio's paths + structure (app dir, db, repo, project, entities, views).",
   },
 
   {
-    name: "add_entity",
     group: "structure",
+    name: "add_entity",
     summary: "Add a new entity (a data model) to the studio.",
   },
-  { name: "add_field", group: "structure", summary: "Add a field to an entity." },
-  { name: "remove_field", group: "structure", summary: "Remove a field from an entity by name." },
+  { group: "structure", name: "add_field", summary: "Add a field to an entity." },
+  { group: "structure", name: "remove_field", summary: "Remove a field from an entity by name." },
   {
-    name: "add_view",
     group: "structure",
+    name: "add_view",
     summary: "Add a view (a page); `view` is a list of { type, value } nodes.",
   },
-  { name: "set_intent", group: "structure", summary: "Set a vow's intent (the `# …` promise)." },
+  { group: "structure", name: "set_intent", summary: "Set a vow's intent (the `# …` promise)." },
   {
-    name: "set_nav",
     group: "structure",
+    name: "set_nav",
     summary: "Set a vow's nav entry (label, icon, order, group).",
   },
-  { name: "remove_vow", group: "structure", summary: "Delete a vow (its `.md`)." },
+  { group: "structure", name: "remove_vow", summary: "Delete a vow (its `.md`)." },
 
-  { name: "list_records", group: "data", summary: "List an entity's records." },
-  { name: "get_record", group: "data", summary: "Get one record by id." },
+  { group: "data", name: "list_records", summary: "List an entity's records." },
+  { group: "data", name: "get_record", summary: "Get one record by id." },
   {
-    name: "add_record",
     group: "data",
+    name: "add_record",
     summary: "Add a record to an entity (an id is minted; absent fields get defaults).",
   },
   {
-    name: "set_record_field",
     group: "data",
+    name: "set_record_field",
     summary: "Patch one field of a record (e.g. move a task by setting its status).",
   },
-  { name: "remove_record", group: "data", summary: "Delete a record by id." },
+  { group: "data", name: "remove_record", summary: "Delete a record by id." },
 
   {
-    name: "list_issues",
     group: "github",
+    name: "list_issues",
     summary: "List GitHub issues with their derived status (planned/doing/done).",
   },
   {
-    name: "add_issue",
     group: "github",
+    name: "add_issue",
     summary: "Open a GitHub issue (feature template + labels) — assigned + added to the Project.",
   },
-  { name: "close_issue", group: "github", summary: "Close a GitHub issue (marks it done)." },
-  { name: "assign_issue", group: "github", summary: "Assign a user to a GitHub issue." },
+  { group: "github", name: "close_issue", summary: "Close a GitHub issue (marks it done)." },
+  { group: "github", name: "assign_issue", summary: "Assign a user to a GitHub issue." },
   {
-    name: "sync_project",
     group: "github",
+    name: "sync_project",
     summary: "Sync the GitHub Project's Status field to the studio's derived status (1:1).",
   },
 ];
 
 /** The summary for a tool name — the description `server.ts` registers (empty if the name is unknown). */
 export function summaryOf(name: string): string {
-  return TOOL_DOCS.find((t) => t.name === name)?.summary ?? "";
+  return TOOL_DOCS.find((doc) => doc.name === name)?.summary ?? "";
 }

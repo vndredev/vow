@@ -14,5 +14,5 @@ test("Grid is a div with the vow-grid class, a bound style, and a default slot",
 });
 
 test("Grid turns a column count into equal minmax tracks (a string passes through)", () => {
-  expect(emitGridSfc()).toContain("typeof c === 'number' ? `repeat(${c}, minmax(0, 1fr))` : c;");
+  expect(emitGridSfc()).toContain(`typeof c === 'number' ? \`repeat(\${c}, minmax(0, 1fr))\` : c;`);
 });

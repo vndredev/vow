@@ -17,7 +17,7 @@
     "shiki": "^2.5.0"
   },
   "devDependencies": {
-    "@types/markdown-it": "^14.1.2",
+    "@types/markdown-it": "^13.0.9",
     "@types/markdown-it-container": "^2.0.10",
     "vite-plus": "catalog:"
   }

@@ -16,14 +16,19 @@ import { z } from "zod";
  * What can be derived is never stored → drift-free by construction.
  */
 
+/** The shortest a `Line` (intent · proof claim · fulfilment field) may be. */
+const LINE_MIN = 3;
+/** The longest a `Line` may be — a promise is a sentence, not a paragraph. */
+const LINE_MAX = 200;
+
 export const Status = z.enum(["planned", "active", "done", "blocked"]);
 export type Status = z.infer<typeof Status>;
 
 /** Immutable reference key — `<prefix>_<suffix>`. References always point at the id, never the slug. */
-const Id = z.string().regex(/^[a-z]+_[a-z0-9]+$/, "id must be <prefix>_<suffix>");
+const Id = z.string().regex(/^[a-z]+_[a-z0-9]+$/u, "id must be <prefix>_<suffix>");
 /** Renamable label, kebab-case. */
-const Slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "must be kebab-case");
-const Line = z.string().trim().min(3).max(200);
+const Slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u, "must be kebab-case");
+const Line = z.string().trim().min(LINE_MIN).max(LINE_MAX);
 
 /**
  * How a Vow is redeemed — both type-verified, never via comment anchors:
@@ -31,8 +36,8 @@ const Line = z.string().trim().min(3).max(200);
  *  - `bind`: hand-written code, structurally bound through the TS API → verified by tsgo
  */
 export const Fulfillment = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("emit"), as: Line }),
-  z.object({ kind: z.literal("bind"), module: Line, export: Line }),
+  z.object({ as: Line, kind: z.literal("emit") }),
+  z.object({ export: Line, kind: z.literal("bind"), module: Line }),
 ]);
 export type Fulfillment = z.infer<typeof Fulfillment>;
 
@@ -55,15 +60,15 @@ export type FieldType = z.infer<typeof FieldType>;
 /** A field on an `entity` vow: a camelCase name, a type, and whether it's required. */
 const FieldName = z
   .string()
-  .regex(/^[a-z][a-zA-Z0-9]*$/, "field name must be a camelCase identifier");
+  .regex(/^[a-z][a-zA-Z0-9]*$/u, "field name must be a camelCase identifier");
 export const Field = z.object({
   name: FieldName,
-  type: FieldType,
-  required: z.boolean().default(false),
   /** Allowed values for a `select` field — absent for other types. */
   options: z.array(z.string()).optional(),
   /** The target entity slug for a `reference` field (it points at that entity's id) — absent otherwise. */
   ref: z.string().optional(),
+  required: z.boolean().default(false),
+  type: FieldType,
 });
 export type Field = z.infer<typeof Field>;
 
@@ -79,9 +84,13 @@ export interface ViewNode {
 
 export const ViewNode = z.object({ type: z.string(), value: z.unknown() });
 
-/** An `emit form` spec (a `## form`): a form bound to an entity (`of: <slug>`), with a submit label. */
+/**
+ * An `emit form` spec (a `## form`): a form bound to an entity (`of: <slug>`), with a submit label.
+ * Optional members carry `| undefined` so the zod-inferred output (always `key?: T | undefined`)
+ * is assignable under `exactOptionalPropertyTypes` — `Vow.parse(...)` returns exactly this shape.
+ */
 export interface FormSpec {
-  readonly of?: string;
+  readonly of?: string | undefined;
   readonly submit: string;
 }
 
@@ -90,69 +99,83 @@ export const FormSpec = z.object({
   submit: z.string().default("Submit"),
 });
 
+/**
+ * The Vow node. Optional members carry `| undefined` so the zod-inferred parse output (always
+ * `key?: T | undefined`) is assignable under `exactOptionalPropertyTypes` — the schema below IS this
+ * interface, so `Vow.parse(...)` returns a `Vow` with no cast.
+ */
 export interface Vow {
   readonly id: string;
   readonly slug: string;
   readonly intent: string;
   readonly children: readonly Vow[];
   /** Absent = pure composition (a vow that only groups children). */
-  readonly fulfills?: Fulfillment;
+  readonly fulfills?: Fulfillment | undefined;
   /** Data shape for `emit entity` vows — empty for everything else. */
   readonly fields: readonly Field[];
   readonly proof: readonly Scenario[];
   /** Optional view (`## view`, YAML) — a list of components (semantic blocks + primitive escape). */
-  readonly view?: readonly ViewNode[];
+  readonly view?: readonly ViewNode[] | undefined;
   /** Optional form (`## form`, YAML) — for an `emit form` vow, bound to an entity. */
-  readonly form?: FormSpec;
+  readonly form?: FormSpec | undefined;
   /** Sample records (`## seed`, YAML) — bootstrapped into the DB once, if the entity's table is empty. */
-  readonly seed?: readonly Record<string, unknown>[];
+  readonly seed?: readonly Record<string, unknown>[] | undefined;
   /** `root: true` marks the app's entry page — vow generates the boot that mounts it. */
-  readonly root?: boolean;
+  readonly root?: boolean | undefined;
   /** App-shell title (the brand), read from the root vow's frontmatter — replaces `vow({ title })`. */
-  readonly title?: string;
+  readonly title?: string | undefined;
   /** Nav entry in the app shell (frontmatter) — label · icon · order · group (a surface). */
-  readonly nav?: {
-    readonly label?: string;
-    readonly icon?: string;
-    readonly order?: number;
-    readonly group?: string;
-  };
+  readonly nav?:
+    | {
+        readonly label?: string | undefined;
+        readonly icon?: string | undefined;
+        readonly order?: number | undefined;
+        readonly group?: string | undefined;
+      }
+    | undefined;
   /** The app-shell layout, on the root vow — where the nav lives, the content width, the visual style. */
-  readonly shell?: {
-    readonly nav?: "sidebar-left" | "sidebar-right" | "header" | "footer";
-    readonly width?: "center" | "full";
-    readonly variant?: "bordered" | "seamless" | "cards";
-  };
+  readonly shell?:
+    | {
+        readonly nav?: "sidebar-left" | "sidebar-right" | "header" | "footer" | undefined;
+        readonly width?: "center" | "full" | undefined;
+        readonly variant?: "bordered" | "seamless" | "cards" | undefined;
+      }
+    | undefined;
 }
 
-export const Vow: z.ZodType<Vow> = z.lazy(() =>
-  z.object({
-    id: Id,
-    slug: Slug,
-    intent: Line,
-    children: z.array(Vow).default([]),
-    fulfills: Fulfillment.optional(),
-    fields: z.array(Field).default([]),
-    proof: z.array(Scenario).default([]),
-    view: z.array(ViewNode).optional(),
-    form: FormSpec.optional(),
-    seed: z.array(z.record(z.string(), z.unknown())).optional(),
-    root: z.boolean().optional(),
-    title: z.string().optional(),
-    nav: z
-      .object({
-        label: z.string().optional(),
-        icon: z.string().optional(),
-        order: z.number().optional(),
-        group: z.string().optional(),
-      })
-      .optional(),
-    shell: z
-      .object({
-        nav: z.enum(["sidebar-left", "sidebar-right", "header", "footer"]).optional(),
-        width: z.enum(["center", "full"]).optional(),
-        variant: z.enum(["bordered", "seamless", "cards"]).optional(),
-      })
-      .optional(),
-  }),
-);
+/**
+ * The recursive schema. Children are typed through a getter (the zod-4 recursion seam): the property is
+ * an array of `Vow` itself, resolved lazily so the cycle type-checks. The schema output is the `Vow`
+ * interface above — the gate parses real `.vow.md` against it (see parse.ts).
+ */
+export const Vow = z.object({
+  get children(): z.ZodDefault<z.ZodArray<typeof Vow>> {
+    return z.array(Vow).default([]);
+  },
+  fields: z.array(Field).default([]),
+  form: FormSpec.optional(),
+  fulfills: Fulfillment.optional(),
+  id: Id,
+  intent: Line,
+  nav: z
+    .object({
+      group: z.string().optional(),
+      icon: z.string().optional(),
+      label: z.string().optional(),
+      order: z.number().optional(),
+    })
+    .optional(),
+  proof: z.array(Scenario).default([]),
+  root: z.boolean().optional(),
+  seed: z.array(z.record(z.string(), z.unknown())).optional(),
+  shell: z
+    .object({
+      nav: z.enum(["sidebar-left", "sidebar-right", "header", "footer"]).optional(),
+      variant: z.enum(["bordered", "seamless", "cards"]).optional(),
+      width: z.enum(["center", "full"]).optional(),
+    })
+    .optional(),
+  slug: Slug,
+  title: z.string().optional(),
+  view: z.array(ViewNode).optional(),
+});

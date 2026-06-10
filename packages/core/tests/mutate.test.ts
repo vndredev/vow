@@ -1,27 +1,27 @@
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { expect, test } from "vite-plus/test";
-import { loadVows } from "../src/load.ts";
 import { addEntity, addField, addView, removeField, removeVow, setNav } from "../src/mutate.ts";
+import { expect, test } from "vite-plus/test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { loadVows } from "../src/load.ts";
+import path from "node:path";
+import { tmpdir } from "node:os";
 
-const freshDir = (): string => mkdtempSync(join(tmpdir(), "vow-mut-"));
+const freshDir = (): string => mkdtempSync(path.join(tmpdir(), "vow-mut-"));
 
 test("addEntity writes a new entity vow that loads back", () => {
   const dir = freshDir();
   try {
     addEntity(dir, {
-      slug: "task",
+      fields: [{ name: "title", required: true, type: "text" }],
       intent: "A task",
-      fields: [{ name: "title", type: "text", required: true }],
+      slug: "task",
     });
     const tree = loadVows(dir);
     expect(tree).toHaveLength(1);
     expect(tree[0]?.slug).toBe("task");
     expect(tree[0]?.fields[0]?.name).toBe("title");
-    expect(tree[0]?.fulfills).toEqual({ kind: "emit", as: "entity" });
+    expect(tree[0]?.fulfills).toEqual({ as: "entity", kind: "emit" });
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 
@@ -29,16 +29,21 @@ test("addField + removeField mutate an entity's fields", () => {
   const dir = freshDir();
   try {
     addEntity(dir, {
-      slug: "task",
+      fields: [{ name: "title", required: true, type: "text" }],
       intent: "A task",
-      fields: [{ name: "title", type: "text", required: true }],
+      slug: "task",
     });
-    addField(dir, "task", { name: "done", type: "boolean", required: false });
-    expect(loadVows(dir)[0]?.fields.map((f) => f.name)).toEqual(["title", "done"]);
+    addField(dir, "task", { name: "done", required: false, type: "boolean" });
+    expect(loadVows(dir)[0]?.fields.map((field: { readonly name: string }) => field.name)).toEqual([
+      "title",
+      "done",
+    ]);
     removeField(dir, "task", "title");
-    expect(loadVows(dir)[0]?.fields.map((f) => f.name)).toEqual(["done"]);
+    expect(loadVows(dir)[0]?.fields.map((field: { readonly name: string }) => field.name)).toEqual([
+      "done",
+    ]);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 
@@ -46,16 +51,16 @@ test("addView writes a view + nav; setNav updates it", () => {
   const dir = freshDir();
   try {
     addView(dir, {
-      slug: "home",
       intent: "The home",
-      view: [{ type: "h1", value: "Hi" }],
       nav: { label: "Home" },
+      slug: "home",
+      view: [{ type: "h1", value: "Hi" }],
     });
     expect(loadVows(dir)[0]?.nav?.label).toBe("Home");
-    setNav(dir, "home", { label: "Start", icon: "home" });
-    expect(loadVows(dir)[0]?.nav).toEqual({ label: "Start", icon: "home" });
+    setNav(dir, "home", { icon: "home", label: "Start" });
+    expect(loadVows(dir)[0]?.nav).toEqual({ icon: "home", label: "Start" });
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 
@@ -63,15 +68,15 @@ test("a mutation validates a dangling reference before writing", () => {
   const dir = freshDir();
   try {
     addEntity(dir, {
-      slug: "task",
+      fields: [{ name: "title", required: true, type: "text" }],
       intent: "A task",
-      fields: [{ name: "title", type: "text", required: true }],
+      slug: "task",
     });
-    expect(() =>
-      addField(dir, "task", { name: "owner", type: "reference", required: false, ref: "ghost" }),
-    ).toThrow(/not a known entity/);
+    expect(() => {
+      addField(dir, "task", { name: "owner", ref: "ghost", required: false, type: "reference" });
+    }).toThrow(/not a known entity/u);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });
 
@@ -79,20 +84,24 @@ test("removeVow deletes the file; a referenced entity can't be removed", () => {
   const dir = freshDir();
   try {
     addEntity(dir, {
-      slug: "user",
+      fields: [{ name: "name", required: true, type: "text" }],
       intent: "A user",
-      fields: [{ name: "name", type: "text", required: true }],
+      slug: "user",
     });
     addEntity(dir, {
-      slug: "task",
+      fields: [{ name: "owner", ref: "user", required: false, type: "reference" }],
       intent: "A task",
-      fields: [{ name: "owner", type: "reference", required: false, ref: "user" }],
+      slug: "task",
     });
-    expect(() => removeVow(dir, "user")).toThrow(/not a known entity/); // task references it
+    // `task` references it.
+    expect(() => {
+      removeVow(dir, "user");
+    }).toThrow(/not a known entity/u);
     removeVow(dir, "task");
-    removeVow(dir, "user"); // now unreferenced
+    // Now unreferenced.
+    removeVow(dir, "user");
     expect(loadVows(dir)).toHaveLength(0);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(dir, { force: true, recursive: true });
   }
 });

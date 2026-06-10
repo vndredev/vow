@@ -1,55 +1,46 @@
+// @vitest-environment jsdom
+import type { SelectOption, SelectState } from "../src/select.ts";
 import { expect, test } from "vite-plus/test";
-import { select, type SelectState } from "../src/index.ts";
+import { invokeHandler, makeHarness } from "./harness.ts";
+import { select } from "../src/index.ts";
 
-const OPTIONS = [
-  { value: "vue", label: "Vue" },
-  { value: "react", label: "React" },
-  { value: "solid", label: "Solid" },
-];
+const VUE: SelectOption = { label: "Vue", value: "vue" };
+const REACT: SelectOption = { label: "React", value: "react" };
+const SOLID: SelectOption = { label: "Solid", value: "solid" };
+const OPTIONS = [VUE, REACT, SOLID];
 
-/** A tiny stateful harness: holds state, rebuilds the api after each change. */
-function harness(initial: SelectState) {
-  let state = initial;
+function base(over: Readonly<Partial<SelectState>>): SelectState {
   return {
-    api: () =>
-      select(state, (next) => {
-        state = next;
-      }),
-    get: () => state,
+    active: "vue",
+    disabled: false,
+    id: "fw",
+    open: false,
+    options: OPTIONS,
+    value: "vue",
+    ...over,
   };
 }
 
-const base = (over: Partial<SelectState> = {}): SelectState => ({
-  value: "vue",
-  options: OPTIONS,
-  open: false,
-  active: "vue",
-  id: "fw",
-  ...over,
-});
-
-const onKeydown = (api: ReturnType<typeof select>): ((e: KeyboardEvent) => void) =>
-  api.triggerProps["onKeydown"] as (e: KeyboardEvent) => void;
-
-const press = (key: string): KeyboardEvent =>
-  ({ key, preventDefault: () => {} }) as unknown as KeyboardEvent;
+function pressKey(props: Readonly<Record<string, unknown>>, key: string): void {
+  invokeHandler(props, "onKeydown", new KeyboardEvent("keydown", { key }));
+}
 
 test("select commits a value and closes", () => {
-  const h = harness(base({ open: true }));
-  h.api().select("react");
-  expect(h.get().value).toBe("react");
-  expect(h.get().open).toBe(false);
+  const sel = makeHarness(base({ open: true }), select);
+  sel.api().select("react");
+  expect(sel.get().value).toBe("react");
+  expect(sel.get().open).toBe(false);
 });
 
 test("clicking the trigger opens with the selected option active", () => {
-  const h = harness(base({ value: "react", active: "react" }));
-  (h.api().triggerProps["onClick"] as () => void)();
-  expect(h.get().open).toBe(true);
-  expect(h.get().active).toBe("react");
+  const sel = makeHarness(base({ active: "react", value: "react" }), select);
+  invokeHandler(sel.api().triggerProps, "onClick", new Event("click"));
+  expect(sel.get().open).toBe(true);
+  expect(sel.get().active).toBe("react");
 });
 
 test("trigger carries the combobox contract", () => {
-  const api = select(base({ open: true, active: "react" }), () => {});
+  const api = makeHarness(base({ active: "react", open: true }), select).api();
   expect(api.triggerProps["role"]).toBe("combobox");
   expect(api.triggerProps["aria-haspopup"]).toBe("listbox");
   expect(api.triggerProps["aria-expanded"]).toBe(true);
@@ -59,29 +50,31 @@ test("trigger carries the combobox contract", () => {
 });
 
 test("arrows move the active highlight (wrapping); Enter commits it", () => {
-  const h = harness(base({ open: true, active: "solid" }));
-  onKeydown(h.api())(press("ArrowDown")); // wraps solid -> vue
-  expect(h.get().active).toBe("vue");
-  onKeydown(h.api())(press("ArrowUp")); // wraps vue -> solid
-  expect(h.get().active).toBe("solid");
-  onKeydown(h.api())(press("Home"));
-  expect(h.get().active).toBe("vue");
-  onKeydown(h.api())(press("Enter"));
-  expect(h.get().value).toBe("vue");
-  expect(h.get().open).toBe(false);
+  const sel = makeHarness(base({ active: "solid", open: true }), select);
+  // Wraps solid -> vue.
+  pressKey(sel.api().triggerProps, "ArrowDown");
+  expect(sel.get().active).toBe("vue");
+  // Wraps vue -> solid.
+  pressKey(sel.api().triggerProps, "ArrowUp");
+  expect(sel.get().active).toBe("solid");
+  pressKey(sel.api().triggerProps, "Home");
+  expect(sel.get().active).toBe("vue");
+  pressKey(sel.api().triggerProps, "Enter");
+  expect(sel.get().value).toBe("vue");
+  expect(sel.get().open).toBe(false);
 });
 
 test("Escape closes without committing", () => {
-  const h = harness(base({ open: true, value: "vue", active: "react" }));
-  onKeydown(h.api())(press("Escape"));
-  expect(h.get().open).toBe(false);
-  expect(h.get().value).toBe("vue");
+  const sel = makeHarness(base({ active: "react", open: true, value: "vue" }), select);
+  pressKey(sel.api().triggerProps, "Escape");
+  expect(sel.get().open).toBe(false);
+  expect(sel.get().value).toBe("vue");
 });
 
 test("option props mark selected + active for the theme", () => {
-  const api = select(base({ open: true, value: "vue", active: "react" }), () => {});
-  expect(api.optionProps(OPTIONS[0]!)["aria-selected"]).toBe(true);
-  expect(api.optionProps(OPTIONS[0]!)["data-state"]).toBe("checked");
-  expect(api.optionProps(OPTIONS[1]!)["data-active"]).toBe("");
-  expect(api.optionProps(OPTIONS[0]!)["id"]).toBe("fw-option-0");
+  const api = makeHarness(base({ active: "react", open: true, value: "vue" }), select).api();
+  expect(api.optionProps(VUE)["aria-selected"]).toBe(true);
+  expect(api.optionProps(VUE)["data-state"]).toBe("checked");
+  expect(api.optionProps(REACT)["data-active"]).toBe("");
+  expect(api.optionProps(VUE)["id"]).toBe("fw-option-0");
 });

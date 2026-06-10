@@ -1,28 +1,18 @@
 import { expect, test } from "vite-plus/test";
-import { tabs, type TabsState } from "../src/index.ts";
-
-/** A tiny stateful harness: holds state, rebuilds the api after each change. */
-function harness(initial: TabsState) {
-  let state = initial;
-  return {
-    api: () =>
-      tabs(state, (next) => {
-        state = next;
-      }),
-    get: () => state,
-  };
-}
+import type { TabsState } from "../src/tabs.ts";
+import { makeHarness } from "./harness.ts";
+import { tabs } from "../src/index.ts";
 
 const ITEMS = ["vue", "react", "solid"];
 
 test("select changes the value", () => {
-  const h = harness({ value: "vue", items: ITEMS, id: "fw" });
-  h.api().select("react");
-  expect(h.get().value).toBe("react");
+  const tb = makeHarness({ id: "fw", items: ITEMS, value: "vue" }, tabs);
+  tb.api().select("react");
+  expect(tb.get().value).toBe("react");
 });
 
 test("tab props carry the APG contract + roving tabindex", () => {
-  const api = tabs({ value: "react", items: ITEMS, id: "fw" }, () => {});
+  const api = makeHarness({ id: "fw", items: ITEMS, value: "react" }, tabs).api();
   const active = api.tabProps("react");
   const inactive = api.tabProps("vue");
   expect(active["role"]).toBe("tab");
@@ -31,11 +21,12 @@ test("tab props carry the APG contract + roving tabindex", () => {
   expect(active["aria-controls"]).toBe("fw-panel-1");
   expect(active["id"]).toBe("fw-tab-1");
   expect(inactive["aria-selected"]).toBe(false);
-  expect(inactive["tabindex"]).toBe(-1); // roving — only the active tab is tabbable
+  // Roving — only the active tab is tabbable.
+  expect(inactive["tabindex"]).toBe(-1);
 });
 
 test("panel props are a labelled tabpanel wired to the tab", () => {
-  const api = tabs({ value: "vue", items: ITEMS, id: "fw" }, () => {});
+  const api = makeHarness({ id: "fw", items: ITEMS, value: "vue" }, tabs).api();
   const panel = api.panelProps("vue");
   expect(panel["role"]).toBe("tabpanel");
   expect(panel["id"]).toBe("fw-panel-0");
@@ -45,12 +36,15 @@ test("panel props are a labelled tabpanel wired to the tab", () => {
 });
 
 test("orientation drives data-orientation + aria-orientation (default horizontal)", () => {
-  const horizontal = tabs({ value: "vue", items: ITEMS, id: "fw" }, () => {});
+  const horizontal = makeHarness({ id: "fw", items: ITEMS, value: "vue" }, tabs).api();
   expect(horizontal.rootProps["data-orientation"]).toBe("horizontal");
   expect(horizontal.listProps["aria-orientation"]).toBe("horizontal");
-  const vertical = tabs(
-    { value: "vue", items: ITEMS, id: "fw", orientation: "vertical" },
-    () => {},
-  );
+  const verticalState: TabsState = {
+    id: "fw",
+    items: ITEMS,
+    orientation: "vertical",
+    value: "vue",
+  };
+  const vertical = makeHarness(verticalState, tabs).api();
   expect(vertical.listProps["aria-orientation"]).toBe("vertical");
 });

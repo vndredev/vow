@@ -1,123 +1,123 @@
 // @vitest-environment node
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { expect, test } from "vite-plus/test";
-import { type Vow as VowNode } from "@vow/core";
 import { caseCollision, generateFiles } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import type { Vow as VowNode } from "@vow/core";
+import path from "node:path";
+import { tmpdir } from "node:os";
+
+/** Run `body` against a fresh temp dir, cleaning it up afterwards — keeps each test body small. */
+function inTempDir(body: (dir: string) => void): void {
+  const dir = mkdtempSync(path.join(tmpdir(), "vow-gen-"));
+  try {
+    body(dir);
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+}
 
 /** A `## view`: a list of components; it pulls in the layout primitives it uses. */
 const shell: VowNode = {
-  id: "vow_shell",
-  slug: "shell",
-  intent: "App shell",
   children: [],
   fields: [],
+  fulfills: { as: "view", kind: "emit" },
+  id: "vow_shell",
+  intent: "App shell",
   proof: [],
-  fulfills: { kind: "emit", as: "view" },
-  view: [{ type: "flex", value: { direction: "column", gap: 4, children: [{ text: "hi" }] } }],
+  slug: "shell",
+  view: [{ type: "flex", value: { children: [{ text: "hi" }], direction: "column", gap: 4 } }],
+};
+
+const task: VowNode = {
+  children: [],
+  fields: [
+    { name: "title", required: true, type: "text" },
+    { name: "done", required: false, type: "boolean" },
+  ],
+  fulfills: { as: "entity", kind: "emit" },
+  id: "vow_task",
+  intent: "A task",
+  proof: [],
+  slug: "task",
 };
 
 test("generateFiles renders a `## view` and writes the layout primitives it needs", () => {
-  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
-  try {
-    generateFiles([shell], dir, dir);
+  inTempDir((dir) => {
+    generateFiles([shell], { outDir: dir, srcDir: dir });
     const files = readdirSync(dir);
     expect(files).toContain("shell.vue");
-    expect(files).toContain("Flex.vue"); // layout primitives written alongside
+    // Layout primitives are written alongside.
+    expect(files).toContain("Flex.vue");
 
-    const shellVue = readFileSync(join(dir, "shell.vue"), "utf8");
+    const shellVue = readFileSync(path.join(dir, "shell.vue"), "utf8");
     expect(shellVue).toContain('<div class="vow-app">');
     expect(shellVue).toContain('<Flex :direction="\'column\'" :gap="4">hi</Flex>');
     expect(shellVue).toContain('import Flex from "./Flex.vue";');
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  });
 });
 
-const task: VowNode = {
-  id: "vow_task",
-  slug: "task",
-  intent: "A task",
-  children: [],
-  fields: [
-    { name: "title", type: "text", required: true },
-    { name: "done", type: "boolean", required: false },
-  ],
-  proof: [],
-  fulfills: { kind: "emit", as: "entity" },
-};
-
 test("a lone entity is a pure model — only its .ts + .test.ts, no view, no primitives", () => {
-  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
-  try {
-    generateFiles([task], dir, dir);
+  inTempDir((dir) => {
+    generateFiles([task], { outDir: dir, srcDir: dir });
     const files = readdirSync(dir);
     expect(files).toContain("task.ts");
     expect(files).toContain("task.test.ts");
-    expect(files).not.toContain("Task.vue"); // not auto-rendered — a view must pull it in
+    // Not auto-rendered — a view must pull it in.
+    expect(files).not.toContain("Task.vue");
     expect(files).not.toContain("Checkbox.vue");
     expect(files).not.toContain("Flex.vue");
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 test("a `## view` with `list: task` pulls in the entity's read-only list (Table parts, no form)", () => {
   const page: VowNode = {
-    id: "vow_page",
-    slug: "page",
-    intent: "A page",
     children: [],
     fields: [],
+    fulfills: { as: "view", kind: "emit" },
+    id: "vow_page",
+    intent: "A page",
     proof: [],
-    fulfills: { kind: "emit", as: "view" },
+    slug: "page",
     view: [{ type: "list", value: "task" }],
   };
-  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
-  try {
-    generateFiles([page, task], dir, dir);
+  inTempDir((dir) => {
+    generateFiles([page, task], { outDir: dir, srcDir: dir });
     const files = readdirSync(dir);
-    expect(files).toContain("Task.vue"); // emitted because the view lists it
-    expect(files).toContain("Table.vue"); // the read-only list composes the Table parts
-    expect(files).not.toContain("Checkbox.vue"); // read-only: a boolean is Yes/No, not a checkbox
-    expect(files).not.toContain("Field.vue"); // no create form
-    const pageVue = readFileSync(join(dir, "page.vue"), "utf8");
+    // Emitted because the view lists it; the read-only list composes the Table parts.
+    expect(files).toContain("Task.vue");
+    expect(files).toContain("Table.vue");
+    // Read-only: a boolean is Yes/No (not a checkbox), and there is no create form.
+    expect(files).not.toContain("Checkbox.vue");
+    expect(files).not.toContain("Field.vue");
+    const pageVue = readFileSync(path.join(dir, "page.vue"), "utf8");
     expect(pageVue).toContain("<Task />");
     expect(pageVue).toContain('import Task from "./Task.vue";');
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 test("a `root` page generates the boot (main.ts) + the env shims", () => {
-  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
-  try {
-    generateFiles([{ ...shell, root: true }], dir, dir);
+  inTempDir((dir) => {
+    generateFiles([{ ...shell, root: true }], { outDir: dir, srcDir: dir });
     const files = readdirSync(dir);
     expect(files).toContain("main.ts");
     expect(files).toContain("vow-env.d.ts");
-    const main = readFileSync(join(dir, "main.ts"), "utf8");
+    const main = readFileSync(path.join(dir, "main.ts"), "utf8");
     expect(main).toContain('import Shell from "./shell.vue";');
     expect(main).toContain('createRouter(routes, { layout }).mount("#app");');
     expect(main).toContain('{ path: "/", load: async () => ({ default: Shell }) }');
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 test("a non-root view generates no boot", () => {
-  const dir = mkdtempSync(join(tmpdir(), "vow-gen-"));
-  try {
-    generateFiles([shell], dir, dir);
+  inTempDir((dir) => {
+    generateFiles([shell], { outDir: dir, srcDir: dir });
     expect(readdirSync(dir)).not.toContain("main.ts");
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  });
 });
 
 test("caseCollision flags basenames that differ only by case (the slug-vs-primitive trap)", () => {
   expect(caseCollision(["/g/table.vue", "/g/Table.vue"])).toEqual(["table.vue", "Table.vue"]);
-  expect(caseCollision(["/g/issues.vue", "/g/Table.vue", "/g/Badge.vue"])).toBeNull();
-  expect(caseCollision(["/g/a.ts", "/g/a.ts"])).toBeNull(); // an exact repeat is not a case clash
+  expect(caseCollision(["/g/issues.vue", "/g/Table.vue", "/g/Badge.vue"])).toBeUndefined();
+  // An exact repeat is not a case clash.
+  expect(caseCollision(["/g/a.ts", "/g/a.ts"])).toBeUndefined();
 });

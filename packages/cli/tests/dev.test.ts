@@ -8,7 +8,7 @@ test("tagComplete tags whole lines and holds a trailing partial", () => {
 });
 
 test("tagComplete never double-tags a line split across chunk boundaries", () => {
-  // the audit bug: "hello wo" then "rld\n" became "[s] hello wo[s] rld"
+  // The audit bug: "hello wo" then "rld\n" became "[s] hello wo[s] rld".
   const first = tagComplete("hello wo", "[s] ");
   expect(first).toEqual({ out: "", rest: "hello wo" });
   const second = tagComplete(`${first.rest}rld\n`, "[s] ");

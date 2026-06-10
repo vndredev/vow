@@ -15,51 +15,60 @@ Renders its promise as a component.
 - HTML in the text is escaped
 `;
 
+// The number of proves (named, not a magic number).
+const TWO_PROVES = 2;
+// The index of the third `## view` node (the `flex` block).
+const THIRD = 2;
+
+// A field-md builder for one `## fields` type — hoisted (it captures nothing from its test).
+const fieldMd = (type: string): string =>
+  `---\nid: vow_widget\nfulfills: emit entity\n---\n# Widget\n\n## fields\n- status: ${type}\n`;
+
 test("parseVowMd reads a vow from Markdown: frontmatter + # intent + ## proves", () => {
   const vow = parseVowMd("welcome-card", welcomeCard);
   expect(vow.id).toBe("vow_card");
-  expect(vow.slug).toBe("welcome-card"); // from the folder, not the file
-  expect(vow.intent).toBe("Welcome to vow"); // the H1
-  expect(vow.fulfills).toEqual({ kind: "emit", as: "view" });
-  expect(vow.proof).toHaveLength(2);
+  // From the folder, not the file.
+  expect(vow.slug).toBe("welcome-card");
+  // The H1.
+  expect(vow.intent).toBe("Welcome to vow");
+  expect(vow.fulfills).toEqual({ as: "view", kind: "emit" });
+  expect(vow.proof).toHaveLength(TWO_PROVES);
   expect(vow.proof[0]?.claim).toBe("the intent shows");
   expect(vow.proof[1]?.claim).toBe("HTML in the text is escaped");
 });
 
 test("a `## fields` reference(entity) parses to a reference field with its target", () => {
   const md = `---\nid: vow_issue\nfulfills: emit entity\n---\n# An issue\n\n## fields\n- title: text, required\n- assignee: reference(user)\n`;
-  const fields = parseVowMd("issue", md).fields;
-  expect(fields[1]).toEqual({ name: "assignee", type: "reference", required: false, ref: "user" });
+  const { fields } = parseVowMd("issue", md);
+  expect(fields[1]).toEqual({ name: "assignee", ref: "user", required: false, type: "reference" });
 });
 
 test("a select keeps its head intact when a comma or `required` follows", () => {
-  const fieldMd = (type: string) =>
-    `---\nid: vow_widget\nfulfills: emit entity\n---\n# Widget\n\n## fields\n- status: ${type}\n`;
-  // a comma INSIDE the parens must not strand the head on "select(a"
+  // A comma INSIDE the parens must not strand the head on "select(a".
   expect(parseVowMd("widget", fieldMd("select(a, b)")).fields[0]).toEqual({
     name: "status",
-    type: "select",
-    required: false,
     options: ["a, b"],
+    required: false,
+    type: "select",
   });
-  // a real select + a trailing `required` flag
+  // A real select + a trailing `required` flag.
   expect(parseVowMd("widget", fieldMd("select(low|high), required")).fields[0]).toEqual({
     name: "status",
-    type: "select",
-    required: true,
     options: ["low", "high"],
+    required: true,
+    type: "select",
   });
 });
 
 test("a malformed type with unbalanced parens throws a clear error", () => {
   const md = `---\nid: vow_widget\nfulfills: emit entity\n---\n# Widget\n\n## fields\n- status: select(a\n`;
-  expect(() => parseVowMd("widget", md)).toThrow(/malformed type/);
+  expect(() => parseVowMd("widget", md)).toThrow(/malformed type/u);
 });
 
 test("`fulfills: bind <module>#<export>` parses to a bind fulfilment", () => {
   const md = `---\nid: vow_r\nfulfills: bind @vow/core#rollup\n---\n# Status roll-up\n`;
   const vow = parseVowMd("rollup", md);
-  expect(vow.fulfills).toEqual({ kind: "bind", module: "@vow/core", export: "rollup" });
+  expect(vow.fulfills).toEqual({ export: "rollup", kind: "bind", module: "@vow/core" });
 });
 
 test("a pure-composition vow needs no fulfilment and no proof", () => {
@@ -100,10 +109,10 @@ test("parseVowMd reads a ## view YAML block into a list of components", () => {
     "      - text: hi",
     "```",
   ].join("\n");
-  const view = parseVowMd("page", md).view;
-  expect(view?.[0]).toEqual({ type: "hero", value: { title: "Welcome", lead: "Build it" } });
+  const { view } = parseVowMd("page", md);
+  expect(view?.[0]).toEqual({ type: "hero", value: { lead: "Build it", title: "Welcome" } });
   expect(view?.[1]).toEqual({ type: "list", value: "task" });
-  expect(view?.[2]?.type).toBe("flex");
+  expect(view?.[THIRD]?.type).toBe("flex");
 });
 
 test("a ## view item with more than one key fails fast", () => {
@@ -142,8 +151,8 @@ test("frontmatter title + nav round-trip into the Vow (the app shell, declared)"
   ].join("\n");
   const vow = parseVowMd("home", md);
   expect(vow.title).toBe("vow studio");
-  expect(vow.nav).toEqual({ label: "Tasks", icon: "list-checks", order: 2, group: "Plan" });
-  expect(vow.shell).toEqual({ nav: "sidebar-left", width: "full", variant: "cards" });
+  expect(vow.nav).toEqual({ group: "Plan", icon: "list-checks", label: "Tasks", order: 2 });
+  expect(vow.shell).toEqual({ nav: "sidebar-left", variant: "cards", width: "full" });
 });
 
 test("a ## seed block parses to a list of sample records", () => {
@@ -164,7 +173,7 @@ test("a ## seed block parses to a list of sample records", () => {
     "```",
   ].join("\n");
   expect(parseVowMd("task", md).seed).toEqual([
-    { title: "First", status: "done" },
-    { title: "Second", status: "todo" },
+    { status: "done", title: "First" },
+    { status: "todo", title: "Second" },
   ]);
 });

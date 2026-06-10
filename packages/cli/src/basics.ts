@@ -1,5 +1,5 @@
-import { spawnSync } from "node:child_process";
 import { APPS, repoRoot } from "./apps.ts";
+import { spawnSync } from "node:child_process";
 
 /** Run a command from the repo root, inheriting stdio; return its exit code. */
 function run(cmd: string, args: readonly string[]): number {
@@ -13,10 +13,15 @@ export function check(args: readonly string[]): number {
 
 /** `vow build [app...]` → `vp build apps/<app>` for each (default: every app). Stops at the first failure. */
 export function build(slugs: readonly string[]): number {
-  const targets = slugs.length > 0 ? slugs : APPS.map((a) => a.slug);
+  let targets = slugs;
+  if (targets.length === 0) {
+    targets = APPS.map((app) => app.slug);
+  }
   for (const slug of targets) {
     const code = run("vp", ["build", `apps/${slug}`]);
-    if (code !== 0) return code;
+    if (code !== 0) {
+      return code;
+    }
   }
   return 0;
 }

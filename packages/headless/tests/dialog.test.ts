@@ -1,26 +1,15 @@
 import { expect, test } from "vite-plus/test";
-import { dialog, type DialogState } from "../src/index.ts";
-
-/** A tiny stateful harness: holds state, rebuilds the api after each change. */
-function harness(initial: DialogState) {
-  let state = initial;
-  return {
-    api: () =>
-      dialog(state, (next) => {
-        state = next;
-      }),
-    get: () => state,
-  };
-}
+import { invokeHandler, makeHarness } from "./harness.ts";
+import { dialog } from "../src/index.ts";
 
 test("close flips open to false", () => {
-  const h = harness({ open: true, id: "d" });
-  h.api().close();
-  expect(h.get().open).toBe(false);
+  const dlg = makeHarness({ id: "d", open: true }, dialog);
+  dlg.api().close();
+  expect(dlg.get().open).toBe(false);
 });
 
 test("content props carry the modal contract", () => {
-  const api = dialog({ open: true, id: "confirm" }, () => {});
+  const api = makeHarness({ id: "confirm", open: true }, dialog).api();
   expect(api.contentProps["role"]).toBe("dialog");
   expect(api.contentProps["aria-modal"]).toBe("true");
   expect(api.contentProps["aria-labelledby"]).toBe("confirm-title");
@@ -29,20 +18,20 @@ test("content props carry the modal contract", () => {
 });
 
 test("the overlay and close button both dismiss", () => {
-  const h = harness({ open: true, id: "d" });
-  (h.api().overlayProps["onClick"] as () => void)();
-  expect(h.get().open).toBe(false);
+  const viaOverlay = makeHarness({ id: "d", open: true }, dialog);
+  invokeHandler(viaOverlay.api().overlayProps, "onClick", new Event("click"));
+  expect(viaOverlay.get().open).toBe(false);
 
-  const h2 = harness({ open: true, id: "d" });
-  (h2.api().closeProps["onClick"] as () => void)();
-  expect(h2.get().open).toBe(false);
-  expect(h2.api().closeProps["aria-label"]).toBe("Close");
+  const viaClose = makeHarness({ id: "d", open: true }, dialog);
+  invokeHandler(viaClose.api().closeProps, "onClick", new Event("click"));
+  expect(viaClose.get().open).toBe(false);
+  expect(viaClose.api().closeProps["aria-label"]).toBe("Close");
 });
 
 test("every part mirrors state as data-state (the theming hook)", () => {
-  const open = dialog({ open: true, id: "d" }, () => {});
+  const open = makeHarness({ id: "d", open: true }, dialog).api();
   expect(open.overlayProps["data-state"]).toBe("open");
   expect(open.contentProps["data-state"]).toBe("open");
-  const closed = dialog({ open: false, id: "d" }, () => {});
+  const closed = makeHarness({ id: "d", open: false }, dialog).api();
   expect(closed.contentProps["data-state"]).toBe("closed");
 });

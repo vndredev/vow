@@ -1,0 +1,71 @@
+import type { Attr, UiNode } from "@vow/component";
+
+/**
+ * The shared UiNode/Attr builders + raw-YAML coercions used across the view emitters. Small, pure,
+ * adapter-neutral — every emitter composes its tree from these, so the node shapes stay in one place.
+ */
+
+/** A YAML scalar as a string (object/array values become empty — they aren't content). */
+export function str(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "";
+}
+
+/** A literal text node. */
+export function txt(text: string): UiNode {
+  return { kind: "text", text };
+}
+
+/** A bare element node with no attributes — the common wrapper case (`h1`, `p`, …). */
+export function el(tag: string, children: readonly UiNode[]): UiNode {
+  return { attrs: [], children: [...children], kind: "element", tag };
+}
+
+/** A component node by PascalCase name, with attrs + children. */
+export function comp(name: string, attrs: readonly Attr[], children: readonly UiNode[]): UiNode {
+  return { attrs: [...attrs], children: [...children], kind: "component", name };
+}
+
+/** A bound (`:name="expr"`) attribute. */
+export function bound(name: string, expr: string): Attr {
+  return { expr, kind: "bound", name };
+}
+
+/** Whether a raw YAML value is a plain object (not null, not an array). */
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** A raw YAML value as an object (props + optional `children`); non-objects become empty. */
+export function asObject(value: unknown): Record<string, unknown> {
+  if (isObject(value)) {
+    return value;
+  }
+  return {};
+}
+
+/** Single-quote-escape a raw string for embedding in a generated single-quoted JS literal. */
+export function quote(value: string): string {
+  const escaped = String.raw`\'`;
+  return value.replaceAll("'", escaped);
+}
+
+/** One `key: value` entry of an object-literal expression — strings single-quoted, the rest via JSON. */
+function entryExpr(entry: readonly [string, unknown]): string {
+  const [key, value] = entry;
+  if (typeof value === "string") {
+    return `${key}: '${quote(value)}'`;
+  }
+  return `${key}: ${JSON.stringify(value)}`;
+}
+
+/** A JS object-literal expression with single-quoted string values — safe inside a `:attr="..."`. */
+export function objectExpr(obj: Readonly<Record<string, unknown>>): string {
+  const entries = Object.entries(obj).map((entry: readonly [string, unknown]) => entryExpr(entry));
+  return `{ ${entries.join(", ")} }`;
+}

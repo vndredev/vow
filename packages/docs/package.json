@@ -6,7 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./Layout.vue": "./src/Layout.vue",
+    "./Layout.vue": "./src/layout.vue",
     "./style.css": "./src/style.css"
   },
   "scripts": {
@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.0.0",
+    "@vow/component": "workspace:*",
+    "@vow/core": "workspace:*",
     "@vow/emit-primitive": "workspace:*",
     "@vow/emit-view": "workspace:*",
     "@vow/headless": "workspace:*",

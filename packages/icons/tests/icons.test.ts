@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import { lucide, sets } from "../src/index.ts";
-import type { IconName } from "../src/index.ts";
+import type { IconName } from "../src/types.ts";
 
 const NAMES: IconName[] = [
   "menu",
@@ -11,7 +11,7 @@ const NAMES: IconName[] = [
   "chevron-down",
   "chevron-right",
   "check",
-  "x",
+  "close",
 ];
 
 test("every icon set provides an SVG for every semantic icon", () => {
@@ -24,6 +24,6 @@ test("every icon set provides an SVG for every semantic icon", () => {
 
 test("lucide entries are SVG inner markup", () => {
   for (const svg of Object.values(lucide)) {
-    expect(svg).toMatch(/<(path|circle|line|rect)/);
+    expect(svg).toMatch(/<(path|circle|line|rect)/u);
   }
 });

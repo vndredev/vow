@@ -1,32 +1,32 @@
-import { expect, test } from "vite-plus/test";
-import { type Vow as VowNode } from "@vow/core";
 import {
+  VIRTUAL_TREE,
   allVows,
   loadVowModule,
   resolveVowId,
-  VIRTUAL_TREE,
   vow,
   vowTreeModule,
 } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import type { Vow as VowNode } from "@vow/core";
 
 const NUL = "\0";
 
 const card: VowNode = {
-  id: "vow_card",
-  slug: "welcome-card",
-  intent: "Welcome to vow",
   children: [],
   fields: [],
+  fulfills: { as: "view", kind: "emit" },
+  id: "vow_card",
+  intent: "Welcome to vow",
   proof: [],
-  fulfills: { kind: "emit", as: "view" },
+  slug: "welcome-card",
 };
 const root: VowNode = {
-  id: "vow_root",
-  slug: "app",
-  intent: "Root",
   children: [card],
   fields: [],
+  id: "vow_root",
+  intent: "Root",
   proof: [],
+  slug: "app",
 };
 const vows: VowNode[] = [root];
 
@@ -42,10 +42,10 @@ test("loading the tree id yields the vows as data — no file", () => {
 });
 
 test("allVows flattens the tree depth-first", () => {
-  expect(allVows(vows).map((v) => v.slug)).toEqual(["app", "welcome-card"]);
+  expect(allVows(vows).map((node) => node.slug)).toEqual(["app", "welcome-card"]);
 });
 
 test("the plugin is named `vow`, and the vows round-trip as self-contained JS", () => {
-  expect(vow({ vows: vows }).name).toBe("vow");
+  expect(vow({ vows }).name).toBe("vow");
   expect(vowTreeModule(vows)).toContain('"id":"vow_card"');
 });

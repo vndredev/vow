@@ -1,5 +1,3 @@
-import { expect, test } from "vite-plus/test";
-import { type Vow } from "@vow/core";
 import {
   emitAppLayout,
   emitAppRoutes,
@@ -7,28 +5,63 @@ import {
   emitView,
   referencedPrimitives,
 } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import type { Vow } from "@vow/core";
 
 /** Build a view-only vow (a `## view`) with a given component list. */
 const view = (nodes: Vow["view"]): Vow => ({
-  id: "vow_v",
-  slug: "page",
-  intent: "A page",
   children: [],
   fields: [],
+  fulfills: { as: "view", kind: "emit" },
+  id: "vow_v",
+  intent: "A page",
   proof: [],
-  fulfills: { kind: "emit", as: "view" },
+  slug: "page",
   view: nodes,
 });
 
+/** Assert every substring is present in the generated code — keeps a test body to a few statements. */
+function expectContains(code: string, parts: readonly string[]): void {
+  for (const part of parts) {
+    expect(code).toContain(part);
+  }
+}
+
+const taskEntity: Vow = {
+  children: [],
+  fields: [
+    { name: "title", required: true, type: "text" },
+    { name: "done", required: false, type: "boolean" },
+  ],
+  fulfills: { as: "entity", kind: "emit" },
+  id: "vow_task",
+  intent: "A task",
+  proof: [],
+  slug: "task",
+};
+
+const addTaskForm: Vow = {
+  children: [],
+  fields: [],
+  form: { of: "task", submit: "Add task" },
+  fulfills: { as: "form", kind: "emit" },
+  id: "vow_addtask",
+  intent: "Add a task",
+  proof: [],
+  slug: "add-task",
+};
+
 test("hero expands to a column Flex with eyebrow, title and lead", () => {
   const sfc = emitView(
-    view([{ type: "hero", value: { eyebrow: "vow", title: "The framework", lead: "Build it" } }]),
+    view([{ type: "hero", value: { eyebrow: "vow", lead: "Build it", title: "The framework" } }]),
   );
-  expect(sfc).toContain('<Flex :direction="\'column\'" :gap="3">');
-  expect(sfc).toContain('<span class="vow-eyebrow">vow</span>');
-  expect(sfc).toContain("<h1>The framework</h1>");
-  expect(sfc).toContain("<p>Build it</p>");
-  expect(sfc).toContain('import Flex from "./Flex.vue";');
+  expectContains(sfc, [
+    '<Flex :direction="\'column\'" :gap="3">',
+    '<span class="vow-eyebrow">vow</span>',
+    "<h1>The framework</h1>",
+    "<p>Build it</p>",
+    'import Flex from "./Flex.vue";',
+  ]);
 });
 
 test("features expand to a 3-column Grid of Cards", () => {
@@ -37,126 +70,110 @@ test("features expand to a 3-column Grid of Cards", () => {
       {
         type: "features",
         value: [
-          { title: "A", body: "aa" },
-          { title: "B", body: "bb" },
+          { body: "aa", title: "A" },
+          { body: "bb", title: "B" },
         ],
       },
     ]),
   );
-  expect(sfc).toContain('<Grid :columns="3" :gap="4">');
-  expect(sfc).toContain("<Card>");
-  expect(sfc).toContain("<CardHeader>A</CardHeader>");
-  expect(sfc).toContain("<CardBody>aa</CardBody>");
+  expectContains(sfc, [
+    '<Grid :columns="3" :gap="4">',
+    "<Card>",
+    "<CardHeader>A</CardHeader>",
+    "<CardBody>aa</CardBody>",
+  ]);
 });
 
 test("list references a generated view by entity slug and imports it", () => {
   const sfc = emitView(view([{ type: "list", value: "task" }]), ["task"]);
-  expect(sfc).toContain("<Task />");
-  expect(sfc).toContain('import Task from "./Task.vue";');
+  expectContains(sfc, ["<Task />", 'import Task from "./Task.vue";']);
 });
 
 test("list with an unknown entity throws", () => {
   expect(() => emitView(view([{ type: "list", value: "ghost" }]), ["task"])).toThrow(
-    /unknown entity/,
+    /unknown entity/u,
   );
 });
 
 test("primitives are the escape hatch: flex with props + children", () => {
   const sfc = emitView(
-    view([{ type: "flex", value: { direction: "column", gap: 4, children: [{ text: "hi" }] } }]),
+    view([{ type: "flex", value: { children: [{ text: "hi" }], direction: "column", gap: 4 } }]),
   );
   expect(sfc).toContain('<Flex :direction="\'column\'" :gap="4">hi</Flex>');
 });
 
 test("a primitive placed directly in a view renders as its component + imports its adapter", () => {
-  const sfc = emitView(view([{ type: "button", value: { variant: "outline", label: "Save" } }]));
-  expect(sfc).toContain('import Button from "./Button.vue";');
-  expect(sfc).toContain(`<Button :variant="'outline'" :label="'Save'" />`);
+  const sfc = emitView(view([{ type: "button", value: { label: "Save", variant: "outline" } }]));
+  expectContains(sfc, [
+    'import Button from "./Button.vue";',
+    `<Button :label="'Save'" :variant="'outline'" />`,
+  ]);
 });
 
 test("the reserved model: key on a view primitive becomes a v-model", () => {
   const sfc = emitView(
     view([{ type: "checkbox", value: { label: "Subscribe", model: "subscribed" } }]),
   );
-  expect(sfc).toContain('import Checkbox from "./Checkbox.vue";');
-  expect(sfc).toContain('v-model="subscribed"');
+  expectContains(sfc, ['import Checkbox from "./Checkbox.vue";', 'v-model="subscribed"']);
 });
 
 test("referencedPrimitives lists the primitives a view places directly (the closed registry)", () => {
-  const v = view([
+  const vow = view([
     { type: "button", value: { label: "Go" } },
     { type: "text", value: "hi" },
   ]);
-  expect(referencedPrimitives(v)).toEqual(["Button"]);
+  expect(referencedPrimitives(vow)).toEqual(["Button"]);
 });
 
 test("an unknown component throws (the closed primitive/view vocabulary)", () => {
-  expect(() => emitView(view([{ type: "nope", value: {} }]))).toThrow(/unknown view component/);
+  expect(() => emitView(view([{ type: "nope", value: {} }]))).toThrow(/unknown view component/u);
 });
 
 test("the view is wrapped in a vow-app root", () => {
   expect(emitView(view([{ type: "text", value: "hello" }]))).toContain('<div class="vow-app">');
 });
 
-const taskEntity: Vow = {
-  id: "vow_task",
-  slug: "task",
-  intent: "A task",
-  children: [],
-  fields: [
-    { name: "title", type: "text", required: true },
-    { name: "done", type: "boolean", required: false },
-  ],
-  proof: [],
-  fulfills: { kind: "emit", as: "entity" },
-};
-const addTaskForm: Vow = {
-  id: "vow_addtask",
-  slug: "add-task",
-  intent: "Add a task",
-  children: [],
-  fields: [],
-  proof: [],
-  fulfills: { kind: "emit", as: "form" },
-  form: { of: "task", submit: "Add task" },
-};
-
 test("emitForm renders a labelled, zod-validated form bound to an entity", () => {
   const sfc = emitForm(addTaskForm, new Map([["task", taskEntity]]));
-  expect(sfc).toContain('import { ZodError } from "zod";');
-  expect(sfc).toContain('import { createTask, type Task } from "./task.ts";');
-  expect(sfc).toContain('<form class="vow-form" @submit.prevent="submit">');
-  expect(sfc).toContain('<Field label="title" :control-id="titleId" :error="errors.title">');
-  expect(sfc).toContain('<Checkbox v-model="draft.done" label="done" />'); // a boolean self-labels
-  expect(sfc).toContain("append(createTask(draft.value));");
-  expect(sfc).toContain("err instanceof ZodError"); // per-field errors from the zod schema
-  expect(sfc).toContain('<Button type="submit" label="Add task" />');
+  // A boolean self-labels as a Checkbox; per-field errors come from the zod schema.
+  expectContains(sfc, [
+    'import { ZodError } from "zod";',
+    'import { createTask, type Task } from "./task.ts";',
+    '<form class="vow-form" @submit.prevent="submit">',
+    '<Field label="title" :control-id="titleId" :error="errors.title">',
+    '<Checkbox v-model="draft.done" label="done" />',
+    "append(createTask(draft.value));",
+    "err instanceof ZodError",
+    '<Button type="submit" label="Add task" />',
+  ]);
 });
 
 test("emitForm fails fast when its `of` is not a known entity", () => {
-  expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/);
+  expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/u);
 });
 
 test("a link: node renders an internal anchor the router intercepts", () => {
-  const sfc = emitView(view([{ type: "link", value: { to: "/add-task", label: "Add a task" } }]));
+  const sfc = emitView(view([{ type: "link", value: { label: "Add a task", to: "/add-task" } }]));
   expect(sfc).toContain('<a class="vow-link" href="/add-task">Add a task</a>');
 });
 
 test("emitAppRoutes maps each non-root page to a /slug route loading its .vue", () => {
   const code = emitAppRoutes([{ slug: "add-task", title: "Add a task" }]);
-  expect(code).toContain('import type { Route } from "@vow/router";');
-  expect(code).toContain(
+  expectContains(code, [
+    'import type { Route } from "@vow/router";',
     '{ path: "/add-task", load: () => import("./add-task.vue"), title: "Add a task" },',
-  );
+  ]);
 });
 
 test("emitAppLayout wraps pages in the @vow/shell dashboard, passing pages + path + title", () => {
   const code = emitAppLayout([{ slug: "add-task", title: "Add a task" }], "Task planner");
-  expect(code).toContain('import Shell from "@vow/shell/Shell.vue";');
-  expect(code).toContain('import "@vow/shell/style.css";');
-  expect(code).toContain('const pages = [{ path: "/add-task", title: "Add a task" }];');
-  expect(code).toContain('const title = "Task planner";');
-  expect(code).toContain('<Shell :pages="pages" :path="path" :title="title"><slot /></Shell>');
+  expectContains(code, [
+    'import Shell from "@vow/shell/Shell.vue";',
+    'import "@vow/shell/style.css";',
+    'const pages = [{ path: "/add-task", title: "Add a task" }];',
+    'const title = "Task planner";',
+    '<Shell :pages="pages" :path="path" :title="title"><slot /></Shell>',
+  ]);
 });
 
 test("emitAppLayout omits the title when none is given (the shell's own fallback applies)", () => {
@@ -166,29 +183,32 @@ test("emitAppLayout omits the title when none is given (the shell's own fallback
 });
 
 test("emitAppLayout serialises each page's nav config — icon, group, order (only when set)", () => {
+  // The second page is bare — no extra keys emitted.
   const code = emitAppLayout(
     [
-      { slug: "tasks", title: "Tasks", icon: "list-checks", group: "Work", order: 2 },
-      { slug: "team", title: "Team" }, // bare — no extra keys emitted
+      { group: "Work", icon: "list-checks", order: 2, slug: "tasks", title: "Tasks" },
+      { slug: "team", title: "Team" },
     ],
     "vow studio",
   );
-  expect(code).toContain(
+  expectContains(code, [
     '{ path: "/tasks", title: "Tasks", icon: "list-checks", group: "Work", order: 2 }',
-  );
-  expect(code).toContain('{ path: "/team", title: "Team" }');
+    '{ path: "/team", title: "Team" }',
+  ]);
 });
 
 test("emitAppLayout passes the shell layout (nav · width · variant) only when declared", () => {
   const withShell = emitAppLayout([{ slug: "team", title: "Team" }], "vow studio", {
     nav: "header",
-    width: "full",
     variant: "cards",
+    width: "full",
   });
-  expect(withShell).toContain('const nav = "header";');
-  expect(withShell).toContain('const width = "full";');
-  expect(withShell).toContain('const variant = "cards";');
-  expect(withShell).toContain(':nav="nav" :width="width" :variant="variant"');
+  expectContains(withShell, [
+    'const nav = "header";',
+    'const width = "full";',
+    'const variant = "cards";',
+    ':nav="nav" :width="width" :variant="variant"',
+  ]);
   const without = emitAppLayout([{ slug: "team", title: "Team" }], "vow studio");
   expect(without).not.toContain(":nav=");
 });

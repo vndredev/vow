@@ -1,25 +1,25 @@
-import { expect, test } from "vite-plus/test";
-import { type Vow } from "@vow/core";
 import {
+  ISSUE_LAYOUTS,
   emitIssueBoardSfc,
   emitIssueRoadmapSfc,
   emitIssueTableSfc,
   emitTimelineSfc,
   emitView,
-  ISSUE_LAYOUTS,
   issueLayout,
   issueLayouts,
 } from "../src/index.ts";
+import { expect, test } from "vite-plus/test";
+import type { Vow } from "@vow/core";
 
 /** A view-only vow (a `## view`) with a given node list. */
 const view = (nodes: Vow["view"]): Vow => ({
-  id: "vow_v",
-  slug: "page",
-  intent: "A page",
   children: [],
   fields: [],
+  fulfills: { as: "view", kind: "emit" },
+  id: "vow_v",
+  intent: "A page",
   proof: [],
-  fulfills: { kind: "emit", as: "view" },
+  slug: "page",
   view: nodes,
 });
 
@@ -33,24 +33,24 @@ test("issues: { as } renders the layout's component; a missing `as` defaults to 
 
 test("an unknown issues layout throws — no dangling import to a never-materialised component", () => {
   expect(() => emitView(view([{ type: "issues", value: { as: "cards" } }]))).toThrow(
-    /unknown issues layout/,
+    /unknown issues layout/u,
   );
-  expect(() => issueLayout({ as: "tabel" })).toThrow(/unknown issues layout/);
+  expect(() => issueLayout({ as: "tabel" })).toThrow(/unknown issues layout/u);
 });
 
 test("issueLayouts collects the validated layouts a view uses (mapNode + plugin agree)", () => {
-  const v = view([
+  const vow = view([
     { type: "issues", value: { as: "board" } },
     { type: "issues", value: {} },
   ]);
-  expect([...issueLayouts(v)].sort()).toEqual(["board", "table"]);
+  expect([...issueLayouts(vow)].toSorted()).toEqual(["board", "table"]);
 });
 
 test("ISSUE_LAYOUTS maps each layout to its VowIssue* component", () => {
   expect(ISSUE_LAYOUTS).toEqual({
-    table: "VowIssueTable",
     board: "VowIssueBoard",
     roadmap: "VowIssueRoadmap",
+    table: "VowIssueTable",
   });
 });
 

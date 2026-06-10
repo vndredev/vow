@@ -3,7 +3,7 @@ import { uncoveredScenarios } from "../src/coverage.ts";
 
 test("a claim is covered only by a test named EXACTLY that claim", () => {
   expect(uncoveredScenarios(["rejects empty title"], ["rejects empty title"])).toEqual([]);
-  // a substring must NOT cover — that was the false-green the emitter never relies on
+  // A substring must NOT cover — that was the false-green the emitter never relies on.
   expect(uncoveredScenarios(["rejects empty title"], ["task: rejects empty title here"])).toEqual([
     "rejects empty title",
   ]);

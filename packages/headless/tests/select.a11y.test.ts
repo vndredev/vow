@@ -1,54 +1,43 @@
 // @vitest-environment jsdom
+import type { SelectApi, SelectOption } from "../src/select.ts";
+import { applyProps, makeHarness, mount } from "./harness.ts";
 import { expect, test } from "vite-plus/test";
 import axe from "axe-core";
-import { select, type SelectState } from "../src/index.ts";
+import { select } from "../src/index.ts";
 
 /**
- * a11y is tested against the PLATFORM (DOM), not a framework: spread the primitive's part-props onto a
+ * A11y is tested against the PLATFORM (DOM), not a framework: spread the primitive's part-props onto a
  * real combobox + listbox, then let axe check ARIA and a real key event drive the active highlight.
  * Focus stays on the trigger (aria-activedescendant model), so there's no per-option DOM focus.
  */
-function applyProps(el: HTMLElement, props: Record<string, unknown>): void {
-  for (const [key, value] of Object.entries(props)) {
-    if (key.startsWith("on") && typeof value === "function") {
-      el.addEventListener(key.slice(2).toLowerCase(), value as EventListener);
-    } else if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
-      el.setAttribute(key, String(value));
-    }
-  }
-}
 
-const OPTIONS = [
-  { value: "vue", label: "Vue" },
-  { value: "react", label: "React" },
-  { value: "solid", label: "Solid" },
+const OPTIONS: SelectOption[] = [
+  { label: "Vue", value: "vue" },
+  { label: "React", value: "react" },
+  { label: "Solid", value: "solid" },
 ];
 
-test("an open select is accessible DOM (axe, no framework)", async () => {
-  const api = select(
-    { value: "vue", options: OPTIONS, open: true, active: "vue", id: "fw" },
-    () => {},
-  );
+// A combobox takes its name from a label, not its contents — the adapter binds :aria-label="label".
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the api's prop-builders return mutable Props by contract.
+function buildSelect(api: SelectApi): HTMLElement {
   const root = document.createElement("div");
-  const trigger = document.createElement("button");
-  applyProps(trigger, api.triggerProps);
-  // a combobox takes its name from a label, not its contents — the adapter binds :aria-label="label".
+  const trigger = mount("button", api.triggerProps, api.selectedLabel);
   trigger.setAttribute("aria-label", "Framework");
-  trigger.textContent = api.selectedLabel;
-  const listbox = document.createElement("ul");
-  applyProps(listbox, api.listboxProps);
+  const listbox = mount("ul", api.listboxProps);
   for (const option of OPTIONS) {
-    const li = document.createElement("li");
-    applyProps(li, api.optionProps(option));
-    li.textContent = option.label;
-    listbox.appendChild(li);
+    listbox.append(mount("li", api.optionProps(option), option.label));
   }
   root.append(trigger, listbox);
-  document.body.appendChild(root);
+  return root;
+}
+
+test("an open select is accessible DOM (axe, no framework)", async () => {
+  const api = makeHarness(
+    { active: "vue", disabled: false, id: "fw", open: true, options: OPTIONS, value: "vue" },
+    select,
+  ).api();
+  const root = buildSelect(api);
+  document.body.append(root);
 
   const results = await axe.run(root);
   expect(results.violations).toEqual([]);
@@ -56,15 +45,15 @@ test("an open select is accessible DOM (axe, no framework)", async () => {
 });
 
 test("a real ArrowDown moves the active option", () => {
-  let state: SelectState = { value: "vue", options: OPTIONS, open: true, active: "vue", id: "fw" };
-  const api = select(state, (next) => {
-    state = next;
-  });
+  const sel = makeHarness(
+    { active: "vue", disabled: false, id: "fw", open: true, options: OPTIONS, value: "vue" },
+    select,
+  );
   const trigger = document.createElement("button");
-  applyProps(trigger, api.triggerProps);
-  document.body.appendChild(trigger);
+  applyProps(trigger, sel.api().triggerProps);
+  document.body.append(trigger);
 
   trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
-  expect(state.active).toBe("react");
+  expect(sel.get().active).toBe("react");
   trigger.remove();
 });

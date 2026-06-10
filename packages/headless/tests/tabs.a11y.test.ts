@@ -1,48 +1,47 @@
 // @vitest-environment jsdom
 import { expect, test } from "vite-plus/test";
+import { makeHarness, mount } from "./harness.ts";
+import type { TabsApi } from "../src/tabs.ts";
 import axe from "axe-core";
-import { tabs, type TabsState } from "../src/index.ts";
+import { tabs } from "../src/index.ts";
 
 /**
- * a11y is tested against the PLATFORM (DOM), not a framework: spread the primitive's part-props onto
+ * A11y is tested against the PLATFORM (DOM), not a framework: spread the primitive's part-props onto
  * real elements, then let axe check ARIA and a real key event drive roving focus. The focus move lives
  * in the core's keydown handler (against the event's own subtree), so it is proven here, framework-free.
  */
-function applyProps(el: HTMLElement, props: Record<string, unknown>): void {
-  for (const [key, value] of Object.entries(props)) {
-    if (key.startsWith("on") && typeof value === "function") {
-      el.addEventListener(key.slice(2).toLowerCase(), value as EventListener);
-    } else if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
-      el.setAttribute(key, String(value));
-    }
-  }
-}
 
 const ITEMS = ["vue", "react", "solid"];
 
-test("a tablist with tabs + panels is accessible DOM (axe, no framework)", async () => {
-  const api = tabs({ value: "vue", items: ITEMS, id: "fw" }, () => {});
-  // a <main> landmark holds the widget — so axe's page-structure "region" rule (all content must live
-  // in a landmark) is satisfied and we test the tabs' own ARIA, not the harness's lack of page chrome.
+/**
+ * A `<main>` landmark holds the widget so axe's page-structure "region" rule is satisfied — that leaves
+ * the tabs' own ARIA under test. Each tab + panel pair is built from the api's part-props.
+ */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the api's prop-builders return mutable Props by contract.
+function buildTablist(api: TabsApi): HTMLElement {
   const main = document.createElement("main");
-  const list = document.createElement("div");
-  applyProps(list, api.listProps);
-  main.appendChild(list);
+  const list = mount("div", api.listProps);
+  main.append(list);
   for (const item of ITEMS) {
-    const tab = document.createElement("button");
-    applyProps(tab, api.tabProps(item));
-    tab.textContent = item;
-    list.appendChild(tab);
-    const panel = document.createElement("div");
-    applyProps(panel, api.panelProps(item));
-    panel.textContent = `${item} panel`;
-    main.appendChild(panel);
+    list.append(mount("button", api.tabProps(item), item));
+    main.append(mount("div", api.panelProps(item), `${item} panel`));
   }
-  document.body.appendChild(main);
+  return main;
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the api's prop-builders return mutable Props by contract.
+function buildTabButtons(api: TabsApi, list: HTMLElement): HTMLElement[] {
+  return ITEMS.map((item) => {
+    const tab = mount("button", api.tabProps(item));
+    list.append(tab);
+    return tab;
+  });
+}
+
+test("a tablist with tabs + panels is accessible DOM (axe, no framework)", async () => {
+  const api = makeHarness({ id: "fw", items: ITEMS, value: "vue" }, tabs).api();
+  const main = buildTablist(api);
+  document.body.append(main);
 
   const results = await axe.run(document.body);
   expect(results.violations).toEqual([]);
@@ -50,23 +49,15 @@ test("a tablist with tabs + panels is accessible DOM (axe, no framework)", async
 });
 
 test("ArrowRight selects and moves roving focus to the next tab", () => {
-  let state: TabsState = { value: "vue", items: ITEMS, id: "fw" };
-  const api = tabs(state, (next) => {
-    state = next;
-  });
-  const list = document.createElement("div");
-  applyProps(list, api.listProps);
-  const tabEls = ITEMS.map((item) => {
-    const tab = document.createElement("button");
-    applyProps(tab, api.tabProps(item));
-    list.appendChild(tab);
-    return tab;
-  });
-  document.body.appendChild(list);
+  const tb = makeHarness({ id: "fw", items: ITEMS, value: "vue" }, tabs);
+  const list = mount("div", tb.api().listProps);
+  const tabEls = buildTabButtons(tb.api(), list);
+  document.body.append(list);
 
-  tabEls[0]?.focus();
-  tabEls[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
-  expect(state.value).toBe("react");
-  expect(document.activeElement).toBe(tabEls[1]);
+  const [firstTab, secondTab] = tabEls;
+  firstTab?.focus();
+  firstTab?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+  expect(tb.get().value).toBe("react");
+  expect(document.activeElement).toBe(secondTab);
   list.remove();
 });

@@ -1,39 +1,20 @@
 // @vitest-environment jsdom
+import { applyProps, makeHarness, mount } from "./harness.ts";
 import { expect, test } from "vite-plus/test";
 import axe from "axe-core";
-import { dialog, type DialogState } from "../src/index.ts";
+import { dialog } from "../src/index.ts";
 
 /**
- * a11y is tested against the PLATFORM (DOM), not a framework: spread the primitive's part-props onto
+ * A11y is tested against the PLATFORM (DOM), not a framework: spread the primitive's part-props onto
  * real elements, then let axe check ARIA and real key events drive Escape + the Tab focus-trap (both
  * live in the core's keydown handler, against the event's own subtree — proven framework-free).
  */
-function applyProps(el: HTMLElement, props: Record<string, unknown>): void {
-  for (const [key, value] of Object.entries(props)) {
-    if (key.startsWith("on") && typeof value === "function") {
-      el.addEventListener(key.slice(2).toLowerCase(), value as EventListener);
-    } else if (
-      typeof value === "string" ||
-      typeof value === "number" ||
-      typeof value === "boolean"
-    ) {
-      el.setAttribute(key, String(value));
-    }
-  }
-}
 
 test("an open dialog is accessible DOM (axe, no framework)", async () => {
-  const api = dialog({ open: true, id: "d" }, () => {});
-  const content = document.createElement("div");
-  applyProps(content, api.contentProps);
-  const title = document.createElement("h2");
-  applyProps(title, api.titleProps);
-  title.textContent = "Confirm";
-  const close = document.createElement("button");
-  applyProps(close, api.closeProps);
-  close.textContent = "x";
-  content.append(title, close);
-  document.body.appendChild(content);
+  const api = makeHarness({ id: "d", open: true }, dialog).api();
+  const content = mount("div", api.contentProps);
+  content.append(mount("h2", api.titleProps, "Confirm"), mount("button", api.closeProps, "x"));
+  document.body.append(content);
 
   const results = await axe.run(content);
   expect(results.violations).toEqual([]);
@@ -41,36 +22,38 @@ test("an open dialog is accessible DOM (axe, no framework)", async () => {
 });
 
 test("Escape closes", () => {
-  let state: DialogState = { open: true, id: "d" };
-  const api = dialog(state, (next) => {
-    state = next;
-  });
+  const dlg = makeHarness({ id: "d", open: true }, dialog);
   const content = document.createElement("div");
-  applyProps(content, api.contentProps);
-  document.body.appendChild(content);
+  applyProps(content, dlg.api().contentProps);
+  document.body.append(content);
 
   content.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
-  expect(state.open).toBe(false);
+  expect(dlg.get().open).toBe(false);
   content.remove();
 });
 
+/** A two-button dialog content mounted in the document, returning the content + its focus edges. */
+function mountTrap(): { content: HTMLElement; firstBtn: HTMLElement; lastBtn: HTMLElement } {
+  const api = makeHarness({ id: "d", open: true }, dialog).api();
+  const content = mount("div", api.contentProps);
+  const firstBtn = mount("button", {}, "a");
+  const lastBtn = mount("button", {}, "b");
+  content.append(firstBtn, lastBtn);
+  document.body.append(content);
+  return { content, firstBtn, lastBtn };
+}
+
 test("Tab traps focus within the content (wraps at both ends)", () => {
-  const api = dialog({ open: true, id: "d" }, () => {});
-  const content = document.createElement("div");
-  applyProps(content, api.contentProps);
-  const a = document.createElement("button");
-  a.textContent = "a";
-  const b = document.createElement("button");
-  b.textContent = "b";
-  content.append(a, b);
-  document.body.appendChild(content);
+  const { content, firstBtn, lastBtn } = mountTrap();
 
-  b.focus();
+  lastBtn.focus();
   content.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab" }));
-  expect(document.activeElement).toBe(a); // forward off the last → first
+  // Forward off the last wraps to the first.
+  expect(document.activeElement).toBe(firstBtn);
 
-  a.focus();
+  firstBtn.focus();
   content.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true }));
-  expect(document.activeElement).toBe(b); // backward off the first → last
+  // Backward off the first wraps to the last.
+  expect(document.activeElement).toBe(lastBtn);
   content.remove();
 });

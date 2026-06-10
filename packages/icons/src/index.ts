@@ -1,5 +1,5 @@
-import { lucide } from "./sets/lucide.ts";
 import type { IconName } from "./types.ts";
+import { lucide } from "./sets/lucide.ts";
 
 export type { IconName } from "./types.ts";
 export { lucide } from "./sets/lucide.ts";

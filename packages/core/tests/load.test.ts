@@ -1,27 +1,35 @@
 import { expect, test } from "vite-plus/test";
-import { validateReferences, type Field, type Vow } from "../src/index.ts";
+import { validateReferences } from "../src/index.ts";
 
-const entity = (slug: string, fields: Field[]): Vow => ({
-  id: `vow_${slug}`,
-  slug,
-  intent: "An entity",
+/** The read-only vow + field shapes, derived from `validateReferences` so only the value is imported. */
+type Vow = Parameters<typeof validateReferences>[0][number];
+type Field = NonNullable<Vow["fields"]>[number];
+
+const entity = (slug: string, fields: readonly Field[]): Vow => ({
   children: [],
-  fulfills: { kind: "emit", as: "entity" },
   fields,
+  fulfills: { as: "entity", kind: "emit" },
+  id: `vow_${slug}`,
+  intent: "An entity",
   proof: [],
+  slug,
 });
 
 test("validateReferences throws on a reference to a non-existent entity", () => {
   const issue = entity("issue", [
-    { name: "assignee", type: "reference", required: false, ref: "ghost" },
+    { name: "assignee", ref: "ghost", required: false, type: "reference" },
   ]);
-  expect(() => validateReferences([issue])).toThrow(/ghost/);
+  expect(() => {
+    validateReferences([issue]);
+  }).toThrow(/ghost/u);
 });
 
 test("validateReferences passes when the reference target exists in the vows", () => {
-  const user = entity("user", [{ name: "name", type: "text", required: true }]);
+  const user = entity("user", [{ name: "name", required: true, type: "text" }]);
   const issue = entity("issue", [
-    { name: "assignee", type: "reference", required: false, ref: "user" },
+    { name: "assignee", ref: "user", required: false, type: "reference" },
   ]);
-  expect(() => validateReferences([user, issue])).not.toThrow();
+  expect(() => {
+    validateReferences([user, issue]);
+  }).not.toThrow();
 });

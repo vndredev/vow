@@ -1,8 +1,10 @@
+import type { DeepReadonly, ReadonlyField, ReadonlyVow } from "./readonly.ts";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { stringify } from "yaml";
 import { SUFFIX } from "./load.ts";
-import type { Field, Vow } from "./vow.ts";
+import type { ViewNode } from "./vow.ts";
+import { defined } from "./guard.ts";
+import path from "node:path";
+import { stringify } from "yaml";
 
 /**
  * Serialize a Vow back to its `<slug>.vow.md` source — the exact inverse of `parseVowMd`. The contract:
@@ -19,18 +21,32 @@ function flow(obj: unknown): string {
 }
 
 /** The inverse of `parseFulfills` — `emit <as>` / `bind <module>#<export>`. */
-function serializeFulfills(f: Vow["fulfills"]): string | undefined {
-  if (!f) return undefined;
-  return f.kind === "emit" ? `emit ${f.as}` : `bind ${f.module}#${f.export}`;
+function serializeFulfills(fulfills: NonNullable<ReadonlyVow["fulfills"]>): string {
+  if (fulfills.kind === "emit") {
+    return `emit ${fulfills.as}`;
+  }
+  return `bind ${fulfills.module}#${fulfills.export}`;
+}
+
+/** The type-head of a field line — `select(a|b)` / `reference(x)` / a bare type. */
+function fieldHead(field: ReadonlyField): string {
+  if (field.type === "select") {
+    return `select(${(field.options ?? []).join("|")})`;
+  }
+  if (field.type === "reference") {
+    return `reference(${field.ref ?? ""})`;
+  }
+  return field.type;
 }
 
 /** One `## fields` line — the inverse of `parseFieldLine`. */
-function serializeField(f: Field): string {
-  let head: string;
-  if (f.type === "select") head = `select(${(f.options ?? []).join("|")})`;
-  else if (f.type === "reference") head = `reference(${f.ref ?? ""})`;
-  else head = f.type;
-  return `- ${f.name}: ${head}${f.required ? ", required" : ""}`;
+function serializeField(field: ReadonlyField): string {
+  const head = fieldHead(field);
+  let flag = "";
+  if (field.required) {
+    flag = ", required";
+  }
+  return `- ${field.name}: ${head}${flag}`;
 }
 
 /** A `## <heading>` with a fenced ```yaml block. */
@@ -38,48 +54,87 @@ function yamlBlock(heading: string, value: unknown): string {
   return `## ${heading}\n\n\`\`\`yaml\n${stringify(value).trimEnd()}\n\`\`\``;
 }
 
-/** Serialize a Vow to its `<slug>.vow.md` text (children excluded — they are separate files). */
-export function serialize(vow: Vow): string {
-  const fm: string[] = [`id: ${vow.id}`];
-  const fulfills = serializeFulfills(vow.fulfills);
-  if (fulfills !== undefined) fm.push(`fulfills: ${fulfills}`);
-  if (vow.root === true) fm.push(`root: true`);
-  if (vow.title !== undefined) fm.push(stringify({ title: vow.title }).trim()); // quotes if needed
-  if (vow.nav !== undefined) fm.push(`nav: ${flow(vow.nav)}`);
-  if (vow.shell !== undefined) fm.push(`shell: ${flow(vow.shell)}`);
+/** One view node as its single-key YAML object (`{ [type]: value }`). */
+function viewEntry(node: DeepReadonly<ViewNode>): Record<string, unknown> {
+  return { [node.type]: node.value };
+}
 
-  const body: string[] = [`# ${vow.intent}`];
-  if (vow.fields.length > 0) body.push(`## fields\n\n${vow.fields.map(serializeField).join("\n")}`);
-  if (vow.proof.length > 0) {
-    body.push(`## proves\n\n${vow.proof.map((p) => `- ${p.claim}`).join("\n")}`);
+/** The form block (`of` is included only when the form is bound to an entity). */
+function formBlock(form: NonNullable<ReadonlyVow["form"]>): string {
+  if (defined(form.of)) {
+    return yamlBlock("form", { of: form.of, submit: form.submit });
   }
-  if (vow.view !== undefined) {
-    body.push(
+  return yamlBlock("form", { submit: form.submit });
+}
+
+/** A section spread into the line list only when `include` holds — `[text()]` or `[]`, no ternary/undefined. */
+function when(include: boolean, text: () => string): string[] {
+  if (include) {
+    return [text()];
+  }
+  return [];
+}
+
+/** As `when`, but for an optional value — the section renders (with the narrowed value) only when present. */
+function whenSet<T>(value: T | undefined, text: (set: T) => string): string[] {
+  if (defined(value)) {
+    return [text(value)];
+  }
+  return [];
+}
+
+/** The frontmatter lines — id, then fulfilment/root/title/nav/shell when each is set. */
+function frontmatterLines(vow: ReadonlyVow): string[] {
+  return [
+    `id: ${vow.id}`,
+    ...whenSet(vow.fulfills, (fulfills) => `fulfills: ${serializeFulfills(fulfills)}`),
+    ...when(vow.root === true, () => `root: true`),
+    // Quotes the title only if YAML needs them.
+    ...whenSet(vow.title, (title) => stringify({ title }).trim()),
+    ...whenSet(vow.nav, (nav) => `nav: ${flow(nav)}`),
+    ...whenSet(vow.shell, (shell) => `shell: ${flow(shell)}`),
+  ];
+}
+
+/** The body sections — fields, proves, view, form, seed (only those present). */
+function bodySections(vow: ReadonlyVow): string[] {
+  const { fields, proof } = vow;
+  return [
+    ...when(
+      fields.length > 0,
+      () => `## fields\n\n${fields.map((field) => serializeField(field)).join("\n")}`,
+    ),
+    ...when(
+      proof.length > 0,
+      () => `## proves\n\n${proof.map((scenario) => `- ${scenario.claim}`).join("\n")}`,
+    ),
+    ...whenSet(vow.view, (view) =>
       yamlBlock(
         "view",
-        vow.view.map((n) => ({ [n.type]: n.value })),
+        view.map((node) => viewEntry(node)),
       ),
-    );
-  }
-  if (vow.form !== undefined) {
-    const form =
-      vow.form.of !== undefined
-        ? { of: vow.form.of, submit: vow.form.submit }
-        : { submit: vow.form.submit };
-    body.push(yamlBlock("form", form));
-  }
-  if (vow.seed !== undefined) body.push(yamlBlock("seed", vow.seed));
+    ),
+    ...whenSet(vow.form, (form) => formBlock(form)),
+    ...whenSet(vow.seed, (seed) => yamlBlock("seed", seed)),
+  ];
+}
 
-  return `---\n${fm.join("\n")}\n---\n\n${body.join("\n\n")}\n`;
+/** Serialize a Vow to its `<slug>.vow.md` text (children excluded — they are separate files). */
+export function serialize(vow: ReadonlyVow): string {
+  const fm = frontmatterLines(vow).join("\n");
+  const body = [`# ${vow.intent}`, ...bodySections(vow)].join("\n\n");
+  return `---\n${fm}\n---\n\n${body}\n`;
 }
 
 /** Write a vow (and recursively its children) to `<dir>/<slug>.vow.md`, mirroring `loadVows`'s mapping —
  *  children live in a sibling `<slug>/` folder. The save half of the author layer. */
-export function writeVow(dir: string, vow: Vow): void {
+export function writeVow(dir: string, vow: ReadonlyVow): void {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, vow.slug + SUFFIX), serialize(vow), "utf8");
+  writeFileSync(path.join(dir, vow.slug + SUFFIX), serialize(vow), "utf8");
   if (vow.children.length > 0) {
-    const childDir = join(dir, vow.slug);
-    for (const child of vow.children) writeVow(childDir, child);
+    const childDir = path.join(dir, vow.slug);
+    for (const child of vow.children) {
+      writeVow(childDir, child);
+    }
   }
 }

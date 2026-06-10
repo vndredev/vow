@@ -1,24 +1,25 @@
 import { expect, test } from "vite-plus/test";
-import { renderVueSfc, type Component } from "../src/index.ts";
+import type { Component } from "../src/model.ts";
+import { renderVueSfc } from "../src/index.ts";
 
-// The checkbox adapter expressed as a canonical Component. Step 2 will build this same shape
-// inside emit-primitive; here it is the proof that renderVueSfc can reproduce the real output.
+// The checkbox adapter expressed as a canonical Component. Step 2 will build this same shape.
+// Inside emit-primitive; here it is the proof that renderVueSfc can reproduce the real output.
 const checkbox: Component = {
-  name: "Checkbox",
   doc: [
     "Generated checkbox adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
     "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
   ],
+  events: [{ name: "update:modelValue", payload: "boolean" }],
   imports: [
     { from: "vue", names: ["computed"] },
     { from: "@vow/headless", names: ["checkbox"] },
   ],
+  name: "Checkbox",
   props: [
     { name: "modelValue", tsType: "boolean" },
     { name: "label", tsType: "string" },
-    { name: "disabled", tsType: "boolean", optional: true },
+    { name: "disabled", optional: true, tsType: "boolean" },
   ],
-  events: [{ name: "update:modelValue", payload: "boolean" }],
   setup: [
     "const api = computed(() =>",
     "  checkbox({ checked: props.modelValue, disabled: props.disabled }, (next) =>",
@@ -27,48 +28,48 @@ const checkbox: Component = {
     ");",
   ],
   view: {
-    kind: "element",
-    tag: "span",
     attrs: [
-      { kind: "spread", expr: "api.rootProps" },
+      { expr: "api.rootProps", kind: "spread" },
       { kind: "static", name: "class", value: "vow-checkbox" },
     ],
     children: [
       {
-        kind: "element",
-        tag: "button",
         attrs: [
-          { kind: "spread", expr: "api.controlProps" },
-          { kind: "bound", name: "aria-label", expr: "label" },
+          { expr: "api.controlProps", kind: "spread" },
+          { expr: "label", kind: "bound", name: "aria-label" },
           { kind: "static", name: "class", value: "vow-checkbox__control" },
         ],
         children: [
           {
-            kind: "element",
-            tag: "span",
             attrs: [
-              { kind: "spread", expr: "api.indicatorProps" },
+              { expr: "api.indicatorProps", kind: "spread" },
               { kind: "static", name: "class", value: "vow-checkbox__indicator" },
             ],
             children: [{ kind: "text", text: "✓" }],
+            kind: "element",
+            tag: "span",
           },
         ],
+        kind: "element",
+        tag: "button",
       },
       {
-        kind: "element",
-        tag: "span",
         attrs: [
-          { kind: "spread", expr: "api.labelProps" },
+          { expr: "api.labelProps", kind: "spread" },
           { kind: "static", name: "class", value: "vow-checkbox__label" },
         ],
-        children: [{ kind: "interp", expr: "label" }],
+        children: [{ expr: "label", kind: "interp" }],
+        kind: "element",
+        tag: "span",
       },
     ],
+    kind: "element",
+    tag: "span",
   },
 };
 
-// The byte-exact oracle: today's hand-written emit-primitive output. The migration is only safe if
-// renderVueSfc reproduces this character-for-character — indentation, blank lines, glyphs and all.
+// The byte-exact oracle: today's hand-written emit-primitive output. The migration is safe only when
+// Reproduced character-for-character — indentation, blank lines, glyphs and all — by the renderer.
 const EXPECTED_CHECKBOX = [
   `<script setup lang="ts">`,
   `// Generated checkbox adapter over @vow/headless. Logic + a11y live in the core — do not edit.`,
@@ -102,82 +103,83 @@ test("renderVueSfc reproduces the checkbox SFC byte-for-byte (the migration orac
 });
 
 test("a literal text node is HTML-escaped (& < > in order)", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Heading",
     view: {
-      kind: "element",
-      tag: "h1",
       attrs: [],
       children: [{ kind: "text", text: "a < b & c" }],
+      kind: "element",
+      tag: "h1",
     },
   };
-  expect(renderVueSfc(c)).toContain("<h1>a &lt; b &amp; c</h1>");
+  expect(renderVueSfc(comp)).toContain("<h1>a &lt; b &amp; c</h1>");
 });
 
 test("a raw node emits its HTML verbatim (no escaping) — the prose escape hatch", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Code",
     view: {
+      attrs: [],
+      children: [{ html: '<pre class="shiki"><span>a &lt; b</span></pre>', kind: "raw" }],
       kind: "element",
       tag: "div",
-      attrs: [],
-      children: [{ kind: "raw", html: '<pre class="shiki"><span>a &lt; b</span></pre>' }],
     },
   };
-  const out = renderVueSfc(c);
+  const out = renderVueSfc(comp);
   expect(out).toContain('<pre class="shiki"><span>a &lt; b</span></pre>');
-  expect(out).not.toContain("&amp;lt;"); // not double-escaped
+  // Not double-escaped.
+  expect(out).not.toContain("&amp;lt;");
 });
 
 test("a void element renders self-closing (<input … />)", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Field",
     view: {
-      kind: "element",
-      tag: "input",
       attrs: [
         { kind: "static", name: "class", value: "vow-view__input" },
-        { kind: "bound", name: "value", expr: "draft.x" },
+        { expr: "draft.x", kind: "bound", name: "value" },
       ],
       children: [],
+      kind: "element",
+      tag: "input",
     },
   };
-  expect(renderVueSfc(c)).toContain('<input class="vow-view__input" :value="draft.x" />');
+  expect(renderVueSfc(comp)).toContain('<input class="vow-view__input" :value="draft.x" />');
 });
 
 test("a default import renders as `import X from …`", () => {
-  const c: Component = {
+  const comp: Component = {
+    imports: [{ default: "Checkbox", from: "./Checkbox.vue" }],
     name: "Host",
-    imports: [{ from: "./Checkbox.vue", default: "Checkbox" }],
-    view: { kind: "element", tag: "div", attrs: [], children: [] },
+    view: { attrs: [], children: [], kind: "element", tag: "div" },
   };
-  expect(renderVueSfc(c)).toContain('import Checkbox from "./Checkbox.vue";');
+  expect(renderVueSfc(comp)).toContain('import Checkbox from "./Checkbox.vue";');
 });
 
 test("event and model attributes render with modifiers", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Form",
     view: {
-      kind: "element",
-      tag: "form",
-      attrs: [{ kind: "event", name: "submit", expr: "add", modifiers: ["prevent"] }],
+      attrs: [{ expr: "add", kind: "event", modifiers: ["prevent"], name: "submit" }],
       children: [
         {
+          attrs: [{ expr: "draft.count", kind: "model", modifiers: ["number"] }],
+          children: [],
           kind: "element",
           tag: "input",
-          attrs: [{ kind: "model", expr: "draft.count", modifiers: ["number"] }],
-          children: [],
         },
         {
+          attrs: [{ expr: "remove(i)", kind: "event", name: "click" }],
+          children: [{ kind: "text", text: "x" }],
           kind: "element",
           tag: "button",
-          attrs: [{ kind: "event", name: "click", expr: "remove(i)" }],
-          children: [{ kind: "text", text: "x" }],
         },
       ],
+      kind: "element",
+      tag: "form",
     },
   };
-  const sfc = renderVueSfc(c);
+  const sfc = renderVueSfc(comp);
   expect(sfc).toContain('<form @submit.prevent="add">');
   expect(sfc).toContain('<input v-model.number="draft.count" />');
   expect(sfc).toContain('<button @click="remove(i)">x</button>');
@@ -187,10 +189,10 @@ test("a cond attr renders v-if (mount/unmount) and v-show (visibility)", () => {
   const ifNode: Component = {
     name: "Maybe",
     view: {
+      attrs: [{ expr: "api.open", kind: "cond", type: "if" }],
+      children: [],
       kind: "element",
       tag: "div",
-      attrs: [{ kind: "cond", type: "if", expr: "api.open" }],
-      children: [],
     },
   };
   expect(renderVueSfc(ifNode)).toContain('<div v-if="api.open" />');
@@ -198,34 +200,34 @@ test("a cond attr renders v-if (mount/unmount) and v-show (visibility)", () => {
   const showNode: Component = {
     name: "Maybe",
     view: {
+      attrs: [{ expr: "api.open", kind: "cond", type: "show" }],
+      children: [],
       kind: "element",
       tag: "div",
-      attrs: [{ kind: "cond", type: "show", expr: "api.open" }],
-      children: [],
     },
   };
   expect(renderVueSfc(showNode)).toContain('<div v-show="api.open" />');
 });
 
 test("a looped element renders v-for with key", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "List",
     view: {
-      kind: "element",
-      tag: "ul",
       attrs: [],
       children: [
         {
+          attrs: [{ kind: "static", name: "class", value: "vow-view__row" }],
+          children: [{ expr: "item.title", kind: "interp" }],
+          for: { as: "item", each: "rows", index: "i", key: "i" },
           kind: "element",
           tag: "li",
-          attrs: [{ kind: "static", name: "class", value: "vow-view__row" }],
-          for: { each: "rows", as: "item", index: "i", key: "i" },
-          children: [{ kind: "interp", expr: "item.title" }],
         },
       ],
+      kind: "element",
+      tag: "ul",
     },
   };
-  expect(renderVueSfc(c)).toContain(
+  expect(renderVueSfc(comp)).toContain(
     '<li class="vow-view__row" v-for="(item, i) in rows" :key="i">{{ item.title }}</li>',
   );
 });
@@ -233,124 +235,124 @@ test("a looped element renders v-for with key", () => {
 test("a slot renders a static, dynamic (:name), or default name", () => {
   const named: Component = {
     name: "Panel",
-    view: { kind: "slot", name: "header", children: [] },
+    view: { children: [], kind: "slot", name: "header" },
   };
   expect(renderVueSfc(named)).toContain('<slot name="header" />');
 
   const dynamic: Component = {
     name: "Panel",
-    view: { kind: "slot", nameExpr: "item", children: [] },
+    view: { children: [], kind: "slot", nameExpr: "item" },
   };
   expect(renderVueSfc(dynamic)).toContain('<slot :name="item" />');
 
   const fallback: Component = {
     name: "Panel",
-    view: { kind: "slot", children: [] },
+    view: { children: [], kind: "slot" },
   };
   expect(renderVueSfc(fallback)).toContain("<slot />");
 });
 
 test("an empty component renders self-closing (<Checkbox … />)", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Host",
     view: {
-      kind: "component",
-      name: "Checkbox",
       attrs: [
-        { kind: "model", expr: "item.done" },
+        { expr: "item.done", kind: "model" },
         { kind: "static", name: "label", value: "done" },
       ],
       children: [],
+      kind: "component",
+      name: "Checkbox",
     },
   };
-  expect(renderVueSfc(c)).toContain('<Checkbox v-model="item.done" label="done" />');
+  expect(renderVueSfc(comp)).toContain('<Checkbox v-model="item.done" label="done" />');
 });
 
 test("an inline element keeps children on one line (select with options)", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Picker",
     view: {
-      kind: "element",
-      tag: "select",
-      attrs: [{ kind: "model", expr: "draft.status" }],
-      inline: true,
+      attrs: [{ expr: "draft.status", kind: "model" }],
       children: [
         {
-          kind: "element",
-          tag: "option",
           attrs: [{ kind: "static", name: "value", value: "a" }],
           children: [{ kind: "text", text: "a" }],
-        },
-        {
           kind: "element",
           tag: "option",
+        },
+        {
           attrs: [{ kind: "static", name: "value", value: "b" }],
           children: [{ kind: "text", text: "b" }],
+          kind: "element",
+          tag: "option",
         },
       ],
+      inline: true,
+      kind: "element",
+      tag: "select",
     },
   };
-  expect(renderVueSfc(c)).toContain(
+  expect(renderVueSfc(comp)).toContain(
     '<select v-model="draft.status"><option value="a">a</option><option value="b">b</option></select>',
   );
 });
 
 test("a default slot renders as <slot />", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Box",
-    view: { kind: "element", tag: "div", attrs: [], children: [{ kind: "slot", children: [] }] },
+    view: { attrs: [], children: [{ children: [], kind: "slot" }], kind: "element", tag: "div" },
   };
-  expect(renderVueSfc(c)).toContain("    <slot />");
+  expect(renderVueSfc(comp)).toContain("    <slot />");
 });
 
 test("a named slot renders as <slot name=… />", () => {
-  const c: Component = { name: "Shell", view: { kind: "slot", name: "header", children: [] } };
-  expect(renderVueSfc(c)).toContain('  <slot name="header" />');
+  const comp: Component = { name: "Shell", view: { children: [], kind: "slot", name: "header" } };
+  expect(renderVueSfc(comp)).toContain('  <slot name="header" />');
 });
 
 test("a slot with inline fallback renders open/close on one line", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Empty",
-    view: { kind: "slot", children: [{ kind: "text", text: "Nothing here" }] },
+    view: { children: [{ kind: "text", text: "Nothing here" }], kind: "slot" },
   };
-  expect(renderVueSfc(c)).toContain("  <slot>Nothing here</slot>");
+  expect(renderVueSfc(comp)).toContain("  <slot>Nothing here</slot>");
 });
 
 test("a named slot with element fallback renders open/close over lines", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Footer",
     view: {
+      children: [{ attrs: [], children: [{ kind: "text", text: "x" }], kind: "element", tag: "p" }],
       kind: "slot",
       name: "footer",
-      children: [{ kind: "element", tag: "p", attrs: [], children: [{ kind: "text", text: "x" }] }],
     },
   };
-  expect(renderVueSfc(c)).toContain(
+  expect(renderVueSfc(comp)).toContain(
     ['  <slot name="footer">', "    <p>x</p>", "  </slot>"].join("\n"),
   );
 });
 
 test("props with defaults render via withDefaults(...)", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Flex",
     props: [
-      { name: "direction", tsType: "string", optional: true, default: "'row'" },
-      { name: "gap", tsType: "number", optional: true, default: "0" },
+      { default: "'row'", name: "direction", optional: true, tsType: "string" },
+      { default: "0", name: "gap", optional: true, tsType: "number" },
     ],
-    view: { kind: "element", tag: "div", attrs: [], children: [{ kind: "slot", children: [] }] },
+    view: { attrs: [], children: [{ children: [], kind: "slot" }], kind: "element", tag: "div" },
   };
-  expect(renderVueSfc(c)).toContain(
+  expect(renderVueSfc(comp)).toContain(
     "const props = withDefaults(defineProps<{ direction?: string; gap?: number }>(), { direction: 'row', gap: 0 });",
   );
 });
 
 test("props without defaults still render as plain defineProps (byte-stable, no withDefaults)", () => {
-  const c: Component = {
+  const comp: Component = {
     name: "Field",
     props: [{ name: "label", tsType: "string" }],
-    view: { kind: "element", tag: "div", attrs: [], children: [] },
+    view: { attrs: [], children: [], kind: "element", tag: "div" },
   };
-  const sfc = renderVueSfc(c);
+  const sfc = renderVueSfc(comp);
   expect(sfc).toContain("const props = defineProps<{ label: string }>();");
   expect(sfc).not.toContain("withDefaults");
 });
