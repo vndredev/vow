@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "ready": "vp check && pnpm -r test && vp run -r build",
+    "smoke": "vow smoke studio",
     "dev": "vow dev",
     "prepare": "vp config"
   },

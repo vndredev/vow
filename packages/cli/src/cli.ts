@@ -2,6 +2,7 @@
 import { APPS, resolveApps } from "./apps.ts";
 import { build, check, test } from "./basics.ts";
 import { runDev, status, stopApps } from "./dev.ts";
+import { smoke } from "./smoke.ts";
 
 type App = (typeof APPS)[number];
 type Handler = (rest: readonly string[]) => number | Promise<number>;
@@ -21,6 +22,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow check            vp check — fmt + lint + typecheck (forwards flags, e.g. --fix)
   vow build [app...]   vp build (default: every app)
   vow test             pnpm -r test
+  vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
 
   apps: ${APPS.map((app) => `${app.slug} (:${app.port})`).join(" · ")}`;
 
@@ -87,6 +89,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   check,
   dev,
   help: showHelp,
+  smoke,
   status: showStatus,
   stop,
   test,

@@ -33,3 +33,8 @@ jobs:
       - run: vp check
       - run: pnpm -r test
       - run: vp build apps/docs
+      # Dev-app smoke test: lint + test + build can ALL be green while the dev app breaks at runtime —
+      # a node: builtin leaking into the browser bundle (the build tree-shakes it away, tests run in
+      # Node). Boots `vp dev` and crawls the client module graph; fails if any node: builtin reached it.
+      - name: Smoke test (studio dev)
+        run: pnpm smoke
