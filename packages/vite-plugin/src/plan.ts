@@ -7,6 +7,7 @@ import {
   cardsRefs,
   emitForm,
   emitView,
+  emitViewTest,
   issueLayouts,
   listedEntities,
   referencedPrimitives,
@@ -113,6 +114,7 @@ function planView(vow: ReadonlyVow, outDir: string, entitySlugs: readonly string
     cards: cardsRefs(mutable(vow)),
     files: [
       { path: path.join(outDir, `${vow.slug}.vue`), source: emitView(mutable(vow), entitySlugs) },
+      { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },
     ],
     issueViews: [...issueLayouts(mutable(vow))],
     listed: listedEntities(mutable(vow)),
@@ -153,6 +155,7 @@ function planForm(
         path: path.join(outDir, `${vow.slug}.vue`),
         source: emitForm(mutable(vow), mutableIndex(entities)),
       },
+      { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },
     ],
     pages: [navPage(vow)],
     primitives: ["Field", "Button", ...formFieldPrimitives(entity)],

@@ -24,6 +24,9 @@
     "@vow/core": "workspace:*",
     "@vow/gate": "workspace:*",
     "@vow/vite-plugin": "workspace:*",
+    "@vue/test-utils": "catalog:",
+    "axe-core": "catalog:",
+    "jsdom": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

@@ -44,7 +44,10 @@ vow check --fix      # --fix is forwarded
 vow build            # vp build, every app
 vow build studio     # one app
 vow test             # pnpm -r test (per-package — never `vp test`, which can't resolve jsdom)
+vow smoke            # boot the dev app + assert its client bundle is browser-safe (default: studio)
 ```
+
+`vow smoke` is the runtime gate the static ones miss: it boots `vp dev`, crawls the client module graph, and fails if any `node:` builtin leaked into the browser bundle — a class of bug that lint, type-check, and the production build all pass (the build tree-shakes the leak away; the tests run in Node).
 
 ::: tip The split is the point
 **`vow` is for people; the [MCP](/guide/mcp) is for LLMs.** Process management (run · stop · status) lives in the CLI, never in an LLM tool; authoring (vows · records · the plan) lives in the MCP, never in the CLI.

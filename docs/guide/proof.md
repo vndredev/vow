@@ -20,7 +20,16 @@ A vow's `## proves` are its contract: the scenarios that must hold. The **scenar
 3. check      →  a scenario with no matching test  →  uncovered  →  gate red
 ```
 
-A claim is _covered_ when some test's name contains it; anything else is an unproven promise.
+A claim is _covered_ only when a test's name **equals it exactly** — a substring match would let an empty claim ride on every test (and "adds a task" ride on "readds a task"). Anything else is an unproven promise.
+
+## Generated views prove themselves — render + a11y
+
+Beyond the `emit entity` factory tests, a generated **view** proves itself at runtime. For each `## view` (and `## form`), vow generates a `<slug>.render.test.ts` that mounts the `.vue` in jsdom (`@vue/test-utils`) and runs **axe** on it — two derived scenarios, named so the coverage gate covers them:
+
+- **`The <View> view renders`** — mounts the component (a broken template throws here)
+- **`The <View> view has no accessibility violations`** — axe finds zero violations on the rendered DOM
+
+This closes a gap that lint, type-check, and the production build all miss: a generated `.vue` is only _trusted_ until it's actually mounted (the build tree-shakes unused code; unit tests run in Node). _Foundation:_ today it asserts the empty/default state; seeded data is a later step.
 
 ## Status is derived, never set
 
