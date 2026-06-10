@@ -83,7 +83,9 @@ export async function findNodeLeaks(
     if (frontier.length === 0) {
       return [];
     }
-    const found = await Promise.all(frontier.map(async (path) => inspect(path, await fetchModule(path))));
+    const found = await Promise.all(
+      frontier.map(async (path) => inspect(path, await fetchModule(path))),
+    );
     const deeper = await crawl(found.flatMap((result) => result.next));
     return [...found.flatMap((result) => result.leaks), ...deeper];
   };
@@ -168,7 +170,9 @@ function report(slug: string, leaks: readonly NodeLeak[]): void {
   for (const leak of leaks) {
     process.stderr.write(`  ${leak.from}\n    imports ${leak.stub}\n`);
   }
-  process.stderr.write("A node: module reached the client graph — split it out of the browser barrel.\n");
+  process.stderr.write(
+    "A node: module reached the client graph — split it out of the browser barrel.\n",
+  );
 }
 
 /** Boot done — crawl the running app's client graph and report the verdict. */
