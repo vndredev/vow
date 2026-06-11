@@ -9,3 +9,4 @@
 export * from "./dispatch.ts";
 export * from "./plan.ts";
 export * from "./provider.ts";
+export * from "./verify.ts";

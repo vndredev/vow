@@ -72,6 +72,17 @@ await dispatch(task, claudeCode, ops);
 
 The worktree is the **isolation** that lets a fleet of agents run in parallel without colliding on the working tree — the foundation for stepping on the gas with multiple agents at once.
 
+## Verify, then PR
+
+After the run, `verify(gates, cwd, run)` re-runs every gate (the improve "review like a tech lead" — done-criteria re-checked, never trusted); the verdict is the conjunction. Then the branch is pushed and `gh pr create` opens the PR — **a red run opens a DRAFT**, surfaced for a human, never mergeable:
+
+```ts
+const verdict = await verify(plan.gates, cwd, run);
+prCreateArgs(title, prBody(plan, verdict), verdict.ok); // verdict.ok === false → adds "--draft"
+```
+
+Merging always stays a human's call — the loop develops, verifies, and proposes; it never merges itself.
+
 ## The roadmap
 
-The loop, element by element: **provider abstraction** ✓ → **plan-builder** ✓ → **dispatch in an isolated worktree** ✓ → verify the gates + open the PR → trigger (board drag `planned → doing`). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
+The loop, element by element: **provider abstraction** ✓ → **plan-builder** ✓ → **dispatch in an isolated worktree** ✓ → **verify the gates + open the PR** ✓ → trigger (board drag `planned → doing`). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
