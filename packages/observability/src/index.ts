@@ -243,6 +243,7 @@ export function gitTimeline(cwd: string, ref = "main"): TimelineEntry[] {
 }
 
 // The GitHub side — issues, PRs, the derived issue plan, the Project sync, and the branch protection vow owns.
+export * from "./audit.ts";
 export * from "./ci.ts";
 export * from "./github.ts";
 export * from "./project.ts";
