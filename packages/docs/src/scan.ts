@@ -7,18 +7,13 @@ import type {
   TocEntry,
 } from "./types.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type Maybe, defined, mapDefined } from "@vow/core";
+import { type Maybe, NONE, defined, mapDefined } from "@vow/core";
 import { docSlug, firstH1, mdFilesUnder, parseFrontmatter, relNoExt, routePath } from "./paths.ts";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import type { UiNode } from "@vow/component";
 import { emitProse } from "@vow/emit-view";
 import { markdownToNodesSync } from "@vow/markdown";
 import path from "node:path";
-
-/** The single absence value for a `Maybe<T>` — read off an empty object's optional slot, no literal
- *  (the max lint wall forbids the `undefined` identifier). Mirrors @vow/markdown's same seam. */
-const ABSENT: { readonly slot?: never } = {};
-const NONE: Maybe<never> = ABSENT.slot;
 
 /** A snippet resolver: read a `<<< <path>` include's content, or absent when it's out of bounds. */
 type ResolveSnippet = (snippet: string) => Maybe<string>;

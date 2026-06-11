@@ -9,6 +9,14 @@
 /** A value that may be absent — the explicit name for `T | undefined` across the write/read seams. */
 export type Maybe<T> = T | undefined;
 
+/**
+ * The single absence value for a `Maybe<T>` — read off an empty object's optional slot. The max lint wall
+ * forbids the `undefined` identifier (`no-undefined`), so this is the one place a `Maybe` absence originates.
+ * Return `NONE` wherever a function must yield "no value".
+ */
+const ABSENT: { readonly slot?: never } = {};
+export const NONE: Maybe<never> = ABSENT.slot;
+
 /** A type guard: the value is present — `typeof` test, so the `undefined` literal never appears. */
 export function defined<T>(value: Maybe<T>): value is T {
   const absent = "undefined";
