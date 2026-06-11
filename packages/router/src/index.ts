@@ -106,16 +106,37 @@ interface InternalLink {
 }
 
 /** The minimal, deeply-readonly shape of a click this router cares about — every `MouseEvent`
- *  satisfies it, so a DOM listener can pass its event straight through. */
+ *  satisfies it, so a DOM listener can pass its event straight through. The modifier keys and
+ *  `button` let the router defer to the browser for open-in-new-tab/-window (Cmd/Ctrl/Shift/Alt)
+ *  and any non-primary button. */
 interface ClickEvent {
+  readonly altKey: boolean;
+  readonly button: number;
+  readonly ctrlKey: boolean;
   readonly defaultPrevented: boolean;
+  readonly metaKey: boolean;
   readonly preventDefault: () => void;
+  readonly shiftKey: boolean;
   readonly target: unknown;
 }
 
-/** The internal link a `<a href>`/`target` pair points to, or absent if the browser should keep it. */
-function linkOf(href: string, anchorTarget: string): Maybe<InternalLink> {
-  if (!href.startsWith("/") || anchorTarget === "_blank") {
+/** The minimal, readonly slice of an anchor `linkOf` inspects — narrowing `HTMLAnchorElement` to these
+ *  three members keeps the type shallow (the full DOM type is too deep for `DeepReadonly`). */
+interface LinkAnchor {
+  readonly hasAttribute: (name: string) => boolean;
+  readonly rel: string;
+  readonly target: string;
+}
+
+/** The internal link a `<a>` points to, or absent if the browser should keep it. An anchor is kept by
+ *  the browser when it targets a new context (`target="_blank"`), downloads (`download`), or opts out
+ *  (`rel="external"` / `rel="… external …"`), or when its resolved URL is cross-origin. */
+function linkOf(anchor: LinkAnchor, href: string): Maybe<InternalLink> {
+  const keepsBrowser =
+    anchor.target === "_blank" ||
+    anchor.hasAttribute("download") ||
+    anchor.rel.split(/\s+/u).includes("external");
+  if (!href.startsWith("/") || keepsBrowser) {
     return absent;
   }
   const url = new URL(href, globalThis.location.origin);
@@ -134,10 +155,16 @@ function anchorOf(target: unknown): Maybe<HTMLAnchorElement> {
   return maybe(target.closest("a"));
 }
 
+/** Whether a click asks the browser to open a new context — any modifier key (Cmd/Ctrl/Shift/Alt) or
+ *  a non-primary button (`button !== 0`; the middle button fires `auxclick`, not `click`). */
+function opensNewContext(event: ClickEvent): boolean {
+  return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
+}
+
 /** Resolve a click into the internal link it should navigate to, or absent if the browser keeps it. */
-function internalLink(event: ClickEvent): Maybe<InternalLink> {
-  if (event.defaultPrevented) {
-    // Already handled (e.g. the search's programmatic nav).
+export function internalLink(event: ClickEvent): Maybe<InternalLink> {
+  if (event.defaultPrevented || opensNewContext(event)) {
+    // Already handled (e.g. the search's programmatic nav), or open-in-new-tab/-window/button.
     return absent;
   }
   const anchor = anchorOf(event.target);
@@ -148,7 +175,7 @@ function internalLink(event: ClickEvent): Maybe<InternalLink> {
   if (href === null) {
     return absent;
   }
-  return linkOf(href, anchor.target);
+  return linkOf(anchor, href);
 }
 
 /** Surface a navigation failure on the console rather than letting it vanish into a rejected promise. */
