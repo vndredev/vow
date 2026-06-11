@@ -208,16 +208,18 @@ function childNodes(node: UiNode): readonly UiNode[] {
   return [];
 }
 
-/** Collect every `<Component>` name in a UiNode tree (for imports). */
+/** Collect every `<Component>` name in a UiNode tree (for imports) — one accumulator, walked once (no
+ *  per-node Set allocation + upward re-merge). */
 export function componentsIn(node: UiNode): Set<string> {
   const found = new Set<string>();
-  if (node.kind === "component") {
-    found.add(node.name);
-  }
-  for (const child of childNodes(node)) {
-    for (const name of componentsIn(child)) {
-      found.add(name);
+  const walk = (current: UiNode): void => {
+    if (current.kind === "component") {
+      found.add(current.name);
     }
-  }
+    for (const child of childNodes(current)) {
+      walk(child);
+    }
+  };
+  walk(node);
   return found;
 }
