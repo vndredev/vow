@@ -97,4 +97,4 @@ Every effect is injected via `ops`, so the entire loop is tested end-to-end with
 
 ## The roadmap
 
-✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → **✓ `runTask` (the loop, one call)** → next: **realOps** (the node exec that actually spawns claude + git) · `vow agent run` (the CLI front-door) · the **trigger** (channel / board drag). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
+✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → ✓ `runTask` (the loop, one call) → **✓ `realOps`** (the real exec — git worktrees + the CLI spawned via `execFileSync`; each run is its own process, so the sync exec doesn't block a parallel fleet) → next: `vow agent run` (the CLI front-door) · the **trigger** (channel / board drag). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
