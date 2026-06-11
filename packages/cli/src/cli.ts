@@ -2,6 +2,7 @@
 import { APPS, resolveApps } from "./apps.ts";
 import { build, check, test } from "./basics.ts";
 import { runDev, status, stopApps } from "./dev.ts";
+import { agent } from "./agent.ts";
 import { guard } from "./guard.ts";
 import { reconcile } from "./reconcile.ts";
 import { smoke } from "./smoke.ts";
@@ -27,6 +28,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
   vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
   vow reconcile        report backlog drift — open issues a merged PR already closed (retire candidates)
+  vow agent init       scaffold the agent integration (AGENTS.md + a develop skill)
 
   apps: ${APPS.map((app) => `${app.slug} (:${app.port})`).join(" · ")}`;
 
@@ -89,6 +91,7 @@ function unknown(cmd: string): Handler {
 const COMMANDS: Readonly<Record<string, Handler>> = {
   "--help": showHelp,
   "-h": showHelp,
+  agent,
   build,
   check,
   dev,
