@@ -88,10 +88,26 @@ interface ProjectItem {
   readonly status: Maybe<string>;
 }
 
-/** Run a `gh api graphql` query and return the parsed `data` object (`{}` when the shape is unexpected). */
-function ghJsonData(cwd: string, query: string): Json {
+/** A graphql variable bound by `gh api graphql -f name=value` — never interpolated into the query text. */
+interface GqlVar {
+  readonly name: string;
+  readonly value: string;
+}
+
+/** The `gh api graphql` args for a query + its bound variables — each value passed via `-f`, so a caller-
+ *  supplied id is bound by the API, never embedded in (and thus able to inject) the query text. */
+export function graphqlArgs(query: string, vars: readonly GqlVar[]): string[] {
+  const args = ["api", "graphql", "-f", `query=${query}`];
+  for (const variable of vars) {
+    args.push("-f", `${variable.name}=${variable.value}`);
+  }
+  return args;
+}
+
+/** Run a `gh api graphql` query with bound `vars` and return the parsed `data` (`{}` on an odd shape). */
+function ghJsonData(cwd: string, query: string, vars: readonly GqlVar[]): Json {
   const parsed: unknown = JSON.parse(
-    execFileSync("gh", ["api", "graphql", "-f", `query=${query}`], { cwd, encoding: "utf8" }),
+    execFileSync("gh", graphqlArgs(query, vars), { cwd, encoding: "utf8" }),
   );
   return readObject(parsed, "data") ?? {};
 }
@@ -147,22 +163,11 @@ function readProjectItems(data: Readonly<Json>): ProjectItem[] {
   return out;
 }
 
-const fieldQuery = (projectId: string): string =>
-  `query{node(id:"${projectId}"){... on ProjectV2{field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}}}}`;
+const fieldQuery = `query($pid:ID!){node(id:$pid){... on ProjectV2{field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}}}}`;
 
-const itemsQuery = (projectId: string): string =>
-  `query{node(id:"${projectId}"){... on ProjectV2{items(first:100){nodes{id content{... on Issue{number}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`;
+const itemsQuery = `query($pid:ID!){node(id:$pid){... on ProjectV2{items(first:100){nodes{id content{... on Issue{number}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`;
 
-/** The flags identifying which Status option a mutation should set on which Project item. */
-interface SetStatus {
-  readonly fieldId: string;
-  readonly itemId: string;
-  readonly optionId: string;
-  readonly projectId: string;
-}
-
-const setStatusMutation = (set: Readonly<SetStatus>): string =>
-  `mutation{updateProjectV2ItemFieldValue(input:{projectId:"${set.projectId}",itemId:"${set.itemId}",fieldId:"${set.fieldId}",value:{singleSelectOptionId:"${set.optionId}"}}){projectV2Item{id}}}`;
+const setStatusMutation = `mutation($pid:ID!,$item:ID!,$field:ID!,$opt:String!){updateProjectV2ItemFieldValue(input:{projectId:$pid,itemId:$item,fieldId:$field,value:{singleSelectOptionId:$opt}}){projectV2Item{id}}}`;
 
 /** Resolve a Status option id by name from a `StatusField`, throwing when the option is absent. */
 function resolveOption(field: Readonly<StatusField>, name: string): string {
@@ -207,15 +212,12 @@ function reconcileItem(
   if (item.status === want) {
     return NONE;
   }
-  ghJsonData(
-    context.cwd,
-    setStatusMutation({
-      fieldId: context.field.id,
-      itemId: item.id,
-      optionId: resolveOption(context.field, want),
-      projectId: context.projectId,
-    }),
-  );
+  ghJsonData(context.cwd, setStatusMutation, [
+    { name: "pid", value: context.projectId },
+    { name: "item", value: item.id },
+    { name: "field", value: context.field.id },
+    { name: "opt", value: resolveOption(context.field, want) },
+  ]);
   return { from: item.status ?? "(unset)", number, to: want };
 }
 
@@ -225,9 +227,10 @@ function reconcileItem(
  * Todo, doing -> In Progress, done -> Done — and report what changed. Throws on a `gh` failure.
  */
 export function syncProjectStatus(cwd: string, projectId: string): SyncResult {
-  const field = readStatusField(ghJsonData(cwd, fieldQuery(projectId)));
+  const pid = [{ name: "pid", value: projectId }];
+  const field = readStatusField(ghJsonData(cwd, fieldQuery, pid));
   const context: SyncContext = { cwd, field, projectId };
-  const byNumber = itemsByNumber(readProjectItems(ghJsonData(cwd, itemsQuery(projectId))));
+  const byNumber = itemsByNumber(readProjectItems(ghJsonData(cwd, itemsQuery, pid)));
   const wanted = (plan: PlanItem): Maybe<Wanted> => {
     const item = byNumber.get(plan.issue.number);
     if (typeof item === "object") {
@@ -248,7 +251,8 @@ export function syncProjectStatus(cwd: string, projectId: string): SyncResult {
 export function addToProject(cwd: string, projectId: string, url: string): void {
   const data = ghJsonData(
     cwd,
-    `query{node(id:"${projectId}"){... on ProjectV2{number owner{... on User{login} ... on Organization{login}}}}}`,
+    `query($pid:ID!){node(id:$pid){... on ProjectV2{number owner{... on User{login} ... on Organization{login}}}}}`,
+    [{ name: "pid", value: projectId }],
   );
   const node = readObject(data, "node");
   const number = readNumber(node, "number");
