@@ -9,6 +9,7 @@
 import type { NavSection, Page } from "./types.ts";
 import { defined } from "@vow/core";
 
+export { emitDarkToggleSfc } from "./dark-toggle.ts";
 export type { NavSection, Page } from "./types.ts";
 
 const byOrder = (first: Page, second: Page): number =>

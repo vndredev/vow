@@ -500,6 +500,9 @@ importers:
 
   packages/shell:
     dependencies:
+      '@vow/component':
+        specifier: workspace:*
+        version: link:../component
       '@vow/core':
         specifier: workspace:*
         version: link:../core
