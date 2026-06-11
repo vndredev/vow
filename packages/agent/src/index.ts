@@ -6,6 +6,7 @@
  * never names a provider. This is the seam the provider-neutrality gate (#107) guards.
  */
 
+export * from "./auto.ts";
 export * from "./dispatch.ts";
 export * from "./dry-run.ts";
 export * from "./loop.ts";
