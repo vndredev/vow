@@ -38,9 +38,9 @@ function modelSetting(envKey: string, fallback: string): string {
 /** Claude Code's per-role models — native vow settings defaulting to Fable (the most capable, for the
  *  hardest + longest-running roles) for audit + plan, and a cheap Haiku for the bulk execute role. */
 const CLAUDE_MODELS: ModelPolicy = {
-  audit: modelSetting("VOW_AUDIT_MODEL", "fable"),
+  audit: modelSetting("VOW_AUDIT_MODEL", "claude-fable-5"),
   execute: modelSetting("VOW_EXECUTE_MODEL", "claude-haiku-4-5"),
-  plan: modelSetting("VOW_PLAN_MODEL", "fable"),
+  plan: modelSetting("VOW_PLAN_MODEL", "claude-fable-5"),
 };
 
 /** Claude Code — `claude -p` headless: print mode, edits accepted, structured output. The plan is the
