@@ -31,14 +31,13 @@ function failOutput(error: unknown): string {
   return "unknown error";
 }
 
-/** The child env with the command's `unsetEnv` vars removed — so stripping an API key makes the provider
- *  authenticate via its subscription. The parent env unchanged otherwise. */
-function childEnv(unset: readonly string[] | undefined): NodeJS.ProcessEnv {
-  // oxlint-disable-next-line no-process-env -- the parent env to hand (filtered) to the child spawn
-  const parent = process.env;
-  if (!unset || unset.length === 0) {
-    return parent;
-  }
+/** The child env: `parent` with the command's `unsetEnv` vars removed — so stripping an API key makes the
+ *  provider authenticate via its subscription. Pure (parent injected), so the auth-strip is unit-tested
+ *  without touching the real environment. */
+export function childEnv(
+  parent: Readonly<NodeJS.ProcessEnv>,
+  unset: readonly string[] | undefined,
+): NodeJS.ProcessEnv {
   const drop = new Set(unset);
   const env: NodeJS.ProcessEnv = {};
   for (const key of Object.keys(parent)) {
@@ -56,7 +55,8 @@ function execText(command: Command, cwd: string): RunResult {
     const stdout = execFileSync(command.bin, [...command.args], {
       cwd,
       encoding: "utf8",
-      env: childEnv(command.unsetEnv),
+      // oxlint-disable-next-line no-process-env -- the parent env to hand (filtered) to the child spawn
+      env: childEnv(process.env, command.unsetEnv),
     });
     return { code: 0, output: stdout };
   } catch (error) {

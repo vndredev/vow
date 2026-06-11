@@ -1,5 +1,5 @@
+import { childEnv, realOps } from "../src/real-ops.ts";
 import { expect, test } from "vite-plus/test";
-import { realOps } from "../src/real-ops.ts";
 import { tmpdir } from "node:os";
 
 const EXIT_CODE = 3;
@@ -28,4 +28,10 @@ test("realOps.run captures a failing command's output (so a draft PR can show it
   );
   expect(result.code).toBe(1);
   expect(result.output).toContain("boom");
+});
+
+test("childEnv strips the unsetEnv vars from the parent (the subscription auth-strip), keeps the rest", () => {
+  const parent = { ANTHROPIC_API_KEY: "secret", PATH: "/bin" };
+  expect(childEnv(parent, ["ANTHROPIC_API_KEY"])).toEqual({ PATH: "/bin" });
+  expect(childEnv(parent, [])).toEqual(parent);
 });
