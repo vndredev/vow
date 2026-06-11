@@ -1,7 +1,18 @@
-import { DEFAULT_PROVIDER, PROVIDERS, buildPlan, dryRunReport, providerFor } from "@vow/agent";
+import {
+  DEFAULT_PROVIDER,
+  PROVIDERS,
+  buildPlan,
+  dryRunReport,
+  providerFor,
+  realOps,
+  runReport,
+  runTask,
+} from "@vow/agent";
 import { agentsMd, vowDevelopSkill } from "./agent-templates.ts";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { headCommit, issueDetail } from "@vow/observability";
+// oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
+import type { Provider } from "@vow/agent";
 import path from "node:path";
 
 /** Write `content` to `file` only when absent — `init` is idempotent, never clobbering edits. Returns the
@@ -68,26 +79,74 @@ export function flagValue(rest: readonly string[], flag: string): string {
 /** The known provider names, for the unknown-provider error. */
 const KNOWN_PROVIDERS = PROVIDERS.map((each) => each.name).join(", ");
 
-/** `vow agent run <n> --dry-run [--provider <name>]` — preview the run (branch, command, gates). The live
- *  run isn't wired yet, so `--dry-run` is required; without it the usage is shown. */
-function runDry(rest: readonly string[]): number {
+/** The gates `vow agent run` re-runs in the worktree after the provider, before deciding merge vs. draft. */
+const RUN_GATES: readonly string[] = ["vp check", "pnpm -r test"];
+
+/** A validated `vow agent run` invocation — the issue number + the resolved provider. */
+interface RunArgs {
+  readonly issue: number;
+  readonly provider: Provider;
+}
+
+/** Parse + validate `vow agent run` args (issue number + provider), or a usage/error string to print. */
+function parseRun(rest: readonly string[]): RunArgs | string {
   const issue = issueArg(rest);
-  if (issue === 0 || !rest.includes("--dry-run")) {
-    process.stderr.write("usage: vow agent run <issue-number> --dry-run [--provider <name>]\n");
-    return 1;
+  if (issue === 0) {
+    return "usage: vow agent run <issue-number> [--dry-run] [--provider <name>]";
   }
   const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
   if (!provider) {
-    process.stderr.write(`vow agent run: unknown provider (known: ${KNOWN_PROVIDERS})\n`);
-    return 1;
+    return `vow agent run: unknown provider (known: ${KNOWN_PROVIDERS})`;
   }
-  process.stdout.write(`${dryRunReport(issueDetail(process.cwd(), issue), provider)}\n`);
+  return { issue, provider };
+}
+
+/** Exit 0 when the verdict holds, else 1. */
+function exitFor(ok: boolean): number {
+  if (ok) {
+    return 0;
+  }
+  return 1;
+}
+
+/** `vow agent run <n> --dry-run [--provider <name>]` — preview the run (branch, command, gates). */
+function runDry(args: RunArgs): number {
+  process.stdout.write(`${dryRunReport(issueDetail(process.cwd(), args.issue), args.provider)}\n`);
   return 0;
 }
 
+/** `vow agent run <n> [--provider <name>]` (live) — worktree → dispatch the provider → re-run the gates →
+ *  report. Exits non-zero when a gate fails (the runner would open a draft, not merge). */
+async function runLive(args: RunArgs): Promise<number> {
+  const cwd = process.cwd();
+  const spec = issueDetail(cwd, args.issue);
+  const outcome = await runTask({
+    context: { commit: headCommit(cwd), verify: RUN_GATES },
+    cwd,
+    issue: spec,
+    ops: realOps(),
+    provider: args.provider,
+  });
+  process.stdout.write(`${runReport(spec, outcome)}\n`);
+  return exitFor(outcome.verdict.ok);
+}
+
+/** Route `vow agent run` — `--dry-run` previews; otherwise the live run. */
+function runAgent(rest: readonly string[]): number | Promise<number> {
+  const args = parseRun(rest);
+  if (typeof args === "string") {
+    process.stderr.write(`${args}\n`);
+    return 1;
+  }
+  if (rest.includes("--dry-run")) {
+    return runDry(args);
+  }
+  return runLive(args);
+}
+
 /** `vow agent <sub>` — the agent-native front door: `init` (scaffold) · `plan <n>` (the executor-ready
- *  plan) · `run <n> --dry-run` (preview the provider command). */
-export function agent(rest: readonly string[]): number {
+ *  plan) · `run <n> [--dry-run]` (the live run, or preview the provider command). */
+export function agent(rest: readonly string[]): number | Promise<number> {
   const [sub] = rest;
   if (sub === "init") {
     return init(process.cwd());
@@ -96,7 +155,7 @@ export function agent(rest: readonly string[]): number {
     return runPlan(rest);
   }
   if (sub === "run") {
-    return runDry(rest);
+    return runAgent(rest);
   }
   process.stderr.write("usage: vow agent <init|plan|run>\n");
   return 1;
