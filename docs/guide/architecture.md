@@ -31,6 +31,8 @@ One plugin (`@vow/vite-plugin`) drives it: it loads `app/`, runs the emitters, w
 
 The split has one rule: `@vow/headless` holds **only logic** — no component, no CSS. That's why React or Solid would reuse it untouched, and why the look is a swappable layer. (`@vow/markdown` and `@vow/icons` support the docs chrome; `@vow/vite-plugin` is the plugin that drives the path above.) See **[Packages](/guide/packages)** for the full directory — every package and where to learn it.
 
+A second rule is now **mechanical**: dependencies point only **down** the 4-layer DAG (foundation → emit → composition → orchestration), never up, and never in a cycle — `@vow/gate`'s `layerViolations` fails the build on an upward edge, an unassigned package, or a cycle. The architecture can't quietly erode.
+
 ## The UI, top down
 
 An app is a **shell** wrapping **views**:
