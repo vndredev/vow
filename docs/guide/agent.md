@@ -61,6 +61,17 @@ buildPlan(
 
 Every plan carries the always-on gates (`vp check`, `pnpm -r test`), the issue's extra gates, an out-of-scope list, STOP conditions, and the **commit stamp** it was written against — so the executor catches a stale plan before touching anything.
 
+## Isolated dispatch
+
+`dispatch(task, provider, ops)` develops a task in its own git worktree — create it on the task's branch, run the provider's command there, and _always_ tear it down (even if the run fails). The side effects (git, exec) are injected as `ops`, so the orchestration is pure and tested without touching git or spawning a CLI:
+
+```ts
+await dispatch(task, claudeCode, ops);
+// ops.worktreeAdd(cwd, branch) → ops.run(claudeCode.command(task), cwd) → ops.worktreeRemove(cwd)
+```
+
+The worktree is the **isolation** that lets a fleet of agents run in parallel without colliding on the working tree — the foundation for stepping on the gas with multiple agents at once.
+
 ## The roadmap
 
-The loop, element by element: **provider abstraction** ✓ → **plan-builder** ✓ → dispatch in an isolated worktree → verify the gates + open the PR → trigger (board drag `planned → doing`). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
+The loop, element by element: **provider abstraction** ✓ → **plan-builder** ✓ → **dispatch in an isolated worktree** ✓ → verify the gates + open the PR → trigger (board drag `planned → doing`). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
