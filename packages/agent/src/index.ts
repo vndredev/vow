@@ -7,6 +7,8 @@
  */
 
 export * from "./dispatch.ts";
+export * from "./loop.ts";
 export * from "./plan.ts";
 export * from "./provider.ts";
+export type * from "./types.ts";
 export * from "./verify.ts";

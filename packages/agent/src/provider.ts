@@ -4,26 +4,7 @@
  * testable and nothing above this layer names a provider (the seam the #107 gate guards).
  */
 
-/** A task for an autonomous coding agent: develop `plan` in `cwd`, on its own `branch`. */
-export interface AgentTask {
-  readonly branch: string;
-  readonly cwd: string;
-  readonly plan: string;
-  readonly title: string;
-}
-
-/** A command to spawn — what to exec, built but never run here (so the mapping stays pure + testable). */
-export interface Command {
-  readonly args: readonly string[];
-  readonly bin: string;
-}
-
-/** A coding-CLI provider — the one seam every agent backend implements. The loop holds a `Provider`,
- *  never a provider name. */
-export interface Provider {
-  readonly command: (task: AgentTask) => Command;
-  readonly name: string;
-}
+import type { Provider } from "./types.ts";
 
 /** Claude Code — `claude -p` headless: print mode, edits accepted, structured output. The plan is the
  *  prompt; the runner sets the cwd to the task's worktree. */

@@ -5,19 +5,7 @@
  * executor detect a stale plan before touching anything — so a cheaper model runs it without drifting.
  */
 
-/** The issue a plan is built from — its number, title, and body (the element + the why). */
-export interface IssueSpec {
-  readonly body: string;
-  readonly number: number;
-  readonly title: string;
-}
-
-/** The repo facts a plan inlines so the executor needs no outside context: the gates to run + the commit
- *  the plan was written against (the executor's drift check). */
-export interface PlanContext {
-  readonly commit: string;
-  readonly verify: readonly string[];
-}
+import type { IssueSpec, PlanContext } from "./types.ts";
 
 /** The gates every vow plan carries, whatever the issue. */
 const ALWAYS_VERIFY: readonly string[] = [

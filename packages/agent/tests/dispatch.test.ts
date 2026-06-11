@@ -1,10 +1,10 @@
 import { claudeCode, dispatch, worktreeAddArgs, worktreeRemoveArgs } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
-import type { AgentOps } from "../src/dispatch.ts";
+import type { AgentOps } from "../src/types.ts";
 
 const task = { branch: "vow/issue-98", cwd: "/tmp/wt", plan: "do it", title: "the loop" };
 
-/** A fake ops that records its calls + returns a scripted run result — so no git is touched and `claude`
+/** A fake ops that records its calls + scripts the run's exit code — so no git is touched and `claude`
  *  never runs. */
 function fakeOps(code: number): { calls: string[]; ops: AgentOps } {
   const calls: string[] = [];
@@ -26,18 +26,17 @@ function fakeOps(code: number): { calls: string[]; ops: AgentOps } {
   return { calls, ops };
 }
 
-test("dispatch sets up the worktree, runs the provider in it, then tears it down", async () => {
+test("dispatch runs the provider in the task's cwd and reports ok on exit 0", async () => {
   const { calls, ops } = fakeOps(0);
   const result = await dispatch(task, claudeCode, ops);
   expect(result.ok).toBe(true);
-  expect(calls).toEqual(["add vow/issue-98 at /tmp/wt", "run claude in /tmp/wt", "remove /tmp/wt"]);
+  expect(calls).toEqual(["run claude in /tmp/wt"]);
 });
 
-test("dispatch tears the worktree down even when the run fails", async () => {
-  const { calls, ops } = fakeOps(1);
+test("dispatch reports not-ok when the provider exits non-zero", async () => {
+  const { ops } = fakeOps(1);
   const result = await dispatch(task, claudeCode, ops);
   expect(result.ok).toBe(false);
-  expect(calls.at(-1)).toBe("remove /tmp/wt");
 });
 
 test("the git worktree args are isolation-correct (fresh branch, forced teardown)", () => {

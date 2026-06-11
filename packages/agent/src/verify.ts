@@ -5,17 +5,7 @@
  * stage is tested without running the gates or touching the network.
  */
 
-/** One gate's outcome — the command and whether it passed. */
-export interface GateResult {
-  readonly command: string;
-  readonly ok: boolean;
-}
-
-/** The verdict of re-running a plan's gates: the per-gate results + their conjunction. */
-export interface VerifyResult {
-  readonly ok: boolean;
-  readonly results: readonly GateResult[];
-}
+import type { GateResult, VerifyResult } from "./types.ts";
 
 /** Re-run each verification gate in `cwd`; the verdict is the conjunction. The exec is injected, so this
  *  is tested without running the gates. */

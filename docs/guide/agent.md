@@ -83,6 +83,18 @@ prCreateArgs(title, prBody(plan, verdict), verdict.ok); // verdict.ok === false 
 
 Merging always stays a human's call — the loop develops, verifies, and proposes; it never merges itself.
 
+## The loop, in one call
+
+`runTask(request)` is the whole loop as a single, provider-neutral call — build the gated plan, set up an isolated worktree, dispatch the provider in it, re-run the gates _in that worktree_, and always tear it down:
+
+```ts
+const outcome = await runTask({ issue, context, cwd, provider: claudeCode, ops });
+// ops.worktreeAdd → dispatch(plan, worktree) → verify(gates, worktree) → ops.worktreeRemove (always)
+// → { run, verdict }
+```
+
+Every effect is injected via `ops`, so the entire loop is tested end-to-end without running claude or touching git. The worktree's lifecycle lives here, not in `dispatch` — verify must see the agent's changes _before_ teardown.
+
 ## The roadmap
 
-The loop, element by element: **provider abstraction** ✓ → **plan-builder** ✓ → **dispatch in an isolated worktree** ✓ → **verify the gates + open the PR** ✓ → trigger (board drag `planned → doing`). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
+✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → **✓ `runTask` (the loop, one call)** → next: **realOps** (the node exec that actually spawns claude + git) · `vow agent run` (the CLI front-door) · the **trigger** (channel / board drag). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
