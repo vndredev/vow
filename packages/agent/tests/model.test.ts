@@ -21,7 +21,9 @@ test("a provider omits the model flag when the task pins no model", () => {
   expect(claudeCode.command(task).args).not.toContain("--model");
 });
 
-test("claudeCode's policy executes on a different (cheaper) model than it plans / audits", () => {
+test("claudeCode audits + plans on Fable by default (the hard roles), executes on a cheaper model", () => {
+  expect(modelFor(claudeCode.models, "audit")).toBe("fable");
+  expect(modelFor(claudeCode.models, "plan")).toBe("fable");
   expect(modelFor(claudeCode.models, "execute")).not.toBe(modelFor(claudeCode.models, "plan"));
 });
 
