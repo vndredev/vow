@@ -13,9 +13,10 @@ const ALWAYS_VERIFY: readonly string[] = [
   "`pnpm -r test` — 0 failures",
 ];
 
-/** The branch an autonomous run uses for an issue. */
+/** The branch an autonomous run uses for an issue — a `feat/` branch, so the branch-name gate (which
+ *  requires a commit-type prefix) accepts the PR the run opens. */
 export function branchFor(issue: IssueSpec): string {
-  return `vow/issue-${issue.number}`;
+  return `feat/issue-${issue.number}`;
 }
 
 /**

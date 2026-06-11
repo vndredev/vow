@@ -1,7 +1,7 @@
 import { codex, gemini, providerFor } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
-const task = { branch: "vow/issue-1", cwd: "/wt", plan: "do the thing", title: "t" };
+const task = { branch: "feat/issue-1", cwd: "/wt", plan: "do the thing", title: "t" };
 
 test("providerFor resolves codex + gemini; each maps the plan to its headless CLI", () => {
   expect(providerFor("codex")).toBe(codex);

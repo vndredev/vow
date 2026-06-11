@@ -2,7 +2,7 @@ import { DEFAULT_PROVIDER, claudeCode, providerFor } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
 const task = {
-  branch: "vow/issue-98",
+  branch: "feat/issue-98",
   cwd: "/tmp/wt",
   plan: "Implement the thing. STOP if reality differs.",
   title: "the thing",

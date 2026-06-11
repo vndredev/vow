@@ -8,7 +8,7 @@ import {
 import { expect, test } from "vite-plus/test";
 import type { AgentOps } from "../src/types.ts";
 
-const task = { branch: "vow/issue-98", cwd: "/tmp/wt", plan: "do it", title: "the loop" };
+const task = { branch: "feat/issue-98", cwd: "/tmp/wt", plan: "do it", title: "the loop" };
 
 /** A fake ops that records its calls + scripts the run's exit code — so no git is touched and `claude`
  *  never runs. */
@@ -46,11 +46,11 @@ test("dispatch reports not-ok when the provider exits non-zero", async () => {
 });
 
 test("the git worktree args are isolation-correct (fresh branch, forced teardown)", () => {
-  expect(worktreeAddArgs("/tmp/wt", "vow/issue-98")).toEqual([
+  expect(worktreeAddArgs("/tmp/wt", "feat/issue-98")).toEqual([
     "worktree",
     "add",
     "-b",
-    "vow/issue-98",
+    "feat/issue-98",
     "/tmp/wt",
   ]);
   expect(worktreeRemoveArgs("/tmp/wt")).toContain("--force");

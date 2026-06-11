@@ -35,7 +35,7 @@ test("a failing run opens a DRAFT pr, never a mergeable one", () => {
 });
 
 test("pushArgs publishes the branch; prBody shows the verdict + the plan", () => {
-  expect(pushArgs("vow/issue-98")).toEqual(["push", "-u", "origin", "vow/issue-98"]);
+  expect(pushArgs("feat/issue-98")).toEqual(["push", "-u", "origin", "feat/issue-98"]);
   const body = prBody("THE PLAN", { ok: false, results: [{ command: "vp check", ok: false }] });
   expect(body).toContain("vp check");
   expect(body).toContain("THE PLAN");
