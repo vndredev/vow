@@ -13,8 +13,15 @@ import {
   runTask,
 } from "@vow/agent";
 import { agentsMd, vowDevelopSkill } from "./agent-templates.ts";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { headCommit, issueDetail, prCiState } from "@vow/observability";
+import {
+  auditIssue,
+  createIssue,
+  headCommit,
+  issueDetail,
+  parseFindings,
+  prCiState,
+} from "@vow/observability";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
 import type { Provider } from "@vow/agent";
 import { execFileSync } from "node:child_process";
@@ -251,8 +258,26 @@ function runMerge(rest: readonly string[]): number {
   return actOnPr(pr, process.cwd());
 }
 
+/** `vow agent audit --file <findings.json>` — file each confirmed finding as a labelled, milestoned vow
+ *  issue (the audit → plan step; the plan lives in vow, never a side file). Prints each issue URL. */
+function runAudit(rest: readonly string[]): number {
+  const file = flagValue(rest, "--file");
+  if (file === "") {
+    process.stderr.write("usage: vow agent audit --file <findings.json>\n");
+    return 1;
+  }
+  const cwd = process.cwd();
+  const findings = parseFindings(readFileSync(file, "utf8"));
+  for (const finding of findings) {
+    process.stdout.write(`${createIssue(cwd, auditIssue(finding))}\n`);
+  }
+  process.stdout.write(`filed ${findings.length} issue(s)\n`);
+  return 0;
+}
+
 /** The agent-native sub-commands by name — keeps the front door flat (no long if-chain). */
 const SUBCOMMANDS: Record<string, (rest: readonly string[]) => number | Promise<number>> = {
+  audit: runAudit,
   init: () => init(process.cwd()),
   merge: runMerge,
   plan: runPlan,
@@ -268,6 +293,6 @@ export function agent(rest: readonly string[]): number | Promise<number> {
   if (handler) {
     return handler(rest);
   }
-  process.stderr.write("usage: vow agent <init|plan|run|run-all|merge>\n");
+  process.stderr.write("usage: vow agent <init|plan|run|run-all|merge|audit>\n");
   return 1;
 }
