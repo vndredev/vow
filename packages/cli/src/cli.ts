@@ -2,6 +2,7 @@
 import { APPS, resolveApps } from "./apps.ts";
 import { build, check, test } from "./basics.ts";
 import { runDev, status, stopApps } from "./dev.ts";
+import { guard } from "./guard.ts";
 import { smoke } from "./smoke.ts";
 
 type App = (typeof APPS)[number];
@@ -23,6 +24,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow build [app...]   vp build (default: every app)
   vow test             pnpm -r test
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
+  vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
 
   apps: ${APPS.map((app) => `${app.slug} (:${app.port})`).join(" · ")}`;
 
@@ -88,6 +90,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   build,
   check,
   dev,
+  guard,
   help: showHelp,
   smoke,
   status: showStatus,
