@@ -113,11 +113,12 @@ test("statusVariant maps to the board's colours", () => {
   expect(statusVariant("done")).toBe("success");
 });
 
-test("featureIssueBody fills the feature template's three sections", () => {
+test("featureIssueBody fills the feature template — element + why lead, the strand is a footer", () => {
   const body = featureIssueBody({ element: "the GitHub adapter", why: "the plan derives itself" });
-  expect(body).toContain("**Strand / roadmap item**");
-  expect(body).toContain("**The element / function** — the GitHub adapter");
+  expect(body).toContain("**What** — the GitHub adapter");
   expect(body).toContain("**Why** — the plan derives itself");
+  expect(body).toContain("Strand: generation · author layer");
+  expect(body).toContain("[plan board](https://github.com/users/vndredev/projects/3)");
 });
 
 test("statusOption maps the derived status to the Project's Status options", () => {

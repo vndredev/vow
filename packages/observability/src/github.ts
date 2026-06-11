@@ -338,20 +338,25 @@ export function staleIssues(
 /** The default strand attribution for an agent-opened feature issue. */
 const DEFAULT_STRAND = "generation · author layer";
 
+/** The live plan board — vow's issues / Project ARE the plan, so a filed issue links back to it. */
+const PLAN_BOARD = "https://github.com/users/vndredev/projects/3";
+
 /**
- * The feature-template body (fills `.github/ISSUE_TEMPLATE/feature.md`'s sections), so an issue the
- * agent opens passes the template gate instead of tripping it. Pure.
+ * The feature-template body (fills `.github/ISSUE_TEMPLATE/feature.md`'s sections), so an issue the agent
+ * opens passes the template gate instead of tripping it. The element + why lead (the essence first); the
+ * strand attribution + a link to the live plan board are a quiet footer. Pure.
  */
 export function featureIssueBody(
   input: Readonly<{ element: string; strand?: string; why: string }>,
 ): string {
   const strand = input.strand ?? DEFAULT_STRAND;
   return [
-    `**Strand / roadmap item** (${strand}) — see the [roadmap](../../docs/guide/changelog.md)`,
-    ``,
-    `**The element / function** — ${input.element}`,
+    `**What** — ${input.element}`,
     ``,
     `**Why** — ${input.why}`,
+    ``,
+    `---`,
+    `*Strand: ${strand} · [plan board](${PLAN_BOARD})*`,
     ``,
   ].join("\n");
 }
