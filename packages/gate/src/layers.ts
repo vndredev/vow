@@ -12,7 +12,7 @@ const LAYERS: readonly (readonly string[])[] = [
   ["component", "core", "db", "headless", "icons", "observability", "theme"],
   ["emit-bind", "emit-entity", "emit-primitive", "emit-view", "layout"],
   ["docs", "markdown", "router", "shell", "store"],
-  ["cli", "gate", "mcp", "vite-plugin"],
+  ["agent", "cli", "gate", "mcp", "vite-plugin"],
 ];
 
 /** The layer index of a package, or -1 when it isn't assigned a layer. */

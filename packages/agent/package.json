@@ -1,0 +1,18 @@
+{
+  "name": "@vow/agent",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's agent layer — provider-neutral orchestration of an autonomous coding CLI (Claude Code today; Codex + Gemini as adapters over one interface).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
