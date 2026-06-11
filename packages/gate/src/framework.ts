@@ -37,7 +37,7 @@ export interface FrameworkViolation {
 
 /**
  * Every raw-framework marker an emitter wrote, excluding the `allow` list — the tracked, shrinking debt
- * (today: `boot.ts`, the framework-specific app entry, plus `issue-sfc.ts`/`timeline.ts` awaiting the
+ * (today: `boot.ts`, the framework-specific app entry, plus `sfc.ts`, the docs prose SFC awaiting the
  * model rewrite). An empty result means every other emitter is framework-neutral. Pure: the caller reads
  * the files, this only matches — so the rule is unit-testable without the filesystem.
  */
