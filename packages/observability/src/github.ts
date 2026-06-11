@@ -1,4 +1,5 @@
 import type {
+  AgentSession,
   BadgeVariant,
   GitHubIssue,
   GitHubPr,
@@ -17,7 +18,14 @@ import { execFileSync } from "node:child_process";
  * network), so a build without GitHub just has no issue plan. A vow's plan derives from this — never hand-set.
  */
 
-export type { GitHubIssue, GitHubPr, IssueStatus, Milestone, PlanItem } from "./types.ts";
+export type {
+  AgentSession,
+  GitHubIssue,
+  GitHubPr,
+  IssueStatus,
+  Milestone,
+  PlanItem,
+} from "./types.ts";
 
 interface RawLabel {
   readonly name?: string;
@@ -47,6 +55,7 @@ interface RawPr {
   readonly body?: string;
   readonly number: number;
   readonly title: string;
+  readonly url?: string;
 }
 
 /** Parse a JSON string expected to be an array, mapping each element through `lift`; `[]` on any
@@ -148,13 +157,14 @@ export function parseIssues(json: string): GitHubIssue[] {
   return [...parseJsonArray(json, (raw) => liftIssue(raw))];
 }
 
-/** Parse `gh pr list --json number,title,body` -> PRs. Pure; `[]` on malformed input. */
+/** Parse `gh pr list --json number,title,body,url` -> PRs. Pure; `[]` on malformed input. */
 export function parsePrs(json: string): GitHubPr[] {
   return [
     ...parseJsonArray(json, (pr) => ({
       body: pr.body ?? "",
       number: pr.number,
       title: pr.title,
+      url: pr.url ?? "",
     })),
   ];
 }
@@ -246,6 +256,37 @@ export function deriveIssueStatus(
   return "planned";
 }
 
+/**
+ * Index every open PR by each issue its body closes (`Closes #N`) -> the agent session for that issue (its
+ * number + the URL the human watches the run at). The first PR that claims an issue wins. Pure — the
+ * gh-direct read in `issuePlan` feeds it; the board renders the link for a `doing` issue.
+ */
+export function sessionsByIssue(prs: readonly GitHubPr[]): Map<number, AgentSession> {
+  const sessions = new Map<number, AgentSession>();
+  for (const pr of prs) {
+    for (const num of linkedIssues(pr.body)) {
+      if (!sessions.has(num)) {
+        sessions.set(num, { number: pr.number, url: pr.url });
+      }
+    }
+  }
+  return sessions;
+}
+
+/** Build one plan item — its issue, derived status, and (only when present) the agent session that's
+    redeeming it. Returns the whole item so `issuePlan`'s map never spreads an object per iteration. Pure. */
+function planItem(
+  issue: Readonly<GitHubIssue>,
+  closing: readonly number[],
+  session: Maybe<AgentSession>,
+): PlanItem {
+  const status = deriveIssueStatus(issue, closing);
+  if (typeof session === "object") {
+    return { issue, session, status };
+  }
+  return { issue, status };
+}
+
 const STATUS_VARIANT: Readonly<Record<IssueStatus, BadgeVariant>> = {
   doing: "accent",
   done: "success",
@@ -287,7 +328,7 @@ export function githubPrs(cwd: string): GitHubPr[] {
   try {
     const out = execFileSync(
       "gh",
-      ["pr", "list", "--json", "number,title,body", "--state", "open", "--limit", ISSUE_LIMIT],
+      ["pr", "list", "--json", "number,title,body,url", "--state", "open", "--limit", ISSUE_LIMIT],
       { cwd, encoding: "utf8" },
     );
     return parsePrs(out);
@@ -313,20 +354,13 @@ export function mergedPrs(cwd: string): GitHubPr[] {
 /**
  * The issue plan — every issue with its derived status (planned/doing/done), as `gh` returns them
  * (newest first). An open issue is `doing` when an open PR closes it (`Closes #N`), else `planned`; a
- * closed issue is `done`. This is what the board + roadmap read instead of hand-seeded task records.
+ * closed issue is `done`. A `doing` issue also carries the agent session (the open PR + its URL), so the
+ * board can link the human to the run. This is what the board + roadmap read instead of hand-seeded tasks.
  */
 export function issuePlan(cwd: string): PlanItem[] {
-  const inProgress = new Set<number>();
-  for (const pr of githubPrs(cwd)) {
-    for (const num of linkedIssues(pr.body)) {
-      inProgress.add(num);
-    }
-  }
-  const closing = [...inProgress];
-  return githubIssues(cwd).map((issue) => ({
-    issue,
-    status: deriveIssueStatus(issue, closing),
-  }));
+  const sessions = sessionsByIssue(githubPrs(cwd));
+  const closing = [...sessions.keys()];
+  return githubIssues(cwd).map((issue) => planItem(issue, closing, sessions.get(issue.number)));
 }
 
 /**

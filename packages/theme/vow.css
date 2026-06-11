@@ -220,6 +220,23 @@ body {
   flex-wrap: wrap;
   gap: var(--vow-space-1);
 }
+.vow-issue-table__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+}
+/* the agent-session link — the open PR redeeming a `doing` issue, where the human watches the run */
+.vow-issue-session {
+  color: var(--vow-color-accent);
+  text-decoration: none;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.vow-issue-session:hover {
+  text-decoration: underline;
+}
 /* the issue board card — the # above the title, muted + tabular */
 .vow-issue-board__num {
   display: block;

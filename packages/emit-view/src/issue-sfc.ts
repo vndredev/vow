@@ -39,6 +39,25 @@ function issueActionButton(): UiNode {
   );
 }
 
+/**
+ * The agent-session link the three issue layouts share — present only when the issue carries a `session`
+ * (an open PR redeeming it); an external link to the run, opened in a new tab so the human can watch it.
+ */
+function issueSessionLink(): UiNode {
+  return {
+    attrs: [
+      { expr: "it.session", kind: "cond", type: "if" },
+      { kind: "static", name: "class", value: "vow-issue-session" },
+      bound("href", "it.session.url"),
+      { kind: "static", name: "rel", value: "noreferrer" },
+      { kind: "static", name: "target", value: "_blank" },
+    ],
+    children: [txt("Watch run #"), { expr: "it.session.number", kind: "interp" }],
+    kind: "element",
+    tag: "a",
+  };
+}
+
 /** A status `<Badge>` chip — `:label` + the shared `variant(...)` mapping over a status expression. */
 function statusBadge(statusExpr: string): UiNode {
   return comp(
@@ -95,7 +114,7 @@ function tableRow(): UiNode {
       classed("td", "vow-table__cell", [statusBadge("it.status")]),
       labelsCell(),
       classed("td", "vow-table__cell", [{ expr: `it.issue.assignees.join(", ")`, kind: "interp" }]),
-      classed("td", "vow-table__cell", [issueActionButton()]),
+      classed("td", "vow-table__cell", [issueActionButton(), issueSessionLink()]),
     ],
     for: { as: "it", each: "items", key: "it.issue.number" },
     kind: "element",
@@ -161,6 +180,7 @@ function boardCard(): UiNode {
         tag: "span",
       },
       issueActionButton(),
+      issueSessionLink(),
     ],
     for: { as: "it", each: "col.items", key: "it.issue.number" },
     kind: "element",
@@ -254,6 +274,7 @@ function roadmapItem(): UiNode {
           },
           statusBadge("it.status"),
           issueActionButton(),
+          issueSessionLink(),
         ],
         kind: "element",
         tag: "div",

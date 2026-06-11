@@ -1,3 +1,4 @@
+import type { GitHubIssue, GitHubPr } from "../src/types.ts";
 import {
   deriveIssueStatus,
   featureIssueBody,
@@ -6,10 +7,10 @@ import {
   parseIssues,
   parseLabels,
   parsePrs,
+  sessionsByIssue,
   statusVariant,
 } from "../src/github.ts";
 import { expect, test } from "vite-plus/test";
-import type { GitHubIssue } from "../src/types.ts";
 import { statusOption } from "../src/project.ts";
 
 const ISSUE_A = 56;
@@ -92,14 +93,46 @@ test("parseIssues lifts the milestone (title + dueOn) when present, omits it whe
   expect(parseIssues(noMs)[0]).not.toHaveProperty("milestone");
 });
 
-test("parsePrs keeps number, title, body", () => {
-  const json = JSON.stringify([{ body: "Closes #56", number: 9, title: "feat" }]);
-  expect(parsePrs(json)).toEqual([{ body: "Closes #56", number: 9, title: "feat" }]);
+test("parsePrs keeps number, title, body, url (defaulting a missing url to empty)", () => {
+  const json = JSON.stringify([
+    { body: "Closes #56", number: 9, title: "feat", url: "https://github.com/o/r/pull/9" },
+  ]);
+  expect(parsePrs(json)).toEqual([
+    { body: "Closes #56", number: 9, title: "feat", url: "https://github.com/o/r/pull/9" },
+  ]);
+  expect(parsePrs(JSON.stringify([{ body: "x", number: 1, title: "t" }]))[0]?.url).toBe("");
 });
 
 test("linkedIssues lifts every closing keyword, deduped; a bare mention is ignored", () => {
   expect(linkedIssues("Closes #56, fixes #57 and Resolves #56")).toEqual([ISSUE_A, ISSUE_B]);
   expect(linkedIssues("just mentions #99, no keyword")).toEqual([]);
+});
+
+const pr = (over: Partial<GitHubPr> = {}): GitHubPr => ({
+  body: "",
+  number: 1,
+  title: "t",
+  url: "",
+  ...over,
+});
+
+const FIRST_PR = 9;
+const SECOND_PR = 10;
+const MENTIONED = 99;
+
+test("sessionsByIssue maps each closed issue to its open PR's number + url; the first PR wins", () => {
+  const firstSession = { number: FIRST_PR, url: "https://gh/pull/9" };
+  const prs = [
+    pr({ body: `Closes #${ISSUE_A}, fixes #${ISSUE_B}`, number: FIRST_PR, url: firstSession.url }),
+    pr({ body: `Closes #${ISSUE_A}`, number: SECOND_PR, url: "https://gh/pull/10" }),
+  ];
+  const sessions = sessionsByIssue(prs);
+  expect(sessions.get(ISSUE_A)).toEqual(firstSession);
+  expect(sessions.get(ISSUE_B)).toEqual(firstSession);
+  // The first PR claiming #56 wins — PR 10 does not overwrite it.
+  expect(sessions.get(ISSUE_A)?.number).toBe(FIRST_PR);
+  // A bare mention (no closing keyword) is not a session.
+  expect(sessionsByIssue([pr({ body: `see #${MENTIONED}` })]).has(MENTIONED)).toBe(false);
 });
 
 test("deriveIssueStatus: closed -> done, open+PR -> doing, open -> planned", () => {
