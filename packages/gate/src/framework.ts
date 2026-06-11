@@ -42,8 +42,9 @@ export interface FrameworkViolation {
  * the files, this only matches — so the rule is unit-testable without the filesystem.
  */
 /** Source with block + line comments removed — so a marker inside a JSDoc example (e.g. `helpers.ts`
- *  documenting a `:name="expr"` attribute) is never mistaken for a real bypass. */
-function decomment(source: string): string {
+ *  documenting a `:name="expr"` attribute) is never mistaken for a real bypass. Shared with the
+ *  provider-neutrality gate, which decomments the same way. */
+export function decomment(source: string): string {
   return source.replaceAll(/\/\*[\s\S]*?\*\//gu, "").replaceAll(/\/\/[^\n]*/gu, "");
 }
 
