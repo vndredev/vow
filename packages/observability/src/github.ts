@@ -187,15 +187,28 @@ export function issueDetail(cwd: string, issue: number): IssueDetail {
   return parseIssueDetail(out);
 }
 
-const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/giu;
+const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+((?:#\d+[\s,]*)+)/giu;
 
-/** The issue numbers a PR body closes — GitHub's keywords (`Closes #12`, `Fixes #3`, `Resolves #9`). Pure. */
+/** A `#N` reference inside a closing clause's list. */
+const ISSUE_REF = /#(\d+)/gu;
+
+/** The issue numbers in a closing clause's `#N` list (`#111, #112` -> [111, 112]). */
+function refsIn(clause: string): number[] {
+  return [...clause.matchAll(ISSUE_REF)].map((ref: readonly string[]) => Number(ref[1]));
+}
+
+/**
+ * The issue numbers a PR body closes — GitHub's keywords (`Closes #12`, `Fixes #3`), INCLUDING a
+ * comma-separated list after one keyword (`Closes #111, #112` -> both). GitHub's own auto-close only takes
+ * the FIRST of such a list, so this is also what the reconcile uses to find the issues it missed. Pure.
+ */
 export function linkedIssues(body: string): number[] {
   const out: number[] = [];
-  for (const match of body.matchAll(CLOSING)) {
-    const num = Number(match[1]);
-    if (!out.includes(num)) {
-      out.push(num);
+  for (const clause of body.matchAll(CLOSING)) {
+    for (const num of refsIn(clause[1] ?? "")) {
+      if (!out.includes(num)) {
+        out.push(num);
+      }
     }
   }
   return out;
@@ -266,6 +279,20 @@ export function githubPrs(cwd: string): GitHubPr[] {
   }
 }
 
+/** Merged pull requests via `gh`. Returns `[]` (never throws) when `gh`/auth/network is absent. */
+export function mergedPrs(cwd: string): GitHubPr[] {
+  try {
+    const out = execFileSync(
+      "gh",
+      ["pr", "list", "--json", "number,title,body", "--state", "merged", "--limit", ISSUE_LIMIT],
+      { cwd, encoding: "utf8" },
+    );
+    return parsePrs(out);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The issue plan — every issue with its derived status (planned/doing/done), as `gh` returns them
  * (newest first). An open issue is `doing` when an open PR closes it (`Closes #N`), else `planned`; a
@@ -283,6 +310,19 @@ export function issuePlan(cwd: string): PlanItem[] {
     issue,
     status: deriveIssueStatus(issue, closing),
   }));
+}
+
+/**
+ * The open issues a MERGED PR already closes — the retire candidates. The work shipped, but the issue
+ * never auto-closed (GitHub's auto-close takes only the FIRST of a `Closes #a, #b` list, so #b lingers).
+ * What `vow reconcile` surfaces to bring the board back to 1:1 with reality. Pure.
+ */
+export function staleIssues(
+  open: readonly GitHubIssue[],
+  merged: readonly GitHubPr[],
+): GitHubIssue[] {
+  const closed = new Set(merged.flatMap((pr) => linkedIssues(pr.body)));
+  return open.filter((issue) => issue.state === "open" && closed.has(issue.number));
 }
 
 /*
