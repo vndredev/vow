@@ -323,6 +323,11 @@ export function closeIssue(cwd: string, issue: number): void {
   execFileSync("gh", ["issue", "close", String(issue)], { cwd, encoding: "utf8" });
 }
 
+/** Reopen a closed issue via `gh` (-> `planned`/`doing`). Throws on failure. */
+export function reopenIssue(cwd: string, issue: number): void {
+  execFileSync("gh", ["issue", "reopen", String(issue)], { cwd, encoding: "utf8" });
+}
+
 /** Assign a user to an issue via `gh`. Throws on failure. */
 export function assignIssue(cwd: string, issue: number, login: string): void {
   execFileSync("gh", ["issue", "edit", String(issue), "--add-assignee", login], {

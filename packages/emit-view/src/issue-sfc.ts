@@ -14,6 +14,15 @@ const ISSUE_VARIANT_LINES = [
   `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
 ];
 
+/**
+ * The close/reopen action button the three issue layouts share — `Reopen` when the issue is done (closed),
+ * else `Close`, keyed off the live `it.status`. It calls `closeIssue`/`reopenIssue` from `useIssues`, which
+ * POST through the same dev seam the agent's MCP `close_issue` uses — one path to GitHub for user + agent.
+ */
+const ISSUE_ACTION_BUTTON =
+  `<Button :label="it.status === 'done' ? 'Reopen' : 'Close'"` +
+  ` @click="it.status === 'done' ? reopenIssue(it.issue.number) : closeIssue(it.issue.number)" />`;
+
 const TABLE_TEMPLATE = [
   `<template>`,
   `  <table class="vow-table vow-issue-table">`,
@@ -24,6 +33,7 @@ const TABLE_TEMPLATE = [
   `        <th class="vow-table__head">Status</th>`,
   `        <th class="vow-table__head">Labels</th>`,
   `        <th class="vow-table__head">Assignee</th>`,
+  `        <th class="vow-table__head">Actions</th>`,
   `      </tr>`,
   `    </thead>`,
   `    <tbody>`,
@@ -35,6 +45,7 @@ const TABLE_TEMPLATE = [
   `          <Badge v-for="l in it.issue.labels" :key="l" :label="l" variant="neutral" />`,
   `        </td>`,
   `        <td class="vow-table__cell">{{ it.issue.assignees.join(", ") }}</td>`,
+  `        <td class="vow-table__cell">${ISSUE_ACTION_BUTTON}</td>`,
   `      </tr>`,
   `    </tbody>`,
   `  </table>`,
@@ -53,8 +64,9 @@ export function emitIssueTableSfc(): string {
     `// Generated — the GitHub issue plan as a table, read live from /__vow/issues. Do not edit.`,
     `import { useIssues } from "@vow/store";`,
     `import Badge from "./Badge.vue";`,
+    `import Button from "./Button.vue";`,
     ``,
-    `const { items } = useIssues();`,
+    `const { items, closeIssue, reopenIssue } = useIssues();`,
     ...ISSUE_VARIANT_LINES,
     `</script>`,
     ``,
@@ -73,6 +85,7 @@ const BOARD_TEMPLATE = [
   `      <article v-for="it in col.items" :key="it.issue.number" class="vow-board__card">`,
   `        <span class="vow-issue-board__num">#{{ it.issue.number }}</span>`,
   `        <span class="vow-issue-board__title">{{ it.issue.title }}</span>`,
+  `        ${ISSUE_ACTION_BUTTON}`,
   `      </article>`,
   `    </div>`,
   `  </div>`,
@@ -92,8 +105,9 @@ export function emitIssueBoardSfc(): string {
     `import { computed } from "vue";`,
     `import { useIssues } from "@vow/store";`,
     `import Badge from "./Badge.vue";`,
+    `import Button from "./Button.vue";`,
     ``,
-    `const { items } = useIssues();`,
+    `const { items, closeIssue, reopenIssue } = useIssues();`,
     `const columns = ["planned", "doing", "done"] as const;`,
     ...ISSUE_VARIANT_LINES,
     `const grouped = computed(() =>`,
@@ -106,7 +120,7 @@ export function emitIssueBoardSfc(): string {
 }
 
 const ROADMAP_SCRIPT = [
-  `const { items } = useIssues();`,
+  `const { items, closeIssue, reopenIssue } = useIssues();`,
   ...ISSUE_VARIANT_LINES,
   `interface Phase { title: string; due: string; dueAt: number; items: IssueItem[] }`,
   `const phases = computed(() => {`,
@@ -140,6 +154,7 @@ const ROADMAP_TEMPLATE = [
   `          <div class="vow-roadmap__meta">`,
   `            <span class="vow-roadmap__num">#{{ it.issue.number }}</span>`,
   `            <Badge :label="it.status" :variant="variant(it.status)" />`,
+  `            ${ISSUE_ACTION_BUTTON}`,
   `          </div>`,
   `          <span class="vow-roadmap__title">{{ it.issue.title }}</span>`,
   `        </li>`,
@@ -161,6 +176,7 @@ export function emitIssueRoadmapSfc(): string {
     `import { computed } from "vue";`,
     `import { type IssueItem, useIssues } from "@vow/store";`,
     `import Badge from "./Badge.vue";`,
+    `import Button from "./Button.vue";`,
     ``,
     ...ROADMAP_SCRIPT,
     `</script>`,

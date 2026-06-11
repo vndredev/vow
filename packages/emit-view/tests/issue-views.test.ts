@@ -63,6 +63,16 @@ test("each issue SFC emitter produces a valid, store-bound SFC", () => {
   }
 });
 
+test("each issue SFC emits the close/reopen action button on the shared store seam", () => {
+  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    expect(sfc).toContain('import Button from "./Button.vue";');
+    expect(sfc).toContain("const { items, closeIssue, reopenIssue } = useIssues();");
+    expect(sfc).toContain("closeIssue(it.issue.number)");
+    expect(sfc).toContain("reopenIssue(it.issue.number)");
+    expect(sfc).toContain("it.status === 'done' ? 'Reopen' : 'Close'");
+  }
+});
+
 test("the changelog timeline groups entries under their version", () => {
   const sfc = emitTimelineSfc([{ date: "2026-06-09", title: "the cli", version: "v0.0.1" }], "");
   expect(sfc).toContain("v0.0.1");

@@ -5,7 +5,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type PlanItem, issuePlan } from "@vow/observability";
+import { type PlanItem, closeIssue, issuePlan, reopenIssue } from "@vow/observability";
 import { NONE } from "./none.ts";
 import { mutable } from "./mutable.ts";
 
@@ -211,22 +211,93 @@ interface IssueCache {
   readonly plan: readonly PlanItem[];
 }
 
+/** A parsed issue-write request — close or reopen a numbered issue (the actions the UI shares with the MCP). */
+interface IssueWrite {
+  readonly action: "close" | "reopen";
+  readonly issue: number;
+}
+
+/** Parse + validate an issue-write body (`{ action: "close" | "reopen", number }`) — absent when malformed. */
+function parseIssueWrite(body: string): Maybe<IssueWrite> {
+  const { action, number } = parseBody(body);
+  if ((action === "close" || action === "reopen") && typeof number === "number") {
+    return { action, issue: number };
+  }
+  return NONE;
+}
+
+/** The issue-plan cache slot — the GET reader and the POST writer share one (one dev server, one cwd). */
+interface IssueState {
+  readonly cwd: string;
+  cache: Maybe<IssueCache>;
+}
+
+/** Re-shell `gh` into a fresh plan and refresh the shared cache with it. */
+function refreshPlan(state: IssueState): readonly PlanItem[] {
+  const fresh = { at: Date.now(), plan: issuePlan(state.cwd) };
+  state.cache = fresh;
+  return fresh.plan;
+}
+
+/** The cached plan, re-shelling only when absent or past the TTL (so a poll never blocks per call). */
+function servePlan(state: IssueState): readonly PlanItem[] {
+  const { cache } = state;
+  if (defined(cache) && Date.now() - cache.at <= ISSUE_CACHE_TTL) {
+    return cache.plan;
+  }
+  return refreshPlan(state);
+}
+
+/** Apply an issue write via `gh` — the SAME `@vow/observability` calls the MCP's `close_issue` makes. */
+function applyIssueWrite(cwd: string, write: IssueWrite): void {
+  if (write.action === "close") {
+    closeIssue(cwd, write.issue);
+  } else {
+    reopenIssue(cwd, write.issue);
+  }
+}
+
 /**
- * The dev issue API — `/__vow/issues` serves the GitHub issue plan (`@vow/observability`'s `issuePlan`,
- * gh-direct). The studio's board + roadmap read this; a Worker serves the same over the GitHub API in
- * prod. `gh` shells synchronously, so a short TTL cache keeps a poll from blocking the dev server each call.
+ * Read + perform an issue write, then reply with the freshly re-shelled plan (busting the read cache, so the
+ * studio sees the true derived status — closed -> done — at once). One seam for user (this) + agent (the MCP).
+ */
+async function serveIssueWrite(
+  req: IncomingMessage,
+  res: ServerResponse,
+  state: IssueState,
+): Promise<void> {
+  try {
+    const write = parseIssueWrite(await readBody(req));
+    if (!defined(write)) {
+      const error = "expected { action: 'close' | 'reopen', number }";
+      writeReply(res, { body: { error }, status: STATUS.badRequest });
+      return;
+    }
+    applyIssueWrite(state.cwd, write);
+    writeReply(res, { body: refreshPlan(state), status: STATUS.ok });
+  } catch (error) {
+    writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.badRequest });
+  }
+}
+
+/**
+ * The dev issue API — `/__vow/issues`. GET serves the GitHub issue plan (`@vow/observability`'s `issuePlan`,
+ * gh-direct, short-TTL cached so a poll never blocks); POST closes/reopens an issue (`{ action, number }`)
+ * and re-shells the plan. The studio's table/board/roadmap read GET; their action buttons POST. A Worker
+ * serves the same over the GitHub API in prod.
  */
 export function issuesApi(cwd: string): Middleware {
-  let cache: Maybe<IssueCache> = NONE;
+  const state: IssueState = { cache: NONE, cwd };
   return (req, res, next) => {
-    if ((req.method ?? "GET") !== "GET") {
+    const method = req.method ?? "GET";
+    if (method === "POST") {
+      ignore(serveIssueWrite(req, res, state));
+      return;
+    }
+    if (method !== "GET") {
       next();
       return;
     }
-    const now = Date.now();
-    if (!defined(cache) || now - cache.at > ISSUE_CACHE_TTL) {
-      cache = { at: now, plan: issuePlan(cwd) };
-    }
-    writeReply(res, { body: cache.plan, status: STATUS.ok });
+    writeReply(res, { body: servePlan(state), status: STATUS.ok });
   };
 }

@@ -233,6 +233,26 @@ async function loadIssues(): Promise<void> {
   issues.splice(0, issues.length, ...plan);
 }
 
+/** Close or reopen an issue via `POST /__vow/issues` (the dev server shells the same `gh` the MCP does),
+ *  then replace the shared plan with the fresh response. A failed write is swallowed; the poll reconciles. */
+async function writeIssue(action: "close" | "reopen", issue: number): Promise<void> {
+  if (!hasApi) {
+    return;
+  }
+  try {
+    const res = await fetch("/__vow/issues", {
+      body: JSON.stringify({ action, number: issue }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    if (res.ok) {
+      issues.splice(0, issues.length, ...parseIssuePlan(await res.json()));
+    }
+  } catch {
+    // Optimistic: the next freshness poll reconciles from /__vow/issues.
+  }
+}
+
 let freshness = false;
 /** Refetch every loaded collection on focus + a light visible-tab interval, so an MCP write shows up. */
 function startFreshness(): void {
@@ -318,14 +338,31 @@ export function useCollection<T>(slug: string): Collection<T> {
 }
 
 /** The shared reactive issue plan, read live from `/__vow/issues` (gh-direct) + polled on focus + the
- *  interval — so the agent's MCP writes to GitHub show up. Read-only here; GitHub is the source. */
-export function useIssues(): { items: IssueItem[] } {
+ *  interval. `closeIssue`/`reopenIssue` POST back through the same dev seam the MCP uses — so the studio's
+ *  action buttons and the agent share one path to GitHub. GitHub stays the source; the reply re-syncs. */
+export function useIssues(): {
+  closeIssue: (issue: number) => void;
+  items: IssueItem[];
+  reopenIssue: (issue: number) => void;
+} {
   if (!issuesLoaded) {
     issuesLoaded = true;
     detach(loadIssues);
     startFreshness();
   }
-  return { items: issues };
+  return {
+    closeIssue: (issue): void => {
+      detach(async () => {
+        await writeIssue("close", issue);
+      });
+    },
+    items: issues,
+    reopenIssue: (issue): void => {
+      detach(async () => {
+        await writeIssue("reopen", issue);
+      });
+    },
+  };
 }
 
 /** Create a stand-alone reactive row list — the in-place reconciliation surface, exported for tests and

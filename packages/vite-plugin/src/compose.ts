@@ -170,8 +170,8 @@ export function composeIssueViews(issueViews: readonly string[], outDir: string)
   if (wanted.has("roadmap")) {
     files.push({ path: path.join(outDir, "VowIssueRoadmap.vue"), source: emitIssueRoadmapSfc() });
   }
-  // Each issue view composes Badge for the status + labels.
-  return { files, primitives: primitivesFor(files, ["Badge"]) };
+  // Each issue view composes Badge (status + labels) + Button (the close/reopen action).
+  return { files, primitives: primitivesFor(files, ["Badge", "Button"]) };
 }
 
 /** Materialise every needed primitive adapter once, from the closed registry (on demand → lean output). */
