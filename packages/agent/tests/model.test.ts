@@ -20,3 +20,11 @@ test("a provider omits the model flag when the task pins no model", () => {
   const task = { branch: "b", cwd: ".", plan: "p", title: "t" };
   expect(claudeCode.command(task).args).not.toContain("--model");
 });
+
+test("claudeCode's policy executes on a different (cheaper) model than it plans / audits", () => {
+  expect(modelFor(claudeCode.models, "execute")).not.toBe(modelFor(claudeCode.models, "plan"));
+});
+
+test("an un-tuned provider defaults to its own brain — no model override per role", () => {
+  expect(modelFor(codex.models, "execute")).toBe("");
+});
