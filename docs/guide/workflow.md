@@ -7,6 +7,8 @@ order: 5
 
 vow's whole reason is that **the board mirrors reality, 1:1** — and that holds only if every change runs the same path. This is that path: the anchor points of a vow development, each with the check that secures it.
 
+> **What is a plan, here?** The plan **is the issues** — GitHub issues, derived into the studio's board / roadmap (`board ⟂ reality`, 1:1). Not a doc, not a side-file. Claude's plan-mode notes are transient working files, kept **project-local** (via `plansDirectory` → `.claude/plans`, gitignored) so they never leak to a global directory; they feed _into_ issues, they are never themselves the plan.
+
 A **✅** means a gate enforces it — it can't be skipped. A **❌** (or **◑**, partial) means it's still on discipline: the work that's left before "perfect" is mechanical.
 
 | #   | Step             | Anchor                       | The check that secures it                                      | Status |

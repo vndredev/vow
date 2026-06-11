@@ -9,19 +9,25 @@ type DepGraph = Parameters<typeof layerViolations>[0];
 
 const VOW_PREFIX = "@vow/";
 
-/** The `@vow` runtime deps a `package.json` declares (prefix stripped). */
-function vowDeps(json: string): string[] {
-  const parsed: unknown = JSON.parse(json);
-  if (!isRecord(parsed)) {
-    return [];
-  }
-  const deps = parsed["dependencies"];
+/** The `@vow` keys (prefix stripped) in one dependency field of a `package.json`. */
+function vowKeysIn(deps: unknown): string[] {
   if (!isRecord(deps)) {
     return [];
   }
   return Object.keys(deps)
     .filter((key) => key.startsWith(VOW_PREFIX))
     .map((key) => key.slice(VOW_PREFIX.length));
+}
+
+/** The `@vow` deps a `package.json` declares across dependencies + devDependencies + peerDependencies
+ *  (prefix stripped) — an upward import via ANY of the three breaks the DAG, so all three are read. */
+function vowDeps(json: string): string[] {
+  const parsed: unknown = JSON.parse(json);
+  if (!isRecord(parsed)) {
+    return [];
+  }
+  const fields = ["dependencies", "devDependencies", "peerDependencies"];
+  return [...new Set(fields.flatMap((field) => vowKeysIn(parsed[field])))];
 }
 
 /** Build the @vow dependency graph from every package's `package.json` (sibling to this gate package). */
