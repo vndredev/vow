@@ -32,6 +32,10 @@ fulfills: emit entity
 - **Free** — read one `llms.txt` and write `.vow.md` directly; the core (parse · gate · tsgo) keeps errors at zero.
 - **MCP** _(planned)_ — a typed toolbox for token-efficient, direct work.
 
+## Agent-native development
+
+vow develops itself through `vow agent` — a CLI that turns GitHub issues into gated, isolated work. Open an issue; `vow agent run <n>` creates a worktree, dispatches an LLM (Claude Code today, provider-neutral), verifies the gates (format · lint · typecheck · tests), and opens a PR. Red gates → draft; green → ready. Run `vow agent run-all` to dispatch several at once. See the [agent guide](./docs/guide/agent.md) for the full loop.
+
 ## Stack
 
 Vite+ · Vitest · Rolldown · Oxc · tsgo (VoidZero) · Vue 3 · Cloudflare (target backend). vow is the **intent layer** on top — it doesn't reinvent the toolchain, it builds on it.
