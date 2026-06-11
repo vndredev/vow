@@ -20,7 +20,12 @@ export function auditIssue(finding: Readonly<Finding>): CreateIssueInput {
   if (finding.area === "") {
     return { body, milestone: AUDIT_MILESTONE, title: finding.title };
   }
-  return { body, labels: [finding.area], milestone: AUDIT_MILESTONE, title: finding.title };
+  return {
+    body,
+    labels: [`area: ${finding.area}`],
+    milestone: AUDIT_MILESTONE,
+    title: finding.title,
+  };
 }
 
 /** Whether a value is a non-null object — the entry to read an untrusted findings payload. */

@@ -17,3 +17,20 @@ test("ciStateFrom treats an empty / absent / malformed rollup as pending", () =>
   expect(ciStateFrom("{}")).toBe("pending");
   expect(ciStateFrom("not json")).toBe("pending");
 });
+
+test("ciStateFrom reads legacy StatusContext nodes by their `state` (no `status` field)", () => {
+  const pass = '{"statusCheckRollup":[{"__typename":"StatusContext","state":"SUCCESS"}]}';
+  const fail = '{"statusCheckRollup":[{"__typename":"StatusContext","state":"FAILURE"}]}';
+  const error = '{"statusCheckRollup":[{"__typename":"StatusContext","state":"ERROR"}]}';
+  const pending = '{"statusCheckRollup":[{"__typename":"StatusContext","state":"PENDING"}]}';
+  expect(ciStateFrom(pass)).toBe("pass");
+  expect(ciStateFrom(fail)).toBe("fail");
+  expect(ciStateFrom(error)).toBe("fail");
+  expect(ciStateFrom(pending)).toBe("pending");
+});
+
+test("ciStateFrom: a red StatusContext beats a passing CheckRun (never waits on red)", () => {
+  const mixed =
+    '{"statusCheckRollup":[{"status":"COMPLETED","conclusion":"SUCCESS"},{"__typename":"StatusContext","state":"FAILURE"}]}';
+  expect(ciStateFrom(mixed)).toBe("fail");
+});

@@ -131,6 +131,21 @@ test("a raw node emits its HTML verbatim (no escaping) — the prose escape hatc
   expect(out).not.toContain("&amp;lt;");
 });
 
+test("a static attr value escapes the quote that delimits it (and & < >)", () => {
+  const comp: Component = {
+    name: "Field",
+    view: {
+      attrs: [{ kind: "static", name: "placeholder", value: 'say "hi" & <go>' }],
+      children: [],
+      kind: "element",
+      tag: "input",
+    },
+  };
+  expect(renderVueSfc(comp)).toContain(
+    '<input placeholder="say &quot;hi&quot; &amp; &lt;go&gt;" />',
+  );
+});
+
 test("a void element renders self-closing (<input … />)", () => {
   const comp: Component = {
     name: "Field",

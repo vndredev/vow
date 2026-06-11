@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { caseCollision, generateFiles } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import type { Vow as VowNode } from "@vow/core";
 import path from "node:path";
 import { tmpdir } from "node:os";
@@ -112,6 +112,17 @@ test("a non-root view generates no boot", () => {
   inTempDir((dir) => {
     generateFiles([shell], { outDir: dir, srcDir: dir });
     expect(readdirSync(dir)).not.toContain("main.ts");
+  });
+});
+
+test("a re-generate with identical sources skips the write (unchanged artifacts keep their mtime)", () => {
+  inTempDir((dir) => {
+    generateFiles([shell], { outDir: dir, srcDir: dir });
+    const target = path.join(dir, "shell.vue");
+    const before = statSync(target).mtimeMs;
+    // Generate again with the exact same vows — the content is identical, so nothing is rewritten.
+    generateFiles([shell], { outDir: dir, srcDir: dir });
+    expect(statSync(target).mtimeMs).toBe(before);
   });
 });
 
