@@ -244,6 +244,20 @@ export function undocumentedFieldTypes(coreSource: string, docSource: string): s
 }
 
 /**
+ * The has-a-doc gate — every shipped package carries a doc entry.
+ *
+ * `packages.md` is the package directory: every `@vow/*` package, its role, and where to learn it. A new
+ * package shipped without a row there is an element with no doc — exactly the drift this catches, so adding
+ * a package without documenting it fails a test instead of leaving the directory silently stale.
+ */
+
+/** The `@vow/*` names (prefix stripped) not mentioned (as `` `@vow/<name>` ``) in the packages doc — each
+ *  is an undocumented, shipped element. */
+export function undocumentedPackages(names: readonly string[], docSource: string): string[] {
+  return names.filter((name) => !docSource.includes(`\`@vow/${name}\``));
+}
+
+/**
  * The language gate — the codebase and docs are English-only.
  *
  * Returns the distinct German-language markers (umlauts and the sharp-s) in a source. They are an
