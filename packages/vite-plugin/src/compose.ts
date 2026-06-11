@@ -15,8 +15,9 @@ import {
   statsComponentName,
   viewComponentName,
 } from "@vow/emit-view";
-import { gitRemoteUrl, gitTimeline } from "@vow/observability";
+import { gitRemoteUrl, gitTimeline, headCommit } from "@vow/observability";
 import { mutable, mutableIndex } from "./mutable.ts";
+import { NONE } from "./none.ts";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
 import { layoutSfcs } from "@vow/layout";
 import path from "node:path";
@@ -140,7 +141,42 @@ export function composeBoards(
   return { files, primitives: primitivesFor(files, ["Card", "CardHeader", "CardBody"]) };
 }
 
-/** A `timeline:` view → the git-derived VowTimeline, baked from `git log` at generate time (once). */
+/** The git-timeline cache slot: `git log` is expensive; re-shell only when HEAD moved (a commit), not on
+ *  every file-save HMR — `headCommit` (a cheap `rev-parse`) gates it. Keyed by `srcDir` for a multi-app
+ *  dev server. */
+/** The git timeline — a readonly array of `gitTimeline`'s entries (no extra import for the element type). */
+type Timeline = readonly ReturnType<typeof gitTimeline>[number][];
+
+export interface TimelineCache {
+  readonly head: string;
+  readonly srcDir: string;
+  readonly timeline: Timeline;
+}
+
+/** Whether `cache` is a hit for `srcDir` at `head` — the invalidation decision, pure + tested directly. */
+export function timelineHit(
+  cache: Maybe<TimelineCache>,
+  srcDir: string,
+  head: string,
+): cache is TimelineCache {
+  return defined(cache) && cache.srcDir === srcDir && cache.head === head;
+}
+
+const timelineState: { cache: Maybe<TimelineCache> } = { cache: NONE };
+
+/** The git timeline for `srcDir`, cached by HEAD — skips the expensive `git log` when no commit landed. */
+function cachedTimeline(srcDir: string): Timeline {
+  const head = headCommit(srcDir);
+  const { cache } = timelineState;
+  if (timelineHit(cache, srcDir, head)) {
+    return cache.timeline;
+  }
+  const timeline = gitTimeline(srcDir);
+  timelineState.cache = { head, srcDir, timeline };
+  return timeline;
+}
+
+/** A `timeline:` view → the git-derived VowTimeline, baked from `git log` (cached by HEAD across HMR). */
 export function composeTimeline(needsTimeline: boolean, srcDir: string, outDir: string): Composed {
   if (!needsTimeline) {
     return { files: [], primitives: [] };
@@ -149,7 +185,7 @@ export function composeTimeline(needsTimeline: boolean, srcDir: string, outDir: 
     files: [
       {
         path: path.join(outDir, "VowTimeline.vue"),
-        source: emitTimelineSfc(gitTimeline(srcDir), gitRemoteUrl(srcDir)),
+        source: emitTimelineSfc(cachedTimeline(srcDir), gitRemoteUrl(srcDir)),
       },
     ],
     // The timeline composes Badge + Collapsible.
