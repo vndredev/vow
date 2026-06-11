@@ -91,12 +91,17 @@ export interface VerifyResult {
 /** A PR's CI conclusion — what the agent-merge decision keys on. */
 export type CiState = "fail" | "pass" | "pending";
 
+/** A step in one issue's run — emitted live so a fleet's orchestration is visible (the terminal now, the
+ *  studio later) instead of a silent wait then a final dump. */
+export type Phase = "develop" | "done" | "gates" | "publish" | "worktree";
+
 /** Everything one full loop over an issue needs — bundled so `runTask` takes a single argument. */
 export interface TaskRequest {
   readonly auth?: Auth;
   readonly context: PlanContext;
   readonly cwd: string;
   readonly issue: IssueSpec;
+  readonly onPhase?: (phase: Phase) => void;
   readonly ops: AgentOps;
   readonly provider: Provider;
 }

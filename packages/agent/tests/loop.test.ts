@@ -82,3 +82,35 @@ test("a failed provider run is NOT published — no PR for work that never happe
   await runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode });
   expect(calls).not.toContain("run gh");
 });
+
+test("runTask emits the lifecycle phases in order — the live-orchestration signal", async () => {
+  const { ops } = fakeOps(0);
+  const phases: string[] = [];
+  await runTask({
+    context,
+    cwd: "/repo",
+    issue,
+    onPhase: (phase) => {
+      phases.push(phase);
+    },
+    ops,
+    provider: claudeCode,
+  });
+  expect(phases).toEqual(["worktree", "develop", "gates", "publish", "done"]);
+});
+
+test("a failed run skips the publish phase (nothing developed)", async () => {
+  const { ops } = fakeOps(0, 1);
+  const phases: string[] = [];
+  await runTask({
+    context,
+    cwd: "/repo",
+    issue,
+    onPhase: (phase) => {
+      phases.push(phase);
+    },
+    ops,
+    provider: claudeCode,
+  });
+  expect(phases).toEqual(["worktree", "develop", "gates", "done"]);
+});
