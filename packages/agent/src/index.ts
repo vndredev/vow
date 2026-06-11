@@ -7,6 +7,7 @@
  */
 
 export * from "./dispatch.ts";
+export * from "./dry-run.ts";
 export * from "./loop.ts";
 export * from "./merge.ts";
 export * from "./plan.ts";
