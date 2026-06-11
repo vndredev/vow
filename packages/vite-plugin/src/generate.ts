@@ -15,7 +15,7 @@ import {
   composeStats,
   composeTimeline,
 } from "./compose.ts";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { NONE } from "./none.ts";
 
 /**
@@ -230,6 +230,35 @@ function collectArtifacts(
   ];
 }
 
+/** The content last written to each path — so an unchanged artifact skips its `writeFileSync`. */
+const lastWritten = new Map<string, string>();
+
+/** The path's current content (cached last-write, else on-disk), or none when it has never been written. */
+function currentContent(path: string): Maybe<string> {
+  const cached = lastWritten.get(path);
+  if (defined(cached)) {
+    return cached;
+  }
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    // The file does not exist yet — there is nothing to compare against, so the artifact must be written.
+    return NONE;
+  }
+}
+
+/**
+ * Write an artifact only when its content changed — an identical source is a no-op (no `writeFileSync`).
+ * This keeps a single edit from rewriting the whole `.generated/` tree byte-for-byte on every save.
+ */
+function writeArtifact(artifact: Artifact): void {
+  if (currentContent(artifact.path) === artifact.source) {
+    return;
+  }
+  writeFileSync(artifact.path, artifact.source, "utf8");
+  lastWritten.set(artifact.path, artifact.source);
+}
+
 /**
  * Write the real files per fulfilled vow into `dirs.outDir`. `title` is the app-shell brand fallback.
  * Returns the written paths.
@@ -247,8 +276,8 @@ export function generateFiles(vows: readonly ReadonlyVow[], dirs: Dirs, title?: 
   );
   const paths = artifacts.map((artifact) => artifact.path);
   assertNoCollision(paths);
-  for (const { path, source } of artifacts) {
-    writeFileSync(path, source, "utf8");
+  for (const artifact of artifacts) {
+    writeArtifact(artifact);
   }
   return paths;
 }
