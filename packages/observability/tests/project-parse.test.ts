@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { readProjectItems, readStatusField } from "../src/project.ts";
+import { readProjectItems, readStatusField, statusChangeFor } from "../src/project.ts";
 
 const ISSUE = 5;
 const SKIPPED = 9;
@@ -44,4 +44,13 @@ test("readProjectItems lifts items (number + status), skipping any node with no 
   expect(items.map((item) => item.id)).toEqual(["I1"]);
   expect(items[0]?.number).toBe(ISSUE);
   expect(items[0]?.status).toBe("In Progress");
+});
+
+test("statusChangeFor reports a change only when the current status differs from the wanted", () => {
+  expect(statusChangeFor("In Progress", ISSUE, "Done")).toEqual({
+    from: "In Progress",
+    number: ISSUE,
+    to: "Done",
+  });
+  expect(statusChangeFor("Done", ISSUE, "Done")).toBeUndefined();
 });

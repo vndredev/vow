@@ -203,13 +203,28 @@ interface Wanted {
   readonly want: string;
 }
 
-/** Apply one issue's wanted status to its Project item, reporting a change (`NONE` when already matched). */
+/** The status change an item needs — `NONE` when its `current` status already matches `want`, else the
+ *  change. The pure reconcile decision, separate from applying it (so the riskiest sync logic is testable
+ *  without touching GitHub). */
+export function statusChangeFor(
+  current: Maybe<string>,
+  number: number,
+  want: string,
+): Maybe<StatusChange> {
+  if (current === want) {
+    return NONE;
+  }
+  return { from: current ?? "(unset)", number, to: want };
+}
+
+/** Apply one issue's wanted status to its Project item, reporting the change (`NONE` when already matched). */
 function reconcileItem(
   context: Readonly<SyncContext>,
   wanted: Readonly<Wanted>,
 ): Maybe<StatusChange> {
   const { item, number, want } = wanted;
-  if (item.status === want) {
+  const change = statusChangeFor(item.status, number, want);
+  if (typeof change !== "object") {
     return NONE;
   }
   ghJsonData(context.cwd, setStatusMutation, [
@@ -218,7 +233,7 @@ function reconcileItem(
     { name: "field", value: context.field.id },
     { name: "opt", value: resolveOption(context.field, want) },
   ]);
-  return { from: item.status ?? "(unset)", number, to: want };
+  return change;
 }
 
 /**
