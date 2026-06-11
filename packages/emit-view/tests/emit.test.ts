@@ -209,7 +209,7 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
   };
   expect(boardComponentName("ticket", "status")).toBe("TicketStatusBoard");
   const sfc = emitEntityBoard(ticket, "status");
-  // A drop writes the field back; slicing narrows + orders the visible cards before they're grouped.
+  // A drop writes the field back through the store's `update` (a survive-the-poll PATCH, not a bare mutation).
   expectContains(sfc, [
     'const options = ["todo","done"];',
     'v-for="col in columns"',
@@ -217,11 +217,14 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
     "@dragover.prevent",
     '@dragstart="dragged = item"',
     '@drop="onDrop(col.option)"',
-    'dragged.value.status = option as Ticket["status"]',
+    'const { items: rows, update } = useCollection<Ticket>("ticket");',
+    'update(dragged.value.id, { ["status"]: option });',
     "defineProps<{ filter?: Record<string, unknown>; sort?: keyof Ticket; group?: keyof Ticket }>",
     "const visible = computed(()",
     "visible.value.filter((r) => r.status === o)",
   ]);
+  // The bare reactive mutation is gone (it never reached the DB; the next poll reverted it).
+  expectMissing(sfc, ['dragged.value.status = option as Ticket["status"]']);
   // `by` must be a select field.
   expect(() => emitEntityBoard(ticket, "title")).toThrow();
 });
