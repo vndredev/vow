@@ -57,6 +57,8 @@ export function realOps(): AgentOps {
     worktreeAdd: async (path, branch) => {
       await Promise.resolve();
       execFileSync("git", [...worktreeAddArgs(path, branch)], { cwd: process.cwd() });
+      // A fresh worktree has no node_modules (gitignored) — install so the re-run gates have their deps.
+      execFileSync("vp", ["install"], { cwd: path });
     },
     worktreeRemove: async (path) => {
       await Promise.resolve();

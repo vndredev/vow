@@ -21,5 +21,5 @@ test("buildPlan carries the improve discipline — commit stamp, out-of-scope, S
 });
 
 test("branchFor derives a per-issue branch", () => {
-  expect(branchFor(issue)).toBe("vow/issue-98");
+  expect(branchFor(issue)).toBe("feat/issue-98");
 });
