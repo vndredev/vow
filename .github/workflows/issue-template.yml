@@ -19,7 +19,9 @@ jobs:
         with:
           script: |
             const body = context.payload.issue.body || "";
-            const feature = ["Strand / roadmap item", "The element / function", "Why"];
+            // A feature body carries the Strand attribution + a Why — matches both the current
+            // What/Why/Strand layout and the older Strand/element/Why one, so existing issues still pass.
+            const feature = ["Strand", "Why"];
             const bug = ["What happened", "Relevant output", "Environment"];
             const has = (sections) => sections.every((s) => body.includes(s));
             const { owner, repo } = context.repo;
