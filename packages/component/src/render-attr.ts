@@ -1,5 +1,6 @@
 import type { Attr, Loop } from "./model.ts";
 import { defined } from "./defined.ts";
+import { escapeAttr } from "./escape.ts";
 
 /** Vue modifier suffix: `.prevent`, `.number`, ... in array order. */
 function renderModifiers(mods?: readonly string[]): string {
@@ -10,7 +11,7 @@ function renderModifiers(mods?: readonly string[]): string {
 export function renderAttr(attr: Attr): string {
   switch (attr.kind) {
     case "static": {
-      return `${attr.name}="${attr.value}"`;
+      return `${attr.name}="${escapeAttr(attr.value)}"`;
     }
     case "bound": {
       return `:${attr.name}="${attr.expr}"`;
