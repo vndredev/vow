@@ -110,20 +110,21 @@ function authArg(rest: readonly string[]): Auth {
 interface RunArgs {
   readonly auth: Auth;
   readonly issue: number;
+  readonly json: boolean;
   readonly provider: Provider;
 }
 
-/** Parse + validate `vow agent run` args (issue number + provider + auth), or a usage/error string. */
+/** Parse + validate `vow agent run` args (issue + provider + auth + `--json`), or a usage/error string. */
 function parseRun(rest: readonly string[]): RunArgs | string {
   const issue = issueArg(rest);
   if (issue === 0) {
-    return "usage: vow agent run <n> [--provider <name>] [--auth subscription|api] [--dry-run]";
+    return "usage: vow agent run <n> [--provider <name>] [--auth subscription|api] [--json]";
   }
   const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
   if (!provider) {
     return `vow agent run: unknown provider (known: ${KNOWN_PROVIDERS})`;
   }
-  return { auth: authArg(rest), issue, provider };
+  return { auth: authArg(rest), issue, json: rest.includes("--json"), provider };
 }
 
 /** Exit 0 when the verdict holds, else 1. */
@@ -151,27 +152,39 @@ interface DevInput {
   readonly auth: Auth;
   readonly cwd: string;
   readonly issue: number;
+  readonly json: boolean;
   readonly provider: Provider;
 }
 
-/** Develop one issue via the live loop — worktree → dispatch the provider → re-run the gates — and format
- *  its report; `ok` is the gate verdict (drives the exit / merge-vs-draft, and run-all's overall result). */
+/** A live-progress line for a phase — NDJSON (for an LLM / the studio) or human text (the terminal). */
+export function phaseLine(issue: number, phase: string, json: boolean): string {
+  if (json) {
+    return JSON.stringify({ issue, phase });
+  }
+  return `  [#${issue}] ${phase}`;
+}
+
+/** Develop one issue via the live loop — worktree → dispatch the provider → re-run the gates — emitting
+ *  each phase live; the report is the text run-report or, in `--json` mode, a compact `{issue, ok}`. */
 async function develop(input: DevInput): Promise<DevResult> {
-  const { auth, cwd, issue, provider } = input;
+  const { auth, cwd, issue, json, provider } = input;
   const spec = issueDetail(cwd, issue);
   const outcome = await runTask({
     auth,
     context: { commit: headCommit(cwd), verify: RUN_GATES },
     cwd,
     issue: spec,
-    // Live progress — each phase prints with the issue tag, so a fleet's lanes interleave visibly.
     onPhase: (phase) => {
-      process.stdout.write(`  [#${issue}] ${phase}\n`);
+      process.stdout.write(`${phaseLine(issue, phase, json)}\n`);
     },
     ops: realOps(),
     provider,
   });
-  return { ok: outcome.verdict.ok, report: runReport(spec, outcome) };
+  const { ok } = outcome.verdict;
+  if (json) {
+    return { ok, report: JSON.stringify({ issue, ok }) };
+  }
+  return { ok, report: runReport(spec, outcome) };
 }
 
 /** `vow agent run <n> [--provider <name>]` (live) — develop the issue, print its report, exit on the
@@ -181,6 +194,7 @@ async function runLive(args: RunArgs): Promise<number> {
     auth: args.auth,
     cwd: process.cwd(),
     issue: args.issue,
+    json: args.json,
     provider: args.provider,
   });
   process.stdout.write(`${report}\n`);
@@ -219,30 +233,44 @@ const DEFAULT_CONCURRENCY = 3;
 interface RunAllArgs {
   readonly auth: Auth;
   readonly issues: readonly number[];
+  readonly json: boolean;
   readonly provider: Provider;
 }
 
-/** Parse + validate `run-all` args (issue numbers + provider + auth), or a usage/error string. */
+/** Parse + validate `run-all` args (issues + provider + auth + `--json`), or a usage/error string. */
 function parseRunAll(rest: readonly string[]): RunAllArgs | string {
   const issues = issueNumbers(rest);
   if (issues.length === 0) {
-    return "usage: vow agent run-all <n>... [--provider <name>] [--auth subscription|api]";
+    return "usage: vow agent run-all <n>... [--provider <name>] [--auth subscription|api] [--json]";
   }
   const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
   if (!provider) {
     return `vow agent run-all: unknown provider (known: ${KNOWN_PROVIDERS})`;
   }
-  return { auth: authArg(rest), issues, provider };
+  return { auth: authArg(rest), issues, json: rest.includes("--json"), provider };
 }
 
-/** The one-line fleet header — how many issues, which, and the lane cap (the orchestration's opening). */
-function fleetHeader(issues: readonly number[]): string {
+/** The fleet header line (with newline) — how many issues, which, and the lane cap; empty in `--json` mode
+ *  (the per-event JSON is self-describing, so no human banner). */
+function fleetHeader(issues: readonly number[], json: boolean): string {
+  if (json) {
+    return "";
+  }
   const tags = issues.map((each) => `#${each}`).join(", ");
-  return `fleet: ${issues.length} issues [${tags}], up to ${DEFAULT_CONCURRENCY} at once`;
+  return `fleet: ${issues.length} issues [${tags}], up to ${DEFAULT_CONCURRENCY} at once\n`;
 }
 
-/** `vow agent run-all <n>... [--provider <name>]` — develop several issues concurrently (each in its own
- *  worktree, capped), print every report, exit non-zero if any gate failed. vow's own orchestration. */
+/** Print the fleet's results — NDJSON (one per line) in `--json` mode, the spaced text reports otherwise. */
+function printResults(done: readonly DevResult[], json: boolean): void {
+  if (json) {
+    process.stdout.write(`${done.map((each) => each.report).join("\n")}\n`);
+    return;
+  }
+  process.stdout.write(`\n${done.map((each) => each.report).join("\n\n")}\n`);
+}
+
+/** `vow agent run-all <n>... [--provider <name>] [--json]` — develop several issues concurrently (each in
+ *  its own worktree, capped), stream progress, exit non-zero if any gate failed. vow's own orchestration. */
 async function runAll(rest: readonly string[]): Promise<number> {
   const parsed = parseRunAll(rest);
   if (typeof parsed === "string") {
@@ -250,13 +278,19 @@ async function runAll(rest: readonly string[]): Promise<number> {
     return 1;
   }
   const cwd = process.cwd();
-  process.stdout.write(`${fleetHeader(parsed.issues)}\n`);
+  process.stdout.write(fleetHeader(parsed.issues, parsed.json));
   const worker = async (issue: number): Promise<DevResult> => {
-    const result = await develop({ auth: parsed.auth, cwd, issue, provider: parsed.provider });
+    const result = await develop({
+      auth: parsed.auth,
+      cwd,
+      issue,
+      json: parsed.json,
+      provider: parsed.provider,
+    });
     return result;
   };
   const done = await mapLimit(parsed.issues, DEFAULT_CONCURRENCY, worker);
-  process.stdout.write(`\n${done.map((each) => each.report).join("\n\n")}\n`);
+  printResults(done, parsed.json);
   return exitFor(done.every((each) => each.ok));
 }
 
