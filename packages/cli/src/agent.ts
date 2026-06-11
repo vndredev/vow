@@ -94,23 +94,36 @@ const KNOWN_PROVIDERS = PROVIDERS.map((each) => each.name).join(", ");
 /** The gates `vow agent run` re-runs in the worktree after the provider, before deciding merge vs. draft. */
 const RUN_GATES: readonly string[] = ["vp check", "pnpm -r test"];
 
-/** A validated `vow agent run` invocation — the issue number + the resolved provider. */
+/** How the spawned provider authenticates — `subscription` (the default) or `api` (a pay-per-use key); the
+ *  same union as @vow/agent's `Auth`, kept local so the cli needs no second @vow/agent type import. */
+type Auth = "api" | "subscription";
+
+/** The auth choice from `--auth` — `api` (a pay-per-use key) only when explicit; subscription otherwise. */
+function authArg(rest: readonly string[]): Auth {
+  if (flagValue(rest, "--auth") === "api") {
+    return "api";
+  }
+  return "subscription";
+}
+
+/** A validated `vow agent run` invocation — the issue, the resolved provider, and the auth choice. */
 interface RunArgs {
+  readonly auth: Auth;
   readonly issue: number;
   readonly provider: Provider;
 }
 
-/** Parse + validate `vow agent run` args (issue number + provider), or a usage/error string to print. */
+/** Parse + validate `vow agent run` args (issue number + provider + auth), or a usage/error string. */
 function parseRun(rest: readonly string[]): RunArgs | string {
   const issue = issueArg(rest);
   if (issue === 0) {
-    return "usage: vow agent run <issue-number> [--dry-run] [--provider <name>]";
+    return "usage: vow agent run <n> [--provider <name>] [--auth subscription|api] [--dry-run]";
   }
   const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
   if (!provider) {
     return `vow agent run: unknown provider (known: ${KNOWN_PROVIDERS})`;
   }
-  return { issue, provider };
+  return { auth: authArg(rest), issue, provider };
 }
 
 /** Exit 0 when the verdict holds, else 1. */
@@ -133,11 +146,21 @@ interface DevResult {
   readonly report: string;
 }
 
+/** What `develop` needs for one issue — the issue, the resolved provider, the auth choice, and the cwd. */
+interface DevInput {
+  readonly auth: Auth;
+  readonly cwd: string;
+  readonly issue: number;
+  readonly provider: Provider;
+}
+
 /** Develop one issue via the live loop — worktree → dispatch the provider → re-run the gates — and format
  *  its report; `ok` is the gate verdict (drives the exit / merge-vs-draft, and run-all's overall result). */
-async function develop(issue: number, provider: Provider, cwd: string): Promise<DevResult> {
+async function develop(input: DevInput): Promise<DevResult> {
+  const { auth, cwd, issue, provider } = input;
   const spec = issueDetail(cwd, issue);
   const outcome = await runTask({
+    auth,
     context: { commit: headCommit(cwd), verify: RUN_GATES },
     cwd,
     issue: spec,
@@ -150,7 +173,12 @@ async function develop(issue: number, provider: Provider, cwd: string): Promise<
 /** `vow agent run <n> [--provider <name>]` (live) — develop the issue, print its report, exit on the
  *  verdict (non-zero when a gate fails — the runner would open a draft, not merge). */
 async function runLive(args: RunArgs): Promise<number> {
-  const { ok, report } = await develop(args.issue, args.provider, process.cwd());
+  const { ok, report } = await develop({
+    auth: args.auth,
+    cwd: process.cwd(),
+    issue: args.issue,
+    provider: args.provider,
+  });
   process.stdout.write(`${report}\n`);
   return exitFor(ok);
 }
@@ -185,21 +213,22 @@ const DEFAULT_CONCURRENCY = 3;
 
 /** A validated `vow agent run-all` invocation — the issue numbers + the resolved provider. */
 interface RunAllArgs {
+  readonly auth: Auth;
   readonly issues: readonly number[];
   readonly provider: Provider;
 }
 
-/** Parse + validate `run-all` args (issue numbers + provider), or a usage/error string to print. */
+/** Parse + validate `run-all` args (issue numbers + provider + auth), or a usage/error string. */
 function parseRunAll(rest: readonly string[]): RunAllArgs | string {
   const issues = issueNumbers(rest);
   if (issues.length === 0) {
-    return "usage: vow agent run-all <issue-number>... [--provider <name>]";
+    return "usage: vow agent run-all <n>... [--provider <name>] [--auth subscription|api]";
   }
   const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
   if (!provider) {
     return `vow agent run-all: unknown provider (known: ${KNOWN_PROVIDERS})`;
   }
-  return { issues, provider };
+  return { auth: authArg(rest), issues, provider };
 }
 
 /** `vow agent run-all <n>... [--provider <name>]` — develop several issues concurrently (each in its own
@@ -212,7 +241,7 @@ async function runAll(rest: readonly string[]): Promise<number> {
   }
   const cwd = process.cwd();
   const worker = async (issue: number): Promise<DevResult> => {
-    const result = await develop(issue, parsed.provider, cwd);
+    const result = await develop({ auth: parsed.auth, cwd, issue, provider: parsed.provider });
     return result;
   };
   const done = await mapLimit(parsed.issues, DEFAULT_CONCURRENCY, worker);

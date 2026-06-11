@@ -3,9 +3,14 @@
  * (the repo forbids mixing a type + a value from one module; a dedicated `types.ts` is the convention).
  */
 
+/** How a provider authenticates its spawn — `subscription` (the Claude/etc. plan; the default, no API key)
+ *  or `api` (a pay-per-use key). */
+export type Auth = "api" | "subscription";
+
 /** A task for an autonomous coding agent: develop `plan` in `cwd`, on its own `branch`, with `model` (when
- *  set; else the provider's default). */
+ *  set; else the provider's default) and `auth` (subscription by default). */
 export interface AgentTask {
+  readonly auth?: Auth;
   readonly branch: string;
   readonly cwd: string;
   readonly model?: string;
@@ -23,10 +28,12 @@ export interface ModelPolicy {
   readonly plan: string;
 }
 
-/** A command to spawn — what to exec, built but never run in the pure core (so the mapping stays testable). */
+/** A command to spawn — what to exec, built but never run in the pure core (so the mapping stays testable).
+ *  `unsetEnv` names env vars to strip from the child (e.g. an API key, so a subscription auth is used). */
 export interface Command {
   readonly args: readonly string[];
   readonly bin: string;
+  readonly unsetEnv?: readonly string[];
 }
 
 /** A coding-CLI provider — the one seam every agent backend implements. `models` is its own per-role
@@ -86,6 +93,7 @@ export type CiState = "fail" | "pass" | "pending";
 
 /** Everything one full loop over an issue needs — bundled so `runTask` takes a single argument. */
 export interface TaskRequest {
+  readonly auth?: Auth;
   readonly context: PlanContext;
   readonly cwd: string;
   readonly issue: IssueSpec;
