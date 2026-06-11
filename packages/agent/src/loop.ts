@@ -30,17 +30,21 @@ async function publish(
 }
 
 /** Develop the task inside its worktree — dispatch the provider, re-run the gates, and publish a
- *  successful run as a PR. The worktree's setup + teardown stay in `runTask`. */
+ *  successful run as a PR. Each step emits a `Phase` via `onPhase`, so a fleet's progress is live. The
+ *  worktree's setup + teardown stay in `runTask`. */
 async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutcome> {
-  const { context, ops, provider } = request;
-  const run = await dispatch(task, provider, ops);
-  const verdict = await verify(context.verify, task.cwd, async (command, dir) => {
-    const result = await ops.run(gateCommand(command), dir);
+  request.onPhase?.("develop");
+  const run = await dispatch(task, request.provider, request.ops);
+  request.onPhase?.("gates");
+  const verdict = await verify(request.context.verify, task.cwd, async (command, dir) => {
+    const result = await request.ops.run(gateCommand(command), dir);
     return result.code;
   });
   if (run.ok) {
+    request.onPhase?.("publish");
     await publish(task, verdict, request);
   }
+  request.onPhase?.("done");
   return { run, verdict };
 }
 
@@ -66,6 +70,7 @@ export async function runTask(request: TaskRequest): Promise<TaskOutcome> {
     plan: buildPlan(issue, context),
     title: issue.title,
   };
+  request.onPhase?.("worktree");
   await ops.worktreeAdd(worktree, branch);
   try {
     return await develop(request, task);
