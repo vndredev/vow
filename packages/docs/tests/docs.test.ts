@@ -1,6 +1,7 @@
 import { buildLlms, buildSidebar, docSlug, generateDocs, routePath } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cacheFresh } from "../src/scan.ts";
 import path from "node:path";
 import { tmpdir } from "node:os";
 
@@ -156,4 +157,10 @@ test("buildLlms builds an llms.txt index + a full single-file dump", () => {
   expect(full).toContain("> Source: /guide/primitives");
   expect(full).toContain("# Button");
   expect(full).not.toContain("::: demo");
+});
+
+test("cacheFresh hits only when the mtime is unchanged — so an edited .md (new mtime) re-scans", () => {
+  const MTIME = 1700;
+  expect(cacheFresh(MTIME, MTIME)).toBe(true);
+  expect(cacheFresh(MTIME, MTIME + 1)).toBe(false);
 });

@@ -9,7 +9,7 @@ import type {
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, defined, mapDefined } from "@vow/core";
 import { docSlug, firstH1, mdFilesUnder, parseFrontmatter, relNoExt, routePath } from "./paths.ts";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import type { UiNode } from "@vow/component";
 import { emitProse } from "@vow/emit-view";
 import { markdownToNodesSync } from "@vow/markdown";
@@ -167,6 +167,33 @@ function assemble(scanned: readonly ScannedPage[]): ScanResult {
   };
 }
 
+/** Whether a cached page is fresh for `mtimeMs` — re-scan (Shiki + write) only when the `.md`'s mtime
+ *  moved. Pure, so the cache key (the mtime) is tested directly. */
+export function cacheFresh(cachedMtimeMs: Maybe<number>, mtimeMs: number): boolean {
+  return cachedMtimeMs === mtimeMs;
+}
+
+/** One cached page scan, keyed by the file's mtime. */
+interface PageCacheEntry {
+  readonly mtimeMs: number;
+  readonly page: ScannedPage;
+}
+const pageCache = new Map<string, PageCacheEntry>();
+
+/** `scanPage` cached by mtime — reuses the prior scan (skipping Shiki + the file write) when the `.md` is
+ *  unchanged across HMR; only an edited file re-scans. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- `context` carries Shiki's `Highlighter`, a platform type.
+function cachedScanPage(file: string, context: Readonly<ScanContext>): ScannedPage {
+  const { mtimeMs } = statSync(file);
+  const entry = pageCache.get(file);
+  if (defined(entry) && cacheFresh(entry.mtimeMs, mtimeMs)) {
+    return entry.page;
+  }
+  const page = scanPage(file, context);
+  pageCache.set(file, { mtimeMs, page });
+  return page;
+}
+
 /** Scan every `.md` into a prose `.vue`, accumulating the routes, search index, and llms entries. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- `context` carries Shiki's `Highlighter`, a platform type.
 export function scanAll(context: Readonly<ScanContext>): ScanResult {
@@ -175,7 +202,7 @@ export function scanAll(context: Readonly<ScanContext>): ScanResult {
     files.map((file) => docSlug(context.contentDir, file)),
     (slug) => `generated file "${slug}.vue"`,
   );
-  const scanned = files.map((file) => scanPage(file, context));
+  const scanned = files.map((file) => cachedScanPage(file, context));
   assertNoDuplicate(
     scanned.map((page) => page.page.path),
     (route) => `route "${route}"`,
