@@ -31,7 +31,7 @@ function fakeOps(shCode: number): { calls: string[]; ops: AgentOps } {
 }
 
 /** The expected worktree for issue 98 — under the repo's worktrees dir, distinct from the repo root. */
-const WORKTREE = "/repo/.claude/worktrees/vow-issue-98";
+const WORKTREE = "/repo/.vow-worktrees/vow-issue-98";
 
 test("runTask isolates the work in a worktree distinct from the repo, and always tears it down", async () => {
   const { calls, ops } = fakeOps(0);

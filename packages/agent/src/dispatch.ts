@@ -23,8 +23,9 @@ export function worktreeRemoveArgs(path: string): readonly string[] {
   return ["worktree", "remove", "--force", path];
 }
 
-/** The worktree path for `branch` under the repo's gitignored `.claude/worktrees/` — a checkout isolated
- *  from the repo root (and from other agents). Branch slashes become dashes (a flat directory name). */
+/** The worktree path for `branch` under the repo's gitignored `.vow-worktrees/` — a checkout isolated from
+ *  the repo root (and from other agents), provider-neutral (not tied to any one CLI's config dir). Branch
+ *  slashes become dashes (a flat directory name). */
 export function worktreePath(repo: string, branch: string): string {
-  return `${repo}/.claude/worktrees/${branch.replaceAll("/", "-")}`;
+  return `${repo}/.vow-worktrees/${branch.replaceAll("/", "-")}`;
 }

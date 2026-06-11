@@ -5,7 +5,7 @@ import { verify } from "./verify.ts";
 
 /**
  * One full loop over an issue: set up an isolated worktree (a path distinct from the repo, under
- * `.claude/worktrees/`), build the gated plan + dispatch the provider in it, re-run the gates there, and
+ * `.vow-worktrees/`), build the gated plan + dispatch the provider in it, re-run the gates there, and
  * ALWAYS tear the worktree down. The whole agent loop as a single call — provider-neutral, every effect
  * injected via `request.ops`, tested end-to-end without claude or git. The worktree spans dispatch +
  * verify (verify must see the agent's changes), so its lifecycle lives here.
