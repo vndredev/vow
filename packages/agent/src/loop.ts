@@ -1,6 +1,6 @@
 import type { TaskOutcome, TaskRequest } from "./types.ts";
 import { branchFor, buildPlan } from "./plan.ts";
-import { dispatch, worktreePath } from "./dispatch.ts";
+import { dispatch, gateCommand, worktreePath } from "./dispatch.ts";
 import { verify } from "./verify.ts";
 
 /**
@@ -26,7 +26,7 @@ export async function runTask(request: TaskRequest): Promise<TaskOutcome> {
   try {
     const run = await dispatch(task, provider, ops);
     const verdict = await verify(context.verify, worktree, async (command, dir) => {
-      const result = await ops.run({ args: ["-c", command], bin: "sh" }, dir);
+      const result = await ops.run(gateCommand(command), dir);
       return result.code;
     });
     return { run, verdict };
