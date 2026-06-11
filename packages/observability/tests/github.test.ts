@@ -4,6 +4,7 @@ import {
   linkedIssues,
   parseIssueDetail,
   parseIssues,
+  parseLabels,
   parsePrs,
   statusVariant,
 } from "../src/github.ts";
@@ -135,4 +136,9 @@ test("parseIssueDetail lifts number, title, body from a gh issue view object", (
 test("parseIssueDetail defaults a missing body and throws on malformed input", () => {
   expect(parseIssueDetail(`{"number":${ISSUE_B},"title":"t"}`).body).toBe("");
   expect(() => parseIssueDetail("nonsense")).toThrow();
+});
+
+test("parseLabels takes gh's --jq label lines, dropping empties", () => {
+  expect(parseLabels("enhancement\narea: emit\n")).toEqual(["enhancement", "area: emit"]);
+  expect(parseLabels("")).toEqual([]);
 });

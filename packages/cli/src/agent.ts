@@ -1,6 +1,9 @@
 import {
   DEFAULT_PROVIDER,
+  DEFAULT_ROSTER,
   PROVIDERS,
+  agentFor,
+  areaOf,
   buildPlan,
   draftArgs,
   dryRunReport,
@@ -18,6 +21,7 @@ import {
   createIssue,
   headCommit,
   issueDetail,
+  issueLabels,
   parseFindings,
   prCiState,
 } from "@vow/observability";
@@ -169,9 +173,11 @@ export function phaseLine(issue: number, phase: string, json: boolean): string {
 async function develop(input: DevInput): Promise<DevResult> {
   const { auth, cwd, issue, json, provider } = input;
   const spec = issueDetail(cwd, issue);
+  // Route to the area's specialist (the roster) — its focus narrows the executor to the issue's concern.
+  const { focus } = agentFor(DEFAULT_ROSTER, areaOf(issueLabels(cwd, issue)));
   const outcome = await runTask({
     auth,
-    context: { commit: headCommit(cwd), verify: RUN_GATES },
+    context: { commit: headCommit(cwd), focus, verify: RUN_GATES },
     cwd,
     issue: spec,
     onPhase: (phase) => {

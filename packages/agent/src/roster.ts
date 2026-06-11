@@ -64,3 +64,15 @@ export function agentFor(roster: Roster, area: string): AgentSpec {
   }
   return GENERAL;
 }
+
+/** The vow area an issue's labels name — the first `area: <x>` label's `<x>`, or "" when none. So an issue
+ *  labelled `area: emit` routes to the emit specialist. */
+export function areaOf(labels: readonly string[]): string {
+  const prefix = "area: ";
+  for (const label of labels) {
+    if (label.startsWith(prefix)) {
+      return label.slice(prefix.length);
+    }
+  }
+  return "";
+}
