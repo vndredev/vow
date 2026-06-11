@@ -6,6 +6,8 @@
  * provider-neutrality gate (#107) guards: nothing above this layer may hardcode a CLI.
  */
 
+export * from "./plan.ts";
+
 /** A task for an autonomous coding agent: develop `plan` in `cwd`, on its own `branch`. */
 export interface AgentTask {
   readonly branch: string;
