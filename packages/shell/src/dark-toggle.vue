@@ -1,11 +1,9 @@
 <script setup lang="ts">
+// Generated dark-toggle chrome through @vow/component — do not edit. Logic lives in use-theme.ts.
+// Carries class hooks only; vow's base look lives in @vow/theme (swappable).
 import Icon from "@vow/icons/Icon.vue";
 import { useTheme } from "./use-theme.ts";
 
-/*
- * The button is presentation only; the tri-state logic + shared state live in useTheme (so the sidebar
- * and the mobile drawer stay in sync).
- */
 const { theme, icon, cycle } = useTheme();
 </script>
 

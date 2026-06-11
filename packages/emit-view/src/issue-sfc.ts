@@ -1,7 +1,12 @@
+import type { Component, UiNode } from "./types.ts";
+import { bound, comp, el, txt } from "./helpers.ts";
+import { renderVueSfc } from "@vow/component";
+
 /**
  * The three live issue-plan SFCs (`useIssues`, gh-direct) — table, board and roadmap. Each is a fixed
  * component the plugin materialises (`map-node.ts`'s `issues:` node points at one). They share the
  * status → Badge-variant lines below and read `/__vow/issues` live (no baked data, unlike the timeline).
+ * Each is a canonical `Component` rendered through @vow/component — framework-neutral, never raw Vue.
  */
 
 /**
@@ -19,52 +24,103 @@ const ISSUE_VARIANT_LINES = [
  * else `Close`, keyed off the live `it.status`. It calls `closeIssue`/`reopenIssue` from `useIssues`, which
  * POST through the same dev seam the agent's MCP `close_issue` uses — one path to GitHub for user + agent.
  */
-const ISSUE_ACTION_BUTTON =
-  `<Button :label="it.status === 'done' ? 'Reopen' : 'Close'"` +
-  ` @click="it.status === 'done' ? reopenIssue(it.issue.number) : closeIssue(it.issue.number)" />`;
+function issueActionButton(): UiNode {
+  return comp(
+    "Button",
+    [
+      bound("label", `it.status === 'done' ? 'Reopen' : 'Close'`),
+      {
+        expr: `it.status === 'done' ? reopenIssue(it.issue.number) : closeIssue(it.issue.number)`,
+        kind: "event",
+        name: "click",
+      },
+    ],
+    [],
+  );
+}
 
 /**
  * The agent-session link the three issue layouts share — present only when the issue carries a `session`
- * (an open PR redeeming it, i.e. a `doing` issue). It points the human at the PR (a new tab) to watch the
- * run, closing the drag -> PR -> doing -> merge -> done loop in the studio. Plain `<a>` (an EXTERNAL URL,
- * not a router link); `rel="noreferrer"` since it leaves the app.
+ * (an open PR redeeming it); an external link to the run, opened in a new tab so the human can watch it.
  */
-const ISSUE_SESSION_LINK =
-  `<a v-if="it.session" class="vow-issue-session" :href="it.session.url"` +
-  ` target="_blank" rel="noreferrer">Watch run #{{ it.session.number }}</a>`;
+function issueSessionLink(): UiNode {
+  return {
+    attrs: [
+      { expr: "it.session", kind: "cond", type: "if" },
+      { kind: "static", name: "class", value: "vow-issue-session" },
+      bound("href", "it.session.url"),
+      { kind: "static", name: "rel", value: "noreferrer" },
+      { kind: "static", name: "target", value: "_blank" },
+    ],
+    children: [txt("Watch run #"), { expr: "it.session.number", kind: "interp" }],
+    kind: "element",
+    tag: "a",
+  };
+}
 
-const TABLE_TEMPLATE = [
-  `<template>`,
-  `  <table class="vow-table vow-issue-table">`,
-  `    <thead>`,
-  `      <tr>`,
-  `        <th class="vow-table__head">#</th>`,
-  `        <th class="vow-table__head">Title</th>`,
-  `        <th class="vow-table__head">Status</th>`,
-  `        <th class="vow-table__head">Labels</th>`,
-  `        <th class="vow-table__head">Assignee</th>`,
-  `        <th class="vow-table__head">Actions</th>`,
-  `      </tr>`,
-  `    </thead>`,
-  `    <tbody>`,
-  `      <tr v-for="it in items" :key="it.issue.number" class="vow-table__row">`,
-  `        <td class="vow-table__cell vow-issue-table__num">{{ it.issue.number }}</td>`,
-  `        <td class="vow-table__cell">{{ it.issue.title }}</td>`,
-  `        <td class="vow-table__cell"><Badge :label="it.status" :variant="variant(it.status)" /></td>`,
-  `        <td class="vow-table__cell vow-issue-table__labels">`,
-  `          <Badge v-for="l in it.issue.labels" :key="l" :label="l" variant="neutral" />`,
-  `        </td>`,
-  `        <td class="vow-table__cell">{{ it.issue.assignees.join(", ") }}</td>`,
-  `        <td class="vow-table__cell vow-issue-table__actions">`,
-  `          ${ISSUE_SESSION_LINK}`,
-  `          ${ISSUE_ACTION_BUTTON}`,
-  `        </td>`,
-  `      </tr>`,
-  `    </tbody>`,
-  `  </table>`,
-  `</template>`,
-  ``,
-];
+/** A status `<Badge>` chip — `:label` + the shared `variant(...)` mapping over a status expression. */
+function statusBadge(statusExpr: string): UiNode {
+  return comp(
+    "Badge",
+    [bound("label", statusExpr), bound("variant", `variant(${statusExpr})`)],
+    [],
+  );
+}
+
+/** A static-class element node with the given tag and children. */
+function classed(tag: string, cls: string, children: readonly UiNode[]): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: cls }],
+    children: [...children],
+    kind: "element",
+    tag,
+  };
+}
+
+/** The `<thead>` of the issue table — one head cell per column. */
+function tableHead(): UiNode {
+  return el("thead", [
+    el(
+      "tr",
+      ["#", "Title", "Status", "Labels", "Assignee", "Actions"].map((label) =>
+        classed("th", "vow-table__head", [txt(label)]),
+      ),
+    ),
+  ]);
+}
+
+/** The labels cell — a neutral `<Badge>` per label, looped over `it.issue.labels`. */
+function labelsCell(): UiNode {
+  return classed("td", "vow-table__cell vow-issue-table__labels", [
+    {
+      attrs: [bound("label", "l"), { kind: "static", name: "variant", value: "neutral" }],
+      children: [],
+      for: { as: "l", each: "it.issue.labels", key: "l" },
+      kind: "component",
+      name: "Badge",
+    },
+  ]);
+}
+
+/** A single data row of the issue table. */
+function tableRow(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-table__row" }],
+    children: [
+      classed("td", "vow-table__cell vow-issue-table__num", [
+        { expr: "it.issue.number", kind: "interp" },
+      ]),
+      classed("td", "vow-table__cell", [{ expr: "it.issue.title", kind: "interp" }]),
+      classed("td", "vow-table__cell", [statusBadge("it.status")]),
+      labelsCell(),
+      classed("td", "vow-table__cell", [{ expr: `it.issue.assignees.join(", ")`, kind: "interp" }]),
+      classed("td", "vow-table__cell", [issueActionButton(), issueSessionLink()]),
+    ],
+    for: { as: "it", each: "items", key: "it.issue.number" },
+    kind: "element",
+    tag: "tr",
+  };
+}
 
 /**
  * The issue-table component — a fixed `<VowIssueTable>` reading the live issue plan (`useIssues`,
@@ -72,40 +128,83 @@ const TABLE_TEMPLATE = [
  * GitHub Projects Table view: number · title · status · labels · assignee.
  */
 export function emitIssueTableSfc(): string {
-  return [
-    `<script setup lang="ts">`,
-    `// Generated — the GitHub issue plan as a table, read live from /__vow/issues. Do not edit.`,
-    `import { useIssues } from "@vow/store";`,
-    `import Badge from "./Badge.vue";`,
-    `import Button from "./Button.vue";`,
-    ``,
-    `const { items, closeIssue, reopenIssue } = useIssues();`,
-    ...ISSUE_VARIANT_LINES,
-    `</script>`,
-    ``,
-    ...TABLE_TEMPLATE,
-  ].join("\n");
+  const component: Component = {
+    doc: [
+      "Generated — the GitHub issue plan as a table, read live from /__vow/issues. Do not edit.",
+    ],
+    imports: [
+      { from: "@vow/store", names: ["useIssues"] },
+      { default: "Badge", from: "./Badge.vue" },
+      { default: "Button", from: "./Button.vue" },
+    ],
+    name: "VowIssueTable",
+    setup: [`const { items, closeIssue, reopenIssue } = useIssues();`, ...ISSUE_VARIANT_LINES],
+    view: classed("table", "vow-table vow-issue-table", [tableHead(), el("tbody", [tableRow()])]),
+  };
+  return renderVueSfc(component);
 }
 
-const BOARD_TEMPLATE = [
-  `<template>`,
-  `  <div class="vow-board vow-issue-board">`,
-  `    <div v-for="col in grouped" :key="col.status" class="vow-board__col">`,
-  `      <div class="vow-board__col-head">`,
-  `        <Badge :label="col.status" :variant="variant(col.status)" />`,
-  `        <span class="vow-board__count">{{ col.items.length }}</span>`,
-  `      </div>`,
-  `      <article v-for="it in col.items" :key="it.issue.number" class="vow-board__card">`,
-  `        <span class="vow-issue-board__num">#{{ it.issue.number }}</span>`,
-  `        <span class="vow-issue-board__title">{{ it.issue.title }}</span>`,
-  `        ${ISSUE_SESSION_LINK}`,
-  `        ${ISSUE_ACTION_BUTTON}`,
-  `      </article>`,
-  `    </div>`,
-  `  </div>`,
-  `</template>`,
-  ``,
-];
+/** A board column header — the status Badge + a count. */
+function boardColumnHead(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-board__col-head" }],
+    children: [
+      statusBadge("col.status"),
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-board__count" }],
+        children: [{ expr: "col.items.length", kind: "interp" }],
+        kind: "element",
+        tag: "span",
+      },
+    ],
+    kind: "element",
+    tag: "div",
+  };
+}
+
+/** A board card per issue in a column — number, title and the action button. */
+function boardCard(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-board__card" }],
+    children: [
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-issue-board__num" }],
+        children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
+        kind: "element",
+        tag: "span",
+      },
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-issue-board__title" }],
+        children: [{ expr: "it.issue.title", kind: "interp" }],
+        kind: "element",
+        tag: "span",
+      },
+      issueActionButton(),
+      issueSessionLink(),
+    ],
+    for: { as: "it", each: "col.items", key: "it.issue.number" },
+    kind: "element",
+    tag: "article",
+  };
+}
+
+/** The issue-board view tree — a column per derived status, each holding its cards. */
+function boardView(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-board vow-issue-board" }],
+    children: [
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-board__col" }],
+        children: [boardColumnHead(), boardCard()],
+        for: { as: "col", each: "grouped", key: "col.status" },
+        kind: "element",
+        tag: "div",
+      },
+    ],
+    kind: "element",
+    tag: "div",
+  };
+}
 
 /**
  * The issue-board component — a fixed `<VowIssueBoard>` reading the live issue plan (`useIssues`,
@@ -113,24 +212,28 @@ const BOARD_TEMPLATE = [
  * board's look (`.vow-board`).
  */
 export function emitIssueBoardSfc(): string {
-  return [
-    `<script setup lang="ts">`,
-    `// Generated — the GitHub issue plan as a board, read live from /__vow/issues. Do not edit.`,
-    `import { computed } from "vue";`,
-    `import { useIssues } from "@vow/store";`,
-    `import Badge from "./Badge.vue";`,
-    `import Button from "./Button.vue";`,
-    ``,
-    `const { items, closeIssue, reopenIssue } = useIssues();`,
-    `const columns = ["planned", "doing", "done"] as const;`,
-    ...ISSUE_VARIANT_LINES,
-    `const grouped = computed(() =>`,
-    `  columns.map((c) => ({ status: c, items: items.filter((it) => it.status === c) })),`,
-    `);`,
-    `</script>`,
-    ``,
-    ...BOARD_TEMPLATE,
-  ].join("\n");
+  const component: Component = {
+    doc: [
+      "Generated — the GitHub issue plan as a board, read live from /__vow/issues. Do not edit.",
+    ],
+    imports: [
+      { from: "vue", names: ["computed"] },
+      { from: "@vow/store", names: ["useIssues"] },
+      { default: "Badge", from: "./Badge.vue" },
+      { default: "Button", from: "./Button.vue" },
+    ],
+    name: "VowIssueBoard",
+    setup: [
+      `const { items, closeIssue, reopenIssue } = useIssues();`,
+      `const columns = ["planned", "doing", "done"] as const;`,
+      ...ISSUE_VARIANT_LINES,
+      `const grouped = computed(() =>`,
+      `  columns.map((c) => ({ status: c, items: items.filter((it) => it.status === c) })),`,
+      `);`,
+    ],
+    view: boardView(),
+  };
+  return renderVueSfc(component);
 }
 
 const ROADMAP_SCRIPT = [
@@ -155,47 +258,108 @@ const ROADMAP_SCRIPT = [
   `});`,
 ];
 
-const ROADMAP_TEMPLATE = [
-  `<template>`,
-  `  <div class="vow-roadmap">`,
-  `    <section v-for="p in phases" :key="p.title" class="vow-roadmap__phase">`,
-  `      <header class="vow-roadmap__head">`,
-  `        <h3 class="vow-roadmap__milestone">{{ p.title }}</h3>`,
-  `        <span v-if="p.due" class="vow-roadmap__due">{{ p.due }}</span>`,
-  `      </header>`,
-  `      <ul class="vow-roadmap__items">`,
-  `        <li v-for="it in p.items" :key="it.issue.number" class="vow-roadmap__item">`,
-  `          <div class="vow-roadmap__meta">`,
-  `            <span class="vow-roadmap__num">#{{ it.issue.number }}</span>`,
-  `            <Badge :label="it.status" :variant="variant(it.status)" />`,
-  `            ${ISSUE_ACTION_BUTTON}`,
-  `          </div>`,
-  `          <span class="vow-roadmap__title">{{ it.issue.title }}</span>`,
-  `          ${ISSUE_SESSION_LINK}`,
-  `        </li>`,
-  `      </ul>`,
-  `    </section>`,
-  `  </div>`,
-  `</template>`,
-  ``,
-];
+/** One roadmap item `<li>` — its number, status Badge, action button and title. */
+function roadmapItem(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-roadmap__item" }],
+    children: [
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__meta" }],
+        children: [
+          {
+            attrs: [{ kind: "static", name: "class", value: "vow-roadmap__num" }],
+            children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
+            kind: "element",
+            tag: "span",
+          },
+          statusBadge("it.status"),
+          issueActionButton(),
+          issueSessionLink(),
+        ],
+        kind: "element",
+        tag: "div",
+      },
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__title" }],
+        children: [{ expr: "it.issue.title", kind: "interp" }],
+        kind: "element",
+        tag: "span",
+      },
+    ],
+    for: { as: "it", each: "p.items", key: "it.issue.number" },
+    kind: "element",
+    tag: "li",
+  };
+}
+
+/** One roadmap phase `<section>` — its milestone heading, optional due date and item list. */
+function roadmapPhase(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-roadmap__phase" }],
+    children: [
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__head" }],
+        children: [
+          {
+            attrs: [{ kind: "static", name: "class", value: "vow-roadmap__milestone" }],
+            children: [{ expr: "p.title", kind: "interp" }],
+            kind: "element",
+            tag: "h3",
+          },
+          {
+            attrs: [
+              { kind: "static", name: "class", value: "vow-roadmap__due" },
+              { expr: "p.due", kind: "cond", type: "if" },
+            ],
+            children: [{ expr: "p.due", kind: "interp" }],
+            kind: "element",
+            tag: "span",
+          },
+        ],
+        kind: "element",
+        tag: "header",
+      },
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__items" }],
+        children: [roadmapItem()],
+        kind: "element",
+        tag: "ul",
+      },
+    ],
+    for: { as: "p", each: "phases", key: "p.title" },
+    kind: "element",
+    tag: "section",
+  };
+}
+
+/** The issue-roadmap view tree — a `<section>` per milestone phase, sorted by due date. */
+function roadmapView(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-roadmap" }],
+    children: [roadmapPhase()],
+    kind: "element",
+    tag: "div",
+  };
+}
 
 /**
  * The issue-roadmap component — a fixed `<VowIssueRoadmap>` reading the live issue plan (`useIssues`,
  * gh-direct), grouped by **milestone** (the roadmap's phases). Mirrors a GitHub Projects Roadmap view.
  */
 export function emitIssueRoadmapSfc(): string {
-  return [
-    `<script setup lang="ts">`,
-    `// Generated — the GitHub issue plan as a roadmap: phases (milestones) on a timeline by due date. Do not edit.`,
-    `import { computed } from "vue";`,
-    `import { type IssueItem, useIssues } from "@vow/store";`,
-    `import Badge from "./Badge.vue";`,
-    `import Button from "./Button.vue";`,
-    ``,
-    ...ROADMAP_SCRIPT,
-    `</script>`,
-    ``,
-    ...ROADMAP_TEMPLATE,
-  ].join("\n");
+  const component: Component = {
+    doc: [
+      "Generated — the GitHub issue plan as a roadmap: phases (milestones) on a timeline by due date. Do not edit.",
+    ],
+    imports: [
+      { from: "vue", names: ["computed"] },
+      { from: "@vow/store", names: ["type IssueItem", "useIssues"] },
+      { default: "Badge", from: "./Badge.vue" },
+      { default: "Button", from: "./Button.vue" },
+    ],
+    name: "VowIssueRoadmap",
+    setup: ROADMAP_SCRIPT,
+    view: roadmapView(),
+  };
+  return renderVueSfc(component);
 }
