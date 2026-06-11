@@ -1,5 +1,7 @@
 import { agentsMd, vowDevelopSkill } from "./agent-templates.ts";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { headCommit, issueDetail } from "@vow/observability";
+import { buildPlan } from "@vow/agent";
 import path from "node:path";
 
 /** Write `content` to `file` only when absent — `init` is idempotent, never clobbering edits. Returns the
@@ -26,12 +28,44 @@ function init(cwd: string): number {
   return 0;
 }
 
-/** `vow agent <sub>` — the agent-native front door. Today: `init` (scaffold the integration). */
+/** The issue number from `vow agent plan <n>` — a positive integer, or 0 when missing/non-numeric. */
+export function issueArg(rest: readonly string[]): number {
+  const raw = rest[1] ?? "";
+  const num = Number(raw);
+  if (!Number.isInteger(num) || num <= 0) {
+    return 0;
+  }
+  return num;
+}
+
+/** `vow agent plan <n>` — print the self-contained, verification-gated plan an autonomous run develops for
+ *  issue `n` (the executor's product). Reads the issue + HEAD; emits no side effects. */
+function plan(cwd: string, issue: number): number {
+  const spec = issueDetail(cwd, issue);
+  process.stdout.write(`${buildPlan(spec, { commit: headCommit(cwd), verify: [] })}\n`);
+  return 0;
+}
+
+/** Handle `vow agent plan <n>` — validate the issue arg, then print its plan (or the usage on a bad arg). */
+function runPlan(rest: readonly string[]): number {
+  const issue = issueArg(rest);
+  if (issue === 0) {
+    process.stderr.write("usage: vow agent plan <issue-number>\n");
+    return 1;
+  }
+  return plan(process.cwd(), issue);
+}
+
+/** `vow agent <sub>` — the agent-native front door: `init` (scaffold the integration) + `plan <n>` (the
+ *  executor-ready plan for an issue). */
 export function agent(rest: readonly string[]): number {
   const [sub] = rest;
   if (sub === "init") {
     return init(process.cwd());
   }
-  process.stderr.write("usage: vow agent init\n");
+  if (sub === "plan") {
+    return runPlan(rest);
+  }
+  process.stderr.write("usage: vow agent <init|plan>\n");
   return 1;
 }
