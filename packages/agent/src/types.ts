@@ -67,6 +67,9 @@ export interface VerifyResult {
   readonly results: readonly GateResult[];
 }
 
+/** A PR's CI conclusion — what the agent-merge decision keys on. */
+export type CiState = "fail" | "pass" | "pending";
+
 /** Everything one full loop over an issue needs — bundled so `runTask` takes a single argument. */
 export interface TaskRequest {
   readonly context: PlanContext;

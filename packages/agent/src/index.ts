@@ -8,6 +8,7 @@
 
 export * from "./dispatch.ts";
 export * from "./loop.ts";
+export * from "./merge.ts";
 export * from "./plan.ts";
 export * from "./provider.ts";
 export * from "./real-ops.ts";
