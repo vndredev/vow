@@ -69,6 +69,8 @@ Twenty tools, in four groups. Structure mutations **validate** (the zod schema +
 | `set_record_field` | Patch one field of a record (e.g. move a task by setting its status).    |
 | `remove_record`    | Delete a record by id.                                                   |
 
+A `reference` field on `set_record_field` accepts the target's **name**, not only its raw id — the name is resolved against the target entity's first text field, so the agent assigns work by `"Andre"`, not a copied id (an existing id still passes through; an unknown name errors).
+
 ### GitHub — the issue plan
 
 | Tool           |                                                                                    |

@@ -1,4 +1,14 @@
-import type { Field, Maybe, ReadonlyField, ReadonlyVow, Studio, TextResult, Vow } from "./types.ts";
+import type {
+  Db,
+  Field,
+  Maybe,
+  ReadonlyField,
+  ReadonlyVow,
+  Row,
+  Studio,
+  TextResult,
+  Vow,
+} from "./types.ts";
 import {
   addEntity,
   addField,
@@ -104,6 +114,48 @@ function structureSeam(appDir: string, syncDb: () => void): StructureSeam {
   };
 }
 
+/** The display-name field of an entity — its first text field, else `id` (mirrors how a reference cell
+ *  resolves an id back to a name: the target's first text field). */
+export function labelField(entity: ReadonlyVow): string {
+  const named = entity.fields.find((field: ReadonlyField) => field.type === "text");
+  if (defined(named)) {
+    return named.name;
+  }
+  return "id";
+}
+
+/** The target slug of a `reference` field named `field` on `entity` — `""` when `field` isn't a reference. */
+export function referenceRef(entity: ReadonlyVow, field: string): string {
+  const found = entity.fields.find((candidate: ReadonlyField) => candidate.name === field);
+  if (defined(found) && found.type === "reference" && defined(found.ref)) {
+    return found.ref;
+  }
+  return "";
+}
+
+/** The id of the row whose display field equals `value` — `""` when none matches. */
+export function idByLabel(rows: readonly Readonly<Row>[], label: string, value: string): string {
+  const match = rows.find((row: Readonly<Row>) => String(row[label]) === value);
+  if (defined(match) && typeof match["id"] === "string") {
+    return match["id"];
+  }
+  return "";
+}
+
+/** The target id a reference value points to — an existing id passes through; a name is matched against
+ *  the target's display field. Throws when neither an id nor a name matches. */
+function targetId(db: Db, target: ReadonlyVow, value: unknown): string {
+  const raw = String(value);
+  if (defined(get(db, target, raw))) {
+    return raw;
+  }
+  const id = idByLabel(list(db, target), labelField(target), raw);
+  if (id !== "") {
+    return id;
+  }
+  throw new Error(`no ${target.slug} with id or ${labelField(target)} "${raw}"`);
+}
+
 /** Resolve the app dir from `VOW_APP_DIR` or the first CLI argument — absent when neither is set. */
 export function resolveAppDir(): Maybe<string> {
   const raw = process.env["VOW_APP_DIR"] ?? process.argv[ARGV_OFFSET];
@@ -125,6 +177,13 @@ export function openStudio(appDir: string): Studio {
     }
     throw new Error(`no entity "${slug}"`);
   };
+  const resolveRef = (entity: ReadonlyVow, field: string, value: unknown): unknown => {
+    const ref = referenceRef(entity, field);
+    if (ref === "") {
+      return value;
+    }
+    return targetId(db, entityOf(ref), value);
+  };
   const syncDb = (): void => {
     const live = entities();
     migrate(db, live);
@@ -141,8 +200,11 @@ export function openStudio(appDir: string): Studio {
     listVows: () => loadVows(appDir),
     removeRecord: (entity, id) => remove(db, entityOf(entity), id),
     syncDb,
-    updateRecord: (patch) =>
-      update(db, entityOf(patch.entity), patch.id, { [patch.field]: patch.value }),
+    updateRecord: (patch) => {
+      const entity = entityOf(patch.entity);
+      const value = resolveRef(entity, patch.field, patch.value);
+      return update(db, entity, patch.id, { [patch.field]: value });
+    },
     viewSlugs: () =>
       loadVows(appDir)
         .filter((vow: ReadonlyVow) => fulfilledAs(vow, "view"))

@@ -1,7 +1,7 @@
+import type { Db, Row } from "@vow/db";
 import type { Field, ViewNode, Vow } from "@vow/core";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Row } from "@vow/db";
 
 /**
  * The package's single type hub. The maximal wall forbids BOTH an inline `type` specifier
@@ -14,7 +14,7 @@ import type { Row } from "@vow/db";
 
 /** The vow + DB types (re-exported as pure types — values come straight from the packages). */
 export type { Field, ViewNode, Vow };
-export type { Row };
+export type { Db, Row };
 
 /** A value that may be absent — the explicit name for `T | undefined`. */
 export type Maybe<T> = T | undefined;
