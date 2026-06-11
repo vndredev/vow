@@ -1,7 +1,7 @@
+import { DEFAULT_PROVIDER, PROVIDERS, buildPlan, dryRunReport, providerFor } from "@vow/agent";
 import { agentsMd, vowDevelopSkill } from "./agent-templates.ts";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { headCommit, issueDetail } from "@vow/observability";
-import { buildPlan } from "@vow/agent";
 import path from "node:path";
 
 /** Write `content` to `file` only when absent — `init` is idempotent, never clobbering edits. Returns the
@@ -56,8 +56,37 @@ function runPlan(rest: readonly string[]): number {
   return plan(process.cwd(), issue);
 }
 
-/** `vow agent <sub>` — the agent-native front door: `init` (scaffold the integration) + `plan <n>` (the
- *  executor-ready plan for an issue). */
+/** The value after `flag` in `rest` (`--provider codex` → `codex`), or "" when the flag/value is absent. */
+export function flagValue(rest: readonly string[], flag: string): string {
+  const at = rest.indexOf(flag);
+  if (at === -1 || at + 1 >= rest.length) {
+    return "";
+  }
+  return rest[at + 1] ?? "";
+}
+
+/** The known provider names, for the unknown-provider error. */
+const KNOWN_PROVIDERS = PROVIDERS.map((each) => each.name).join(", ");
+
+/** `vow agent run <n> --dry-run [--provider <name>]` — preview the run (branch, command, gates). The live
+ *  run isn't wired yet, so `--dry-run` is required; without it the usage is shown. */
+function runDry(rest: readonly string[]): number {
+  const issue = issueArg(rest);
+  if (issue === 0 || !rest.includes("--dry-run")) {
+    process.stderr.write("usage: vow agent run <issue-number> --dry-run [--provider <name>]\n");
+    return 1;
+  }
+  const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
+  if (!provider) {
+    process.stderr.write(`vow agent run: unknown provider (known: ${KNOWN_PROVIDERS})\n`);
+    return 1;
+  }
+  process.stdout.write(`${dryRunReport(issueDetail(process.cwd(), issue), provider)}\n`);
+  return 0;
+}
+
+/** `vow agent <sub>` — the agent-native front door: `init` (scaffold) · `plan <n>` (the executor-ready
+ *  plan) · `run <n> --dry-run` (preview the provider command). */
 export function agent(rest: readonly string[]): number {
   const [sub] = rest;
   if (sub === "init") {
@@ -66,6 +95,9 @@ export function agent(rest: readonly string[]): number {
   if (sub === "plan") {
     return runPlan(rest);
   }
-  process.stderr.write("usage: vow agent <init|plan>\n");
+  if (sub === "run") {
+    return runDry(rest);
+  }
+  process.stderr.write("usage: vow agent <init|plan|run>\n");
   return 1;
 }
