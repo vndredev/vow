@@ -1,5 +1,6 @@
-import type { BadgeVariant, TimelineEntry } from "./types.ts";
+import type { BadgeVariant, Component, TimelineEntry, UiNode } from "./types.ts";
 import { defined } from "@vow/core";
+import { renderVueSfc } from "@vow/component";
 import { variantForType } from "@vow/observability";
 
 /** One change in a rendered timeline group — its title, optional type/variant chip and PR number. */
@@ -50,51 +51,117 @@ const GROUPS_TYPE =
   "{ version: string; date: string; items: { title: string; type?: string; " +
   "variant?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger'; pr?: number }[] }[]";
 
-/** The static `<template>` of the timeline SFC — the data is injected via the `<script>` above it. */
-const TIMELINE_TEMPLATE = [
-  `<template>`,
-  `  <div class="vow-timeline">`,
-  `    <Collapsible`,
-  `      v-for="(g, gi) in groups"`,
-  `      :key="g.version"`,
-  `      v-model="open[gi]"`,
-  `      :label="g.version + ' · ' + g.date + ' · ' + g.items.length + ' changes'"`,
-  `      class="vow-timeline__group"`,
-  `    >`,
-  `      <ul class="vow-timeline__items">`,
-  `        <li v-for="(e, i) in g.items" :key="i" class="vow-timeline__item">`,
-  `          <Badge v-if="e.type" :label="e.type" :variant="e.variant" />`,
-  `          <span class="vow-timeline__title">{{ e.title }}</span>`,
-  `          <a v-if="e.pr && repo" class="vow-timeline__pr" :href="repo + '/pull/' + e.pr">#{{ e.pr }}</a>`,
-  `        </li>`,
-  `      </ul>`,
-  `    </Collapsible>`,
-  `  </div>`,
-  `</template>`,
-  ``,
-];
+/** The type Badge of a timeline item — only present when the entry carries a `type`. */
+function typeBadge(): UiNode {
+  return {
+    attrs: [
+      { expr: "e.type", kind: "cond", type: "if" },
+      { expr: "e.type", kind: "bound", name: "label" },
+      { expr: "e.variant", kind: "bound", name: "variant" },
+    ],
+    children: [],
+    kind: "component",
+    name: "Badge",
+  };
+}
+
+/** The PR link of a timeline item — only present when the entry has a PR and a repo is known. */
+function prLink(): UiNode {
+  return {
+    attrs: [
+      { expr: "e.pr && repo", kind: "cond", type: "if" },
+      { kind: "static", name: "class", value: "vow-timeline__pr" },
+      { expr: "repo + '/pull/' + e.pr", kind: "bound", name: "href" },
+    ],
+    children: [
+      { kind: "text", text: "#" },
+      { expr: "e.pr", kind: "interp" },
+    ],
+    kind: "element",
+    tag: "a",
+  };
+}
+
+/** One change `<li>` in a group — its optional type Badge, its title and its optional PR link. */
+function timelineItem(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-timeline__item" }],
+    children: [
+      typeBadge(),
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-timeline__title" }],
+        children: [{ expr: "e.title", kind: "interp" }],
+        kind: "element",
+        tag: "span",
+      },
+      prLink(),
+    ],
+    for: { as: "e", each: "g.items", index: "i", key: "i" },
+    kind: "element",
+    tag: "li",
+  };
+}
+
+/** One release group — a Collapsible (v-model-bound open flag) wrapping its change list. */
+function timelineGroup(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-timeline__group" },
+      { expr: "open[gi]", kind: "model" },
+      {
+        expr: `g.version + ' · ' + g.date + ' · ' + g.items.length + ' changes'`,
+        kind: "bound",
+        name: "label",
+      },
+    ],
+    children: [
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-timeline__items" }],
+        children: [timelineItem()],
+        kind: "element",
+        tag: "ul",
+      },
+    ],
+    for: { as: "g", each: "groups", index: "gi", key: "g.version" },
+    kind: "component",
+    name: "Collapsible",
+  };
+}
+
+/** The timeline view tree — a `<div>` holding a Collapsible per release group. */
+function timelineView(): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-timeline" }],
+    children: [timelineGroup()],
+    kind: "element",
+    tag: "div",
+  };
+}
 
 /**
  * The git-derived timeline as a generated SFC — the history baked in at generate time, grouped by date,
  * each date a Collapsible, type Badges + PR links. Shared by @vow/docs (`::: timeline`) and the app
  * generator (a `timeline:` view) — built from `gitTimeline`, vow's own primitives, never hand-typed.
+ * A canonical `Component` rendered through @vow/component — framework-neutral, never raw Vue.
  */
 export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: string): string {
   const groups = toGroups(entries);
   // Each date is a Collapsible — all closed except the most recent (the first group).
   const openFlags = Array.from({ length: groups.length }, (_unused, index) => index === 0);
-  const initialOpen = JSON.stringify(openFlags);
-  return [
-    `<script setup lang="ts">`,
-    `// Generated from git — the derived timeline. The history is the source; do not edit.`,
-    `import { ref } from "vue";`,
-    `import Badge from "./Badge.vue";`,
-    `import Collapsible from "./Collapsible.vue";`,
-    `const groups: ${GROUPS_TYPE} = ${JSON.stringify(groups)};`,
-    `const repo = ${JSON.stringify(repoUrl ?? "")};`,
-    `const open = ref<boolean[]>(${initialOpen});`,
-    `</script>`,
-    ``,
-    ...TIMELINE_TEMPLATE,
-  ].join("\n");
+  const component: Component = {
+    doc: ["Generated from git — the derived timeline. The history is the source; do not edit."],
+    imports: [
+      { from: "vue", names: ["ref"] },
+      { default: "Badge", from: "./Badge.vue" },
+      { default: "Collapsible", from: "./Collapsible.vue" },
+    ],
+    name: "VowTimeline",
+    setup: [
+      `const groups: ${GROUPS_TYPE} = ${JSON.stringify(groups)};`,
+      `const repo = ${JSON.stringify(repoUrl ?? "")};`,
+      `const open = ref<boolean[]>(${JSON.stringify(openFlags)});`,
+    ],
+    view: timelineView(),
+  };
+  return renderVueSfc(component);
 }
