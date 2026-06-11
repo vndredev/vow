@@ -6,11 +6,28 @@
 
 import type { Provider } from "./types.ts";
 
+/** A `<flag> <model>` pair when the task pins a model, else nothing — each provider passes its OWN flag
+ *  name, so the model axis stays provider-neutral (the provider says WHICH CLI, the model WHICH BRAIN). */
+function modelFlag(flag: string, model: string): readonly string[] {
+  if (model === "") {
+    return [];
+  }
+  return [flag, model];
+}
+
 /** Claude Code — `claude -p` headless: print mode, edits accepted, structured output. The plan is the
  *  prompt; the runner sets the cwd to the task's worktree. */
 export const claudeCode: Provider = {
   command: (task) => ({
-    args: ["-p", task.plan, "--permission-mode", "acceptEdits", "--output-format", "json"],
+    args: [
+      "-p",
+      task.plan,
+      "--permission-mode",
+      "acceptEdits",
+      "--output-format",
+      "json",
+      ...modelFlag("--model", task.model ?? ""),
+    ],
     bin: "claude",
   }),
   name: "claude-code",
@@ -19,7 +36,7 @@ export const claudeCode: Provider = {
 /** Codex CLI — `codex exec` non-interactive, `--full-auto` so edits apply without a prompt. */
 export const codex: Provider = {
   command: (task) => ({
-    args: ["exec", "--full-auto", task.plan],
+    args: ["exec", "--full-auto", ...modelFlag("--model", task.model ?? ""), task.plan],
     bin: "codex",
   }),
   name: "codex",
@@ -28,7 +45,7 @@ export const codex: Provider = {
 /** Gemini CLI — `gemini -p` headless, `--yolo` to apply edits without confirmation. */
 export const gemini: Provider = {
   command: (task) => ({
-    args: ["-p", task.plan, "--yolo"],
+    args: ["-p", task.plan, "--yolo", ...modelFlag("--model", task.model ?? "")],
     bin: "gemini",
   }),
   name: "gemini",
