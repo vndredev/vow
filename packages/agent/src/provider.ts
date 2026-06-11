@@ -28,12 +28,19 @@ function authUnset(auth: Auth | undefined, apiKeyEnv: string): readonly string[]
 /** A provider's default policy — no model override per role; the CLI picks its own brain. */
 const PROVIDER_DEFAULT: ModelPolicy = { audit: "", execute: "", plan: "" };
 
-/** Claude Code's per-role models — a capable model plans + audits, a cheaper one executes the gated,
- *  drift-proof plan (swap for the best of the day). Codex / Gemini stay on their own default until tuned. */
+/** A per-role model from the native vow setting (an env var), or the default — so the model is configured
+ *  IN vow, not hard-coded; override per deployment without a code change. */
+function modelSetting(envKey: string, fallback: string): string {
+  // oxlint-disable-next-line no-process-env -- the native per-role model setting (VOW_*_MODEL), defaulted
+  return process.env[envKey] ?? fallback;
+}
+
+/** Claude Code's per-role models — native vow settings defaulting to Fable (the most capable, for the
+ *  hardest + longest-running roles) for audit + plan, and a cheap Haiku for the bulk execute role. */
 const CLAUDE_MODELS: ModelPolicy = {
-  audit: "claude-opus-4-8",
-  execute: "claude-haiku-4-5",
-  plan: "claude-opus-4-8",
+  audit: modelSetting("VOW_AUDIT_MODEL", "fable"),
+  execute: modelSetting("VOW_EXECUTE_MODEL", "claude-haiku-4-5"),
+  plan: modelSetting("VOW_PLAN_MODEL", "fable"),
 };
 
 /** Claude Code — `claude -p` headless: print mode, edits accepted, structured output. The plan is the
