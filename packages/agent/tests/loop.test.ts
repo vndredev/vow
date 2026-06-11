@@ -49,3 +49,23 @@ test("runTask tears the worktree down even when a gate fails", async () => {
   expect(outcome.verdict.ok).toBe(false);
   expect(calls.at(-1)).toBe(`remove ${WORKTREE}`);
 });
+
+test("a failed provider run yields run.ok=false — the draft-PR trigger", async () => {
+  const ops: AgentOps = {
+    run: async (command) => {
+      await Promise.resolve();
+      if (command.bin === "sh") {
+        return { code: 0, output: "" };
+      }
+      return { code: 1, output: "boom" };
+    },
+    worktreeAdd: async () => {
+      await Promise.resolve();
+    },
+    worktreeRemove: async () => {
+      await Promise.resolve();
+    },
+  };
+  const outcome = await runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode });
+  expect(outcome.run.ok).toBe(false);
+});
