@@ -1,0 +1,19 @@
+import { expect, test } from "vite-plus/test";
+import { ciStateFrom } from "../src/ci.ts";
+
+test("ciStateFrom folds a check rollup into one verdict (fail beats pending beats pass)", () => {
+  const pass = '{"statusCheckRollup":[{"status":"COMPLETED","conclusion":"SUCCESS"}]}';
+  const fail =
+    '{"statusCheckRollup":[{"status":"COMPLETED","conclusion":"SUCCESS"},{"status":"COMPLETED","conclusion":"FAILURE"}]}';
+  const pending =
+    '{"statusCheckRollup":[{"status":"COMPLETED","conclusion":"SUCCESS"},{"status":"IN_PROGRESS","conclusion":""}]}';
+  expect(ciStateFrom(pass)).toBe("pass");
+  expect(ciStateFrom(fail)).toBe("fail");
+  expect(ciStateFrom(pending)).toBe("pending");
+});
+
+test("ciStateFrom treats an empty / absent / malformed rollup as pending", () => {
+  expect(ciStateFrom('{"statusCheckRollup":[]}')).toBe("pending");
+  expect(ciStateFrom("{}")).toBe("pending");
+  expect(ciStateFrom("not json")).toBe("pending");
+});

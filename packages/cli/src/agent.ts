@@ -2,7 +2,10 @@ import {
   DEFAULT_PROVIDER,
   PROVIDERS,
   buildPlan,
+  draftArgs,
   dryRunReport,
+  mergeArgs,
+  mergeDecision,
   providerFor,
   realOps,
   runReport,
@@ -10,9 +13,10 @@ import {
 } from "@vow/agent";
 import { agentsMd, vowDevelopSkill } from "./agent-templates.ts";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { headCommit, issueDetail } from "@vow/observability";
+import { headCommit, issueDetail, prCiState } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
 import type { Provider } from "@vow/agent";
+import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 /** Write `content` to `file` only when absent — `init` is idempotent, never clobbering edits. Returns the
@@ -144,19 +148,60 @@ function runAgent(rest: readonly string[]): number | Promise<number> {
   return runLive(args);
 }
 
+/** Squash-merge a green PR via gh — the agent closing the loop on a passing run. */
+function mergePr(pr: number, cwd: string): number {
+  execFileSync("gh", [...mergeArgs(pr)], { cwd, stdio: "inherit" });
+  process.stdout.write(`pr #${pr}: merged (green CI)\n`);
+  return 0;
+}
+
+/** Flip a red PR back to draft via gh — surfaced for a human, never merged off red. */
+function draftPr(pr: number, cwd: string): number {
+  execFileSync("gh", [...draftArgs(pr)], { cwd, stdio: "inherit" });
+  process.stdout.write(`pr #${pr}: set to draft (red CI — surfaced, not merged)\n`);
+  return 0;
+}
+
+/** Read PR `pr`'s CI and act on the decision — merge a green run, draft a red one, or report pending. */
+function actOnPr(pr: number, cwd: string): number {
+  const decision = mergeDecision(prCiState(cwd, pr));
+  if (decision === "merge") {
+    return mergePr(pr, cwd);
+  }
+  if (decision === "draft") {
+    return draftPr(pr, cwd);
+  }
+  process.stdout.write(`pr #${pr}: CI pending — not merged; re-run when checks complete\n`);
+  return 1;
+}
+
+/** `vow agent merge <pr>` — the autonomous merge: read the PR's CI, then merge green / draft red / wait
+ *  pending. It closes the loop without ever merging off a failing gate. */
+function runMerge(rest: readonly string[]): number {
+  const pr = issueArg(rest);
+  if (pr === 0) {
+    process.stderr.write("usage: vow agent merge <pr-number>\n");
+    return 1;
+  }
+  return actOnPr(pr, process.cwd());
+}
+
+/** The agent-native sub-commands by name — keeps the front door flat (no long if-chain). */
+const SUBCOMMANDS: Record<string, (rest: readonly string[]) => number | Promise<number>> = {
+  init: () => init(process.cwd()),
+  merge: runMerge,
+  plan: runPlan,
+  run: runAgent,
+};
+
 /** `vow agent <sub>` — the agent-native front door: `init` (scaffold) · `plan <n>` (the executor-ready
- *  plan) · `run <n> [--dry-run]` (the live run, or preview the provider command). */
+ *  plan) · `run <n> [--dry-run]` (the live run / preview) · `merge <pr>` (merge a green PR / draft a red). */
 export function agent(rest: readonly string[]): number | Promise<number> {
   const [sub] = rest;
-  if (sub === "init") {
-    return init(process.cwd());
+  const handler = SUBCOMMANDS[sub ?? ""];
+  if (handler) {
+    return handler(rest);
   }
-  if (sub === "plan") {
-    return runPlan(rest);
-  }
-  if (sub === "run") {
-    return runAgent(rest);
-  }
-  process.stderr.write("usage: vow agent <init|plan|run>\n");
+  process.stderr.write("usage: vow agent <init|plan|run|merge>\n");
   return 1;
 }
