@@ -4,6 +4,7 @@ import {
   buildPlan,
   draftArgs,
   dryRunReport,
+  mapLimit,
   mergeArgs,
   mergeDecision,
   providerFor,
@@ -119,20 +120,32 @@ function runDry(args: RunArgs): number {
   return 0;
 }
 
-/** `vow agent run <n> [--provider <name>]` (live) — worktree → dispatch the provider → re-run the gates →
- *  report. Exits non-zero when a gate fails (the runner would open a draft, not merge). */
-async function runLive(args: RunArgs): Promise<number> {
-  const cwd = process.cwd();
-  const spec = issueDetail(cwd, args.issue);
+/** A developed issue's outcome — the gate verdict + the formatted run report. */
+interface DevResult {
+  readonly ok: boolean;
+  readonly report: string;
+}
+
+/** Develop one issue via the live loop — worktree → dispatch the provider → re-run the gates — and format
+ *  its report; `ok` is the gate verdict (drives the exit / merge-vs-draft, and run-all's overall result). */
+async function develop(issue: number, provider: Provider, cwd: string): Promise<DevResult> {
+  const spec = issueDetail(cwd, issue);
   const outcome = await runTask({
     context: { commit: headCommit(cwd), verify: RUN_GATES },
     cwd,
     issue: spec,
     ops: realOps(),
-    provider: args.provider,
+    provider,
   });
-  process.stdout.write(`${runReport(spec, outcome)}\n`);
-  return exitFor(outcome.verdict.ok);
+  return { ok: outcome.verdict.ok, report: runReport(spec, outcome) };
+}
+
+/** `vow agent run <n> [--provider <name>]` (live) — develop the issue, print its report, exit on the
+ *  verdict (non-zero when a gate fails — the runner would open a draft, not merge). */
+async function runLive(args: RunArgs): Promise<number> {
+  const { ok, report } = await develop(args.issue, args.provider, process.cwd());
+  process.stdout.write(`${report}\n`);
+  return exitFor(ok);
 }
 
 /** Route `vow agent run` — `--dry-run` previews; otherwise the live run. */
@@ -146,6 +159,58 @@ function runAgent(rest: readonly string[]): number | Promise<number> {
     return runDry(args);
   }
   return runLive(args);
+}
+
+/** The positive issue numbers among `rest` (the args after the sub-command) — flags + non-numbers dropped. */
+export function issueNumbers(rest: readonly string[]): number[] {
+  const out: number[] = [];
+  for (const arg of rest.slice(1)) {
+    const num = Number(arg);
+    if (Number.isInteger(num) && num > 0) {
+      out.push(num);
+    }
+  }
+  return out;
+}
+
+/** How many issues `run-all` develops at once — capped so one machine isn't swamped by parallel agents. */
+const DEFAULT_CONCURRENCY = 3;
+
+/** A validated `vow agent run-all` invocation — the issue numbers + the resolved provider. */
+interface RunAllArgs {
+  readonly issues: readonly number[];
+  readonly provider: Provider;
+}
+
+/** Parse + validate `run-all` args (issue numbers + provider), or a usage/error string to print. */
+function parseRunAll(rest: readonly string[]): RunAllArgs | string {
+  const issues = issueNumbers(rest);
+  if (issues.length === 0) {
+    return "usage: vow agent run-all <issue-number>... [--provider <name>]";
+  }
+  const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
+  if (!provider) {
+    return `vow agent run-all: unknown provider (known: ${KNOWN_PROVIDERS})`;
+  }
+  return { issues, provider };
+}
+
+/** `vow agent run-all <n>... [--provider <name>]` — develop several issues concurrently (each in its own
+ *  worktree, capped), print every report, exit non-zero if any gate failed. vow's own orchestration. */
+async function runAll(rest: readonly string[]): Promise<number> {
+  const parsed = parseRunAll(rest);
+  if (typeof parsed === "string") {
+    process.stderr.write(`${parsed}\n`);
+    return 1;
+  }
+  const cwd = process.cwd();
+  const worker = async (issue: number): Promise<DevResult> => {
+    const result = await develop(issue, parsed.provider, cwd);
+    return result;
+  };
+  const done = await mapLimit(parsed.issues, DEFAULT_CONCURRENCY, worker);
+  process.stdout.write(`${done.map((each) => each.report).join("\n\n")}\n`);
+  return exitFor(done.every((each) => each.ok));
 }
 
 /** Squash-merge a green PR via gh — the agent closing the loop on a passing run. */
@@ -192,6 +257,7 @@ const SUBCOMMANDS: Record<string, (rest: readonly string[]) => number | Promise<
   merge: runMerge,
   plan: runPlan,
   run: runAgent,
+  "run-all": runAll,
 };
 
 /** `vow agent <sub>` — the agent-native front door: `init` (scaffold) · `plan <n>` (the executor-ready
@@ -202,6 +268,6 @@ export function agent(rest: readonly string[]): number | Promise<number> {
   if (handler) {
     return handler(rest);
   }
-  process.stderr.write("usage: vow agent <init|plan|run|merge>\n");
+  process.stderr.write("usage: vow agent <init|plan|run|run-all|merge>\n");
   return 1;
 }

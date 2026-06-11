@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { flagValue, issueArg } from "../src/agent.ts";
+import { flagValue, issueArg, issueNumbers } from "../src/agent.ts";
 
 const ISSUE = 42;
 
@@ -15,4 +15,11 @@ test("flagValue reads the value after a flag, else empty for a missing flag or a
   expect(flagValue(["run", "5", "--provider", "codex"], "--provider")).toBe("codex");
   expect(flagValue(["run", "5", "--dry-run"], "--provider")).toBe("");
   expect(flagValue(["run", "5", "--provider"], "--provider")).toBe("");
+});
+
+test("issueNumbers collects positive numeric args, dropping flags + non-numbers", () => {
+  expect(issueNumbers(["run-all", "1", "2", "abc", "--provider", "codex", "3"]).join(",")).toBe(
+    "1,2,3",
+  );
+  expect(issueNumbers(["run-all"])).toEqual([]);
 });

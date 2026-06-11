@@ -10,6 +10,7 @@ export * from "./dispatch.ts";
 export * from "./dry-run.ts";
 export * from "./loop.ts";
 export * from "./merge.ts";
+export * from "./orchestrate.ts";
 export * from "./plan.ts";
 export * from "./provider.ts";
 export * from "./real-ops.ts";
