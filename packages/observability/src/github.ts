@@ -374,7 +374,7 @@ function flag(name: string, value: Maybe<string>): readonly string[] {
 }
 
 /** The `gh issue create` flags for the optional label/assignee/milestone of an issue. */
-function createIssueOptions(input: Readonly<CreateIssueInput>): readonly string[] {
+export function createIssueOptions(input: Readonly<CreateIssueInput>): readonly string[] {
   const { assignee, labels, milestone } = input;
   return [
     ...flag("--label", (labels ?? []).join(",")),
