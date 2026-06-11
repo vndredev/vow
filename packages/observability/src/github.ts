@@ -2,6 +2,7 @@ import type {
   BadgeVariant,
   GitHubIssue,
   GitHubPr,
+  IssueDetail,
   IssueStatus,
   Maybe,
   Milestone,
@@ -151,6 +152,39 @@ export function parsePrs(json: string): GitHubPr[] {
       title: pr.title,
     })),
   ];
+}
+
+/** The issue's body when present + a string, else empty. */
+function bodyOf(raw: object): string {
+  if ("body" in raw && typeof raw.body === "string") {
+    return raw.body;
+  }
+  return "";
+}
+
+/** Parse a `gh issue view --json number,title,body` object. Pure; throws on malformed input. */
+export function parseIssueDetail(json: string): IssueDetail {
+  const raw: unknown = JSON.parse(json);
+  if (
+    typeof raw === "object" &&
+    raw !== null &&
+    "number" in raw &&
+    typeof raw.number === "number" &&
+    "title" in raw &&
+    typeof raw.title === "string"
+  ) {
+    return { body: bodyOf(raw), number: raw.number, title: raw.title };
+  }
+  throw new Error("malformed issue JSON");
+}
+
+/** One issue's developable detail via `gh issue view <n> --json number,title,body`. */
+export function issueDetail(cwd: string, issue: number): IssueDetail {
+  const out = execFileSync("gh", ["issue", "view", String(issue), "--json", "number,title,body"], {
+    cwd,
+    encoding: "utf8",
+  });
+  return parseIssueDetail(out);
 }
 
 const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/giu;

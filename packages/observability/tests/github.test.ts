@@ -2,6 +2,7 @@ import {
   deriveIssueStatus,
   featureIssueBody,
   linkedIssues,
+  parseIssueDetail,
   parseIssues,
   parsePrs,
   statusVariant,
@@ -123,4 +124,14 @@ test("statusOption maps the derived status to the Project's Status options", () 
   expect(statusOption("planned")).toBe("Todo");
   expect(statusOption("doing")).toBe("In Progress");
   expect(statusOption("done")).toBe("Done");
+});
+
+test("parseIssueDetail lifts number, title, body from a gh issue view object", () => {
+  const detail = parseIssueDetail(`{"number":${ISSUE_A},"title":"the loop","body":"do it"}`);
+  expect(detail).toEqual({ body: "do it", number: ISSUE_A, title: "the loop" });
+});
+
+test("parseIssueDetail defaults a missing body and throws on malformed input", () => {
+  expect(parseIssueDetail(`{"number":${ISSUE_B},"title":"t"}`).body).toBe("");
+  expect(() => parseIssueDetail("nonsense")).toThrow();
 });

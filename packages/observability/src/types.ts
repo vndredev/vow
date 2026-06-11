@@ -31,6 +31,13 @@ export interface GitHubIssue {
   readonly title: string;
 }
 
+/** One issue's developable detail — number, title, and the body (the spec the plan inlines). */
+export interface IssueDetail {
+  readonly body: string;
+  readonly number: number;
+  readonly title: string;
+}
+
 /** An open pull request, reduced to what links it back to its issues. */
 export interface GitHubPr {
   readonly body: string;
