@@ -150,15 +150,23 @@ function planForm(
 ): Contribution {
   const ofSlug = vow.form?.of ?? "";
   const entity = entities.find((candidate) => candidate.slug === ofSlug);
+  // Prove "rejects an incomplete submit" only when the entity has a required field (else no error).
+  const hasRequired = entity?.fields.some((field) => field.required) ?? false;
+  const files = [
+    {
+      path: path.join(outDir, `${vow.slug}.vue`),
+      source: emitForm(mutable(vow), mutableIndex(entities)),
+    },
+    { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },
+  ];
+  if (hasRequired) {
+    files.push({
+      path: path.join(outDir, `${vow.slug}.form.test.ts`),
+      source: emitFormTest(mutable(vow), hasRequired),
+    });
+  }
   return contribution({
-    files: [
-      {
-        path: path.join(outDir, `${vow.slug}.vue`),
-        source: emitForm(mutable(vow), mutableIndex(entities)),
-      },
-      { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },
-      { path: path.join(outDir, `${vow.slug}.form.test.ts`), source: emitFormTest(mutable(vow)) },
-    ],
+    files,
     pages: [navPage(vow)],
     primitives: ["Field", "Button", ...formFieldPrimitives(entity)],
   });
