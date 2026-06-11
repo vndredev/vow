@@ -7,14 +7,14 @@ const context = { commit: "abc1234", verify: ["vp check"] };
 
 /** A fake ops: records the worktree + run lifecycle; the provider (`claude`) exits 0, the verify gate
  *  exits `gateCode`. No git is touched and `claude` never runs. */
-function fakeOps(gateCode: number): { calls: string[]; ops: AgentOps } {
+function fakeOps(gateCode: number, runCode = 0): { calls: string[]; ops: AgentOps } {
   const calls: string[] = [];
   const ops: AgentOps = {
     run: async (command) => {
       await Promise.resolve();
       calls.push(`run ${command.bin}`);
       if (command.bin === "claude") {
-        return { code: 0, output: "ok" };
+        return { code: runCode, output: "ok" };
       }
       return { code: gateCode, output: "" };
     },
@@ -68,4 +68,17 @@ test("a failed provider run yields run.ok=false — the draft-PR trigger", async
   };
   const outcome = await runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode });
   expect(outcome.run.ok).toBe(false);
+});
+
+test("a successful run is published — pushed + a PR opened before the worktree is torn down", async () => {
+  const { calls, ops } = fakeOps(0);
+  await runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode });
+  expect(calls).toContain("run gh");
+  expect(calls.lastIndexOf("run gh")).toBeLessThan(calls.indexOf(`remove ${WORKTREE}`));
+});
+
+test("a failed provider run is NOT published — no PR for work that never happened", async () => {
+  const { calls, ops } = fakeOps(0, 1);
+  await runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode });
+  expect(calls).not.toContain("run gh");
 });
