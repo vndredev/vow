@@ -15,9 +15,15 @@ import {
   runReport,
   runTask,
 } from "@vow/agent";
-import { agentsMd, vowDevelopSkill, vowOrchestrateSkill } from "./agent-templates.ts";
+import {
+  agentsMd,
+  vowAuditSkill,
+  vowDevelopSkill,
+  vowOrchestrateSkill,
+} from "./agent-templates.ts";
 import {
   auditIssue,
+  auditPrompt,
   createIssue,
   headCommit,
   issueDetail,
@@ -52,6 +58,7 @@ function init(cwd: string): number {
       path.join(cwd, ".claude", "skills", "vow-orchestrate", "SKILL.md"),
       vowOrchestrateSkill(),
     ),
+    scaffold(path.join(cwd, ".claude", "skills", "vow-audit", "SKILL.md"), vowAuditSkill()),
   ];
   for (const action of actions) {
     process.stdout.write(`  ${action}\n`);
@@ -344,12 +351,9 @@ function runMerge(rest: readonly string[]): number {
 
 /** `vow agent audit --file <findings.json>` — file each confirmed finding as a labelled, milestoned vow
  *  issue (the audit → plan step; the plan lives in vow, never a side file). Prints each issue URL. */
-function runAudit(rest: readonly string[]): number {
-  const file = flagValue(rest, "--file");
-  if (file === "") {
-    process.stderr.write("usage: vow agent audit --file <findings.json>\n");
-    return 1;
-  }
+/** File each finding from a findings JSON file as a labelled, milestoned vow issue; prints each URL + a
+ *  count (the audit -> plan step — findings become issues, never a side-file). */
+function runAuditFile(file: string): number {
   const cwd = process.cwd();
   const findings = parseFindings(readFileSync(file, "utf8"));
   for (const finding of findings) {
@@ -357,6 +361,23 @@ function runAudit(rest: readonly string[]): number {
   }
   process.stdout.write(`filed ${findings.length} issue(s)\n`);
   return 0;
+}
+
+/** `vow agent audit --prompt <dimension>` prints an audit agent's instruction; `--file <findings.json>`
+ *  files the findings as vow issues (the audit -> plan flow, a host workflow fanning out the audit between
+ *  the two). */
+function runAudit(rest: readonly string[]): number {
+  const dimension = flagValue(rest, "--prompt");
+  if (dimension !== "") {
+    process.stdout.write(`${auditPrompt(dimension)}\n`);
+    return 0;
+  }
+  const file = flagValue(rest, "--file");
+  if (file !== "") {
+    return runAuditFile(file);
+  }
+  process.stderr.write("usage: vow agent audit (--prompt <dimension> | --file <findings.json>)\n");
+  return 1;
 }
 
 /** The agent-native sub-commands by name — keeps the front door flat (no long if-chain). */
