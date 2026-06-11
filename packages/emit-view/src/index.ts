@@ -43,4 +43,4 @@ export {
   viewProves,
 } from "./view-scenarios.ts";
 export { emitCompositionTest, emitFormTest, emitViewTest } from "./view-test.ts";
-export { emitProse, emitView, referencedPrimitives } from "./view.ts";
+export { buildView, emitProse, emitView, referencedPrimitives } from "./view.ts";

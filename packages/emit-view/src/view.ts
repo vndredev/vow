@@ -11,29 +11,12 @@ function importFor(name: string): ImportDecl {
   return { default: name, from: `./${name}.vue` };
 }
 
-/** The primitives a `## view` references directly — so the plugin can materialise each adapter on demand. */
-export function referencedPrimitives(
+/** A `## view` mapped ONCE: the rendered SFC + the primitives it references. planView needs both, so this
+ *  avoids mapping the node tree twice (emitView + referencedPrimitives each re-mapped it). */
+export function buildView(
   view: ReadonlyVow,
   entities: readonly string[] = [],
-): string[] {
-  if (!defined(view.view)) {
-    return [];
-  }
-  const acc = new Set<string>();
-  for (const node of view.view) {
-    for (const name of componentsIn(mapNode(node.type, node.value, entities))) {
-      acc.add(name);
-    }
-  }
-  return [...acc].filter((name) => PRIMITIVES.includes(name));
-}
-
-/**
- * A view from a YAML `## view` — a list of components rendered to a Vue SFC, wrapped in a `vow-app`
- * root. `entities` are the entity slugs a `list:` may reference; every `<Component>` in the result
- * (primitives + referenced views) is imported from its `.generated/` `.vue`.
- */
-export function emitView(view: ReadonlyVow, entities: readonly string[] = []): string {
+): { readonly primitives: string[]; readonly sfc: string } {
   if (!defined(view.view)) {
     throw new Error(`emit-view: vow "${view.slug}" has no \`## view\``);
   }
@@ -44,15 +27,39 @@ export function emitView(view: ReadonlyVow, entities: readonly string[] = []): s
     kind: "element",
     tag: "div",
   };
+  const referenced = [...componentsIn(root)];
   const component: Component = {
     doc: [
       `Generated from vow "${view.slug}" (a \`## view\`). The vow is the source — do not edit.`,
     ],
-    imports: [...componentsIn(root)].map((name) => importFor(name)),
+    imports: referenced.map((name) => importFor(name)),
     name: pascalCase(view.slug),
     view: root,
   };
-  return renderVueSfc(component);
+  return {
+    primitives: referenced.filter((name) => PRIMITIVES.includes(name)),
+    sfc: renderVueSfc(component),
+  };
+}
+
+/** The primitives a `## view` references directly — so the plugin can materialise each adapter on demand. */
+export function referencedPrimitives(
+  view: ReadonlyVow,
+  entities: readonly string[] = [],
+): string[] {
+  if (!defined(view.view)) {
+    return [];
+  }
+  return buildView(view, entities).primitives;
+}
+
+/**
+ * A view from a YAML `## view` — a list of components rendered to a Vue SFC, wrapped in a `vow-app`
+ * root. `entities` are the entity slugs a `list:` may reference; every `<Component>` in the result
+ * (primitives + referenced views) is imported from its `.generated/` `.vue`.
+ */
+export function emitView(view: ReadonlyVow, entities: readonly string[] = []): string {
+  return buildView(view, entities).sfc;
 }
 
 /**
