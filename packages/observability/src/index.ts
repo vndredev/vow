@@ -214,6 +214,16 @@ export function gitRemoteUrl(cwd: string): Maybe<string> {
   }
 }
 
+/** The short SHA of HEAD (`abc1234`), or `"unknown"` when git can't be read — the commit a plan is written
+    against, so a stale plan (HEAD moved) can be caught before an executor touches anything. */
+export function headCommit(cwd: string): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd, encoding: "utf8" }).trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 /**
  * The git timeline for a repo — the first-parent history of `ref` (default `main`, so only merged work
  * shows, never an in-flight feature branch), newest first; each squashed PR is one entry. Returns `[]`

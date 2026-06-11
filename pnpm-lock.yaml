@@ -234,6 +234,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@vow/agent':
+        specifier: workspace:*
+        version: link:../agent
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability
