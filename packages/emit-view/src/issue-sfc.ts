@@ -23,6 +23,16 @@ const ISSUE_ACTION_BUTTON =
   `<Button :label="it.status === 'done' ? 'Reopen' : 'Close'"` +
   ` @click="it.status === 'done' ? reopenIssue(it.issue.number) : closeIssue(it.issue.number)" />`;
 
+/**
+ * The agent-session link the three issue layouts share — present only when the issue carries a `session`
+ * (an open PR redeeming it, i.e. a `doing` issue). It points the human at the PR (a new tab) to watch the
+ * run, closing the drag -> PR -> doing -> merge -> done loop in the studio. Plain `<a>` (an EXTERNAL URL,
+ * not a router link); `rel="noreferrer"` since it leaves the app.
+ */
+const ISSUE_SESSION_LINK =
+  `<a v-if="it.session" class="vow-issue-session" :href="it.session.url"` +
+  ` target="_blank" rel="noreferrer">Watch run #{{ it.session.number }}</a>`;
+
 const TABLE_TEMPLATE = [
   `<template>`,
   `  <table class="vow-table vow-issue-table">`,
@@ -45,7 +55,10 @@ const TABLE_TEMPLATE = [
   `          <Badge v-for="l in it.issue.labels" :key="l" :label="l" variant="neutral" />`,
   `        </td>`,
   `        <td class="vow-table__cell">{{ it.issue.assignees.join(", ") }}</td>`,
-  `        <td class="vow-table__cell">${ISSUE_ACTION_BUTTON}</td>`,
+  `        <td class="vow-table__cell vow-issue-table__actions">`,
+  `          ${ISSUE_SESSION_LINK}`,
+  `          ${ISSUE_ACTION_BUTTON}`,
+  `        </td>`,
   `      </tr>`,
   `    </tbody>`,
   `  </table>`,
@@ -85,6 +98,7 @@ const BOARD_TEMPLATE = [
   `      <article v-for="it in col.items" :key="it.issue.number" class="vow-board__card">`,
   `        <span class="vow-issue-board__num">#{{ it.issue.number }}</span>`,
   `        <span class="vow-issue-board__title">{{ it.issue.title }}</span>`,
+  `        ${ISSUE_SESSION_LINK}`,
   `        ${ISSUE_ACTION_BUTTON}`,
   `      </article>`,
   `    </div>`,
@@ -157,6 +171,7 @@ const ROADMAP_TEMPLATE = [
   `            ${ISSUE_ACTION_BUTTON}`,
   `          </div>`,
   `          <span class="vow-roadmap__title">{{ it.issue.title }}</span>`,
+  `          ${ISSUE_SESSION_LINK}`,
   `        </li>`,
   `      </ul>`,
   `    </section>`,

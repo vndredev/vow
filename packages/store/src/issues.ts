@@ -7,7 +7,8 @@ import { asNumber, asString, isObject, toStringArray } from "./guards.ts";
  * bundle so it pulls in no node code (GitHub is the single source; this view is read-only).
  */
 
-/** One issue on the plan — mirrors `@vow/observability`'s `PlanItem` (the `/__vow/issues` shape). */
+/** One issue on the plan — mirrors `@vow/observability`'s `PlanItem` (the `/__vow/issues` shape). The
+ *  `session` is the open PR redeeming a `doing` issue — the link the human follows to watch the run. */
 export interface IssueItem {
   readonly issue: {
     readonly assignees: readonly string[];
@@ -17,10 +18,12 @@ export interface IssueItem {
     readonly state: "open" | "closed";
     readonly title: string;
   };
+  readonly session?: { readonly number: number; readonly url: string };
   readonly status: "planned" | "doing" | "done";
 }
 
 type Milestone = NonNullable<IssueItem["issue"]["milestone"]>;
+type Session = NonNullable<IssueItem["session"]>;
 
 /** Narrow a free-form status to the plan's three states (anything else is treated as planned). */
 function toStatus(value: unknown): IssueItem["status"] {
@@ -52,6 +55,20 @@ function toMilestoneList(value: unknown): Milestone[] {
   return [{ title }];
 }
 
+/** Shape a parsed session into a single-element list (when it is an object with a numeric `number` and a
+ *  string `url`) or an empty one — so a `doing` item carries the link and a malformed one simply omits it.
+ *  The list form lets `parseIssuePlan` add the optional field by spreading — no `undefined` literal. */
+function toSessionList(value: unknown): Session[] {
+  if (!isObject(value)) {
+    return [];
+  }
+  const { number, url } = value;
+  if (typeof number === "number" && typeof url === "string") {
+    return [{ number, url }];
+  }
+  return [];
+}
+
 /** Shape a parsed issue object into the read-only `IssueItem["issue"]`, defaulting any missing field. */
 function toIssueShape(value: Readonly<Record<string, unknown>>): IssueItem["issue"] {
   const base = {
@@ -67,6 +84,15 @@ function toIssueShape(value: Readonly<Record<string, unknown>>): IssueItem["issu
   return base;
 }
 
+/** Add the optional `session` to a base item by spreading the single-element list `toSessionList` returns
+ *  (a valid session) or the empty one (none) — keeping the caller free of an `undefined` literal. */
+function withSession(base: Omit<IssueItem, "session">, value: unknown): IssueItem[] {
+  for (const session of toSessionList(value)) {
+    return [{ ...base, session }];
+  }
+  return [base];
+}
+
 /** Parse a `/__vow/issues` JSON value into a validated `IssueItem[]`, keeping only the well-formed entries
  *  (a status + an issue object) — so a malformed plan degrades to a clean, typed array. */
 export function parseIssuePlan(value: unknown): IssueItem[] {
@@ -77,7 +103,11 @@ export function parseIssuePlan(value: unknown): IssueItem[] {
   const out: IssueItem[] = [];
   for (const entry of list) {
     if (isObject(entry) && isObject(entry["issue"])) {
-      out.push({ issue: toIssueShape(entry["issue"]), status: toStatus(entry["status"]) });
+      const base = {
+        issue: toIssueShape(entry["issue"]),
+        status: toStatus(entry["status"]),
+      } as const;
+      out.push(...withSession(base, entry["session"]));
     }
   }
   return out;

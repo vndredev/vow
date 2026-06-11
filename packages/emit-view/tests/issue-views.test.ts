@@ -73,6 +73,15 @@ test("each issue SFC emits the close/reopen action button on the shared store se
   }
 });
 
+test("each issue SFC links the agent session (the open PR) when a doing item carries one", () => {
+  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    expect(sfc).toContain('v-if="it.session"');
+    expect(sfc).toContain(':href="it.session.url"');
+    expect(sfc).toContain("Watch run #{{ it.session.number }}");
+    expect(sfc).toContain('target="_blank"');
+  }
+});
+
 test("the changelog timeline groups entries under their version", () => {
   const sfc = emitTimelineSfc([{ date: "2026-06-09", title: "the cli", version: "v0.0.1" }], "");
   expect(sfc).toContain("v0.0.1");

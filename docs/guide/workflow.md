@@ -11,20 +11,20 @@ vow's whole reason is that **the board mirrors reality, 1:1** — and that holds
 
 A **✅** means a gate enforces it — it can't be skipped. A **❌** (or **◑**, partial) means it's still on discipline: the work that's left before "perfect" is mechanical.
 
-| #   | Step             | Anchor                       | The check that secures it                                      | Status |
-| --- | ---------------- | ---------------------------- | -------------------------------------------------------------- | ------ |
-| 1   | **Plan**         | an Issue (element + why)     | the issue template, enforced in CI                             | ✅     |
-| 2   | **Pick up**      | Issue → `doing`              | a trigger (board drag · channel · `vow agent run`)             | ❌     |
-| 3   | **Spec**         | a gated, self-contained plan | `buildPlan` — STOP conditions + commit stamp                   | ✅     |
-| 4   | **Branch**       | never `main`                 | branch protection (PR-only, no admin bypass), **owned by vow** | ✅     |
-| 5   | **Develop**      | an isolated worktree         | the framework-neutrality + layer-DAG gates                     | ✅     |
-| 6   | **Verify**       | local green                  | `vp check` · `pnpm -r test` · coverage · smoke                 | ✅     |
-| 7   | **Document**     | a doc page, 1:1              | the docs-drift gate; a "has-a-doc" gate is still missing       | ◑      |
-| 8   | **PR**           | a PR (`Closes #N`)           | CI gates on `vp lint` (no silent-green typecheck)              | ✅     |
-| 9   | **Board: doing** | the open PR                  | `deriveIssueStatus` (open + a PR → doing)                      | ✅     |
-| 10  | **Merge**        | green → the **agent** merges | the agent-merge step (a red run → a draft, never merged)       | ❌     |
-| 11  | **Board: done**  | merged / closed              | `deriveIssueStatus` (closed → done)                            | ✅     |
-| 12  | **Reconcile**    | the backlog stays true       | a mechanical reconcile (issues + milestones)                   | ❌     |
+| #   | Step             | Anchor                       | The check that secures it                                                   | Status |
+| --- | ---------------- | ---------------------------- | --------------------------------------------------------------------------- | ------ |
+| 1   | **Plan**         | an Issue (element + why)     | the issue template, enforced in CI                                          | ✅     |
+| 2   | **Pick up**      | Issue → `doing`              | a trigger (board drag · channel · `vow agent run`)                          | ❌     |
+| 3   | **Spec**         | a gated, self-contained plan | `buildPlan` — STOP conditions + commit stamp                                | ✅     |
+| 4   | **Branch**       | never `main`                 | branch protection (PR-only, no admin bypass), **owned by vow**              | ✅     |
+| 5   | **Develop**      | an isolated worktree         | the framework-neutrality + layer-DAG gates                                  | ✅     |
+| 6   | **Verify**       | local green                  | `vp check` · `pnpm -r test` · coverage · smoke                              | ✅     |
+| 7   | **Document**     | a doc page, 1:1              | the docs-drift gate; a "has-a-doc" gate is still missing                    | ◑      |
+| 8   | **PR**           | a PR (`Closes #N`)           | CI gates on `vp lint` (no silent-green typecheck)                           | ✅     |
+| 9   | **Board: doing** | the open PR + a watch link   | `deriveIssueStatus` (open + a PR → doing); the issue links its PR (the run) | ✅     |
+| 10  | **Merge**        | green → the **agent** merges | the agent-merge step (a red run → a draft, never merged)                    | ❌     |
+| 11  | **Board: done**  | merged / closed              | `deriveIssueStatus` (closed → done)                                         | ✅     |
+| 12  | **Reconcile**    | the backlog stays true       | a mechanical reconcile (issues + milestones)                                | ❌     |
 
 ## Secured vs missing
 

@@ -38,16 +38,24 @@ export interface IssueDetail {
   readonly title: string;
 }
 
-/** An open pull request, reduced to what links it back to its issues. */
+/** An open pull request, reduced to what links it back to its issues + the URL the human watches it at. */
 export interface GitHubPr {
   readonly body: string;
   readonly number: number;
   readonly title: string;
+  readonly url: string;
 }
 
-/** One issue on the plan, with its derived status. */
+/** The agent's session link for an issue — the open PR that closes it, where the run is watched. */
+export interface AgentSession {
+  readonly number: number;
+  readonly url: string;
+}
+
+/** One issue on the plan, with its derived status + (when `doing`) the agent session that's redeeming it. */
 export interface PlanItem {
   readonly issue: GitHubIssue;
+  readonly session?: AgentSession;
   readonly status: IssueStatus;
 }
 

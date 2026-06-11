@@ -1,5 +1,6 @@
 import { createList, useCollection } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
+import { parseIssuePlan } from "../src/issues.ts";
 
 /**
  * The store is DB-backed via fetch; with no dev server the fetch rejects and the optimistic local array
@@ -38,6 +39,24 @@ test("reconcile drops a key removed upstream — no stale column lingers", () =>
   list.reconcile([{ id: "1", title: "b" }]);
   // Note dropped, title updated.
   expect(list.rows[0]).toEqual({ id: "1", title: "b" });
+});
+
+test("parseIssuePlan carries a doing item's agent session (the open PR + url); omits a malformed one", () => {
+  const plan = parseIssuePlan([
+    {
+      issue: { assignees: [], labels: [], number: 99, state: "open", title: "the loop" },
+      session: { number: 175, url: "https://github.com/o/r/pull/175" },
+      status: "doing",
+    },
+    {
+      issue: { assignees: [], labels: [], number: 5, state: "open", title: "planned" },
+      session: { url: "no number" },
+      status: "planned",
+    },
+  ]);
+  expect(plan[0]?.session).toEqual({ number: 175, url: "https://github.com/o/r/pull/175" });
+  // A malformed session (no numeric `number`) is dropped, not carried.
+  expect(plan[1]).not.toHaveProperty("session");
 });
 
 test("reconcile patches in place (keeps identity), adds new + drops missing", () => {
