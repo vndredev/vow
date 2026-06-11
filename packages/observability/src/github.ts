@@ -50,7 +50,8 @@ interface RawPr {
 }
 
 /** Parse a JSON string expected to be an array, mapping each element through `lift`; `[]` on any
-    malformation. The `lift` carries the element type, so each parser stays type-safe. Pure. */
+    malformation. Non-object elements are filtered out (not coerced to a record), so `lift` only ever sees
+    an object — no unchecked widening of `unknown[]` to the typed element. Pure. */
 function parseJsonArray<T>(json: string, lift: (element: RawIssue & RawPr) => T): readonly T[] {
   let raw: unknown = NONE;
   try {
@@ -61,8 +62,12 @@ function parseJsonArray<T>(json: string, lift: (element: RawIssue & RawPr) => T)
   if (!Array.isArray(raw)) {
     return [];
   }
-  const elements: readonly (RawIssue & RawPr)[] = raw;
-  return elements.map((element) => lift(element));
+  const items: readonly unknown[] = raw;
+  return items
+    .filter(
+      (element): element is RawIssue & RawPr => typeof element === "object" && element !== null,
+    )
+    .map((element) => lift(element));
 }
 
 /** Lift a raw milestone into the plan's shape, dropping a missing `dueOn`. */
