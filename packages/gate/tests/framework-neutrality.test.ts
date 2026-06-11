@@ -14,10 +14,14 @@ const EMIT_PACKAGES = ["emit-view", "emit-entity", "emit-primitive", "docs", "ma
 
 /* Tracked, shrinking debt — the only emitters allowed to write raw framework syntax today: boot.ts (the
    framework-specific app entry) + sfc.ts (the docs prose SFC, awaits the model rewrite). issue-sfc.ts and
-   timeline.ts now route through the canonical model (#100), so they are no longer allowed to bypass it. */
-const ALLOW = ["boot.ts", "sfc.ts"];
+   timeline.ts now route through the canonical model (#100), so they are no longer allowed to bypass it.
+   Keyed by package-qualified path so the exemption points at exactly those two files — a future boot.ts or
+   sfc.ts in any other emit package is not silently exempt. */
+const ALLOW = ["emit-view/boot.ts", "docs/sfc.ts"];
 
-/** Read every emitter `.ts` source across the emit packages (sibling to this gate package). */
+/** Read every emitter `.ts` source across the emit packages (sibling to this gate package). The file key is
+ *  package-qualified (`<pkg>/<name>`) so the allowlist exempts exactly its intended files, not every
+ *  same-named file across packages. */
 function emitterSources(): EmitterSource[] {
   const packages = path.resolve(import.meta.dirname, "..", "..");
   const sources: EmitterSource[] = [];
@@ -25,7 +29,10 @@ function emitterSources(): EmitterSource[] {
     const srcDir = path.join(packages, pkg, "src");
     for (const name of readdirSync(srcDir)) {
       if (name.endsWith(".ts")) {
-        sources.push({ file: name, source: readFileSync(path.join(srcDir, name), "utf8") });
+        sources.push({
+          file: path.join(pkg, name),
+          source: readFileSync(path.join(srcDir, name), "utf8"),
+        });
       }
     }
   }

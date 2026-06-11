@@ -23,7 +23,9 @@ const MARKERS: readonly Marker[] = [
   { name: ":bind", re: /[^\w]:[a-z][\w-]*=/u },
 ];
 
-/** One emitter source file to scan — its name (the allowlist key) and its full contents. */
+/** One emitter source file to scan — its package-qualified path (`<pkg>/<name>`, the allowlist key) and its
+ *  full contents. Qualifying the key means the exemption points at exactly one file, never every same-named
+ *  file across packages. */
 export interface EmitterSource {
   readonly file: string;
   readonly source: string;
@@ -37,8 +39,8 @@ export interface FrameworkViolation {
 
 /**
  * Every raw-framework marker an emitter wrote, excluding the `allow` list — the tracked, shrinking debt
- * (today: `boot.ts`, the framework-specific app entry, plus `sfc.ts`, the docs prose SFC awaiting the
- * model rewrite). An empty result means every other emitter is framework-neutral. Pure: the caller reads
+ * (today: `emit-view/boot.ts`, the framework-specific app entry, plus `docs/sfc.ts`, the docs prose SFC
+ * awaiting the model rewrite). An empty result means every other emitter is framework-neutral. Pure: the caller reads
  * the files, this only matches — so the rule is unit-testable without the filesystem.
  */
 /** Source with block + line comments removed — so a marker inside a JSDoc example (e.g. `helpers.ts`
