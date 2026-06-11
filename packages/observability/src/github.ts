@@ -51,17 +51,11 @@ interface RawIssue {
 
 const ISSUE_NOT_FOUND = 0;
 
-interface RawPr {
-  readonly body?: string;
-  readonly number: number;
-  readonly title: string;
-  readonly url?: string;
-}
-
 /** Parse a JSON string expected to be an array, mapping each element through `lift`; `[]` on any
     malformation. Non-object elements are filtered out (not coerced to a record), so `lift` only ever sees
-    an object — no unchecked widening of `unknown[]` to the typed element. Pure. */
-function parseJsonArray<T>(json: string, lift: (element: RawIssue & RawPr) => T): readonly T[] {
+    an object — its fields stay `unknown` (only `RawIssue`'s all-optional shape), so a `lift` reading a
+    field must re-validate it rather than trust a predicate that never checked it. Pure. */
+function parseJsonArray<T>(json: string, lift: (element: RawIssue) => T): readonly T[] {
   let raw: unknown = NONE;
   try {
     raw = JSON.parse(json);
@@ -73,9 +67,7 @@ function parseJsonArray<T>(json: string, lift: (element: RawIssue & RawPr) => T)
   }
   const items: readonly unknown[] = raw;
   return items
-    .filter(
-      (element): element is RawIssue & RawPr => typeof element === "object" && element !== null,
-    )
+    .filter((element): element is RawIssue => typeof element === "object" && element !== null)
     .map((element) => lift(element));
 }
 
@@ -157,24 +149,38 @@ export function parseIssues(json: string): GitHubIssue[] {
   return [...parseJsonArray(json, (raw) => liftIssue(raw))];
 }
 
-/** Parse `gh pr list --json number,title,body,url` -> PRs. Pure; `[]` on malformed input. */
-export function parsePrs(json: string): GitHubPr[] {
-  return [
-    ...parseJsonArray(json, (pr) => ({
-      body: pr.body ?? "",
-      number: pr.number,
-      title: pr.title,
-      url: pr.url ?? "",
-    })),
-  ];
-}
-
 /** The issue's body when present + a string, else empty. */
 function bodyOf(raw: object): string {
   if ("body" in raw && typeof raw.body === "string") {
     return raw.body;
   }
   return "";
+}
+
+/** A raw object's `url` when present + a string, else empty — read defensively, as the shared predicate
+    asserts neither a PR's `url` nor its presence. */
+function urlOf(raw: object): string {
+  if ("url" in raw && typeof raw.url === "string") {
+    return raw.url;
+  }
+  return "";
+}
+
+/** Lift one raw element into a PR — number/title re-validated (as the issue path does), body/url read
+    defensively. The shared predicate narrows only to `RawIssue` (no non-optional PR field), so a malformed
+    payload yields the not-found number + empty strings rather than `undefined` typed as a valid `GitHubPr`. */
+function liftPr(raw: RawIssue): GitHubPr {
+  return {
+    body: bodyOf(raw),
+    number: liftNumber(raw),
+    title: liftTitle(raw),
+    url: urlOf(raw),
+  };
+}
+
+/** Parse `gh pr list --json number,title,body,url` -> PRs. Pure; `[]` on malformed input. */
+export function parsePrs(json: string): GitHubPr[] {
+  return [...parseJsonArray(json, (pr) => liftPr(pr))];
 }
 
 /** Parse a `gh issue view --json number,title,body` object. Pure; throws on malformed input. */

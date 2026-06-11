@@ -103,6 +103,13 @@ test("parsePrs keeps number, title, body, url (defaulting a missing url to empty
   expect(parsePrs(JSON.stringify([{ body: "x", number: 1, title: "t" }]))[0]?.url).toBe("");
 });
 
+test("parsePrs survives a malformed element — missing number/title default, never undefined", () => {
+  // A payload missing the (non-optional) number/title must not become an undefined pair typed as a PR.
+  // The PR path re-validates like the issue path, not trusting the predicate.
+  const prs = parsePrs(JSON.stringify([{ body: "Closes #5" }]));
+  expect(prs).toEqual([{ body: "Closes #5", number: 0, title: "", url: "" }]);
+});
+
 test("linkedIssues lifts every closing keyword, deduped; a bare mention is ignored", () => {
   expect(linkedIssues("Closes #56, fixes #57 and Resolves #56")).toEqual([ISSUE_A, ISSUE_B]);
   expect(linkedIssues("just mentions #99, no keyword")).toEqual([]);
