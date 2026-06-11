@@ -4,7 +4,7 @@
  * testable and nothing above this layer names a provider (the seam the #107 gate guards).
  */
 
-import type { Provider } from "./types.ts";
+import type { ModelPolicy, Provider } from "./types.ts";
 
 /** A `<flag> <model>` pair when the task pins a model, else nothing — each provider passes its OWN flag
  *  name, so the model axis stays provider-neutral (the provider says WHICH CLI, the model WHICH BRAIN). */
@@ -14,6 +14,17 @@ function modelFlag(flag: string, model: string): readonly string[] {
   }
   return [flag, model];
 }
+
+/** A provider's default policy — no model override per role; the CLI picks its own brain. */
+const PROVIDER_DEFAULT: ModelPolicy = { audit: "", execute: "", plan: "" };
+
+/** Claude Code's per-role models — a capable model plans + audits, a cheaper one executes the gated,
+ *  drift-proof plan (swap for the best of the day). Codex / Gemini stay on their own default until tuned. */
+const CLAUDE_MODELS: ModelPolicy = {
+  audit: "claude-opus-4-8",
+  execute: "claude-haiku-4-5",
+  plan: "claude-opus-4-8",
+};
 
 /** Claude Code — `claude -p` headless: print mode, edits accepted, structured output. The plan is the
  *  prompt; the runner sets the cwd to the task's worktree. */
@@ -30,6 +41,7 @@ export const claudeCode: Provider = {
     ],
     bin: "claude",
   }),
+  models: CLAUDE_MODELS,
   name: "claude-code",
 };
 
@@ -39,6 +51,7 @@ export const codex: Provider = {
     args: ["exec", "--full-auto", ...modelFlag("--model", task.model ?? ""), task.plan],
     bin: "codex",
   }),
+  models: PROVIDER_DEFAULT,
   name: "codex",
 };
 
@@ -48,6 +61,7 @@ export const gemini: Provider = {
     args: ["-p", task.plan, "--yolo", ...modelFlag("--model", task.model ?? "")],
     bin: "gemini",
   }),
+  models: PROVIDER_DEFAULT,
   name: "gemini",
 };
 

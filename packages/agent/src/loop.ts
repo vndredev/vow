@@ -1,6 +1,7 @@
 import type { TaskOutcome, TaskRequest } from "./types.ts";
 import { branchFor, buildPlan } from "./plan.ts";
 import { dispatch, gateCommand, worktreePath } from "./dispatch.ts";
+import { modelFor } from "./model.ts";
 import { verify } from "./verify.ts";
 
 /**
@@ -19,6 +20,8 @@ export async function runTask(request: TaskRequest): Promise<TaskOutcome> {
   const task = {
     branch,
     cwd: worktree,
+    // The runner develops the gated plan — the EXECUTE role, so a cheaper model suffices (drift-proof).
+    model: modelFor(provider.models, "execute"),
     plan: buildPlan(issue, context),
     title: issue.title,
   };

@@ -29,9 +29,11 @@ export interface Command {
   readonly bin: string;
 }
 
-/** A coding-CLI provider — the one seam every agent backend implements. */
+/** A coding-CLI provider — the one seam every agent backend implements. `models` is its own per-role
+ *  policy (its model IDs), so the loop resolves a role → this provider's model without naming a brain. */
 export interface Provider {
   readonly command: (task: AgentTask) => Command;
+  readonly models: ModelPolicy;
   readonly name: string;
 }
 
