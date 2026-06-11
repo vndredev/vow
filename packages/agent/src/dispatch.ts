@@ -1,4 +1,4 @@
-import type { AgentOps, AgentTask, DispatchResult, Provider } from "./types.ts";
+import type { AgentOps, AgentTask, Command, DispatchResult, Provider } from "./types.ts";
 
 /**
  * Run `provider` on `task` in `task.cwd` (an already-prepared worktree). Pure over `ops.run` — the worktree
@@ -28,4 +28,12 @@ export function worktreeRemoveArgs(path: string): readonly string[] {
  *  slashes become dashes (a flat directory name). */
 export function worktreePath(repo: string, branch: string): string {
   return `${repo}/.vow-worktrees/${branch.replaceAll("/", "-")}`;
+}
+
+/** Split a gate string into a binary + args, so a gate runs as a direct exec (argv) — never `sh -c
+ *  <string>`, which would make the gate text a shell-eval sink. Gates are plain `bin arg arg` (no shell
+ *  features), so whitespace tokenizing is enough. */
+export function gateCommand(gate: string): Command {
+  const [bin = "", ...args] = gate.trim().split(/\s+/u);
+  return { args, bin };
 }

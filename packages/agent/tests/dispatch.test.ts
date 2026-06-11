@@ -1,4 +1,10 @@
-import { claudeCode, dispatch, worktreeAddArgs, worktreeRemoveArgs } from "../src/index.ts";
+import {
+  claudeCode,
+  dispatch,
+  gateCommand,
+  worktreeAddArgs,
+  worktreeRemoveArgs,
+} from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import type { AgentOps } from "../src/types.ts";
 
@@ -48,4 +54,9 @@ test("the git worktree args are isolation-correct (fresh branch, forced teardown
     "/tmp/wt",
   ]);
   expect(worktreeRemoveArgs("/tmp/wt")).toContain("--force");
+});
+
+test("gateCommand splits a gate string into argv — no sh -c eval sink", () => {
+  expect(gateCommand("pnpm -r test")).toEqual({ args: ["-r", "test"], bin: "pnpm" });
+  expect(gateCommand("vp check")).toEqual({ args: ["check"], bin: "vp" });
 });
