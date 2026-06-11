@@ -3,6 +3,6 @@ import { expect, test } from "vite-plus/test";
 
 test("NONE is the canonical absence — defined() rejects it, mapDefined passes it through", () => {
   expect(defined(NONE)).toBe(false);
-  expect(mapDefined(NONE, (value) => value)).toBeUndefined();
+  expect(mapDefined(NONE, () => "mapped")).toBeUndefined();
   expect(defined("x")).toBe(true);
 });
