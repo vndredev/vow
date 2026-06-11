@@ -15,7 +15,7 @@ import {
   runReport,
   runTask,
 } from "@vow/agent";
-import { agentsMd, vowDevelopSkill } from "./agent-templates.ts";
+import { agentsMd, vowDevelopSkill, vowOrchestrateSkill } from "./agent-templates.ts";
 import {
   auditIssue,
   createIssue,
@@ -43,11 +43,15 @@ function scaffold(file: string, content: string): string {
 }
 
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
- *  AGENTS.md contract + a develop skill. Idempotent — re-running keeps every existing file. */
+ *  AGENTS.md contract + the develop & orchestrate skills. Idempotent — re-running keeps every file. */
 function init(cwd: string): number {
   const actions = [
     scaffold(path.join(cwd, "AGENTS.md"), agentsMd()),
     scaffold(path.join(cwd, ".claude", "skills", "vow-develop", "SKILL.md"), vowDevelopSkill()),
+    scaffold(
+      path.join(cwd, ".claude", "skills", "vow-orchestrate", "SKILL.md"),
+      vowOrchestrateSkill(),
+    ),
   ];
   for (const action of actions) {
     process.stdout.write(`  ${action}\n`);
