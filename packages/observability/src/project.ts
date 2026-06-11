@@ -123,7 +123,7 @@ function readOption(raw: unknown): Maybe<{ id: string; name: string }> {
 }
 
 /** Narrow a graphql `node.field` payload into a `StatusField`, throwing when it is malformed. */
-function readStatusField(data: Readonly<Json>): StatusField {
+export function readStatusField(data: Readonly<Json>): StatusField {
   const field = readObject(data, "node")?.["field"];
   const id = readString(field, "id");
   if (typeof id !== "string") {
@@ -151,7 +151,7 @@ function readItem(raw: unknown): Maybe<ProjectItem> {
 }
 
 /** Narrow a graphql `node.items.nodes` payload into `ProjectItem`s (skipping any malformed node). */
-function readProjectItems(data: Readonly<Json>): ProjectItem[] {
+export function readProjectItems(data: Readonly<Json>): ProjectItem[] {
   const items = readObject(data, "node")?.["items"];
   const out: ProjectItem[] = [];
   for (const raw of readArray(items, "nodes")) {
