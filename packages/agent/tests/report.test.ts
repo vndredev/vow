@@ -29,3 +29,13 @@ test("runReport flags a failed gate + a draft verdict", () => {
   expect(report).toContain("FAIL vp check");
   expect(report).toContain("would open a draft");
 });
+
+test("runReport reports a failed provider run as no-PR, even when the (meaningless) gates pass", () => {
+  const report = runReport(ISSUE, {
+    run: { ok: false, output: "boom" },
+    verdict: { ok: true, results: [{ command: "vp check", ok: true }] },
+  });
+  expect(report).toContain("provider run: failed");
+  expect(report).toContain("nothing developed, no PR");
+  expect(report).not.toContain("would merge");
+});

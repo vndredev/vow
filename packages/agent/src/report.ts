@@ -1,4 +1,4 @@
-import type { GateResult, IssueSpec, TaskOutcome, VerifyResult } from "./types.ts";
+import type { GateResult, IssueSpec, TaskOutcome } from "./types.ts";
 
 /** "ok" / "failed" for a boolean — the run-report status words. */
 function okText(ok: boolean): string {
@@ -16,9 +16,14 @@ function gateLine(gate: GateResult): string {
   return `  FAIL ${gate.command}`;
 }
 
-/** The headline verdict — what the runner does next given the re-run gates. */
-function verdictLine(verdict: VerifyResult): string {
-  if (verdict.ok) {
+/** The headline result — what the runner does next. A failed provider run develops nothing, so the gate
+ *  verdict (run on an unchanged worktree) is meaningless: no PR opens. Only a successful run reports the
+ *  merge-vs-draft verdict. */
+function resultLine(outcome: TaskOutcome): string {
+  if (!outcome.run.ok) {
+    return "result: the provider run failed — nothing developed, no PR opened";
+  }
+  if (outcome.verdict.ok) {
     return "result: verified — the runner would merge";
   }
   return "result: a gate failed — the runner would open a draft";
@@ -36,6 +41,6 @@ export function runReport(issue: IssueSpec, outcome: TaskOutcome): string {
     `provider run: ${okText(outcome.run.ok)}`,
     `gates:`,
     gates,
-    verdictLine(outcome.verdict),
+    resultLine(outcome),
   ].join("\n");
 }
