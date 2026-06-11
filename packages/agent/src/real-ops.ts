@@ -1,4 +1,4 @@
-import type { AgentOps, RunResult } from "./types.ts";
+import type { AgentOps, Command, RunResult } from "./types.ts";
 import { worktreeAddArgs, worktreeRemoveArgs } from "./dispatch.ts";
 import { execFileSync } from "node:child_process";
 
@@ -31,11 +31,33 @@ function failOutput(error: unknown): string {
   return "unknown error";
 }
 
-/** Run a binary in `cwd` synchronously, capturing exit + stdout. The codebase shells via `execFileSync`;
- *  each agent run is its own process, so blocking here is fine — parallelism is across processes. */
-function execText(bin: string, args: readonly string[], cwd: string): RunResult {
+/** The child env with the command's `unsetEnv` vars removed — so stripping an API key makes the provider
+ *  authenticate via its subscription. The parent env unchanged otherwise. */
+function childEnv(unset: readonly string[] | undefined): NodeJS.ProcessEnv {
+  // oxlint-disable-next-line no-process-env -- the parent env to hand (filtered) to the child spawn
+  const parent = process.env;
+  if (!unset || unset.length === 0) {
+    return parent;
+  }
+  const drop = new Set(unset);
+  const env: NodeJS.ProcessEnv = {};
+  for (const key of Object.keys(parent)) {
+    if (!drop.has(key)) {
+      env[key] = parent[key];
+    }
+  }
+  return env;
+}
+
+/** Run a `command` in `cwd` synchronously, capturing exit + stdout (its `unsetEnv` stripped from the
+ *  child). The codebase shells via `execFileSync`; each agent run is its own process, so blocking is fine. */
+function execText(command: Command, cwd: string): RunResult {
   try {
-    const stdout = execFileSync(bin, [...args], { cwd, encoding: "utf8" });
+    const stdout = execFileSync(command.bin, [...command.args], {
+      cwd,
+      encoding: "utf8",
+      env: childEnv(command.unsetEnv),
+    });
     return { code: 0, output: stdout };
   } catch (error) {
     return { code: exitStatus(error), output: failOutput(error) };
@@ -52,7 +74,7 @@ export function realOps(): AgentOps {
   return {
     run: async (command, cwd) => {
       await Promise.resolve();
-      return execText(command.bin, command.args, cwd);
+      return execText(command, cwd);
     },
     worktreeAdd: async (path, branch) => {
       await Promise.resolve();

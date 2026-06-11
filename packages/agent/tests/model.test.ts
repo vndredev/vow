@@ -28,3 +28,9 @@ test("claudeCode's policy executes on a different (cheaper) model than it plans 
 test("an un-tuned provider defaults to its own brain — no model override per role", () => {
   expect(modelFor(codex.models, "execute")).toBe("");
 });
+
+test("a provider strips its API key by default (subscription auth), keeps it on --auth api", () => {
+  const base = { branch: "b", cwd: ".", plan: "p", title: "t" };
+  expect(claudeCode.command(base).unsetEnv).toContain("ANTHROPIC_API_KEY");
+  expect(claudeCode.command({ auth: "api", ...base }).unsetEnv).toEqual([]);
+});

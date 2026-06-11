@@ -52,12 +52,13 @@ async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutco
  * verify (verify must see the agent's changes), so its lifecycle lives here.
  */
 export async function runTask(request: TaskRequest): Promise<TaskOutcome> {
-  const { context, cwd, issue, ops, provider } = request;
+  const { auth = "subscription", context, cwd, issue, ops, provider } = request;
   const branch = branchFor(issue);
   // A path distinct from the repo root — so `git worktree add` succeeds and the run is isolated; `cwd`
   // (the repo) only seeds that path.
   const worktree = worktreePath(cwd, branch);
   const task = {
+    auth,
     branch,
     cwd: worktree,
     // The runner develops the gated plan — the EXECUTE role, so a cheaper model suffices (drift-proof).
