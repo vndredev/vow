@@ -4,14 +4,13 @@ import { type Page, navPage } from "./vows.ts";
 import { type ReadonlyVow, defined } from "@vow/core";
 import {
   boardRefs,
+  buildView,
   cardsRefs,
   emitForm,
   emitFormTest,
-  emitView,
   emitViewTest,
   issueLayouts,
   listedEntities,
-  referencedPrimitives,
   statsRefs,
   usesTimeline,
 } from "@vow/emit-view";
@@ -110,11 +109,12 @@ function planView(vow: ReadonlyVow, outDir: string, entitySlugs: readonly string
     throw new Error(`vow "${vow.slug}": an \`emit view\` needs a \`## view\` block`);
   }
   const pages = viewPages(vow);
+  const built = buildView(mutable(vow), entitySlugs);
   return contribution({
     boards: boardRefs(mutable(vow)),
     cards: cardsRefs(mutable(vow)),
     files: [
-      { path: path.join(outDir, `${vow.slug}.vue`), source: emitView(mutable(vow), entitySlugs) },
+      { path: path.join(outDir, `${vow.slug}.vue`), source: built.sfc },
       { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },
     ],
     issueViews: [...issueLayouts(mutable(vow))],
@@ -122,7 +122,7 @@ function planView(vow: ReadonlyVow, outDir: string, entitySlugs: readonly string
     needsLayout: true,
     needsTimeline: usesTimeline(mutable(vow)),
     pages,
-    primitives: referencedPrimitives(mutable(vow), entitySlugs),
+    primitives: built.primitives,
     stats: statsRefs(mutable(vow)),
   });
 }
