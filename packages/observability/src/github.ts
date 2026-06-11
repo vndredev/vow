@@ -194,7 +194,7 @@ const ISSUE_REF = /#(\d+)/gu;
 
 /** The issue numbers in a closing clause's `#N` list (`#111, #112` -> [111, 112]). */
 function refsIn(clause: string): number[] {
-  return [...clause.matchAll(ISSUE_REF)].map((ref) => Number(ref[1]));
+  return [...clause.matchAll(ISSUE_REF)].map((ref: readonly string[]) => Number(ref[1]));
 }
 
 /**
