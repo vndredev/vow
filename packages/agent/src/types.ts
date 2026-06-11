@@ -3,12 +3,24 @@
  * (the repo forbids mixing a type + a value from one module; a dedicated `types.ts` is the convention).
  */
 
-/** A task for an autonomous coding agent: develop `plan` in `cwd`, on its own `branch`. */
+/** A task for an autonomous coding agent: develop `plan` in `cwd`, on its own `branch`, with `model` (when
+ *  set; else the provider's default). */
 export interface AgentTask {
   readonly branch: string;
   readonly cwd: string;
+  readonly model?: string;
   readonly plan: string;
   readonly title: string;
+}
+
+/** A model's role in the loop — the capable model plans + audits; a cheaper one executes the gated plan. */
+export type Role = "audit" | "execute" | "plan";
+
+/** Maps each role to the model that fills it — the best model of the day plugs in per role, no code change. */
+export interface ModelPolicy {
+  readonly audit: string;
+  readonly execute: string;
+  readonly plan: string;
 }
 
 /** A command to spawn — what to exec, built but never run in the pure core (so the mapping stays testable). */
