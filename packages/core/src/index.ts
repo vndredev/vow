@@ -7,7 +7,7 @@
  */
 
 export { uncoveredScenarios } from "./coverage.ts";
-export { asRecord, defined, isRecord, mapDefined, type Maybe } from "./guard.ts";
+export { NONE, asRecord, defined, isRecord, mapDefined, type Maybe } from "./guard.ts";
 export { parseVowMd } from "./parse.ts";
 export type { DeepReadonly, ReadonlyField, ReadonlyVow } from "./readonly.ts";
 export { deriveStatus } from "./rollup.ts";
