@@ -149,7 +149,7 @@ test("statusVariant maps to the board's colours", () => {
 
 test("featureIssueBody fills the feature template — element + why lead, the strand is a footer", () => {
   const body = featureIssueBody({ element: "the GitHub adapter", why: "the plan derives itself" });
-  expect(body).toContain("**What** — the GitHub adapter");
+  expect(body).toContain("**What**\n\nthe GitHub adapter");
   expect(body).toContain("**Why** — the plan derives itself");
   expect(body).toContain("Strand: generation · author layer");
   expect(body).toContain("[plan board](https://github.com/users/vndredev/projects/3)");
