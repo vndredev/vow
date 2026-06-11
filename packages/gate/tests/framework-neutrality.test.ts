@@ -7,12 +7,13 @@ import path from "node:path";
 type EmitterSource = Parameters<typeof frameworkViolations>[0][number];
 
 /* The emitter packages whose source must be framework-neutral — they emit through @vow/component, never
-   as raw SFC strings, so a React/Solid/Svelte adapter can render the same UiNode. */
-const EMIT_PACKAGES = ["emit-view", "emit-entity", "emit-primitive"];
+   as raw SFC strings, so a React/Solid/Svelte adapter can render the same UiNode. Includes the doc
+   emitters (docs/markdown), which the audit found bypassing the scan. */
+const EMIT_PACKAGES = ["emit-view", "emit-entity", "emit-primitive", "docs", "markdown"];
 
 /* Tracked, shrinking debt — the only emitters allowed to write raw framework syntax today: boot.ts (the
-   framework-specific app entry) + issue-sfc.ts / timeline.ts (await the model rewrite, #100). */
-const ALLOW = ["boot.ts", "issue-sfc.ts", "timeline.ts"];
+   framework-specific app entry) + issue-sfc.ts / timeline.ts / sfc.ts (await the model rewrite, #100). */
+const ALLOW = ["boot.ts", "issue-sfc.ts", "timeline.ts", "sfc.ts"];
 
 /** Read every emitter `.ts` source across the emit packages (sibling to this gate package). */
 function emitterSources(): EmitterSource[] {
