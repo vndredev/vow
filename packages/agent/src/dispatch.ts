@@ -13,9 +13,10 @@ export async function dispatch(
   return { ok: result.code === 0, output: result.output };
 }
 
-/** The `git worktree add` args that put `branch` at `path` (a fresh branch off HEAD). */
+/** The `git worktree add` args that put `branch` at `path` — `-B` (create-or-reset off HEAD) so a re-run
+ *  of an issue whose prior branch lingers (teardown drops the worktree, not the branch) doesn't fail. */
 export function worktreeAddArgs(path: string, branch: string): readonly string[] {
-  return ["worktree", "add", "-b", branch, path];
+  return ["worktree", "add", "-B", branch, path];
 }
 
 /** The `git worktree remove` args that tear `path` down (force — the run may have left changes). */

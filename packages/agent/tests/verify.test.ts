@@ -46,6 +46,11 @@ test("prTitle is a conventional-commit subject — defaulted to feat, lower-case
   expect(prTitle({ title: "X".repeat(OVERLONG) }).length).toBe(TITLE_MAX);
 });
 
+test("prTitle keeps a title that already opens with a conventional type — no feat: docs: double", () => {
+  expect(prTitle({ title: "docs: note the thing" })).toBe("docs: note the thing");
+  expect(prTitle({ title: "fix: a bug" })).toBe("fix: a bug");
+});
+
 test("stageArgs + commitArgs build the agent's worktree commit (commit skips the local hook)", () => {
   expect(stageArgs()).toEqual(["add", "-A"]);
   expect(commitArgs("feat: x")).toEqual(["commit", "-m", "feat: x", "--no-verify"]);
