@@ -13,8 +13,9 @@ type EmitterSource = Parameters<typeof frameworkViolations>[0][number];
 const EMIT_PACKAGES = ["emit-view", "emit-entity", "emit-primitive", "docs", "markdown", "shell"];
 
 /* Tracked, shrinking debt — the only emitters allowed to write raw framework syntax today: boot.ts (the
-   framework-specific app entry) + issue-sfc.ts / timeline.ts / sfc.ts (await the model rewrite, #100). */
-const ALLOW = ["boot.ts", "issue-sfc.ts", "timeline.ts", "sfc.ts"];
+   framework-specific app entry) + sfc.ts (the docs prose SFC, awaits the model rewrite). issue-sfc.ts and
+   timeline.ts now route through the canonical model (#100), so they are no longer allowed to bypass it. */
+const ALLOW = ["boot.ts", "sfc.ts"];
 
 /** Read every emitter `.ts` source across the emit packages (sibling to this gate package). */
 function emitterSources(): EmitterSource[] {
