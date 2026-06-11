@@ -16,6 +16,7 @@ export type IconName =
   | "pencil"
   | "plus"
   | "search"
+  | "settings"
   | "sun"
   | "trash"
   | "users";
