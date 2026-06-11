@@ -36,19 +36,6 @@ export function bound(name: string, expr: string): Attr {
   return { expr, kind: "bound", name };
 }
 
-/** Whether a raw YAML value is a plain object (not null, not an array). */
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** A raw YAML value as an object (props + optional `children`); non-objects become empty. */
-export function asObject(value: unknown): Record<string, unknown> {
-  if (isObject(value)) {
-    return value;
-  }
-  return {};
-}
-
 /** Single-quote-escape a raw string for embedding in a generated single-quoted JS literal. */
 export function quote(value: string): string {
   const escaped = String.raw`\'`;

@@ -1,4 +1,5 @@
-import { asObject, str } from "./helpers.ts";
+import { asRecord } from "@vow/core";
+import { str } from "./helpers.ts";
 
 /**
  * The issue-plan layouts (`issues: { as }`) → the component the plugin materialises for each. The ONE
@@ -23,7 +24,7 @@ function isIssueLayout(name: string): name is IssueLayout {
  * typo is a clear build error rather than a dangling import to a never-materialised component.
  */
 export function issueLayout(value: unknown): IssueLayout {
-  const as = str(asObject(value)["as"]) || "table";
+  const as = str(asRecord(value)["as"]) || "table";
   if (!isIssueLayout(as)) {
     throw new Error(
       `vow: unknown issues layout "${as}" — use ${Object.keys(ISSUE_LAYOUTS).join(", ")}`,
