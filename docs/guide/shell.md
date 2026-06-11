@@ -7,7 +7,9 @@ order: 1
 
 The shell is the frame around your pages: a left **sidebar** (brand + page nav) and a centered **content column**. The router wraps every routed page in it — you write nothing. Below 960px the sidebar collapses into a hamburger **drawer**.
 
-It lives in `@vow/shell`, the app-chrome layer — a hand-written `.vue` frame built from vow's own primitives and theme tokens. Like the [theme](/guide/architecture), it's a swappable layer; it shares only _logic_ with the docs chrome (`@vow/docs`), the headless `dialog`, never the components. See [Architecture](/guide/architecture) for where it sits.
+It lives in `@vow/shell`, the app-chrome layer — a frame built from vow's own primitives and theme tokens. Like the [theme](/guide/architecture), it's a swappable layer; it shares only _logic_ with the docs chrome (`@vow/docs`), the headless `dialog`, never the components. See [Architecture](/guide/architecture) for where it sits.
+
+The chrome is **moving off hand-written Vue onto the canonical [`@vow/component`](/guide/architecture) model**, piece by piece — so the same dashboard frame can render through a React or Solid adapter, not Vue alone. The **dark toggle** is the first piece across: it's described as plain component data and rendered to its `.vue` by the Vue adapter, pinned byte-for-byte by a test. The `framework-neutrality` gate now scans `@vow/shell`, so a new chrome piece that writes raw Vue fails the build.
 
 ## How it's wired
 

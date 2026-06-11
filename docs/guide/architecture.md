@@ -19,15 +19,15 @@ One plugin (`@vow/vite-plugin`) drives it: it loads `app/`, runs the emitters, w
 
 ## The layers
 
-| Layer            | Package                                                  | What it is                                                                                 |
-| ---------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **spec & proof** | `@vow/core` · `@vow/gate`                                | the vow primitive (parse the `.vow.md`) + the gate (every promise needs a green test)      |
-| **logic**        | `@vow/headless`                                          | framework-free behaviour — ARIA, keyboard, state — proven against the DOM, not a framework |
-| **model**        | `@vow/component`                                         | the framework-agnostic component IR both the emitters speak                                |
-| **emitters**     | `@vow/emit-{entity,view,primitive,bind}` · `@vow/layout` | turn the spec into `.ts` / `.vue`                                                          |
-| **runtime**      | `@vow/store` · `@vow/router`                             | what the generated app imports as it runs                                                  |
-| **look**         | `@vow/theme`                                             | the design tokens + the base CSS                                                           |
-| **chrome**       | `@vow/docs` · `@vow/shell`                               | the hand-written Vue frame — the docs site · the app dashboard                             |
+| Layer            | Package                                                  | What it is                                                                                   |
+| ---------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **spec & proof** | `@vow/core` · `@vow/gate`                                | the vow primitive (parse the `.vow.md`) + the gate (every promise needs a green test)        |
+| **logic**        | `@vow/headless`                                          | framework-free behaviour — ARIA, keyboard, state — proven against the DOM, not a framework   |
+| **model**        | `@vow/component`                                         | the framework-agnostic component IR both the emitters speak                                  |
+| **emitters**     | `@vow/emit-{entity,view,primitive,bind}` · `@vow/layout` | turn the spec into `.ts` / `.vue`                                                            |
+| **runtime**      | `@vow/store` · `@vow/router`                             | what the generated app imports as it runs                                                    |
+| **look**         | `@vow/theme`                                             | the design tokens + the base CSS                                                             |
+| **chrome**       | `@vow/docs` · `@vow/shell`                               | the app frame — the docs site · the app dashboard (migrating onto the model, piece by piece) |
 
 The split has one rule: `@vow/headless` holds **only logic** — no component, no CSS. That's why React or Solid would reuse it untouched, and why the look is a swappable layer. (`@vow/markdown` and `@vow/icons` support the docs chrome; `@vow/vite-plugin` is the plugin that drives the path above.) See **[Packages](/guide/packages)** for the full directory — every package and where to learn it.
 
