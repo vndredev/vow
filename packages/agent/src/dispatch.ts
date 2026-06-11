@@ -22,3 +22,10 @@ export function worktreeAddArgs(path: string, branch: string): readonly string[]
 export function worktreeRemoveArgs(path: string): readonly string[] {
   return ["worktree", "remove", "--force", path];
 }
+
+/** The worktree path for `branch` under the repo's gitignored `.vow-worktrees/` — a checkout isolated from
+ *  the repo root (and from other agents), provider-neutral (not tied to any one CLI's config dir). Branch
+ *  slashes become dashes (a flat directory name). */
+export function worktreePath(repo: string, branch: string): string {
+  return `${repo}/.vow-worktrees/${branch.replaceAll("/", "-")}`;
+}

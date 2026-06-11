@@ -29,5 +29,6 @@ dist-ssr
 
 # AI agent worktrees
 .claude/worktrees/
+.vow-worktrees/
 # Plan-mode working files (kept project-local via plansDirectory) — transient; the real plan is the issues
 .claude/plans/
