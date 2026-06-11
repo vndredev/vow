@@ -31,19 +31,19 @@ function toItem(entry: TimelineEntry): TimelineItem {
 }
 
 /** Fold the entries into release groups (by version tag, not date — the changelog). */
-function toGroups(entries: readonly TimelineEntry[]): TimelineGroup[] {
-  const groups: TimelineGroup[] = [];
+export function toGroups(entries: readonly TimelineEntry[]): TimelineGroup[] {
+  // Group by version into a Map (not just the last group) so interleaved versions still accumulate.
+  const byVersion = new Map<string, TimelineGroup>();
   for (const entry of entries) {
-    const item = toItem(entry);
     const version = entry.version ?? "Unreleased";
-    const last = groups.at(-1);
-    if (defined(last) && last.version === version) {
-      last.items.push(item);
+    const group = byVersion.get(version);
+    if (defined(group)) {
+      group.items.push(toItem(entry));
     } else {
-      groups.push({ date: entry.date, items: [item], version });
+      byVersion.set(version, { date: entry.date, items: [toItem(entry)], version });
     }
   }
-  return groups;
+  return [...byVersion.values()];
 }
 
 const GROUPS_TYPE =
