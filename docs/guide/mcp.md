@@ -37,7 +37,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Twenty tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Twenty-one tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -49,15 +49,16 @@ Twenty tools, in four groups. Structure mutations **validate** (the zod schema +
 
 ### Structure — the vows
 
-| Tool           |                                                                 |
-| -------------- | --------------------------------------------------------------- |
-| `add_entity`   | Add a new entity (a data model) to the studio.                  |
-| `add_field`    | Add a field to an entity.                                       |
-| `remove_field` | Remove a field from an entity by name.                          |
-| `add_view`     | Add a view (a page); `view` is a list of { type, value } nodes. |
-| `set_intent`   | Set a vow's intent (the `# …` promise).                         |
-| `set_nav`      | Set a vow's nav entry (label, icon, order, group).              |
-| `remove_vow`   | Delete a vow (its `.md`).                                       |
+| Tool           |                                                                            |
+| -------------- | -------------------------------------------------------------------------- |
+| `add_entity`   | Add a new entity (a data model) to the studio.                             |
+| `add_field`    | Add a field to an entity.                                                  |
+| `remove_field` | Remove a field from an entity by name.                                     |
+| `add_view`     | Add a view (a page); `view` is a list of { type, value } nodes.            |
+| `add_form`     | Add a form (a bound, validated `## form` over an entity): `of` + `submit`. |
+| `set_intent`   | Set a vow's intent (the `# …` promise).                                    |
+| `set_nav`      | Set a vow's nav entry (label, icon, order, group).                         |
+| `remove_vow`   | Delete a vow (its `.md`).                                                  |
 
 ### Data — the records
 

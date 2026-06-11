@@ -1,4 +1,12 @@
-import { addEntity, addField, addView, removeField, removeVow, setNav } from "../src/mutate.ts";
+import {
+  addEntity,
+  addField,
+  addForm,
+  addView,
+  removeField,
+  removeVow,
+  setNav,
+} from "../src/mutate.ts";
 import { expect, test } from "vite-plus/test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { loadVows } from "../src/load.ts";
@@ -59,6 +67,23 @@ test("addView writes a view + nav; setNav updates it", () => {
     expect(loadVows(dir)[0]?.nav?.label).toBe("Home");
     setNav(dir, "home", { icon: "home", label: "Start" });
     expect(loadVows(dir)[0]?.nav).toEqual({ icon: "home", label: "Start" });
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+test("addForm writes a bound `## form` vow that loads back", () => {
+  const dir = freshDir();
+  try {
+    addEntity(dir, {
+      fields: [{ name: "title", required: true, type: "text" }],
+      intent: "A task",
+      slug: "task",
+    });
+    addForm(dir, { intent: "Add a task", of: "task", slug: "add-task", submit: "Add task" });
+    const form = loadVows(dir).find((vow: { readonly slug: string }) => vow.slug === "add-task");
+    expect(form?.fulfills).toEqual({ as: "form", kind: "emit" });
+    expect(form?.form).toEqual({ of: "task", submit: "Add task" });
   } finally {
     rmSync(dir, { force: true, recursive: true });
   }

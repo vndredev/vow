@@ -31,6 +31,11 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     name: "add_view",
     summary: "Add a view (a page); `view` is a list of { type, value } nodes.",
   },
+  {
+    group: "structure",
+    name: "add_form",
+    summary: "Add a form (a bound, validated `## form` over an entity): `of` + `submit`.",
+  },
   { group: "structure", name: "set_intent", summary: "Set a vow's intent (the `# …` promise)." },
   {
     group: "structure",

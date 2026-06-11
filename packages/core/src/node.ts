@@ -12,6 +12,7 @@ export { SUFFIX, loadVow, loadVows, validateReferences } from "./load.ts";
 export {
   addEntity,
   addField,
+  addForm,
   addView,
   removeField,
   removeVow,

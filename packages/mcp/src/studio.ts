@@ -12,6 +12,7 @@ import type {
 import {
   addEntity,
   addField,
+  addForm,
   addView,
   defined,
   loadVows,
@@ -80,7 +81,14 @@ function toField(field: ReadonlyField): Field {
 /** The structure slice of the studio — the vow mutations. */
 type StructureSeam = Pick<
   Studio,
-  "createEntity" | "createField" | "createView" | "dropField" | "dropVow" | "setIntent" | "setNav"
+  | "createEntity"
+  | "createField"
+  | "createForm"
+  | "createView"
+  | "dropField"
+  | "dropVow"
+  | "setIntent"
+  | "setNav"
 >;
 
 /** Build the structure methods over the app dir + a schema-resync thunk (run after an entity change). */
@@ -96,6 +104,14 @@ function structureSeam(appDir: string, syncDb: () => void): StructureSeam {
       addField(appDir, entity, toField(field));
       syncDb();
     },
+    createForm: (spec) =>
+      addForm(appDir, {
+        intent: spec.intent,
+        nav: spec.nav,
+        of: spec.of,
+        slug: spec.slug,
+        submit: spec.submit,
+      }).slug,
     createView: (spec) =>
       addView(appDir, { intent: spec.intent, nav: spec.nav, slug: spec.slug, view: spec.view })
         .slug,

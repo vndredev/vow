@@ -71,6 +71,41 @@ function registerAddView(server: Registrar, names: Names, studio: Studio): void 
   );
 }
 
+/** Register `add_form` — a bound, validated `## form` over an entity (its own page). */
+function registerAddForm(server: Registrar, names: Names, studio: Studio): void {
+  const addForm = names.at("add_form");
+
+  server.registerTool(
+    addForm.name,
+    {
+      description: addForm.description,
+      inputSchema: {
+        intent: z.string(),
+        nav: Nav.optional(),
+        of: z.string(),
+        slug: z.string(),
+        submit: z.string(),
+      },
+    },
+    (input: {
+      readonly intent: string;
+      readonly nav: Maybe<NavInput>;
+      readonly of: string;
+      readonly slug: string;
+      readonly submit: string;
+    }): TextResult => {
+      const slug = studio.createForm({
+        intent: input.intent,
+        nav: input.nav,
+        of: input.of,
+        slug: input.slug,
+        submit: input.submit,
+      });
+      return text(`added form "${slug}"`);
+    },
+  );
+}
+
 /** Register the vow-editing tools — set intent / nav, remove a vow. */
 function registerEditors(server: Registrar, names: Names, studio: Studio): void {
   const setIntent = names.at("set_intent");
@@ -140,6 +175,7 @@ function registerFields(server: Registrar, names: Names, studio: Studio): void {
 export function registerStructure(server: Registrar, names: Names, studio: Studio): void {
   registerAddEntity(server, names, studio);
   registerAddView(server, names, studio);
+  registerAddForm(server, names, studio);
   registerEditors(server, names, studio);
   registerFields(server, names, studio);
 }

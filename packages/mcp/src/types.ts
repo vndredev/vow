@@ -69,6 +69,15 @@ export interface ViewSpec {
   readonly view: readonly ViewNode[];
 }
 
+/** A new form's spec — the parsed `add_form` input adapted to the core write API. */
+export interface FormSpec {
+  readonly intent: string;
+  readonly nav: Maybe<ReadonlyVow["nav"]>;
+  readonly of: string;
+  readonly slug: string;
+  readonly submit: string;
+}
+
 /** A one-field record patch — the parsed `set_record_field` input. */
 export interface RecordPatch {
   readonly entity: string;
@@ -93,6 +102,8 @@ export interface Studio {
   readonly createEntity: (spec: EntitySpec) => string;
   /** Add a field to an entity + re-derive the DB schema. */
   readonly createField: (entity: string, field: ReadonlyField) => void;
+  /** Add an `emit form` vow (a bound `## form` over an entity) — the new vow's slug. */
+  readonly createForm: (spec: FormSpec) => string;
   /** Add an `emit view` vow — the new vow's slug. */
   readonly createView: (spec: ViewSpec) => string;
   /** Drop a field from an entity by name. */

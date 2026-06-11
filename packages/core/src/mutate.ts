@@ -100,6 +100,28 @@ export function addView(
   });
 }
 
+/** Add a new `emit form` vow (a bound, validated `## form` over an entity). */
+export function addForm(
+  appDir: string,
+  opts: {
+    readonly slug: string;
+    readonly intent: string;
+    readonly of: string;
+    readonly submit: string;
+    readonly nav?: ReadonlyVow["nav"];
+  },
+): Vow {
+  return create(appDir, {
+    fields: [],
+    form: { of: opts.of, submit: opts.submit },
+    fulfills: { as: "form", kind: "emit" },
+    intent: opts.intent,
+    nav: opts.nav,
+    proof: [],
+    slug: opts.slug,
+  });
+}
+
 /** Add a field to an entity. */
 export function addField(appDir: string, slug: string, field: Field): Vow {
   return replace(appDir, slug, (vow) => ({ ...vow, fields: [...vow.fields, field] }));

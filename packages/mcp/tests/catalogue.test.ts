@@ -20,6 +20,7 @@ const STUB_STUDIO: Studio = {
   appDir: "",
   createEntity: unused,
   createField: unused,
+  createForm: unused,
   createView: unused,
   dropField: unused,
   dropVow: unused,
