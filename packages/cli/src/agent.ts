@@ -30,6 +30,7 @@ import {
   issueLabels,
   parseFindings,
   prCiState,
+  syncProjectStatus,
 } from "@vow/observability";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
@@ -311,10 +312,24 @@ async function runAll(rest: readonly string[]): Promise<number> {
   return exitFor(done.every((each) => each.ok));
 }
 
-/** Squash-merge a green PR via gh — the agent closing the loop on a passing run. */
+/** Reconcile the GitHub Project's Status to the studio's derived status right after a merge (the moment an
+ *  issue closes), so the board never drifts. No-op when `VOW_PROJECT_ID` is unset; local gh auth, no PAT. */
+function syncBoard(cwd: string): void {
+  // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = no board to sync
+  const pid = process.env["VOW_PROJECT_ID"] ?? "";
+  if (pid === "") {
+    return;
+  }
+  const { changed, matched } = syncProjectStatus(cwd, pid);
+  process.stdout.write(`board: ${changed.length} reconciled, ${matched} matched\n`);
+}
+
+/** Squash-merge a green PR via gh — the agent closing the loop on a passing run — then reconcile the board
+ *  (the merge closed the issue, so its derived status just became Done; the built-ins don't catch this). */
 function mergePr(pr: number, cwd: string): number {
   execFileSync("gh", [...mergeArgs(pr)], { cwd, stdio: "inherit" });
   process.stdout.write(`pr #${pr}: merged (green CI)\n`);
+  syncBoard(cwd);
   return 0;
 }
 
