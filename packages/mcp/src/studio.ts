@@ -172,6 +172,23 @@ function targetId(db: Db, target: ReadonlyVow, value: unknown): string {
   throw new Error(`no ${target.slug} with id or ${labelField(target)} "${raw}"`);
 }
 
+/** Resolve one reference field's value (a name → the target id; a non-reference value passes through). */
+type ResolveField = (entity: ReadonlyVow, field: string, value: unknown) => unknown;
+
+/** A record with every field run through `resolveField` — so a reference passed as a display name on
+ *  insert resolves to the target id (no dangling ref), exactly as a one-field patch does on update. */
+function resolveRecord(
+  resolveField: ResolveField,
+  entity: ReadonlyVow,
+  record: Readonly<Row>,
+): Row {
+  const resolved: Row = {};
+  for (const [field, value] of Object.entries(record)) {
+    resolved[field] = resolveField(entity, field, value);
+  }
+  return resolved;
+}
+
 /** Resolve the app dir from `VOW_APP_DIR` or the first CLI argument — absent when neither is set. */
 export function resolveAppDir(): Maybe<string> {
   const raw = process.env["VOW_APP_DIR"] ?? process.argv[ARGV_OFFSET];
@@ -207,7 +224,10 @@ export function openStudio(appDir: string): Studio {
   };
   syncDb();
   return {
-    addRecord: (entity, record) => insert(db, entityOf(entity), { ...record }),
+    addRecord: (entity, record) => {
+      const target = entityOf(entity);
+      return insert(db, target, resolveRecord(resolveRef, target, record));
+    },
     appDir,
     entitySlugs: () => entities().map((vow: ReadonlyVow) => vow.slug),
     getRecord: (entity, id) => get(db, entityOf(entity), id),
