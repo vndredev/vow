@@ -59,8 +59,13 @@ function widen(vow: ReadonlyVow): Vow {
   };
 }
 
-/** The scenarios a vow promises: derived for `emit entity`, authored (`## proves`) otherwise. */
-export function expectedScenarios(vow: ReadonlyVow): string[] {
+/** The scenarios a vow promises: derived for `emit entity`, authored (`## proves`) otherwise. For a form,
+ *  `byId` resolves its bound entity to decide whether the incomplete-submit scenario applies — it does not
+ *  for an all-optional entity (an empty submit validates cleanly, so no error to assert). */
+export function expectedScenarios(
+  vow: ReadonlyVow,
+  entities: readonly ReadonlyVow[] = [],
+): string[] {
   if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "entity") {
     return entityProves(widen(vow));
   }
@@ -68,10 +73,13 @@ export function expectedScenarios(vow: ReadonlyVow): string[] {
     return [...vow.proof.map((scenario) => scenario.claim), ...viewProves(widen(vow))];
   }
   if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "form") {
+    const target = vow.form?.of ?? "";
+    const entity = entities.find((candidate) => candidate.slug === target);
+    const hasRequired = entity?.fields.some((field) => field.required) ?? false;
     return [
       ...vow.proof.map((scenario) => scenario.claim),
       ...viewProves(widen(vow)),
-      ...formProves(widen(vow)),
+      ...formProves(widen(vow), hasRequired),
     ];
   }
   return vow.proof.map((scenario) => scenario.claim);
@@ -138,7 +146,8 @@ export function runGate(opts: {
   const vows = loadVows(opts.vowDir);
   // Generate before test, so the `.generated/` suites exist for the corpus scan.
   generateFiles(vows, { outDir: opts.outDir, srcDir: opts.vowDir });
-  const expected = allVows(vows).flatMap((vow: ReadonlyVow) => expectedScenarios(vow));
+  const all = allVows(vows);
+  const expected = all.flatMap((vow: ReadonlyVow) => expectedScenarios(vow, all));
   const testNames = collectTestNames(opts.testRoots);
   return { expected, uncovered: uncoveredScenarios(expected, testNames) };
 }

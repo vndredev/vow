@@ -57,12 +57,13 @@ const addTaskForm: Vow = {
   slug: "add-task",
 };
 
-test("formProves derives a form's single interaction scenario", () => {
-  expect(formProves(addTaskForm)).toEqual(["The AddTask form rejects an incomplete submit"]);
+test("formProves derives the interaction scenario only when the entity has a required field", () => {
+  expect(formProves(addTaskForm, true)).toEqual(["The AddTask form rejects an incomplete submit"]);
+  expect(formProves(addTaskForm, false)).toEqual([]);
 });
 
 test("emitFormTest mounts the form + submits it empty, asserting an error surfaces", () => {
-  const code = emitFormTest(addTaskForm);
+  const code = emitFormTest(addTaskForm, true);
   expect(code).toContain(`import AddTask from "./add-task.vue";`);
   expect(code).toContain(`test("The AddTask form rejects an incomplete submit", async () => {`);
   expect(code).toContain(`await wrapper.find("form").trigger("submit");`);

@@ -67,7 +67,7 @@ export function emitCompositionTest(entity: ReadonlyVow): string {
 
 /** A form-interaction Vitest suite: mount the form, submit it empty, assert validation surfaces an error
     (the `role="alert"` per-field error). Names the test after the proven scenario. */
-export function emitFormTest(vow: ReadonlyVow): string {
+export function emitFormTest(vow: ReadonlyVow, hasRequired: boolean): string {
   const label = pascalCase(vow.slug);
   const out: string[] = [
     `// @vitest-environment jsdom`,
@@ -77,7 +77,7 @@ export function emitFormTest(vow: ReadonlyVow): string {
     ``,
     `// Generated from vow "${vow.slug}". Each test name IS a proven scenario — do not edit.`,
   ];
-  for (const scenario of formScenarios(label)) {
+  for (const scenario of formScenarios(label, hasRequired)) {
     out.push(
       ``,
       `test(${JSON.stringify(scenario.claim)}, async () => {`,
