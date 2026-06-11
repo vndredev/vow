@@ -403,7 +403,9 @@ export function featureIssueBody(
 ): string {
   const strand = input.strand ?? DEFAULT_STRAND;
   return [
-    `**What** — ${input.element}`,
+    `**What**`,
+    ``,
+    input.element,
     ``,
     `**Why** — ${input.why}`,
     ``,

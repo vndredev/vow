@@ -8,10 +8,31 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-/** One check's verdict from its gh `status` + `conclusion`: not-completed -> pending; a clean conclusion
-    (success / neutral / skipped) -> pass; anything else -> fail. */
+/** A legacy `StatusContext` node carries no `status` — only a `state`: SUCCESS / NEUTRAL -> pass,
+    PENDING / EXPECTED -> pending, anything else (FAILURE / ERROR) -> fail. Keeps a red commit status from
+    falling through to `pending` (which would make the merge loop wait on red forever). */
+function stateState(check: Readonly<Record<string, unknown>>): PrCi {
+  const clean = check["state"] === "SUCCESS" || check["state"] === "NEUTRAL";
+  if (clean) {
+    return "pass";
+  }
+  if (check["state"] === "PENDING" || check["state"] === "EXPECTED") {
+    return "pending";
+  }
+  return "fail";
+}
+
+/** One check's verdict. A modern `CheckRun` reads `status` + `conclusion`: not-completed -> pending; a clean
+    conclusion (success / neutral / skipped) -> pass; anything else -> fail. A legacy `StatusContext` (no
+    `status`) reads `state` instead, so a red commit status is never mistaken for pending. */
 function checkState(check: unknown): PrCi {
-  if (!isObject(check) || check["status"] !== "COMPLETED") {
+  if (!isObject(check)) {
+    return "pending";
+  }
+  if (!("status" in check)) {
+    return stateState(check);
+  }
+  if (check["status"] !== "COMPLETED") {
     return "pending";
   }
   const clean = check["conclusion"] === "SUCCESS" || check["conclusion"] === "NEUTRAL";

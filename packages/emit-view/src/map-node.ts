@@ -1,11 +1,11 @@
 import type { Attr, UiNode } from "./types.ts";
 import { ISSUE_LAYOUTS, issueLayout } from "./issue-layout.ts";
-import { asObject, bound, comp, el, str, txt } from "./helpers.ts";
+import { asRecord, defined } from "@vow/core";
 import { boardComponentName, cardsComponentName, statsComponentName } from "./naming.ts";
+import { bound, comp, el, str, txt } from "./helpers.ts";
 import { childrenOf, propsToAttrs, sliceAttrs } from "./slice.ts";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
-import { defined } from "@vow/core";
 import { pascalCase } from "@vow/component";
 
 /** The primitive names a `## view` may reference directly (the closed registry, from @vow/emit-primitive). */
@@ -32,7 +32,7 @@ function sliceObject(value: unknown): Record<string, unknown> {
   if (typeof value === "string") {
     return { of: value };
   }
-  return asObject(value);
+  return asRecord(value);
 }
 
 /** A type guard: the value is an array of unknowns. */
@@ -49,7 +49,7 @@ function asArray(value: unknown): readonly unknown[] {
 }
 
 const hero: Handler = (value): UiNode => {
-  const obj = asObject(value);
+  const obj = asRecord(value);
   const kids: UiNode[] = [];
   if (defined(obj["eyebrow"])) {
     kids.push({
@@ -71,7 +71,7 @@ const hero: Handler = (value): UiNode => {
 const features: Handler = (value): UiNode => {
   const items = asArray(value);
   const cards = items.map((item): UiNode => {
-    const obj = asObject(item);
+    const obj = asRecord(item);
     const inner: UiNode[] = [];
     if (defined(obj["title"])) {
       inner.push(comp("CardHeader", [], [txt(str(obj["title"]))]));
@@ -99,14 +99,14 @@ const cards: Handler = (value, entities): UiNode => {
 };
 
 const stats: Handler = (value, entities): UiNode => {
-  const obj = asObject(value);
+  const obj = asRecord(value);
   const of = str(obj["of"]);
   requireEntity(of, "stats", entities);
   return comp(statsComponentName(of, str(obj["by"])), [], []);
 };
 
 const board: Handler = (value, entities): UiNode => {
-  const obj = asObject(value);
+  const obj = asRecord(value);
   const of = str(obj["of"]);
   requireEntity(of, "board", entities);
   return comp(boardComponentName(of, str(obj["by"])), sliceAttrs(obj), []);
@@ -117,12 +117,12 @@ const timeline: Handler = (): UiNode => comp("VowTimeline", [], []);
 const issues: Handler = (value): UiNode => comp(ISSUE_LAYOUTS[issueLayout(value)], [], []);
 
 const icon: Handler = (value): UiNode => {
-  const obj = asObject(value);
+  const obj = asRecord(value);
   return comp("Icon", [{ kind: "static", name: "name", value: str(obj["name"]) }], []);
 };
 
 const link: Handler = (value): UiNode => {
-  const obj = asObject(value);
+  const obj = asRecord(value);
   const children: UiNode[] = [];
   if (defined(obj["icon"])) {
     children.push(comp("Icon", [{ kind: "static", name: "name", value: str(obj["icon"]) }], []));
@@ -181,10 +181,10 @@ export function mapNode(type: string, value: unknown, entities: readonly string[
     return handler(value, entities);
   }
   if (isPrimitive(type)) {
-    const obj = asObject(value);
+    const obj = asRecord(value);
     const attrs: Attr[] = propsToAttrs(obj);
     const kids = childrenOf(obj, (raw) => {
-      const child = asObject(raw);
+      const child = asRecord(raw);
       const [childType = ""] = Object.keys(child);
       return mapNode(childType, child[childType], entities);
     });
@@ -195,7 +195,7 @@ export function mapNode(type: string, value: unknown, entities: readonly string[
 
 /** Map a raw single-key YAML node (`{ flex: {...} }`) to a UiNode. */
 export function rawToUiNode(raw: unknown, entities: readonly string[]): UiNode {
-  const obj = asObject(raw);
+  const obj = asRecord(raw);
   const type = Object.keys(obj)[0] ?? "";
   return mapNode(type, obj[type], entities);
 }
