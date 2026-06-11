@@ -192,6 +192,18 @@ export function issueDetail(cwd: string, issue: number): IssueDetail {
   return parseIssueDetail(out);
 }
 
+/** The non-empty lines of gh's `--jq .labels[].name` output — an issue's label names. Pure. */
+export function parseLabels(out: string): readonly string[] {
+  return out.split("\n").filter((line) => line !== "");
+}
+
+/** One issue's label names via `gh issue view <n> --json labels --jq .labels[].name` — so the area router
+ *  can pick the specialized agent for the issue's `area:` label. */
+export function issueLabels(cwd: string, issue: number): readonly string[] {
+  const args = ["issue", "view", String(issue), "--json", "labels", "--jq", ".labels[].name"];
+  return parseLabels(execFileSync("gh", args, { cwd, encoding: "utf8" }));
+}
+
 const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+((?:#\d+[\s,]*)+)/giu;
 
 /** A `#N` reference inside a closing clause's list. */

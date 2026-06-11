@@ -1,4 +1,4 @@
-import { DEFAULT_ROSTER, agentFor } from "../src/roster.ts";
+import { DEFAULT_ROSTER, agentFor, areaOf } from "../src/roster.ts";
 import { expect, test } from "vite-plus/test";
 
 const AREAS = 5;
@@ -17,4 +17,9 @@ test("the default roster has one specialized agent per vow area", () => {
 test("agentFor resolves the area specialist, else the general agent", () => {
   expect(agentFor(DEFAULT_ROSTER, "gate").focus).toContain("gate");
   expect(agentFor(DEFAULT_ROSTER, "nope").area).toBe("general");
+});
+
+test("areaOf reads the `area:` label, else empty", () => {
+  expect(areaOf(["enhancement", "area: emit"])).toBe("emit");
+  expect(areaOf(["enhancement"])).toBe("");
 });
