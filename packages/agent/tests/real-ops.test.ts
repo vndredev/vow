@@ -20,3 +20,12 @@ test("realOps.run maps a non-zero exit to its code instead of throwing", async (
   );
   expect(result.code).toBe(EXIT_CODE);
 });
+
+test("realOps.run captures a failing command's output (so a draft PR can show it)", async () => {
+  const result = await realOps().run(
+    { args: ["-e", "process.stdout.write('boom'); process.exit(1)"], bin: "node" },
+    tmpdir(),
+  );
+  expect(result.code).toBe(1);
+  expect(result.output).toContain("boom");
+});
