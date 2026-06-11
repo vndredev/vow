@@ -16,5 +16,6 @@ export * from "./plan.ts";
 export * from "./provider.ts";
 export * from "./real-ops.ts";
 export * from "./report.ts";
+export * from "./roster.ts";
 export type * from "./types.ts";
 export * from "./verify.ts";
