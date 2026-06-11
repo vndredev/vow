@@ -54,6 +54,7 @@ export interface IssueSpec {
 /** The repo facts a plan inlines: the gates to run + the commit the plan was written against. */
 export interface PlanContext {
   readonly commit: string;
+  readonly focus?: string;
   readonly verify: readonly string[];
 }
 

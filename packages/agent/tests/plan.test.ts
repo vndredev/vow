@@ -20,6 +20,13 @@ test("buildPlan carries the improve discipline — commit stamp, out-of-scope, S
   expect(plan).toContain("STOP conditions");
 });
 
+test("buildPlan injects a Focus section when the run has a specialized agent's focus, else omits it", () => {
+  expect(buildPlan(issue, { ...context, focus: "You own the gates." })).toContain(
+    "## Focus\nYou own the gates.",
+  );
+  expect(buildPlan(issue, context)).not.toContain("## Focus");
+});
+
 test("branchFor derives a per-issue branch", () => {
   expect(branchFor(issue)).toBe("feat/issue-98");
 });

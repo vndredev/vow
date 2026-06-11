@@ -19,6 +19,15 @@ export function branchFor(issue: IssueSpec): string {
   return `feat/issue-${issue.number}`;
 }
 
+/** The "## Focus" section — a specialized agent's focus (from the roster), or nothing when the run has no
+ *  area specialist. Sets the executor's lens before the task. */
+function focusSection(focus: string): readonly string[] {
+  if (focus === "") {
+    return [];
+  }
+  return ["## Focus", focus, ""];
+}
+
 /**
  * The plan string for `issue`: inlined task, machine-checkable verification gates, an explicit out-of-scope
  * list, STOP conditions, and the commit stamp. The product the executor follows — no outside context, no
@@ -31,6 +40,7 @@ export function buildPlan(issue: IssueSpec, context: PlanContext): string {
     "",
     `Written against commit \`${context.commit}\`. Verify HEAD still matches before you start; if it has moved, re-read the changed files or STOP.`,
     "",
+    ...focusSection(context.focus ?? ""),
     "## The task",
     issue.body,
     "",
