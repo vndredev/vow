@@ -95,6 +95,22 @@ const outcome = await runTask({ issue, context, cwd, provider: claudeCode, ops }
 
 Every effect is injected via `ops`, so the entire loop is tested end-to-end without running claude or touching git. The worktree's lifecycle lives here, not in `dispatch` — verify must see the agent's changes _before_ teardown.
 
+## The `vow agent run` CLI
+
+`vow agent run <issue> [--provider <name>] [--auth subscription|api] [--json]` develops a single issue:
+
+- **`--provider`** chooses which LLM runs the plan (default: the configured `DEFAULT_PROVIDER`; `--provider codex` is a stub for Codex or any future provider added to the registry).
+- **`--auth subscription|api`** controls authentication: `subscription` (the default) strips the `ANTHROPIC_API_KEY` from the spawned provider's environment, so it uses the user's Anthropic subscription; `api` passes the key through, paying per token. Foundation: this boundary is tested (`childEnv` seam in real-ops).
+- **`--json`** emits NDJSON for LLM consumption and the studio: each phase as `{"issue": n, "phase": "..."}`, then the final verdict as `{"issue": n, "ok": true|false}`. Human terminal gets text by default.
+
+The run streams each phase live (worktree setup → dispatch → gates re-run → publish), then opens a PR: green runs open a standard PR (mergeable); red runs open a DRAFT (surfaced for a human, never auto-merged).
+
+## The `vow agent run-all` CLI
+
+`vow agent run-all <issue>... [--provider <name>] [--auth subscription|api] [--json]` develops multiple issues **concurrently in isolated worktrees** (up to 3 in parallel, capped to avoid machine swamp). Each issue streams its own phase lines; results are printed per-issue (text or NDJSON). Exits non-zero if any gate failed.
+
+This is vow's own orchestration — no external CI/CD or Kubernetes — a provider-neutral fleet on your machine. `mapLimit` caps the lane count; each worker is a full `develop` loop.
+
 ## The roadmap
 
-✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → ✓ `runTask` (the loop, one call) → **✓ `realOps`** (the real exec — git worktrees + the CLI spawned via `execFileSync`; each run is its own process, so the sync exec doesn't block a parallel fleet) → **✓ `vow agent run <n>`** (the CLI front-door — develops an issue in a worktree and opens a PR, draft if gates fail) → next: the **trigger** (channel / board drag). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
+✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → ✓ `runTask` (the loop, one call) → ✓ `realOps` (the real exec — git worktrees + the CLI spawned via `execFileSync`; each run is its own process, so the sync exec doesn't block a parallel fleet) → ✓ `vow agent run <n>` + `run-all <n>...` (the CLI front-door — develops issues in worktrees and opens PRs, draft if gates fail; live-streaming progress; auth choices; NDJSON for LLMs) → next: the **trigger** (channel / board drag). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
