@@ -16,8 +16,26 @@ export const claudeCode: Provider = {
   name: "claude-code",
 };
 
-/** Every known provider. Codex + Gemini join here as adapters over `Provider`; the loop above is unchanged. */
-export const PROVIDERS: readonly Provider[] = [claudeCode];
+/** Codex CLI — `codex exec` non-interactive, `--full-auto` so edits apply without a prompt. */
+export const codex: Provider = {
+  command: (task) => ({
+    args: ["exec", "--full-auto", task.plan],
+    bin: "codex",
+  }),
+  name: "codex",
+};
+
+/** Gemini CLI — `gemini -p` headless, `--yolo` to apply edits without confirmation. */
+export const gemini: Provider = {
+  command: (task) => ({
+    args: ["-p", task.plan, "--yolo"],
+    bin: "gemini",
+  }),
+  name: "gemini",
+};
+
+/** Every known provider — the loop above names none of them; it runs whichever `Provider` it is handed. */
+export const PROVIDERS: readonly Provider[] = [claudeCode, codex, gemini];
 
 /** The default provider's name — used when a task doesn't pin one. */
 export const DEFAULT_PROVIDER = "claude-code";
