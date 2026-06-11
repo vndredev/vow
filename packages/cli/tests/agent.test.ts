@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { flagValue, issueArg, issueNumbers } from "../src/agent.ts";
+import { flagValue, issueArg, issueNumbers, phaseLine } from "../src/agent.ts";
 
 const ISSUE = 42;
 
@@ -22,4 +22,9 @@ test("issueNumbers collects positive numeric args, dropping flags + non-numbers"
     "1,2,3",
   );
   expect(issueNumbers(["run-all"])).toEqual([]);
+});
+
+test("phaseLine is JSON for an LLM/studio, human text for the terminal", () => {
+  expect(phaseLine(ISSUE, "develop", true)).toBe(`{"issue":${ISSUE},"phase":"develop"}`);
+  expect(phaseLine(ISSUE, "develop", false)).toBe(`  [#${ISSUE}] develop`);
 });
