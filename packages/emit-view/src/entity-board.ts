@@ -9,7 +9,7 @@ import { sliceComputed } from "./slice.ts";
 function boardSetup(entity: ReadonlyVow, by: string, field: ReadonlyField): string[] {
   const type = pascalCase(entity.slug);
   return [
-    `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+    `const { items: rows, update } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const options = ${JSON.stringify(field.options ?? [])};`,
     ...sliceComputed(type, "visible"),
     `const columns = computed(() =>`,
@@ -17,7 +17,7 @@ function boardSetup(entity: ReadonlyVow, by: string, field: ReadonlyField): stri
     `);`,
     `const dragged = ref<${type} | null>(null);`,
     `function onDrop(option: string): void {`,
-    `  if (dragged.value) dragged.value.${by} = option as ${type}[${JSON.stringify(by)}];`,
+    `  if (dragged.value) update(dragged.value.id, { [${JSON.stringify(by)}]: option });`,
     `  dragged.value = null;`,
     `}`,
   ];

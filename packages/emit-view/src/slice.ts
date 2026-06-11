@@ -1,6 +1,6 @@
 import type { Attr, UiNode } from "./types.ts";
-import { asObject, bound, objectExpr, quote, str } from "./helpers.ts";
-import { defined } from "@vow/core";
+import { asRecord, defined } from "@vow/core";
+import { bound, objectExpr, quote, str } from "./helpers.ts";
 
 /**
  * The slice/group plumbing a `## view` shares — the `sort`/`filter`/`group` attrs a sliced node carries,
@@ -18,7 +18,7 @@ export function sliceAttrs(obj: Readonly<Record<string, unknown>>): Attr[] {
     attrs.push({ kind: "static", name: "group", value: str(obj["group"]) });
   }
   if (defined(obj["filter"])) {
-    attrs.push(bound("filter", objectExpr(asObject(obj["filter"]))));
+    attrs.push(bound("filter", objectExpr(asRecord(obj["filter"]))));
   }
   return attrs;
 }

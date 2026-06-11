@@ -1,7 +1,7 @@
 import type { IssueLayout, ReadonlyVow } from "./types.ts";
-import { asObject, str } from "./helpers.ts";
-import { defined } from "@vow/core";
+import { asRecord, defined } from "@vow/core";
 import { issueLayout } from "./issue-layout.ts";
+import { str } from "./helpers.ts";
 
 /** A reference to a by-field composition (`stats`/`board`) — the entity slug + the select field. */
 export interface FieldRef {
@@ -13,12 +13,12 @@ export interface FieldRef {
 function walkNodes(view: ReadonlyVow, visit: (type: string, value: unknown) => void): void {
   const descend = (type: string, value: unknown): void => {
     visit(type, value);
-    const kids = asObject(value)["children"];
+    const kids = asRecord(value)["children"];
     if (!Array.isArray(kids)) {
       return;
     }
     for (const kid of kids) {
-      const obj = asObject(kid);
+      const obj = asRecord(kid);
       const [key] = Object.keys(obj);
       if (defined(key)) {
         descend(key, obj[key]);
@@ -35,7 +35,7 @@ function ofSlug(value: unknown): string {
   if (typeof value === "string") {
     return value;
   }
-  return str(asObject(value)["of"]);
+  return str(asRecord(value)["of"]);
 }
 
 /** Every entity slug a node of `kind` references via its `of` (scalar or `{ of }`). */
@@ -57,7 +57,7 @@ function fieldRefsFor(view: ReadonlyVow, kind: string): FieldRef[] {
     if (type !== kind) {
       return;
     }
-    const obj = asObject(value);
+    const obj = asRecord(value);
     const ref: FieldRef = { by: str(obj["by"]), of: str(obj["of"]) };
     const key = `${ref.of}.${ref.by}`;
     if (!seen.has(key)) {
