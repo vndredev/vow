@@ -66,3 +66,20 @@ export function parseFindings(json: string): Finding[] {
   }
   return out;
 }
+
+/** The audit instruction for an agent — review the codebase for `dimension` and output ONLY a JSON array
+ *  of findings (each `{title, area, evidence, fix}`, the shape `parseFindings` ingests). Read-only; the
+ *  findings become vow issues (the audit -> plan step), never a side-file. */
+export function auditPrompt(dimension: string): string {
+  return [
+    `Audit this codebase for ${dimension}. Report only real, evidenced problems — no speculation.`,
+    "",
+    "Output ONLY a JSON array (no prose). Each element is a finding with these string fields:",
+    "- title: a concise issue title",
+    "- area: the vow area (emit, gate, studio, docs, core), or empty",
+    "- evidence: the proof — file:line + what is wrong",
+    "- fix: the change to make",
+    "",
+    "An empty array [] when nothing is found. Do NOT edit any file — this audit is read-only.",
+  ].join("\n");
+}

@@ -1,4 +1,9 @@
-import { agentsMd, vowDevelopSkill, vowOrchestrateSkill } from "../src/agent-templates.ts";
+import {
+  agentsMd,
+  vowAuditSkill,
+  vowDevelopSkill,
+  vowOrchestrateSkill,
+} from "../src/agent-templates.ts";
 import { expect, test } from "vite-plus/test";
 
 test("the AGENTS.md contract states the red line + the gates", () => {
@@ -22,4 +27,12 @@ test("the vow-orchestrate skill points at the host workflow (live), not a passiv
   expect(skill).toContain("/workflows");
   expect(skill).toContain("vow agent plan");
   expect(skill).toContain("PASSIVE");
+});
+
+test("the vow-audit skill files findings into vow issues, via the host workflow", () => {
+  const skill = vowAuditSkill();
+  expect(skill).toContain("name: vow-audit");
+  expect(skill).toContain("vow agent audit --prompt");
+  expect(skill).toContain("vow agent audit --file");
+  expect(skill).toContain("/workflows");
 });

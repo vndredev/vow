@@ -1,4 +1,4 @@
-import { auditIssue, parseFindings } from "../src/audit.ts";
+import { auditIssue, auditPrompt, parseFindings } from "../src/audit.ts";
 import { expect, test } from "vite-plus/test";
 
 test("auditIssue maps a finding to a labelled, milestoned issue with the template body", () => {
@@ -30,4 +30,14 @@ test("parseFindings reads the confirmed array, skipping items lacking a title or
 test("parseFindings returns [] on malformed JSON or a non-array", () => {
   expect(parseFindings("not json")).toEqual([]);
   expect(parseFindings('{"title":"x"}')).toEqual([]);
+});
+
+test("auditPrompt asks for the Finding shape — a matching sample round-trips through parseFindings", () => {
+  const prompt = auditPrompt("security");
+  expect(prompt).toContain("security");
+  expect(prompt).toContain("title");
+  expect(prompt).toContain("evidence");
+  expect(
+    parseFindings('[{"title":"X","area":"core","evidence":"a.ts:1","fix":"do Y"}]'),
+  ).toHaveLength(1);
 });
