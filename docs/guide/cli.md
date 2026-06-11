@@ -49,6 +49,25 @@ vow smoke            # boot the dev app + assert its client bundle is browser-sa
 
 `vow smoke` is the runtime gate the static ones miss: it boots `vp dev`, crawls the client module graph, and fails if any `node:` builtin leaked into the browser bundle — a class of bug that lint, type-check, and the production build all pass (the build tree-shakes the leak away; the tests run in Node).
 
+## The agent loop
+
+`vow agent` scaffolds and drives the **agent-native layer** — autonomous agents developing issues through vow's verification gates, opening PRs, and merging when green. One per vow; the executor is an LLM (Claude, Codex, etc.), not the user.
+
+```bash
+vow agent init                                          # scaffold AGENTS.md + vow-develop skill
+vow agent plan <n>                                      # print the verification-gated plan for issue <n>
+vow agent run <n>                                       # develop issue <n>, open a PR
+vow agent run <n> --dry-run                             # preview the run (branch, commands, gates)
+vow agent run <n> --provider <name>                     # use a different provider (default: claude)
+vow agent run <n> --auth api                            # use API key auth (default: subscription)
+vow agent run <n> --json                                # emit NDJSON per phase (for LLM / studio)
+vow agent run-all <n>... [--provider <name>]            # develop multiple issues concurrently
+vow agent merge <pr>                                    # merge a green PR / draft a red one (no merge off red)
+vow agent audit --file <findings.json>                  # file audit findings as vow issues
+```
+
+The gates (`vp check` + `pnpm -r test`) run in the worktree after the provider completes — a PR merges only when the gates pass. Dry-run shows the branch, commands, and expected gates without running them.
+
 ::: tip The split is the point
 **`vow` is for people; the [MCP](/guide/mcp) is for LLMs.** Process management (run · stop · status) lives in the CLI, never in an LLM tool; authoring (vows · records · the plan) lives in the MCP, never in the CLI.
 :::
