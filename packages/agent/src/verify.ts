@@ -68,10 +68,23 @@ export function commitArgs(message: string): readonly string[] {
 /** The 72-char header-max-length the title-lint enforces (the squash subject IS the PR title). */
 const PR_TITLE_MAX = 72;
 
-/** The conventional-commit subject for the run's commit + PR title — defaults to `feat:` (an issue is a
- *  feature ask), lower-cased, capped at the header-max-length so the title-lint passes. */
+/** The conventional-commit types — a leading one (e.g. `docs: `) means the title is already a subject, so
+ *  prefixing `feat: ` again would double it. Mirrors commit-types.json (the branch-name gate's source). */
+const TYPE_PREFIX = /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test): /u;
+
+/** A conventional-commit subject from an issue title — kept as-is when it already opens with a type, else
+ *  prefixed `feat: ` (an issue is a feature ask) with a lower-cased first letter. */
+function subjectFor(title: string): string {
+  if (TYPE_PREFIX.test(title)) {
+    return title;
+  }
+  return `feat: ${title.charAt(0).toLowerCase()}${title.slice(1)}`;
+}
+
+/** The PR title (= the run's commit subject) — a conventional subject, capped at the header-max-length so
+ *  the title-lint passes. */
 export function prTitle(issue: Readonly<{ title: string }>): string {
-  const subject = `feat: ${issue.title.charAt(0).toLowerCase()}${issue.title.slice(1)}`;
+  const subject = subjectFor(issue.title);
   if (subject.length <= PR_TITLE_MAX) {
     return subject;
   }

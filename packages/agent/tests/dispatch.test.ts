@@ -49,7 +49,7 @@ test("the git worktree args are isolation-correct (fresh branch, forced teardown
   expect(worktreeAddArgs("/tmp/wt", "feat/issue-98")).toEqual([
     "worktree",
     "add",
-    "-b",
+    "-B",
     "feat/issue-98",
     "/tmp/wt",
   ]);
