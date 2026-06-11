@@ -30,7 +30,19 @@ jobs:
       # materializes — so `vp check` (typecheck) needs it to exist beforehand.
       - run: vp build apps/starter
       - run: vp build apps/studio
-      - run: vp check
+      # `vp lint` is the deterministic wall (whole-repo, type-aware oxlint). Unlike `vp check`'s tsgo
+      # typecheck — which can crash to EMPTY output and still exit 0 (a silent green) — it fails loudly.
+      - name: Lint — the wall
+        run: vp lint
+      # `vp check` adds format + the full typecheck, but can silent-green (a tsgo crash exits 0, empty).
+      # GUARD it: require its pass markers as proof both steps ran — their absence is a failure, not a pass.
+      - name: Format + typecheck (guarded against silent-green)
+        run: |
+          set -o pipefail
+          vp check 2>&1 | tee /tmp/vp-check.log
+          grep -q 'correctly formatted' /tmp/vp-check.log \
+            && grep -q 'no warnings, lint errors, or type errors' /tmp/vp-check.log \
+            || { echo '::error::vp check produced no pass markers — a step (likely tsgo) crashed to empty output (silent green)'; exit 1; }
       - run: pnpm -r test
       - run: vp build apps/docs
       # Dev-app smoke test: lint + test + build can ALL be green while the dev app breaks at runtime —
