@@ -5,14 +5,15 @@ import { expect, test } from "vite-plus/test";
 const STUDIO_PORT = 5173;
 const DOCS_PORT = 5174;
 const MCP_PORT = 5176;
+const EVENTS_PORT = 5177;
 
-test("serveBanner names the local hub and lists each surface's URL + the MCP channel (#491, #490)", () => {
+test("serveBanner names the local hub and lists each surface's URL + the MCP + event channels (#491, #497)", () => {
   const banner = serveBanner(
     [
       { port: STUDIO_PORT, slug: "studio" },
       { port: DOCS_PORT, slug: "docs" },
     ],
-    MCP_PORT,
+    { events: EVENTS_PORT, mcp: MCP_PORT },
     "off",
   );
   expect(banner).toContain("vow serve — your local hub");
@@ -21,12 +22,15 @@ test("serveBanner names the local hub and lists each surface's URL + the MCP cha
   expect(banner).toContain(`http://localhost:${DOCS_PORT}/`);
   expect(banner).toContain(`http://localhost:${MCP_PORT}/mcp`);
   expect(banner).toContain("agent channel");
+  expect(banner).toContain(`http://localhost:${EVENTS_PORT}/events`);
+  expect(banner).toContain("observability");
 });
 
 test("serveBanner's watch line reflects the watch state (#490 element 3)", () => {
-  expect(serveBanner([], MCP_PORT, "run")).toContain("watch loop ON");
-  expect(serveBanner([], MCP_PORT, "refuse")).toContain("--watch ignored");
-  expect(serveBanner([], MCP_PORT, "off")).toContain("watch loop off");
+  const ports = { events: EVENTS_PORT, mcp: MCP_PORT };
+  expect(serveBanner([], ports, "run")).toContain("watch loop ON");
+  expect(serveBanner([], ports, "refuse")).toContain("--watch ignored");
+  expect(serveBanner([], ports, "off")).toContain("watch loop off");
 });
 
 test("watchDecision: --watch + opt-in runs, --watch alone refuses, no --watch is off (#490, #486)", () => {

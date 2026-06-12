@@ -247,6 +247,7 @@ export function gitTimeline(cwd: string, ref = "main"): TimelineEntry[] {
 export * from "./audit.ts";
 export * from "./ci.ts";
 export * from "./events.ts";
+export * from "./events-sse.ts";
 export { prBodyProblems } from "./pr-body.ts";
 export * from "./github.ts";
 export * from "./project.ts";

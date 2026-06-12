@@ -4,6 +4,7 @@ import { type App, repoRoot, resolveApps } from "./apps.ts";
 import { autoConfirmed, runAuto } from "./agent-auto.ts";
 import type { Server } from "node:http";
 import { setTimeout as delay } from "node:timers/promises";
+import { eventsSseServer } from "@vow/observability";
 import { mcpHttpServer } from "@vow/mcp/http";
 import { once } from "node:events";
 import path from "node:path";
@@ -20,6 +21,8 @@ import { runDev } from "./dev.ts";
 
 // The port the persistent MCP channel listens on — beside the apps (studio 5173 · docs 5174 · starter 5175).
 const MCP_PORT = 5176;
+// The port the provider-neutral event channel (SSE) streams the observability feed on.
+const EVENTS_PORT = 5177;
 // The width the slug column is padded to in the banner.
 const SLUG_PAD = 8;
 // How often the watch loop re-runs an auto spiral (it develops new work as it appears, idling between).
@@ -69,20 +72,48 @@ function watchLine(watch: Watch): string {
 
 /** The banner `vow serve` prints — names the local hub and lists each surface's URL (the apps + the MCP
     channel) plus the watch state, so one glance shows what is up. Pure, so the line shape is unit-testable. */
-export function serveBanner(apps: readonly App[], mcpPort: number, watch: Watch): string {
+/** The hub's two HTTP channel ports — the MCP channel + the SSE event channel. */
+export interface HubPorts {
+  readonly events: number;
+  readonly mcp: number;
+}
+
+export function serveBanner(apps: readonly App[], ports: HubPorts, watch: Watch): string {
   const urls = apps
     .map((app) => `  ${app.slug.padEnd(SLUG_PAD)} http://localhost:${app.port}/`)
     .join("\n");
-  const mcp = `  ${"mcp".padEnd(SLUG_PAD)} http://localhost:${mcpPort}/mcp  (agent channel)`;
-  return `vow serve — your local hub (studio · docs · the /__vow control API · the MCP channel)\n${urls}\n${mcp}\n${watchLine(watch)}\n`;
+  const mcp = `  ${"mcp".padEnd(SLUG_PAD)} http://localhost:${ports.mcp}/mcp  (agent channel)`;
+  const events = `  ${"events".padEnd(SLUG_PAD)} http://localhost:${ports.events}/events  (observability, SSE)`;
+  return `vow serve — your local hub (studio · docs · the /__vow control API · the MCP channel · the event channel)\n${urls}\n${mcp}\n${events}\n${watchLine(watch)}\n`;
 }
 
-/** Close the MCP HTTP server, resolving once it has stopped listening (so shutdown awaits it cleanly). */
+/** The hub's HTTP servers — the MCP channel + the provider-neutral event channel, both torn down on exit. */
+interface HubServers {
+  readonly events: Server;
+  readonly mcp: Server;
+}
+
+/** Start the hub's HTTP servers: the MCP channel (agent → vow tools) + the event channel (vow → any client,
+    SSE). Reading the event feed from the repo root (where the agent loop records `.vow/events.jsonl`). */
+function startServers(): HubServers {
+  return {
+    events: eventsSseServer(repoRoot(), EVENTS_PORT),
+    mcp: mcpHttpServer(hubAppDir(), MCP_PORT),
+  };
+}
+
+/** Close one HTTP server, resolving once it has stopped listening (so shutdown awaits it cleanly). */
 // oxlint-disable-next-line prefer-readonly-parameter-types -- the mutable node:http Server is closed here
-async function closeMcp(server: Server): Promise<void> {
+async function closeHttp(server: Server): Promise<void> {
   const closed = once(server, "close");
   server.close();
   await closed;
+}
+
+/** Close both hub servers in parallel — the one teardown the hub awaits on shutdown. */
+// oxlint-disable-next-line prefer-readonly-parameter-types -- HubServers holds mutable node:http Servers
+async function closeServers(servers: HubServers): Promise<void> {
+  await Promise.all([closeHttp(servers.mcp), closeHttp(servers.events)]);
 }
 
 /** Ignore a promise that handles its own errors — keeps `runServe` from awaiting the background watch loop
@@ -134,12 +165,12 @@ function startWatch(watch: Watch, stop: Readonly<AbortSignal>): void {
 export async function runServe(rest: readonly string[]): Promise<number> {
   const apps = resolveApps(appNames(rest));
   const watch = watchDecision(rest.includes("--watch"), autoConfirmed(rest));
-  const mcp = mcpHttpServer(hubAppDir(), MCP_PORT);
+  const servers = startServers();
   const stop = new AbortController();
-  process.stdout.write(serveBanner(apps, MCP_PORT, watch));
+  process.stdout.write(serveBanner(apps, { events: EVENTS_PORT, mcp: MCP_PORT }, watch));
   startWatch(watch, stop.signal);
   const code = await runDev(apps);
   stop.abort();
-  await closeMcp(mcp);
+  await closeServers(servers);
   return code;
 }
