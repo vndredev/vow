@@ -9,11 +9,13 @@
  */
 
 /** The dev-API mount points, under `/__vow`. `db` is the data layer (`/__vow/db/<slug>[/<id>]`); `issues`
- *  is the gh-direct issue plan (`/__vow/issues`); `agent` is the start-work signal that dispatches an agent
- *  session for an issue (`/__vow/agent`). Both the client fetch and the server mount read these. */
+ *  is the gh-direct issue plan (`/__vow/issues`); `events` is the live event stream (`/__vow/events`);
+ *  `agent` is the start-work signal that dispatches an agent session for an issue (`/__vow/agent`). Both the
+ *  client fetch and the server mount read these. */
 export const VOW_API = {
   agent: "/__vow/agent",
   db: "/__vow/db",
+  events: "/__vow/events",
   issues: "/__vow/issues",
 } as const;
 

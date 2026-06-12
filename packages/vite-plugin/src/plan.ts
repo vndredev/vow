@@ -9,6 +9,7 @@ import {
   emitForm,
   emitFormTest,
   emitViewTest,
+  feedLayouts,
   issueLayouts,
   listedEntities,
   statsRefs,
@@ -56,6 +57,7 @@ export interface Contribution {
   readonly boards: readonly GroupRef[];
   readonly primitives: readonly string[];
   readonly issueViews: readonly string[];
+  readonly feedViews: readonly string[];
   readonly pages: readonly Page[];
   readonly needsLayout: boolean;
   readonly needsTimeline: boolean;
@@ -65,6 +67,7 @@ export interface Contribution {
 const NOTHING: Contribution = {
   boards: [],
   cards: [],
+  feedViews: [],
   files: [],
   issueViews: [],
   listed: [],
@@ -121,6 +124,7 @@ function planView(vow: ReadonlyVow, outDir: string, entitySlugs: readonly string
   return contribution({
     boards: boardRefs(mutable(vow)),
     cards: cardsRefs(mutable(vow)),
+    feedViews: [...feedLayouts(mutable(vow))],
     files: [
       { path: path.join(outDir, `${vow.slug}.vue`), source: built.sfc },
       { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },

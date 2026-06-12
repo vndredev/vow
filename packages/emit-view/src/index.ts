@@ -18,6 +18,8 @@ export { type ListActions, emitEntityList } from "./entity-list.ts";
 export { emitEntityStats } from "./entity-stats.ts";
 export { fieldControl } from "./field-control.ts";
 export { emitForm } from "./form.ts";
+export { FEED_LAYOUTS, type FeedLayout, feedLayout } from "./feed-layout.ts";
+export { emitFeedListSfc, emitFeedTraceSfc } from "./feed-sfc.ts";
 export { ISSUE_LAYOUTS, type IssueLayout, issueLayout } from "./issue-layout.ts";
 export { emitIssueBoardSfc, emitIssueRoadmapSfc, emitIssueTableSfc } from "./issue-sfc.ts";
 export {
@@ -37,6 +39,7 @@ export {
   type ListRef,
   boardRefs,
   cardsRefs,
+  feedLayouts,
   issueLayouts,
   listedEntities,
   statsRefs,

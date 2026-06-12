@@ -8,6 +8,8 @@ import {
   emitEntityCards,
   emitEntityList,
   emitEntityStats,
+  emitFeedListSfc,
+  emitFeedTraceSfc,
   emitIssueBoardSfc,
   emitIssueRoadmapSfc,
   emitIssueTableSfc,
@@ -213,6 +215,20 @@ export function composeIssueViews(issueViews: readonly string[], outDir: string)
   }
   // Each issue view composes Badge (status + labels) + Button (the close/reopen action).
   return { files, primitives: primitivesFor(files, ["Badge", "Button"]) };
+}
+
+/** The live feed/event views (`events: { as }`) — fixed components reading `/__vow/events`. */
+export function composeFeedViews(feedViews: readonly string[], outDir: string): Composed {
+  const wanted = new Set(feedViews);
+  const files: Artifact[] = [];
+  if (wanted.has("trace")) {
+    files.push({ path: path.join(outDir, "VowFeedTrace.vue"), source: emitFeedTraceSfc() });
+  }
+  if (wanted.has("list")) {
+    files.push({ path: path.join(outDir, "VowFeedList.vue"), source: emitFeedListSfc() });
+  }
+  // Feed views are simple renders without extra primitives.
+  return { files, primitives: [] };
 }
 
 /** Materialise every needed primitive adapter once, from the closed registry (on demand → lean output). */

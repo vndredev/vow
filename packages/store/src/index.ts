@@ -610,3 +610,83 @@ export function useIssues(): {
 export function createList(): ReactiveRows {
   return new ReactiveRows();
 }
+
+/** One point on the live feed — VowEvent from observability. */
+export interface FeedItem {
+  readonly ts: string;
+  readonly kind: string;
+  readonly issue?: number;
+  readonly pr?: number;
+  readonly phase?: string;
+  readonly detail?: string;
+}
+
+const feed = reactive<FeedItem[]>([]) as FeedItem[];
+let feedLoaded = false;
+
+/** The fetch state the feed views read to tell apart loading / failed / genuinely-empty. */
+const feedState = reactive({ error: false, loading: false });
+
+/** Read the event feed from `/__vow/events`, reporting `ok: false` on any non-ok response or transport
+ *  failure. The feed is a stream of VowEvent objects; entries are parsed and validated minimally. */
+async function fetchFeed(): Promise<FetchResult<FeedItem>> {
+  try {
+    const data = await okJson(VOW_API.events);
+    if (!Array.isArray(data)) {
+      return { items: [], ok: false };
+    }
+    const items: FeedItem[] = [];
+    for (const entry of data) {
+      if (
+        isObject(entry) &&
+        typeof entry["ts"] === "string" &&
+        typeof entry["kind"] === "string"
+      ) {
+        items.push({
+          ts: entry["ts"],
+          kind: entry["kind"],
+          issue: typeof entry["issue"] === "number" ? entry["issue"] : undefined,
+          pr: typeof entry["pr"] === "number" ? entry["pr"] : undefined,
+          phase: typeof entry["phase"] === "string" ? entry["phase"] : undefined,
+          detail: typeof entry["detail"] === "string" ? entry["detail"] : undefined,
+        });
+      }
+    }
+    return { items, ok: true };
+  } catch {
+    return { items: [], ok: false };
+  }
+}
+
+/** Pull the event feed from `/__vow/events` and replace the shared array, driving `feedState`. */
+async function loadFeed(): Promise<void> {
+  if (!hasApi) {
+    return;
+  }
+  feedState.loading = true;
+  const result = await fetchFeed();
+  feedState.error = !result.ok;
+  feedState.loading = false;
+  if (result.ok) {
+    feed.splice(0, feed.length, ...result.items);
+  }
+}
+
+/** The shared reactive event feed, read live from `/__vow/events` + polled on focus + the interval.
+ *  `state` is the same `CollectionState` shape a collection exposes — its loading / error flags let a view
+ *  show "Loading events…" or "Couldn't fetch events" instead of a bare header. The feed is the realtime
+ *  observability stream of what the hub/agent/CLI is doing. */
+export function useFeed(): {
+  items: FeedItem[];
+  state: CollectionState;
+} {
+  if (!feedLoaded) {
+    feedLoaded = true;
+    detach(loadFeed);
+    startFreshness();
+  }
+  return {
+    items: feed,
+    state: feedState,
+  };
+}

@@ -1,5 +1,7 @@
 import type { IssueLayout, ReadonlyVow } from "./types.ts";
+import type { FeedLayout } from "./feed-layout.ts";
 import { asRecord, defined } from "@vow/core";
+import { feedLayout } from "./feed-layout.ts";
 import { issueLayout } from "./issue-layout.ts";
 import { str } from "./helpers.ts";
 
@@ -139,6 +141,20 @@ export function issueLayouts(view: ReadonlyVow): Set<IssueLayout> {
   walkNodes(view, (type, value) => {
     if (type === "issues") {
       found.add(issueLayout(value));
+    }
+  });
+  return found;
+}
+
+/**
+ * The feed/live-data view layouts a `## view` renders — so the plugin materialises the matching VowFeed*
+ * components. Validated, so the set only ever holds real layouts.
+ */
+export function feedLayouts(view: ReadonlyVow): Set<FeedLayout> {
+  const found = new Set<FeedLayout>();
+  walkNodes(view, (type, value) => {
+    if (type === "events") {
+      found.add(feedLayout(value));
     }
   });
   return found;
