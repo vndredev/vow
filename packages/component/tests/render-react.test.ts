@@ -236,3 +236,24 @@ test("renderReactSfc throws when events are present", () => {
   };
   expect(() => renderReactSfc(withEvents)).toThrow("#101 follow-up");
 });
+
+test("a bound attr name that would forge a directive is rejected in the React adapter (#305)", () => {
+  // The same breakout as the Vue path — the second renderer over the model rejects it identically.
+  const node: UiNode = {
+    attrs: [{ expr: "doEvil()", kind: "bound", name: 'class="x" @click' }],
+    children: [],
+    kind: "component",
+    name: "Card",
+  };
+  expect(() => renderReactView(node, 0)).toThrow(/not a safe attribute name/u);
+});
+
+test("a legitimate bound attr name still renders byte-stable in the React adapter", () => {
+  const node: UiNode = {
+    attrs: [{ expr: "label", kind: "bound", name: "aria-label" }],
+    children: [],
+    kind: "component",
+    name: "Field",
+  };
+  expect(renderReactView(node, 0)).toBe(`<Field aria-label={label} />`);
+});

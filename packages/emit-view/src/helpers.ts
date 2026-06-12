@@ -1,4 +1,5 @@
-import type { Attr, UiNode } from "@vow/component";
+import type { Attr, UiNode } from "./types.ts";
+import { assertObjectKey } from "@vow/component";
 
 /**
  * The shared UiNode/Attr builders + raw-YAML coercions used across the view emitters. Small, pure,
@@ -63,9 +64,14 @@ export function scriptJson(value: unknown): string {
   return JSON.stringify(value).replaceAll("</", String.raw`<\/`);
 }
 
-/** One `key: value` entry of an object-literal expression — strings single-quoted, the rest via JSON. */
+/**
+ * One `key: value` entry of an object-literal expression — strings single-quoted, the rest via JSON.
+ * The key lands in expression position (`<key>: ...`), so it is validated as a bare identifier first:
+ * a raw YAML key like `'a }; alert(1); ({'` would otherwise break out of the literal and run on render.
+ */
 function entryExpr(entry: readonly [string, unknown]): string {
   const [key, value] = entry;
+  assertObjectKey(key);
   if (typeof value === "string") {
     return `${key}: ${quote(value)}`;
   }
