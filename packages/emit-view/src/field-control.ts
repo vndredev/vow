@@ -5,7 +5,7 @@ import { quote } from "./helpers.ts";
 /** Vow's Select primitive over a fixed option list. */
 function selectControl(field: ReadonlyField, model: string): UiNode {
   const opts = (field.options ?? [])
-    .map((option) => `{ value: '${quote(option)}', label: '${quote(option)}' }`)
+    .map((option) => `{ value: ${quote(option)}, label: ${quote(option)} }`)
     .join(", ");
   return {
     attrs: [

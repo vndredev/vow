@@ -36,17 +36,28 @@ export function bound(name: string, expr: string): Attr {
   return { expr, kind: "bound", name };
 }
 
-/** Single-quote-escape a raw string for embedding in a generated single-quoted JS literal. */
+/**
+ * A raw string as a complete single-quoted JS literal, safe to embed inside a double-quoted Vue
+ * `:attr="..."`. Escaping rides on `JSON.stringify` (backslashes, newlines, control chars); the
+ * double-quoted JSON is then retargeted to a single-quoted literal. Every double quote becomes the
+ * `&quot;` HTML entity so no bare double quote survives to break the surrounding attribute delimiter
+ * (Vue decodes the entity back to a `"` before compiling the expression), and single quotes are
+ * backslash-escaped for the literal. Includes the surrounding quotes — so callers embed it directly.
+ */
 export function quote(value: string): string {
-  const escaped = String.raw`\'`;
-  return value.replaceAll("'", escaped);
+  const json = JSON.stringify(value);
+  const inner = json
+    .slice(1, -1)
+    .replaceAll(String.raw`\"`, "&quot;")
+    .replaceAll("'", String.raw`\'`);
+  return `'${inner}'`;
 }
 
 /** One `key: value` entry of an object-literal expression — strings single-quoted, the rest via JSON. */
 function entryExpr(entry: readonly [string, unknown]): string {
   const [key, value] = entry;
   if (typeof value === "string") {
-    return `${key}: '${quote(value)}'`;
+    return `${key}: ${quote(value)}`;
   }
   return `${key}: ${JSON.stringify(value)}`;
 }

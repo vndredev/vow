@@ -81,7 +81,7 @@ function propToAttr(entry: readonly [string, unknown]): Attr {
   if (typeof raw === "number") {
     return bound(name, String(raw));
   }
-  return bound(name, `'${quote(String(raw))}'`);
+  return bound(name, quote(String(raw)));
 }
 
 export function propsToAttrs(value: Readonly<Record<string, unknown>>): Attr[] {
