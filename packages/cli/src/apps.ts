@@ -58,5 +58,5 @@ export function repoRoot(): string {
     }
     dir = path.dirname(dir);
   }
-  throw new Error("vow: could not find the repo root (no pnpm-workspace.yaml above the CLI)");
+  throw new Error("could not find the repo root (no pnpm-workspace.yaml above the CLI)");
 }
