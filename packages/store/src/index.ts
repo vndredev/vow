@@ -351,6 +351,24 @@ async function writeIssue(action: "close" | "reopen", issue: number): Promise<vo
   }
 }
 
+/** Signal the agent to begin an issue via `POST /__vow/agent` (the dev server dispatches `vow agent run`).
+ *  Status stays derived — the signal only kicks off the run; the resulting PR is what makes the issue read
+ *  `doing` on the next poll, so nothing is spliced here. A failed signal is swallowed. */
+async function signalStartWork(issue: number): Promise<void> {
+  if (!hasApi) {
+    return;
+  }
+  try {
+    await fetch(VOW_API.agent, {
+      body: JSON.stringify({ action: "start", number: issue }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+  } catch {
+    // The agent run is fire-and-forget; the human watches it via the session link once the PR opens.
+  }
+}
+
 let freshness = false;
 /** Refetch every loaded collection on focus + a light visible-tab interval, so an MCP write shows up. */
 function startFreshness(): void {
@@ -469,12 +487,14 @@ export interface IssuesState {
 /** The shared reactive issue plan, read live from `/__vow/issues` (gh-direct) + polled on focus + the
  *  interval. `state` carries the loading / error flags so a view can show "Loading the plan…" or "Couldn't
  *  reach GitHub" instead of a bare header. `closeIssue`/`reopenIssue` POST back through the same dev seam
- *  the MCP uses — so the studio's action buttons and the agent share one path to GitHub. GitHub stays the
- *  source; the reply re-syncs. */
+ *  the MCP uses — so the studio's action buttons and the agent share one path to GitHub. `startWork` POSTs
+ *  the start-work signal to `/__vow/agent`, dispatching an agent session for the issue — the human's one
+ *  trigger to begin. GitHub stays the source; the reply re-syncs. */
 export function useIssues(): {
   closeIssue: (issue: number) => void;
   items: IssueItem[];
   reopenIssue: (issue: number) => void;
+  startWork: (issue: number) => void;
   state: IssuesState;
 } {
   if (!issuesLoaded) {
@@ -492,6 +512,11 @@ export function useIssues(): {
     reopenIssue: (issue): void => {
       detach(async () => {
         await writeIssue("reopen", issue);
+      });
+    },
+    startWork: (issue): void => {
+      detach(async () => {
+        await signalStartWork(issue);
       });
     },
     state: issuesState,

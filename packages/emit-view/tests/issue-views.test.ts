@@ -66,10 +66,22 @@ test("each issue SFC emitter produces a valid, store-bound SFC", () => {
 test("each issue SFC emits the close/reopen action button on the shared store seam", () => {
   for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
     expect(sfc).toContain('import Button from "./Button.vue";');
-    expect(sfc).toContain("const { items, state, closeIssue, reopenIssue } = useIssues();");
+    expect(sfc).toContain(
+      "const { items, state, closeIssue, reopenIssue, startWork } = useIssues();",
+    );
     expect(sfc).toContain("closeIssue(it.issue.number)");
     expect(sfc).toContain("reopenIssue(it.issue.number)");
     expect(sfc).toContain("it.status === 'done' ? 'Reopen' : 'Close'");
+  }
+});
+
+test("each issue SFC emits the start-work button — the human's signal to the agent — on open issues", () => {
+  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    // The board action POSTs the start-work signal through the store's `startWork` (-> /__vow/agent).
+    expect(sfc).toContain("startWork(it.issue.number)");
+    expect(sfc).toContain('label="Start work"');
+    // Shown only while the issue isn't yet done (a done issue is reopened, not started).
+    expect(sfc).toContain("v-if=\"it.status !== 'done'\"");
   }
 });
 
