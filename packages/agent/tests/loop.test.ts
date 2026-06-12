@@ -125,7 +125,32 @@ test("runTask emits the lifecycle phases in order — the live-orchestration sig
     ops,
     provider: claudeCode,
   });
-  expect(phases).toEqual(["worktree", "develop", "gates", "publish", "done"]);
+  expect(phases).toEqual(["worktree", "develop", "format", "gates", "publish", "done"]);
+});
+
+test("the worktree is auto-formatted before the gate — a format deviation can never fail the gate", async () => {
+  const commands: string[] = [];
+  const ops: AgentOps = {
+    run: async (command) => {
+      await Promise.resolve();
+      commands.push(`${command.bin} ${command.args.join(" ")}`.trim());
+      if (command.bin === "claude") {
+        return { code: 0, output: "ok" };
+      }
+      return { code: 0, output: "" };
+    },
+    worktreeAdd: async () => {
+      await Promise.resolve();
+    },
+    worktreeRemove: async () => {
+      await Promise.resolve();
+    },
+  };
+  await runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode });
+  const fmtAt = commands.indexOf("vp fmt");
+  const gateAt = commands.indexOf("vp check");
+  expect(fmtAt).toBeGreaterThanOrEqual(0);
+  expect(fmtAt).toBeLessThan(gateAt);
 });
 
 test("a failed run skips the publish phase (nothing developed)", async () => {
@@ -141,5 +166,5 @@ test("a failed run skips the publish phase (nothing developed)", async () => {
     ops,
     provider: claudeCode,
   });
-  expect(phases).toEqual(["worktree", "develop", "gates", "done"]);
+  expect(phases).toEqual(["worktree", "develop", "format", "gates", "done"]);
 });
