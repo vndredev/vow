@@ -1,4 +1,4 @@
-import type { ReadonlyField } from "@vow/core";
+import type { ReadonlyField } from "./types.ts";
 
 /**
  * Field-value expressions for the generated entity module — the zod type, the factory default, and the

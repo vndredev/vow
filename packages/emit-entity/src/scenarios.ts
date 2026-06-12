@@ -1,4 +1,4 @@
-import type { Maybe, ReadonlyField, ReadonlyVow } from "@vow/core";
+import type { Maybe, ReadonlyField, ReadonlyVow } from "./types.ts";
 import { pascalCase } from "@vow/component";
 
 /**
