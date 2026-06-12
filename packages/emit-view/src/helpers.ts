@@ -53,6 +53,16 @@ export function quote(value: string): string {
   return `'${inner}'`;
 }
 
+/**
+ * A value as a JSON literal safe to embed inside a `<script setup>` body. `JSON.stringify` does not
+ * escape the forward slash, so a string holding `</script>` would close the SFC's script block early
+ * and let the rest run as markup (a stored-XSS sink for unconstrained values like select options).
+ * Neutralizing every `</` to `<\/` (an equivalent JS string, never a closing tag) keeps the embed inert.
+ */
+export function scriptJson(value: unknown): string {
+  return JSON.stringify(value).replaceAll("</", String.raw`<\/`);
+}
+
 /** One `key: value` entry of an object-literal expression — strings single-quoted, the rest via JSON. */
 function entryExpr(entry: readonly [string, unknown]): string {
   const [key, value] = entry;

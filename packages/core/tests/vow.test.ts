@@ -84,6 +84,21 @@ test("a select field requires a non-empty options list", () => {
   expect(Field.safeParse({ name: "status", options: ["open"], type: "select" }).success).toBe(true);
 });
 
+test("a select option carrying '<' is rejected at the boundary (script-breakout defense)", () => {
+  // An option lands verbatim in a generated `<script setup>`; a `</script>` there is a stored-XSS sink.
+  // The boundary forbids any `<` so the tag-open can never reach the emitter (reachable via MCP add_field).
+  const breakout = "done</script><svg onload=alert(1)>";
+  expect(Field.safeParse({ name: "status", options: [breakout], type: "select" }).success).toBe(
+    false,
+  );
+  expect(Field.safeParse({ name: "status", options: ["open<b>"], type: "select" }).success).toBe(
+    false,
+  );
+  expect(
+    Field.safeParse({ name: "status", options: ["in progress"], type: "select" }).success,
+  ).toBe(true);
+});
+
 test("non-reference, non-select fields need neither ref nor options", () => {
   expect(Field.safeParse({ name: "title", type: "text" }).success).toBe(true);
   expect(Field.safeParse({ name: "count", type: "number" }).success).toBe(true);

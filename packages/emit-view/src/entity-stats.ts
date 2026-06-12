@@ -1,6 +1,7 @@
 import type { Component, ReadonlyVow } from "./types.ts";
 import { assertEmitEntity, selectField } from "./entity-guard.ts";
 import { pascalCase, renderVueSfc } from "@vow/component";
+import { scriptJson } from "./helpers.ts";
 import { statsComponentName } from "./naming.ts";
 
 /**
@@ -26,7 +27,7 @@ export function emitEntityStats(entity: ReadonlyVow, by: string): string {
     name: statsComponentName(entity.slug, by),
     setup: [
       `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
-      `const options = ${JSON.stringify(field.options ?? [])};`,
+      `const options = ${scriptJson(field.options ?? [])};`,
       `const stats = computed(() =>`,
       `  options.map((o) => ({ label: o, value: rows.filter((r) => r.${by} === o).length })),`,
       `);`,
