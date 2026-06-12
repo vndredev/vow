@@ -75,8 +75,8 @@ issuePlan(cwd)           ->  [{ issue, status }]      status: planned | doing | 
 ```
 
 - **done** — the issue is closed.
-- **doing** — open, and an open PR closes it (`Closes #N` · `Fixes #N` · `Resolves #N`).
-- **planned** — open, no PR yet.
+- **doing** — open, and either an open PR closes it (`Closes #N` · `Fixes #N` · `Resolves #N`) **or** it carries the `in-progress` label (an agent is developing it right now). The agent applies the label the moment it claims the issue and removes it when the run ends, so the board shows `doing` across the whole **develop → PR → merge** arc, not only once the PR exists.
+- **planned** — open, no PR and not being developed.
 
 `statusVariant` colours each — planned → :badge[planned]{variant=neutral} · doing → :badge[doing]{variant=accent} · done → :badge[done]{variant=success}. Like `gitTimeline`, the reads are **graceful**: no `gh`, no auth, no network ⇒ `[]`, so a build without GitHub simply has no issue plan. This is the read foundation the board + the roadmap's three sections (Done · Doing · Planned) build on.
 

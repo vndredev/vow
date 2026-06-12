@@ -1,5 +1,6 @@
 import type { GitHubIssue, GitHubPr } from "../src/types.ts";
 import {
+  IN_PROGRESS_LABEL,
   deriveIssueStatus,
   featureIssueBody,
   linkedIssues,
@@ -146,6 +147,17 @@ test("deriveIssueStatus: closed -> done, open+PR -> doing, open -> planned", () 
   expect(deriveIssueStatus(issue({ state: "closed" }), [])).toBe("done");
   expect(deriveIssueStatus(issue({ number: ISSUE_A }), [ISSUE_A])).toBe("doing");
   expect(deriveIssueStatus(issue({ number: ISSUE_A }), [])).toBe("planned");
+});
+
+test("deriveIssueStatus: the in-progress label reads as doing before any PR exists (#479)", () => {
+  // An agent claims the issue (label) the moment it starts developing — doing without an open PR yet.
+  expect(deriveIssueStatus(issue({ labels: [IN_PROGRESS_LABEL] }), [])).toBe("doing");
+  // The label is moot once the issue closes — done still wins.
+  expect(deriveIssueStatus(issue({ labels: [IN_PROGRESS_LABEL], state: "closed" }), [])).toBe(
+    "done",
+  );
+  // An ordinary label is not the claim signal — still planned.
+  expect(deriveIssueStatus(issue({ labels: ["area: agent"] }), [])).toBe("planned");
 });
 
 test("statusVariant maps to the board's colours", () => {
