@@ -220,13 +220,6 @@ export function mapNode(type: string, value: unknown, entities: readonly string[
   return textNode(type, value);
 }
 
-/** Map a raw single-key YAML node (`{ flex: {...} }`) to a UiNode. */
-export function rawToUiNode(raw: unknown, entities: readonly string[]): UiNode {
-  const obj = asRecord(raw);
-  const type = Object.keys(obj)[0] ?? "";
-  return mapNode(type, obj[type], entities);
-}
-
 /** The direct children of a node that can themselves hold components (element/component/slot). */
 function childNodes(node: UiNode): readonly UiNode[] {
   if (node.kind === "element" || node.kind === "component" || node.kind === "slot") {
