@@ -1,4 +1,4 @@
-import { AUDIT_MODEL, auditCommand, codex, gemini, providerFor } from "../src/index.ts";
+import { AUDIT_MODEL, auditCommand, claudeCode, codex, gemini, providerFor } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
 const task = { branch: "feat/issue-1", cwd: "/wt", plan: "do the thing", title: "t" };
@@ -10,6 +10,12 @@ test("providerFor resolves codex + gemini; each maps the plan to its headless CL
   expect(codex.command(task).bin).toBe("codex");
   expect(codex.command(task).args).toContain("do the thing");
   expect(gemini.command(task).args).toContain("--yolo");
+});
+
+test("providerFor resolves the documented 'claude' alias to the claude-code backend", () => {
+  // The docs document `--provider claude`; the canonical backend is `claude-code`.
+  expect(providerFor("claude")).toBe(claudeCode);
+  expect(providerFor("claude-code")).toBe(claudeCode);
 });
 
 test("auditCommand builds the read-only, print-mode claude args at the given model + prompt", () => {
