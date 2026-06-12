@@ -1,3 +1,4 @@
+import { BADGE_VARIANTS, BUTTON_VARIANTS, SIZES, unionType } from "@vow/theme";
 import { primitive } from "./define.ts";
 
 /**
@@ -30,9 +31,9 @@ export const emitButtonSfc = primitive({
       default: "'default'",
       name: "variant",
       optional: true,
-      tsType: "'default' | 'outline' | 'ghost'",
+      tsType: unionType(BUTTON_VARIANTS),
     },
-    { default: "'md'", name: "size", optional: true, tsType: "'sm' | 'md' | 'lg'" },
+    { default: "'md'", name: "size", optional: true, tsType: unionType(SIZES) },
     { default: "'button'", name: "type", optional: true, tsType: "'button' | 'submit'" },
   ],
   view: {
@@ -81,7 +82,7 @@ export const emitBadgeSfc = primitive({
       default: "'neutral'",
       name: "variant",
       optional: true,
-      tsType: "'neutral' | 'accent' | 'success' | 'warning' | 'danger'",
+      tsType: unionType(BADGE_VARIANTS),
     },
   ],
   view: {

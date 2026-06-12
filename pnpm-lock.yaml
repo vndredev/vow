@@ -349,6 +349,9 @@ importers:
       '@vow/component':
         specifier: workspace:*
         version: link:../component
+      '@vow/theme':
+        specifier: workspace:*
+        version: link:../theme
     devDependencies:
       vite-plus:
         specifier: 'catalog:'
@@ -371,6 +374,9 @@ importers:
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability
+      '@vow/theme':
+        specifier: workspace:*
+        version: link:../theme
     devDependencies:
       vite-plus:
         specifier: 'catalog:'
@@ -481,6 +487,10 @@ importers:
         version: 0.1.24(@types/node@24.13.2)(jiti@2.6.1)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@24.13.2)(jiti@2.6.1)(yaml@2.9.0))(yaml@2.9.0)
 
   packages/observability:
+    dependencies:
+      '@vow/theme':
+        specifier: workspace:*
+        version: link:../theme
     devDependencies:
       '@types/node':
         specifier: ^24
@@ -529,6 +539,9 @@ importers:
       '@vow/db':
         specifier: workspace:*
         version: link:../db
+      '@vow/observability':
+        specifier: workspace:*
+        version: link:../observability
       vue:
         specifier: ^3.5.13
         version: 3.5.35(typescript@6.0.3)
@@ -537,7 +550,14 @@ importers:
         specifier: 'catalog:'
         version: 0.1.24(@types/node@24.13.2)(jiti@2.6.1)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@24.13.2)(jiti@2.6.1)(yaml@2.9.0))(yaml@2.9.0)
 
-  packages/theme: {}
+  packages/theme:
+    devDependencies:
+      '@types/node':
+        specifier: ^24
+        version: 24.13.2
+      vite-plus:
+        specifier: 'catalog:'
+        version: 0.1.24(@types/node@24.13.2)(jiti@2.6.1)(jsdom@29.1.1)(typescript@6.0.3)(vite@8.0.16(@types/node@24.13.2)(jiti@2.6.1)(yaml@2.9.0))(yaml@2.9.0)
 
   packages/vite-plugin:
     dependencies:

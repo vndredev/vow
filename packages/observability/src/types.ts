@@ -9,8 +9,8 @@
     and minted only via `NONE` (see `none.ts`). */
 export type Maybe<T> = T | undefined;
 
-/** A Badge variant — vow's status colours (see @vow/theme). */
-export type BadgeVariant = "neutral" | "accent" | "success" | "warning" | "danger";
+/** A Badge variant — vow's status colours, sourced from @vow/theme (the one variant vocabulary). */
+export type { BadgeVariant } from "@vow/theme";
 
 /** An issue's derived plan status — the board's three columns. */
 export type IssueStatus = "planned" | "doing" | "done";

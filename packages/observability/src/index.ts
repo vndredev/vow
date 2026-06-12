@@ -1,4 +1,5 @@
 import type { BadgeVariant, Maybe } from "./types.ts";
+import { BADGE_VARIANTS } from "@vow/theme";
 import { NONE } from "./none.ts";
 import commitTypes from "./commit-types.json" with { type: "json" };
 import { execFileSync } from "node:child_process";
@@ -20,7 +21,7 @@ export { NONE } from "./none.ts";
  */
 export const COMMIT_TYPES: Readonly<Record<string, string>> = commitTypes;
 
-const VARIANTS = new Set<string>(["neutral", "accent", "success", "warning", "danger"]);
+const VARIANTS = new Set<string>(BADGE_VARIANTS);
 
 /** Narrow a raw string to a `BadgeVariant` — a known colour, else `neutral`. */
 function asVariant(value: string): BadgeVariant {
