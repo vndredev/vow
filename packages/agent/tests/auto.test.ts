@@ -1,21 +1,35 @@
+// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate type import trips no-duplicate-imports
+import { type AttemptCount, autoDecision, backlogWithinCap } from "../src/auto.ts";
 import { expect, test } from "vite-plus/test";
-import { autoDecision } from "../src/auto.ts";
 
 const MAX = 8;
 const SOME = 5;
 const MID = 3;
+const CAP = 3;
+// Three illustrative issue numbers for the backlog (any distinct positive ids work).
+const ISSUE_A = 11;
+const ISSUE_B = 22;
+const ISSUE_C = 33;
+const ONE = 1;
 
-test("autoDecision: any open work develops, regardless of round (the backlog comes first)", () => {
+test("autoDecision: below the cap, any open work develops (the backlog comes first)", () => {
   expect(autoDecision({ auditedClean: false, maxRounds: MAX, openIssues: SOME, round: 0 })).toBe(
     "develop",
   );
   expect(
     autoDecision({ auditedClean: false, maxRounds: MAX, openIssues: SOME, round: MAX - 1 }),
   ).toBe("develop");
-  // Even at the round cap, an open backlog still develops — the cap only bounds the empty-backlog audit.
+});
+
+test("autoDecision: the round cap is an unconditional ceiling — even an open backlog stops", () => {
+  // A permanently un-mergeable issue keeps the backlog non-empty forever, so the cap must still fire.
+  // Otherwise the loop develops unbounded, burning CI / API quota — the ceiling beats the open backlog.
   expect(autoDecision({ auditedClean: false, maxRounds: MAX, openIssues: SOME, round: MAX })).toBe(
-    "develop",
+    "exhausted",
   );
+  expect(
+    autoDecision({ auditedClean: false, maxRounds: MAX, openIssues: SOME, round: MAX + 1 }),
+  ).toBe("exhausted");
 });
 
 test("autoDecision: an empty backlog audits for new work, then powers down once clean", () => {
@@ -31,4 +45,17 @@ test("autoDecision: an empty backlog audits for new work, then powers down once 
   expect(autoDecision({ auditedClean: false, maxRounds: MAX, openIssues: 0, round: MAX })).toBe(
     "exhausted",
   );
+});
+
+test("backlogWithinCap drops an issue at/over its attempt cap, keeps healthy ones progressing", () => {
+  const backlog = [ISSUE_A, ISSUE_B, ISSUE_C];
+  // ISSUE_B has failed CAP times -> excluded; ISSUE_A (untried) + ISSUE_C (one prior attempt) stay.
+  const attempts: AttemptCount[] = [
+    [ISSUE_B, CAP],
+    [ISSUE_C, ONE],
+  ];
+  expect(backlogWithinCap(backlog, attempts, CAP)).toEqual([ISSUE_A, ISSUE_C]);
+  // Over the cap is excluded too; an empty attempt list keeps everything.
+  expect(backlogWithinCap(backlog, [[ISSUE_A, CAP + 1]], CAP)).toEqual([ISSUE_B, ISSUE_C]);
+  expect(backlogWithinCap(backlog, [], CAP)).toEqual([ISSUE_A, ISSUE_B, ISSUE_C]);
 });

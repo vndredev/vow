@@ -19,8 +19,11 @@ import {
   issueDetail,
   issueLabels,
   prCiState,
+  prCiStateForHead,
   syncProjectStatus,
 } from "@vow/observability";
+// oxlint-disable-next-line no-duplicate-imports -- the @vow/observability value import above; PrCi needs a top-level type import
+import type { PrCi } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
 import type { Provider } from "@vow/agent";
 import { execFileSync } from "node:child_process";
@@ -316,9 +319,9 @@ export function draftPr(pr: number, cwd: string): number {
   return 0;
 }
 
-/** Read PR `pr`'s CI and act on the decision — merge a green run, draft a red one, or report pending. */
-export function actOnPr(pr: number, cwd: string): number {
-  const decision = mergeDecision(prCiState(cwd, pr));
+/** Act on a CI verdict for PR `pr` — merge a green run, draft a red one, or report pending. */
+function actOnCi(pr: number, cwd: string, ci: PrCi): number {
+  const decision = mergeDecision(ci);
   if (decision === "merge") {
     return mergePr(pr, cwd);
   }
@@ -327,4 +330,20 @@ export function actOnPr(pr: number, cwd: string): number {
   }
   process.stdout.write(`pr #${pr}: CI pending — not merged; re-run when checks complete\n`);
   return 1;
+}
+
+/** Read PR `pr`'s CI and act on the decision — merge a green run, draft a red one, or report pending. */
+export function actOnPr(pr: number, cwd: string): number {
+  return actOnCi(pr, cwd, prCiState(cwd, pr));
+}
+
+/** Like `actOnPr`, but the verdict is PINNED to `expectedHead` — a green rollup only merges when it belongs
+ *  to that exact head SHA. After an `update-branch` rebase, gh can still report the prior (green) run until
+ *  the fresh one registers; pinning treats that stale read as pending so the loop waits, never merging a
+ *  branch whose post-rebase CI never ran. An empty `expectedHead` falls back to the unpinned read. */
+export function actOnPrForHead(pr: number, cwd: string, expectedHead: string): number {
+  if (expectedHead === "") {
+    return actOnPr(pr, cwd);
+  }
+  return actOnCi(pr, cwd, prCiStateForHead(cwd, pr, expectedHead));
 }
