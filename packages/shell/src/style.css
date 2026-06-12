@@ -114,11 +114,42 @@
   padding: var(--vow-space-5);
 }
 .vow-shell__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vow-space-2);
   font-size: var(--vow-text-lg);
   font-weight: var(--vow-weight-bold);
   color: var(--vow-color-text);
   text-decoration: none;
   letter-spacing: var(--vow-tracking-tight);
+}
+/* the vow wordmark — mono, matching the `[V]` mark's voice */
+.vow-shell__brand-word {
+  font-family: var(--vow-font-mono);
+  font-weight: var(--vow-weight-semibold);
+}
+/* the vow `[V]` mark — a bracketed Vermilion V in a token-driven box (re-skins with the theme) */
+.vow-shell__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.85em;
+  height: 1.85em;
+  font-family: var(--vow-font-mono);
+  font-size: 0.9em;
+  font-weight: var(--vow-weight-bold);
+  line-height: 1;
+  letter-spacing: -0.1em;
+  color: var(--vow-color-text);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border-hover);
+  border-radius: var(--vow-radius-1);
+  user-select: none;
+}
+.vow-shell__mark-v {
+  margin: 0 0.05em;
+  color: var(--vow-color-accent);
 }
 .vow-shell__nav {
   display: flex;
@@ -211,6 +242,9 @@
   background: var(--vow-color-bg);
 }
 .vow-shell__bar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vow-space-2);
   font-weight: var(--vow-weight-bold);
   color: var(--vow-color-text);
   text-decoration: none;

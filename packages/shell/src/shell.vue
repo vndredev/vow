@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import DarkToggle from "./dark-toggle.vue";
 import Drawer from "./drawer.vue";
 import Icon from "@vow/icons/Icon.vue";
+import Mark from "./mark.vue";
 import type { Page } from "./types.ts";
 import SidebarNav from "./sidebar-nav.vue";
 import { buildNav } from "./index.ts";
@@ -37,7 +38,10 @@ const topLinks = computed<readonly Page[]>(() =>
   <div class="vow-shell" :data-nav="nav" :data-width="width" :data-variant="variant">
     <!-- header / footer: one horizontal bar (brand + flat nav + theme); CSS places it top or bottom -->
     <header v-if="!isSidebar" class="vow-shell__topnav">
-      <a class="vow-shell__brand" href="/">{{ props.title }}</a>
+      <a class="vow-shell__brand" href="/">
+        <Mark />
+        <span class="vow-shell__brand-word">{{ props.title }}</span>
+      </a>
       <nav class="vow-shell__topnav-links">
         <a
           v-for="link in topLinks"
@@ -65,7 +69,10 @@ const topLinks = computed<readonly Page[]>(() =>
         >
           <span /><span /><span />
         </button>
-        <a class="vow-shell__bar-brand" href="/">{{ props.title }}</a>
+        <a class="vow-shell__bar-brand" href="/">
+          <Mark />
+          <span class="vow-shell__brand-word">{{ props.title }}</span>
+        </a>
         <div class="vow-shell__bar-actions"><slot name="topbar-actions" /></div>
       </header>
 
