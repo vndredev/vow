@@ -159,9 +159,9 @@ export const AGENT_SUBCOMMANDS: readonly AgentSubcommand[] = [
     summary: "merge a green PR / draft a red one (never off a red gate)",
   },
   {
-    args: "",
+    args: "--yes",
     name: "auto",
-    summary: "the self-heal loop — pick + develop open issues round by round",
+    summary: "the self-heal loop (needs --yes — audits + develops + merges unsupervised)",
   },
   {
     args: "--file <f.json>",
@@ -207,10 +207,22 @@ function agentUsage(): string {
   return `usage: vow agent <${AGENT_SUBCOMMANDS.map((sub) => sub.name).join("|")}>\n`;
 }
 
+/** True when help is requested — `--help`/`-h` anywhere, or `help` as the sub-command. Help is HELP: it
+ *  prints usage and NEVER dispatches, so `vow agent auto --help` can't start the loop (#486). */
+export function helpRequested(rest: readonly string[]): boolean {
+  const [sub] = rest;
+  return sub === "help" || rest.includes("--help") || rest.includes("-h");
+}
+
 /** `vow agent <sub>` — the agent-native front door: `init` (scaffold) · `plan <n>` (the executor-ready
  *  plan) · `run <n> [--dry-run]` (the live run / preview) · `run-all <n>...` (a fleet) · `merge <pr>` (merge
- *  a green PR / draft a red) · `auto` (the self-heal loop) · `audit` (findings -> issues). */
+ *  a green PR / draft a red) · `auto --yes` (the self-heal loop) · `audit` (findings -> issues). A help
+ *  request is intercepted BEFORE dispatch, so no `--help` probe can ever run a sub-command (#486). */
 export function agent(rest: readonly string[]): number | Promise<number> {
+  if (helpRequested(rest)) {
+    process.stdout.write(`${agentUsage()}${agentHelp()}\n`);
+    return 0;
+  }
   const [sub] = rest;
   const handler = SUBCOMMANDS[sub ?? ""];
   if (handler) {
