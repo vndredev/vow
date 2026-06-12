@@ -134,6 +134,8 @@ export const emitSelectSfc = primitive({
     { name: "options", tsType: "{ value: string; label: string }[]" },
     { name: "label", tsType: "string" },
     { name: "controlId", optional: true, tsType: "string" },
+    { name: "describedBy", optional: true, tsType: "string" },
+    { name: "invalid", optional: true, tsType: "boolean" },
     { name: "disabled", optional: true, tsType: "boolean" },
   ],
   setup: [
@@ -183,6 +185,8 @@ export const emitSelectSfc = primitive({
         attrs: [
           { expr: "api.triggerProps", kind: "spread" },
           { expr: "label", kind: "bound", name: "aria-label" },
+          { expr: "describedBy", kind: "bound", name: "aria-describedby" },
+          { expr: "invalid", kind: "bound", name: "aria-invalid" },
           { kind: "static", name: "class", value: "vow-select__trigger" },
         ],
         children: [{ expr: "api.selectedLabel", kind: "interp" }],
