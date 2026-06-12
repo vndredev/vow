@@ -1,5 +1,6 @@
 import { expect, test } from "vite-plus/test";
 import {
+  itemsByNumber,
   parseProjectUrl,
   readAllProjectItems,
   readPageInfo,
@@ -7,6 +8,7 @@ import {
   readStatusField,
   statusChangeFor,
 } from "../src/project.ts";
+import { NONE } from "../src/none.ts";
 
 const ISSUE = 5;
 const SKIPPED = 9;
@@ -39,12 +41,16 @@ test("readStatusField throws when the Project has no Status field", () => {
   expect(() => readStatusField({ node: {} })).toThrow();
 });
 
-test("readProjectItems lifts items (number + status), skipping any node with no id", () => {
+test("readProjectItems lifts items (number + repo + status), skipping any node with no id", () => {
   const data = {
     node: {
       items: {
         nodes: [
-          { content: { number: ISSUE }, fieldValueByName: { name: "In Progress" }, id: "I1" },
+          {
+            content: { number: ISSUE, repository: { nameWithOwner: "vndredev/vow" } },
+            fieldValueByName: { name: "In Progress" },
+            id: "I1",
+          },
           { content: { number: SKIPPED } },
         ],
       },
@@ -53,7 +59,34 @@ test("readProjectItems lifts items (number + status), skipping any node with no 
   const items = readProjectItems(data);
   expect(items.map((item) => item.id)).toEqual(["I1"]);
   expect(items[0]?.number).toBe(ISSUE);
+  expect(items[0]?.nameWithOwner).toBe("vndredev/vow");
   expect(items[0]?.status).toBe("In Progress");
+});
+
+test("itemsByNumber keeps only the current repo's items — a foreign collision is excluded", () => {
+  const items = readProjectItems({
+    node: {
+      items: {
+        nodes: [
+          {
+            content: { number: ISSUE, repository: { nameWithOwner: "vndredev/vow" } },
+            fieldValueByName: { name: "Todo" },
+            id: "OURS",
+          },
+          {
+            content: { number: ISSUE, repository: { nameWithOwner: "other/repo" } },
+            fieldValueByName: { name: "Done" },
+            id: "FOREIGN",
+          },
+        ],
+      },
+    },
+  });
+  // Two items share #5; only the one from this repo is indexed — the foreign one cannot be written.
+  const byNumber = itemsByNumber(items, "vndredev/vow");
+  expect(byNumber.get(ISSUE)?.id).toBe("OURS");
+  // With no resolvable current repo (offline degrade), nothing matches — safer than a wrong write.
+  expect(itemsByNumber(items, NONE).size).toBe(0);
 });
 
 test("statusChangeFor reports a change only when the current status differs from the wanted", () => {

@@ -159,7 +159,9 @@ export function mergedFrom(json: string): boolean {
 
 /** Whether PR `pr` is MERGED via `gh pr view --json state`; `false` when gh can't be read. The merge path
     consults this when `gh pr merge` exits non-zero, to judge success by the PR's actual state not the exit
-    code — so a post-merge cleanup failure never reports a merge that landed as failed. */
+    code — so a post-merge cleanup failure reports a merge that landed as failed only when the state itself
+    is unreadable (gh returns `false`, the caller fail-closes + re-raises; the auto loop then drops the
+    merged PR from the next round). */
 export function prMerged(cwd: string, pr: number): boolean {
   try {
     const out = execFileSync("gh", ["pr", "view", String(pr), "--json", "state"], {

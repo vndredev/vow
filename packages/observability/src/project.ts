@@ -83,25 +83,36 @@ interface StatusField {
   readonly options: readonly { readonly id: string; readonly name: string }[];
 }
 
-/** One Project item: its node id, optional linked issue number, optional current Status name. */
+/** One Project item: its node id, optional linked issue number, the issue's repo (`owner/name`, absent
+ *  for a non-Issue or a malformed payload), optional current Status name. */
 interface ProjectItem {
   readonly id: string;
+  readonly nameWithOwner: Maybe<string>;
   readonly number: Maybe<number>;
   readonly status: Maybe<string>;
 }
 
-/** A graphql variable bound by `gh api graphql -f name=value` — never interpolated into the query text. */
+/** A graphql variable bound by `gh api graphql` — never interpolated into the query text. `typed` rides
+ *  via `-F` (gh's typed field flag — a bare digit string becomes a real JSON number/bool), so an `Int!`
+ *  variable is accepted; a plain string rides via `-f` (gh always sends it as a JSON string). */
 interface GqlVar {
   readonly name: string;
+  readonly typed?: boolean;
   readonly value: string;
 }
 
-/** The `gh api graphql` args for a query + its bound variables — each value passed via `-f`, so a caller-
- *  supplied id is bound by the API, never embedded in (and thus able to inject) the query text. */
+/** The `gh api graphql` args for a query + its bound variables — each value passed via `-f` (string) or
+ *  `-F` (typed), so a caller-supplied id is bound by the API, never embedded in (and thus able to inject)
+ *  the query text. An `Int!`/`Boolean!` variable MUST be `typed`, else gh coerces it to a string and the
+ *  API rejects it. */
 export function graphqlArgs(query: string, vars: readonly GqlVar[]): string[] {
   const args = ["api", "graphql", "-f", `query=${query}`];
   for (const variable of vars) {
-    args.push("-f", `${variable.name}=${variable.value}`);
+    let flag = "-f";
+    if (variable.typed === true) {
+      flag = "-F";
+    }
+    args.push(flag, `${variable.name}=${variable.value}`);
   }
   return args;
 }
@@ -149,7 +160,12 @@ function readItem(raw: unknown): Maybe<ProjectItem> {
   }
   const content = readObject(raw, "content");
   const fieldValue = readObject(raw, "fieldValueByName");
-  return { id, number: readNumber(content, "number"), status: readString(fieldValue, "name") };
+  return {
+    id,
+    nameWithOwner: readString(readObject(content, "repository"), "nameWithOwner"),
+    number: readNumber(content, "number"),
+    status: readString(fieldValue, "name"),
+  };
 }
 
 /** Narrow a graphql `node.items.nodes` payload into `ProjectItem`s (skipping any malformed node). */
@@ -200,7 +216,7 @@ export function readAllProjectItems(fetchPage: (cursor: Maybe<string>) => Json):
 
 const fieldQuery = `query($pid:ID!){node(id:$pid){... on ProjectV2{field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}}}}`;
 
-const itemsQuery = `query($pid:ID!,$cursor:String){node(id:$pid){... on ProjectV2{items(first:100,after:$cursor){pageInfo{hasNextPage endCursor}nodes{id content{... on Issue{number}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`;
+const itemsQuery = `query($pid:ID!,$cursor:String){node(id:$pid){... on ProjectV2{items(first:100,after:$cursor){pageInfo{hasNextPage endCursor}nodes{id content{... on Issue{number repository{nameWithOwner}}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`;
 
 const setStatusMutation = `mutation($pid:ID!,$item:ID!,$field:ID!,$opt:String!){updateProjectV2ItemFieldValue(input:{projectId:$pid,itemId:$item,fieldId:$field,value:{singleSelectOptionId:$opt}}){projectV2Item{id}}}`;
 
@@ -213,15 +229,41 @@ function resolveOption(field: Readonly<StatusField>, name: string): string {
   throw new RangeError(`the Project has no Status option "${name}"`);
 }
 
-/** Index the Project items by their linked issue number (items without a number are skipped). */
-function itemsByNumber(items: readonly ProjectItem[]): Map<number, ProjectItem> {
+/** Index the Project items by their linked issue number, keeping ONLY items from `repo` (the current
+ *  repository). A Project board can hold issues from other repositories whose numbers collide with this
+ *  repo's; an item with a differing — or missing/unreadable — `nameWithOwner` is skipped, so the studio's
+ *  status can never be written onto a foreign board item. Items without a number are also skipped. */
+export function itemsByNumber(
+  items: readonly ProjectItem[],
+  repo: Maybe<string>,
+): Map<number, ProjectItem> {
   const byNumber = new Map<number, ProjectItem>();
   for (const item of items) {
-    if (typeof item.number === "number") {
+    if (
+      typeof item.number === "number" &&
+      item.nameWithOwner === repo &&
+      typeof repo === "string"
+    ) {
       byNumber.set(item.number, item);
     }
   }
   return byNumber;
+}
+
+/** The current repository as `owner/name` via `gh repo view`, or absent when `gh`/auth/network is absent.
+ *  Failure-safe by design: this package's reads degrade rather than throw mid-sync — an unreadable repo
+ *  yields `NONE`, which `itemsByNumber` treats as "match nothing" (skip every item) over a wrong write. */
+export function currentRepo(cwd: string): Maybe<string> {
+  try {
+    const out = execFileSync("gh", ["repo", "view", "--json", "nameWithOwner"], {
+      cwd,
+      encoding: "utf8",
+    });
+    const parsed: unknown = JSON.parse(out);
+    return readString(parsed, "nameWithOwner");
+  } catch {
+    return NONE;
+  }
 }
 
 /** The fixed context of one sync run — the connection target and the Project's resolved Status field. */
@@ -286,7 +328,7 @@ export function syncProjectStatus(cwd: string, projectId: string): SyncResult {
     }
     return ghJsonData(cwd, itemsQuery, pid);
   };
-  const byNumber = itemsByNumber(readAllProjectItems(fetchPage));
+  const byNumber = itemsByNumber(readAllProjectItems(fetchPage), currentRepo(cwd));
   const wanted = (plan: PlanItem): Maybe<Wanted> => {
     const item = byNumber.get(plan.issue.number);
     if (typeof item === "object") {
@@ -383,7 +425,7 @@ export function resolveProjectNodeId(cwd: string, url: string): Maybe<string> {
   }
   const data = ghJsonData(cwd, projectByOwnerQuery, [
     { name: "login", value: ref.login },
-    { name: "number", value: String(ref.number) },
+    { name: "number", typed: true, value: String(ref.number) },
   ]);
   return readString(readObject(readObject(data, "repositoryOwner"), "projectV2"), "id");
 }
