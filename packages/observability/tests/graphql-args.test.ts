@@ -10,3 +10,14 @@ test("graphqlArgs binds each variable via -f, never interpolating it into the qu
   expect(args.some((arg) => arg.startsWith("query=") && arg.includes("injected"))).toBe(false);
   expect(args.some((arg) => arg.startsWith("query=") && arg.includes("$pid"))).toBe(true);
 });
+
+test("graphqlArgs binds a typed var via -F (a real JSON Int), a string var via -f", () => {
+  // An Int! variable MUST ride -F: gh's -f always sends a JSON string, which GitHub rejects for Int!.
+  const args = graphqlArgs("query($login:String!,$number:Int!){x}", [
+    { name: "login", value: "vndredev" },
+    { name: "number", typed: true, value: "3" },
+  ]);
+  // The typed var precedes its flag; assert the flag right before each name=value pair.
+  expect(args[args.indexOf("login=vndredev") - 1]).toBe("-f");
+  expect(args[args.indexOf("number=3") - 1]).toBe("-F");
+});
