@@ -160,6 +160,41 @@ test("frontmatter title + nav round-trip into the Vow (the app shell, declared)"
   expect(vow.shell).toEqual({ nav: "sidebar-left", variant: "cards", width: "full" });
 });
 
+test("an unknown frontmatter key is rejected with a did-you-mean hint", () => {
+  // `fulfils` (one l) is a near-miss of `fulfills` — a silent hollow vow otherwise.
+  const md = `---\nid: vow_x\nfulfils: emit entity\n---\n# X\n`;
+  expect(() => parseVowMd("x", md)).toThrow(
+    /unknown frontmatter key "fulfils" \(did you mean "fulfills"\?\)/u,
+  );
+  // `roots` (extra s) → `root`.
+  const rooted = `---\nid: vow_x\nfulfills: emit view\nroots: true\n---\n# X\n`;
+  expect(() => parseVowMd("x", rooted)).toThrow(/did you mean "root"/u);
+});
+
+test("a stray frontmatter key with no near match is rejected without a hint", () => {
+  const md = `---\nid: vow_x\nfulfills: emit view\nauthor: andre\n---\n# X\n`;
+  expect(() => parseVowMd("x", md)).toThrow(/unknown frontmatter key "author"$/u);
+});
+
+test("a mistyped `## <section>` heading is rejected as a near-miss", () => {
+  // `## fileds` (transposed) → `fields`; `## prove` (missing s) → `proves`; `## veiw` → `view`.
+  const fileds = `---\nid: vow_x\nfulfills: emit entity\n---\n# X\n\n## fileds\n- title: text\n`;
+  expect(() => parseVowMd("x", fileds)).toThrow(
+    /section heading "## fileds" \(did you mean "## fields"/u,
+  );
+  const prove = `---\nid: vow_x\nfulfills: emit view\n---\n# X\n\n## prove\n- it works\n`;
+  expect(() => parseVowMd("x", prove)).toThrow(/did you mean "## proves"/u);
+  const veiw = `---\nid: vow_x\nfulfills: emit view\n---\n# X\n\n## veiw\n`;
+  expect(() => parseVowMd("x", veiw)).toThrow(/did you mean "## view"/u);
+});
+
+test("a legitimate prose `## <heading>` is NOT rejected (a vow.md is plain Markdown)", () => {
+  // `## notes`, `## background` are not near any section name — prose passes untouched.
+  const md = `---\nid: vow_x\nfulfills: emit view\n---\n# A page\n\n## Notes\n\nSome prose.\n\n## Background\n\nMore.\n`;
+  expect(() => parseVowMd("x", md)).not.toThrow();
+  expect(parseVowMd("x", md).intent).toBe("A page");
+});
+
 test("a ## seed block parses to a list of sample records", () => {
   const md = [
     "---",
