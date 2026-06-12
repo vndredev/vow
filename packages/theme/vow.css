@@ -319,12 +319,32 @@ body {
 .vow-issue-session:hover {
   text-decoration: underline;
 }
-/* the issue board card — the # above the title, muted + tabular */
+/* the shared actions group (start-work · close/reopen · session) — travels as a unit, pushed to the card's
+   trailing edge so the # + status read at the start and the controls align on the right, never scattered */
+.vow-issue-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  margin-left: auto;
+}
+/* the issue board card — the # is muted + tabular, sitting in the meta footer beside the title's content */
 .vow-issue-board__num {
-  display: block;
   color: var(--vow-color-muted);
   font-variant-numeric: tabular-nums;
   font-size: var(--vow-text-sm);
+}
+/* the board card's title — the content, prominent (the column already carries the status) */
+.vow-issue-board__title {
+  font-size: var(--vow-text-base);
+  font-weight: var(--vow-weight-medium);
+  line-height: 1.35;
+  color: var(--vow-color-text);
+}
+/* the board card's meta footer — the # + assignee at the start, the actions trailing (margin-left:auto) */
+.vow-issue-board__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
 }
 /* the card's labels — the same gapped, wrapping badge row the table cell uses */
 .vow-issue-board__labels {
@@ -380,25 +400,32 @@ body {
 .vow-roadmap__item {
   display: flex;
   flex-direction: column;
-  gap: var(--vow-space-2);
-  padding: var(--vow-space-3);
+  gap: var(--vow-space-3);
+  padding: var(--vow-space-3) var(--vow-space-4);
+  background: var(--vow-color-surface);
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-2);
+  transition: border-color 0.12s;
 }
+.vow-roadmap__item:hover {
+  border-color: var(--vow-color-border-hover);
+}
+.vow-roadmap__title {
+  font-size: var(--vow-text-base);
+  font-weight: var(--vow-weight-medium);
+  line-height: 1.35;
+  color: var(--vow-color-text);
+}
+/* the card's meta footer — the # and status sit tight at the start, the actions trail (margin-left:auto) */
 .vow-roadmap__meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--vow-space-2);
 }
 .vow-roadmap__num {
   font-size: var(--vow-text-sm);
   color: var(--vow-color-muted);
   font-variant-numeric: tabular-nums;
-}
-.vow-roadmap__title {
-  font-size: var(--vow-text-sm);
-  line-height: 1.4;
 }
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {

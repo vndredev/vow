@@ -112,6 +112,15 @@ test("each issue SFC links the agent session (the open PR) when a doing item car
   }
 });
 
+test("the roadmap and board cards lead with the title, then a meta footer with the actions grouped", () => {
+  for (const sfc of [emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    // The actions (start-work · close/reopen · session) travel as one group, pushed to the trailing edge.
+    expect(sfc).toContain('class="vow-issue-actions"');
+    // A meta footer carries the number beside the actions, so the card reads title-first.
+    expect(sfc).toContain("__meta");
+  }
+});
+
 test("the board card carries an issue's labels and assignee, each guarded so an empty card stays clean", () => {
   const sfc = emitIssueBoardSfc();
   // The shared per-label Badge loop, the same the table cell uses.
