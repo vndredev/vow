@@ -171,10 +171,12 @@ test("a Select field forwards the field id as control-id so the label points at 
     fields: [{ name: "status", options: ["todo", "done"], required: false, type: "select" }],
   };
   const sfc = emitForm(addTaskForm, new Map([["task", entity]]));
-  // Both the Field's `for` and the Select's `control-id` are `statusId`: the once-dangling label-for now points at the real combobox trigger (click-to-focus + a programmatic label association).
+  // Both the Field's `for` and the Select's `control-id` are `statusId`: the once-dangling label-for now points at the real combobox trigger (click-to-focus + a programmatic label association). The Select also takes `described-by` + `invalid`, which it forwards as the trigger's aria-describedby + aria-invalid — so the rendered error is programmatically associated (parity with native fields).
   expectContains(sfc, [
     '<Field label="status" :control-id="statusId" :error="errors.status">',
     ':control-id="statusId"',
+    `:described-by="statusId + '-error'"`,
+    ':invalid="!!errors.status"',
     'import Select from "./Select.vue";',
   ]);
 });
