@@ -157,13 +157,18 @@ function composeRoutes(
   ];
 }
 
-/** The generated boot (main.ts) + the env shims for the root vow — the app needs no hand-written `src/`. */
-function composeBootFiles(rootVow: Maybe<ReadonlyVow>, outDir: string): readonly Artifact[] {
+/** The generated boot (main.ts) + the env shims for the root vow — the app needs no hand-written `src/`.
+    `theme` is the CSS the boot imports (default: vow.css); a re-skin app points it at its own theme. */
+function composeBootFiles(
+  rootVow: Maybe<ReadonlyVow>,
+  outDir: string,
+  theme: Maybe<string>,
+): readonly Artifact[] {
   if (!defined(rootVow)) {
     return [];
   }
   return [
-    { path: `${outDir}/main.ts`, source: emitBoot(rootVow.slug) },
+    { path: `${outDir}/main.ts`, source: emitBoot(rootVow.slug, theme) },
     { path: `${outDir}/vow-env.d.ts`, source: VOW_ENV_DTS },
   ];
 }
@@ -172,10 +177,13 @@ function composeBootFiles(rootVow: Maybe<ReadonlyVow>, outDir: string): readonly
 function composeAppShell(
   vows: readonly ReadonlyVow[],
   pages: readonly Page[],
-  shell: { readonly outDir: string; readonly title: Maybe<string> },
+  shell: { readonly outDir: string; readonly theme: Maybe<string>; readonly title: Maybe<string> },
 ): readonly Artifact[] {
   const rootVow = vows.find((vow) => vow.root === true && defined(vow.view));
-  return [...composeRoutes(pages, rootVow, shell), ...composeBootFiles(rootVow, shell.outDir)];
+  return [
+    ...composeRoutes(pages, rootVow, shell),
+    ...composeBootFiles(rootVow, shell.outDir, shell.theme),
+  ];
 }
 
 /** Run the composition phase — the on-demand compositions plus every primitive + layout adapter. */
@@ -246,14 +254,14 @@ function planAll(all: readonly ReadonlyVow[], entities: readonly ReadonlyVow[], 
 function collectArtifacts(
   all: readonly ReadonlyVow[],
   entities: readonly ReadonlyVow[],
-  opts: { readonly dirs: Dirs; readonly title: Maybe<string> },
+  opts: { readonly dirs: Dirs; readonly theme: Maybe<string>; readonly title: Maybe<string> },
 ): readonly Artifact[] {
-  const { dirs, title } = opts;
+  const { dirs, theme, title } = opts;
   const plan = planAll(all, entities, dirs);
   return [
     ...plan.files,
     ...composeAll(plan, entities, dirs),
-    ...composeAppShell(all, plan.pages, { outDir: dirs.outDir, title }),
+    ...composeAppShell(all, plan.pages, { outDir: dirs.outDir, theme, title }),
   ];
 }
 
@@ -340,10 +348,14 @@ function writeAll(artifacts: readonly Artifact[], outDir: string): string[] {
 }
 
 /**
- * Write the real files per fulfilled vow into `dirs.outDir`. `title` is the app-shell brand fallback.
- * Returns the written paths.
+ * Write the real files per fulfilled vow into `dirs.outDir`. `app.title` is the app-shell brand fallback;
+ * `app.theme` is the CSS the boot imports (default: vow.css). Returns the written paths.
  */
-export function generateFiles(vows: readonly ReadonlyVow[], dirs: Dirs, title?: string): string[] {
+export function generateFiles(
+  vows: readonly ReadonlyVow[],
+  dirs: Dirs,
+  app: { readonly theme?: Maybe<string>; readonly title?: Maybe<string> } = {},
+): string[] {
   // Fail loud on a dangling `reference(<entity>)` or an unknown nav/view/link icon before generating.
   validateReferences(vows);
   validateIcons(vows, iconNames);
@@ -353,7 +365,7 @@ export function generateFiles(vows: readonly ReadonlyVow[], dirs: Dirs, title?: 
   const artifacts = collectArtifacts(
     all,
     all.filter((vow) => isEmitEntity(vow)),
-    { dirs, title },
+    { dirs, theme: app.theme, title: app.title },
   );
   return writeAll(artifacts, dirs.outDir);
 }

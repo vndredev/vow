@@ -78,7 +78,7 @@ function regenerate(state: State, options: VowOptions): void {
   const written = generateFiles(
     state.vows,
     { outDir: state.genDir, srcDir: state.vowDir },
-    options.title,
+    { theme: options.theme, title: options.title },
   );
   pruneStale(state.lastWritten, written);
   state.lastWritten = written;

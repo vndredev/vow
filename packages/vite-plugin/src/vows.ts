@@ -19,6 +19,9 @@ export interface VowOptions {
   readonly vows?: readonly ReadonlyVow[];
   /** The app name, shown as the shell brand (default: the shell's own fallback). */
   readonly title?: string;
+  /** The theme CSS the generated boot imports (default: "@vow/theme/vow.css"). Point it at a theme that
+      re-declares the --vow-* tokens — e.g. "@vow/theme/nacht.css" — to re-skin the whole app. */
+  readonly theme?: string;
 }
 
 /** A routed page (a non-root view or a form) — its slug plus the shell-sidebar nav config. */
