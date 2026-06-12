@@ -210,6 +210,11 @@ body {
   white-space: nowrap;
   text-align: right;
 }
+/* the issue-plan section wrapper — holds the layout (table/board/roadmap) and, when the plan is loading,
+   unreachable, or genuinely empty, a single `.vow-empty` status message in its place */
+.vow-issues {
+  display: block;
+}
 /* the GitHub issue table — the entity-table look, with a muted monospace # and gapped label badges */
 .vow-issue-table__num {
   color: var(--vow-color-muted);

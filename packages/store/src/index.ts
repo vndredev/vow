@@ -244,27 +244,47 @@ async function write(path: string, method: WriteMethod, body = ""): Promise<void
 const issues = reactive<IssueItem[]>([]) as IssueItem[];
 let issuesLoaded = false;
 
-/** Read + parse the issue plan from `/__vow/issues`, returning `[]` on any non-ok response or transport
- *  failure. Entries are validated by `parseIssuePlan` (see `./issues.ts`), not blindly trusted. */
-async function fetchIssues(): Promise<IssueItem[]> {
+/** The fetch state the issue views read to tell apart loading / failed / genuinely-empty — so the studio's
+ *  first screen shows "Loading the plan…", "Couldn't reach GitHub", or "Nothing here yet." rather than a
+ *  bare header. `loading` is on while a fetch is in flight; `error` latches when a fetch fails (non-ok /
+ *  transport) and clears on the next success. */
+const issuesState = reactive({ error: false, loading: false });
+
+/** The outcome of one issue-plan fetch — `ok` is false on a non-ok response or transport failure, so the
+ *  caller can latch the error flag rather than swallow it (the old `[]` hid a failure as an empty plan). */
+interface IssuesResult {
+  readonly ok: boolean;
+  readonly plan: readonly IssueItem[];
+}
+
+/** Read + parse the issue plan from `/__vow/issues`, reporting `ok: false` (with an empty plan) on any
+ *  non-ok response or transport failure. Entries are validated by `parseIssuePlan` (see `./issues.ts`),
+ *  not blindly trusted. */
+async function fetchIssues(): Promise<IssuesResult> {
   try {
     const res = await fetch("/__vow/issues");
     if (!res.ok) {
-      return [];
+      return { ok: false, plan: [] };
     }
-    return parseIssuePlan(await res.json());
+    return { ok: true, plan: parseIssuePlan(await res.json()) };
   } catch {
-    return [];
+    return { ok: false, plan: [] };
   }
 }
 
-/** Pull the issue plan from `/__vow/issues` (gh-direct) and replace the shared array (small, read-only). */
+/** Pull the issue plan from `/__vow/issues` (gh-direct) and replace the shared array (small, read-only),
+ *  driving `issuesState` so the views can show a loading / error / empty branch. */
 async function loadIssues(): Promise<void> {
   if (!hasApi) {
     return;
   }
-  const plan = await fetchIssues();
-  issues.splice(0, issues.length, ...plan);
+  issuesState.loading = true;
+  const result = await fetchIssues();
+  issuesState.error = !result.ok;
+  issuesState.loading = false;
+  if (result.ok) {
+    issues.splice(0, issues.length, ...result.plan);
+  }
 }
 
 /** Close or reopen an issue via `POST /__vow/issues` (the dev server shells the same `gh` the MCP does),
@@ -371,13 +391,24 @@ export function useCollection<T>(slug: string): Collection<T> {
   };
 }
 
+/** The reactive fetch state the issue views read — `loading` while a fetch is in flight, `error` when the
+ *  last fetch failed. Its reactive identity is preserved (the same instance every reader gets), so a view
+ *  destructuring it from `useIssues` keeps tracking it (like `items`). */
+export interface IssuesState {
+  readonly error: boolean;
+  readonly loading: boolean;
+}
+
 /** The shared reactive issue plan, read live from `/__vow/issues` (gh-direct) + polled on focus + the
- *  interval. `closeIssue`/`reopenIssue` POST back through the same dev seam the MCP uses — so the studio's
- *  action buttons and the agent share one path to GitHub. GitHub stays the source; the reply re-syncs. */
+ *  interval. `state` carries the loading / error flags so a view can show "Loading the plan…" or "Couldn't
+ *  reach GitHub" instead of a bare header. `closeIssue`/`reopenIssue` POST back through the same dev seam
+ *  the MCP uses — so the studio's action buttons and the agent share one path to GitHub. GitHub stays the
+ *  source; the reply re-syncs. */
 export function useIssues(): {
   closeIssue: (issue: number) => void;
   items: IssueItem[];
   reopenIssue: (issue: number) => void;
+  state: IssuesState;
 } {
   if (!issuesLoaded) {
     issuesLoaded = true;
@@ -396,6 +427,7 @@ export function useIssues(): {
         await writeIssue("reopen", issue);
       });
     },
+    state: issuesState,
   };
 }
 
