@@ -1,4 +1,5 @@
 import type { Maybe, ReadonlyField, ReadonlyVow } from "./types.ts";
+import { isEmit } from "@vow/core";
 import { pascalCase } from "@vow/component";
 
 /**
@@ -15,7 +16,7 @@ export interface EntityScenario {
 
 /** Fail fast unless the vow is an `emit entity` — every public emitter runs this first. */
 export function ensureEntity(vow: ReadonlyVow): void {
-  if (vow.fulfills?.kind !== "emit" || vow.fulfills.as !== "entity") {
+  if (!isEmit(vow, "entity")) {
     throw new Error(`emit-entity: vow "${vow.slug}" is not an \`emit entity\``);
   }
 }

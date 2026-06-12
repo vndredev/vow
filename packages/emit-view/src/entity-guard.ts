@@ -1,10 +1,5 @@
 import type { ReadonlyField, ReadonlyVow } from "./types.ts";
-import { defined } from "@vow/core";
-
-/** Whether a vow is fulfilled as an `emit entity` (the only target the view emitters render over). */
-export function isEmitEntity(vow: ReadonlyVow): boolean {
-  return vow.fulfills?.kind === "emit" && vow.fulfills.as === "entity";
-}
+import { defined, isEmitEntity } from "@vow/core";
 
 /** Throw with a clear message when `entity` is not an `emit entity` — the shared precondition. */
 export function assertEmitEntity(entity: ReadonlyVow, label: string): void {

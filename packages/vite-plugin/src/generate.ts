@@ -3,7 +3,7 @@ import { type Artifact, type Contribution, type GroupRef, planVow } from "./plan
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, type ReadonlyVow, defined, validateReferences } from "@vow/core/node";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type Page, allVows, isEntity } from "./vows.ts";
+import { type Page, allVows, isEmitEntity } from "./vows.ts";
 import { VOW_ENV_DTS, emitAppLayout, emitAppRoutes, emitBoot } from "@vow/emit-view";
 import {
   composeBoards,
@@ -271,7 +271,7 @@ export function generateFiles(vows: readonly ReadonlyVow[], dirs: Dirs, title?: 
   // Filter `all` directly — `entityVows(all)` re-flattens it + duplicates nested entities.
   const artifacts = collectArtifacts(
     all,
-    all.filter((vow) => isEntity(vow)),
+    all.filter((vow) => isEmitEntity(vow)),
     { dirs, title },
   );
   const paths = artifacts.map((artifact) => artifact.path);

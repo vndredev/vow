@@ -1,7 +1,7 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Page, navPage } from "./vows.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type ReadonlyVow, defined } from "@vow/core";
+import { type ReadonlyVow, defined, isEmit } from "@vow/core";
 import {
   boardRefs,
   buildView,
@@ -205,13 +205,13 @@ export function planVow(vow: ReadonlyVow, ctx: PlanContext): Contribution {
   if (!defined(fulfills)) {
     return NOTHING;
   }
-  if (fulfills.kind === "emit" && fulfills.as === "entity") {
+  if (isEmit(vow, "entity")) {
     return planEntity(vow, ctx.outDir);
   }
-  if (fulfills.kind === "emit" && fulfills.as === "view") {
+  if (isEmit(vow, "view")) {
     return planView(vow, ctx.outDir, ctx.entitySlugs);
   }
-  if (fulfills.kind === "emit" && fulfills.as === "form") {
+  if (isEmit(vow, "form")) {
     return planForm(vow, ctx.outDir, ctx.entities);
   }
   return planBind(vow, ctx.outDir, ctx.srcDir);

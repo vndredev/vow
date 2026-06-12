@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import type { ReadonlyVow } from "./readonly.ts";
 import type { Vow } from "./vow.ts";
+import { isEmitEntity } from "./fulfillment.ts";
 import { parseVowMd } from "./parse.ts";
 import path from "node:path";
 
@@ -49,11 +50,7 @@ function everyVow(vows: readonly ReadonlyVow[]): ReadonlyVow[] {
  */
 export function validateReferences(vows: readonly ReadonlyVow[]): void {
   const all = everyVow(vows);
-  const entities = new Set(
-    all
-      .filter((vow) => vow.fulfills?.kind === "emit" && vow.fulfills.as === "entity")
-      .map((vow) => vow.slug),
-  );
+  const entities = new Set(all.filter((vow) => isEmitEntity(vow)).map((vow) => vow.slug));
   for (const vow of all) {
     for (const field of vow.fields) {
       if (field.type === "reference" && !entities.has(field.ref ?? "")) {

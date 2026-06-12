@@ -15,6 +15,7 @@ import {
   addForm,
   addView,
   defined,
+  isEmit,
   loadVows,
   removeField,
   removeVow,
@@ -47,9 +48,6 @@ import process from "node:process";
 
 const ARGV_OFFSET = 2;
 const JSON_INDENT = 2;
-
-const fulfilledAs = (vow: ReadonlyVow, as: "entity" | "view"): boolean =>
-  vow.fulfills?.kind === "emit" && vow.fulfills.as === as;
 
 /** The `options` of a `select` field as a fresh mutable array fragment — empty when absent. */
 function fieldOptions(field: ReadonlyField): { options?: string[] } {
@@ -219,7 +217,7 @@ export function resolveAppDir(): Maybe<string> {
 export function openStudio(appDir: string): Studio {
   const db = openDb(resolveDbPath(path.dirname(appDir)));
   const entities = (): Vow[] =>
-    loadVows(appDir).filter((vow: ReadonlyVow) => fulfilledAs(vow, "entity"));
+    loadVows(appDir).filter((vow: ReadonlyVow) => isEmit(vow, "entity"));
   const entityOf = (slug: string): Vow => {
     const found = entities().find((vow: ReadonlyVow) => vow.slug === slug);
     if (defined(found)) {
@@ -260,7 +258,7 @@ export function openStudio(appDir: string): Studio {
     },
     viewSlugs: () =>
       loadVows(appDir)
-        .filter((vow: ReadonlyVow) => fulfilledAs(vow, "view"))
+        .filter((vow: ReadonlyVow) => isEmit(vow, "view"))
         .map((vow: ReadonlyVow) => vow.slug),
     ...structureSeam(appDir, syncDb),
   };

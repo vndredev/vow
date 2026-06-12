@@ -1,5 +1,7 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type ReadonlyVow, defined } from "@vow/core";
+import { type ReadonlyVow, defined, isEmitEntity } from "@vow/core";
+
+export { isEmitEntity };
 
 /**
  * The vow-tree helpers shared across the plugin — flattening, the entity filter, and the option/page
@@ -33,14 +35,9 @@ export function allVows(vows: readonly ReadonlyVow[]): ReadonlyVow[] {
   return vows.flatMap((vow) => [vow, ...allVows(vow.children)]);
 }
 
-/** Is the vow an `emit entity`? */
-export function isEntity(vow: ReadonlyVow): boolean {
-  return vow.fulfills?.kind === "emit" && vow.fulfills.as === "entity";
-}
-
 /** The entity vows in the tree — the tables the DB schema + the data API are built from. */
 export function entityVows(vows: readonly ReadonlyVow[]): ReadonlyVow[] {
-  return allVows(vows).filter((vow) => isEntity(vow));
+  return allVows(vows).filter((vow) => isEmitEntity(vow));
 }
 
 /** Add a single optional key to a page only when its value is present, so the key stays truly optional. */

@@ -1,7 +1,7 @@
 import type { Component, ImportDecl, ReadonlyField, ReadonlyVow, UiNode } from "./types.ts";
+import { defined, isEmitEntity } from "@vow/core";
 import { pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
-import { defined } from "@vow/core";
 import { fieldControl } from "./field-control.ts";
 
 /** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set. */
@@ -89,8 +89,7 @@ function formEntity(form: ReadonlyVow, byId: EntityLookup): ReadonlyVow {
     throw new Error(`emit-view: "${form.slug}" needs a \`## form\` with \`of: <entity>\``);
   }
   const entity = byId.get(target);
-  const emits = entity?.fulfills?.kind === "emit" && entity.fulfills.as === "entity";
-  if (!defined(entity) || !emits) {
+  if (!defined(entity) || !isEmitEntity(entity)) {
     throw new Error(`emit-view: "${form.slug}" form \`of: ${target}\` is not a known entity`);
   }
   return entity;

@@ -1,5 +1,12 @@
 import { allVows, generateFiles } from "@vow/vite-plugin";
-import { defined, loadVows, mapDefined, parseVowMd, uncoveredScenarios } from "@vow/core/node";
+import {
+  defined,
+  isEmit,
+  loadVows,
+  mapDefined,
+  parseVowMd,
+  uncoveredScenarios,
+} from "@vow/core/node";
 import { formProves, viewProves } from "@vow/emit-view";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { entityProves } from "@vow/emit-entity";
@@ -66,13 +73,13 @@ export function expectedScenarios(
   vow: ReadonlyVow,
   entities: readonly ReadonlyVow[] = [],
 ): string[] {
-  if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "entity") {
+  if (isEmit(vow, "entity")) {
     return entityProves(widen(vow));
   }
-  if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "view") {
+  if (isEmit(vow, "view")) {
     return [...vow.proof.map((scenario) => scenario.claim), ...viewProves(widen(vow))];
   }
-  if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "form") {
+  if (isEmit(vow, "form")) {
     const target = vow.form?.of ?? "";
     const entity = entities.find((candidate) => candidate.slug === target);
     // An edit/singleton form has no empty-submit scenario (it guards on a loaded row); a create form does.
