@@ -1,5 +1,6 @@
 // @vitest-environment node
 import {
+  adapterKinds,
   checkVowExample,
   germanMarkers,
   germanWords,
@@ -132,9 +133,16 @@ test("checkVowExample holds for a valid example", () => {
 });
 
 test("every node/attr kind the Vue adapter handles is documented in components.md", () => {
-  const render = readFileSync(path.join(root, "packages/component/src/render-vue.ts"), "utf8");
+  // The Attr kinds live in render-attr (`case`) and the UiNode kinds in render-node (`node.kind ===`).
+  // Feed both — render-vue.ts itself carries no kind dispatch, so a single source would read as empty.
+  const sources = [
+    readFileSync(path.join(root, "packages/component/src/render-attr.ts"), "utf8"),
+    readFileSync(path.join(root, "packages/component/src/render-node.ts"), "utf8"),
+  ];
   const doc = readFileSync(path.join(root, "docs/guide/components.md"), "utf8");
-  expect(undocumentedKinds(render, doc)).toEqual([]);
+  // Guard against a silent pass: the extraction must actually find kinds, or the gate is vacuous.
+  expect(adapterKinds(...sources).length).toBeGreaterThan(0);
+  expect(undocumentedKinds(sources, doc)).toEqual([]);
 });
 
 test("every core field type is documented in emit.md", () => {
