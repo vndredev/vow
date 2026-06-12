@@ -4,9 +4,13 @@ name: Protection drift
 # declared in @vow/observability (MAIN_PROTECTION) and enforced by `vow guard`. This job is the gate that
 # catches it silently loosening: it reads the live protection and fails if it has drifted from the spec.
 #
-# Reading branch protection needs an admin-scope token; the default GITHUB_TOKEN can't. So every step is
-# gated on the VOW_ADMIN_TOKEN secret being present — until Andre provisions that PAT in repo settings the
-# job is a no-op (skips green). Once the secret exists, the drift check runs for real with no other change.
+# Reading branch protection needs an admin-scope token; the default GITHUB_TOKEN can't. So the real check
+# is gated on the VOW_ADMIN_TOKEN secret being present — until Andre provisions that PAT in repo settings
+# the job is a no-op (prints "dormant" + skips green). Once the secret exists, the check runs for real.
+#
+# The presence is read into a STEP OUTPUT (the gate step below), NOT a step `if: secrets.X` — the `secrets`
+# context is not available in `if:` conditions, and referencing it there startup-fails the whole run before
+# any job is created (a red check on every push). Reading the secret in a step's `env:` is allowed.
 
 on:
   push:
@@ -20,28 +24,36 @@ jobs:
   drift:
     runs-on: ubuntu-latest
     steps:
-      - name: Note the gate is dormant until the admin PAT is provisioned
-        if: ${{ secrets.VOW_ADMIN_TOKEN == '' }}
-        run: echo "VOW_ADMIN_TOKEN is not set - the protection-drift gate is dormant (reading branch protection needs an admin PAT). Provision it in repo settings to activate this check."
+      - name: Gate on the admin PAT (dormant until provisioned)
+        id: gate
+        env:
+          ADMIN_TOKEN: ${{ secrets.VOW_ADMIN_TOKEN }}
+        run: |
+          if [ -n "$ADMIN_TOKEN" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "VOW_ADMIN_TOKEN is not set - the protection-drift gate is dormant (reading branch protection needs an admin PAT). Provision it in repo settings to activate this check."
+          fi
       - uses: actions/checkout@v6
-        if: ${{ secrets.VOW_ADMIN_TOKEN != '' }}
+        if: steps.gate.outputs.run == 'true'
       - uses: pnpm/action-setup@v6
-        if: ${{ secrets.VOW_ADMIN_TOKEN != '' }}
+        if: steps.gate.outputs.run == 'true'
       - uses: actions/setup-node@v6
-        if: ${{ secrets.VOW_ADMIN_TOKEN != '' }}
+        if: steps.gate.outputs.run == 'true'
         with:
           node-version: 24
           cache: pnpm
       # Vite+ provides the toolchain (vp); install it globally before pnpm install
       # so the `prepare` script (vp config) can run.
       - run: npm install -g vite-plus
-        if: ${{ secrets.VOW_ADMIN_TOKEN != '' }}
+        if: steps.gate.outputs.run == 'true'
       - run: pnpm install --frozen-lockfile
-        if: ${{ secrets.VOW_ADMIN_TOKEN != '' }}
+        if: steps.gate.outputs.run == 'true'
       # `vow guard --check` reads main's live protection and exits non-zero on any drift from the
       # declared invariant. gh authenticates with the admin PAT via GH_TOKEN.
       - name: Check main protection has not drifted
-        if: ${{ secrets.VOW_ADMIN_TOKEN != '' }}
+        if: steps.gate.outputs.run == 'true'
         run: node_modules/.bin/vow guard --check
         env:
           GH_TOKEN: ${{ secrets.VOW_ADMIN_TOKEN }}
