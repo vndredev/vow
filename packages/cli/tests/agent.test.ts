@@ -10,6 +10,7 @@ import {
   parseRun,
   parseRunAll,
   phaseLine,
+  reconcileAfterMerge,
 } from "../src/agent-run.ts";
 import { providerFor } from "@vow/agent";
 
@@ -107,6 +108,19 @@ test("failedResult turns a thrown develop into a failed lane (so one bad worktre
   expect(failedResult(ISSUE, "not an error", false).report).toBe(
     `issue #${ISSUE}: failed to develop — not an error`,
   );
+});
+
+test("reconcileAfterMerge is best-effort — a board-sync throw never reports a succeeded merge as failed (#466)", () => {
+  // The merge is load-bearing; the board reconcile is advisory. A `gh project` hiccup must surface as a
+  // Warning the caller prints, NOT a propagated throw that reddens a merge that already landed.
+  expect(reconcileAfterMerge(ISSUE, () => "board: 1 reconciled, 63 matched")).toBe(
+    "board: 1 reconciled, 63 matched",
+  );
+  expect(
+    reconcileAfterMerge(ISSUE, () => {
+      throw new Error("gh project: HTTP 502");
+    }),
+  ).toBe(`pr #${ISSUE}: merged — board sync skipped: gh project: HTTP 502`);
 });
 
 const ROUNDS = 4;
