@@ -1,6 +1,6 @@
-import type { ReadonlyField, ReadonlyVow } from "@vow/core";
+import type { ReadonlyField, ReadonlyVow } from "./types.ts";
 import { defaultExpr, zodType } from "./field-expr.ts";
-import { defined } from "./guard.ts";
+import { defined } from "@vow/core";
 import { ensureEntity } from "./scenarios.ts";
 import { pascalCase } from "@vow/component";
 

@@ -1,4 +1,4 @@
-import { createList, useCollection } from "../src/index.ts";
+import { createList, useCollection, useIssues } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import { parseIssuePlan } from "../src/issues.ts";
 
@@ -78,6 +78,12 @@ test("parseIssuePlan carries a doing item's agent session (the open PR + url); o
   expect(plan[0]?.session).toEqual({ number: 175, url: "https://github.com/o/r/pull/175" });
   // A malformed session (no numeric `number`) is dropped, not carried.
   expect(plan[1]).not.toHaveProperty("session");
+});
+
+test("useIssues exposes a reactive state with loading + error flags the views branch on", () => {
+  const { state } = useIssues();
+  expect(typeof state.loading).toBe("boolean");
+  expect(typeof state.error).toBe("boolean");
 });
 
 test("reconcile patches in place (keeps identity), adds new + drops missing", () => {

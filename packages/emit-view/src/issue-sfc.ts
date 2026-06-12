@@ -19,6 +19,58 @@ const ISSUE_VARIANT_LINES = [
   `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
 ];
 
+/** The shared setup line every issue SFC opens with — the live plan, its fetch state, and the actions. */
+const ISSUE_SETUP_LINE = `const { items, state, closeIssue, reopenIssue } = useIssues();`;
+
+/** A `.vow-empty` status message shown in place of the layout when the plan is empty — guarded by `cond`
+ *  (a `v-if`) so only the matching one renders. The three states are mutually exclusive (no `v-else` in the
+ *  component model): loading, a failed fetch, or a genuinely empty plan. */
+function statusMessage(cond: string, message: string): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-empty" },
+      { expr: cond, kind: "cond", type: "if" },
+    ],
+    children: [txt(message)],
+    kind: "element",
+    tag: "p",
+  };
+}
+
+/** The three empty-state messages every issue layout shares — only one shows, keyed off `state`/`items`.
+ *  "Loading the plan…" while the first fetch is in flight, "Couldn't reach GitHub" when it failed, and the
+ *  entity-list "Nothing here yet." when the plan is genuinely empty. */
+function issueEmptyStates(): readonly UiNode[] {
+  return [
+    statusMessage("state.loading && items.length === 0", "Loading the plan…"),
+    statusMessage("state.error && items.length === 0", "Couldn't reach GitHub"),
+    statusMessage("!state.loading && !state.error && items.length === 0", "Nothing here yet."),
+  ];
+}
+
+/** Add the `items.length > 0` guard to a layout node so it renders only when the plan has items — its own
+ *  `cond` attr, alongside the layout's static class. */
+function guardedLayout(layout: UiNode): UiNode {
+  if (layout.kind !== "element") {
+    return layout;
+  }
+  return {
+    ...layout,
+    attrs: [...layout.attrs, { expr: "items.length > 0", kind: "cond", type: "if" }],
+  };
+}
+
+/** Wrap a layout's view tree in a `<section>` that shows the layout only when the plan has items, else one
+ *  of the shared status messages — so the studio's first screen is never a bare header. */
+function withEmptyStates(layout: UiNode): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: "vow-issues" }],
+    children: [guardedLayout(layout), ...issueEmptyStates()],
+    kind: "element",
+    tag: "section",
+  };
+}
+
 /**
  * The close/reopen action button the three issue layouts share — `Reopen` when the issue is done (closed),
  * else `Close`, keyed off the live `it.status`. It calls `closeIssue`/`reopenIssue` from `useIssues`, which
@@ -138,8 +190,10 @@ export function emitIssueTableSfc(): string {
       { default: "Button", from: "./Button.vue" },
     ],
     name: "VowIssueTable",
-    setup: [`const { items, closeIssue, reopenIssue } = useIssues();`, ...ISSUE_VARIANT_LINES],
-    view: classed("table", "vow-table vow-issue-table", [tableHead(), el("tbody", [tableRow()])]),
+    setup: [ISSUE_SETUP_LINE, ...ISSUE_VARIANT_LINES],
+    view: withEmptyStates(
+      classed("table", "vow-table vow-issue-table", [tableHead(), el("tbody", [tableRow()])]),
+    ),
   };
   return renderVueSfc(component);
 }
@@ -224,20 +278,20 @@ export function emitIssueBoardSfc(): string {
     ],
     name: "VowIssueBoard",
     setup: [
-      `const { items, closeIssue, reopenIssue } = useIssues();`,
+      ISSUE_SETUP_LINE,
       `const columns = ["planned", "doing", "done"] as const;`,
       ...ISSUE_VARIANT_LINES,
       `const grouped = computed(() =>`,
       `  columns.map((c) => ({ status: c, items: items.filter((it) => it.status === c) })),`,
       `);`,
     ],
-    view: boardView(),
+    view: withEmptyStates(boardView()),
   };
   return renderVueSfc(component);
 }
 
 const ROADMAP_SCRIPT = [
-  `const { items, closeIssue, reopenIssue } = useIssues();`,
+  ISSUE_SETUP_LINE,
   ...ISSUE_VARIANT_LINES,
   `interface Phase { title: string; due: string; dueAt: number; items: IssueItem[] }`,
   `const phases = computed(() => {`,
@@ -359,7 +413,7 @@ export function emitIssueRoadmapSfc(): string {
     ],
     name: "VowIssueRoadmap",
     setup: ROADMAP_SCRIPT,
-    view: roadmapView(),
+    view: withEmptyStates(roadmapView()),
   };
   return renderVueSfc(component);
 }

@@ -66,10 +66,28 @@ test("each issue SFC emitter produces a valid, store-bound SFC", () => {
 test("each issue SFC emits the close/reopen action button on the shared store seam", () => {
   for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
     expect(sfc).toContain('import Button from "./Button.vue";');
-    expect(sfc).toContain("const { items, closeIssue, reopenIssue } = useIssues();");
+    expect(sfc).toContain("const { items, state, closeIssue, reopenIssue } = useIssues();");
     expect(sfc).toContain("closeIssue(it.issue.number)");
     expect(sfc).toContain("reopenIssue(it.issue.number)");
     expect(sfc).toContain("it.status === 'done' ? 'Reopen' : 'Close'");
+  }
+});
+
+test("each issue SFC shows the layout only when the plan has items (no bare header when empty)", () => {
+  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    expect(sfc).toContain('v-if="items.length > 0"');
+  }
+});
+
+test("each issue SFC carries the loading / error / empty status messages, mutually exclusive", () => {
+  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    expect(sfc).toContain('v-if="state.loading && items.length === 0"');
+    expect(sfc).toContain("Loading the plan");
+    expect(sfc).toContain('v-if="state.error && items.length === 0"');
+    expect(sfc).toContain("Couldn't reach GitHub");
+    expect(sfc).toContain('v-if="!state.loading && !state.error && items.length === 0"');
+    // The same friendly empty copy the entity list uses.
+    expect(sfc).toContain("Nothing here yet.");
   }
 });
 

@@ -1,5 +1,5 @@
 import { ensureEntity, entityScenarios } from "./scenarios.ts";
-import type { ReadonlyVow } from "@vow/core";
+import type { ReadonlyVow } from "./types.ts";
 
 /**
  * Vow's entity emitter — the `emit entity` fulfilment made real, re-exported from focused concerns:
