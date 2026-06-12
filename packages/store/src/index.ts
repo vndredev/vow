@@ -103,6 +103,12 @@ export class ReactiveRows {
    *  the array (what React's useSyncExternalStore compares, what a Solid signal tracks). */
   private revision = 0;
 
+  /** Ids with an optimistic write in flight to the server. A freshness poll landing in this window would
+   *  reconcile against still-stale DB rows and revert the user's action on screen (a flicker); reconcile
+   *  skips a pending id for all three kinds — an update is not overwritten, an appended row not yet in the
+   *  fetch is not dropped, a deleted row not yet gone from the fetch is not re-added. Cleared on write settle. */
+  private readonly pending = new Set<string>();
+
   /** The current snapshot token — rises on every mutation. The stable getSnapshot value for a binding. */
   public get version(): number {
     return this.revision;
@@ -114,6 +120,18 @@ export class ReactiveRows {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /** Mark `id` as having an optimistic write in flight, so the freshness poll skips it until the write
+   *  settles (the write-through layer calls this when it fires the PATCH/POST/DELETE). */
+  public markPending(id: string): void {
+    this.pending.add(id);
+  }
+
+  /** Clear `id`'s in-flight mark once its write settles, so the next poll reconciles it normally (the
+   *  write-through layer calls this in the optimistic write's `finally`). */
+  public clearPending(id: string): void {
+    this.pending.delete(id);
   }
 
   /** Bump the snapshot token, then fire every subscribed listener — called after each mutation below. */
@@ -135,7 +153,8 @@ export class ReactiveRows {
   public reconcile(fresh: readonly Readonly<Row>[]): void {
     const consumed = this.patchSurvivors(fresh);
     for (const row of fresh) {
-      if (!consumed.has(row.id)) {
+      // Skip a pending id: an in-flight optimistic delete is not re-added from a still-stale fetch.
+      if (!consumed.has(row.id) && !this.pending.has(row.id)) {
         this.rows.push({ ...row });
       }
     }
@@ -180,8 +199,8 @@ export class ReactiveRows {
     const byId = new Map(fresh.map((row) => [row.id, row]));
     const consumed = new Set<string>();
     for (let index = this.rows.length - 1; index >= 0; index -= 1) {
-      const cur = this.rows.at(index);
-      for (const kept of this.patchOrDropAt(index, byId.get(cur?.id ?? ""))) {
+      const curId = this.rows.at(index)?.id ?? "";
+      for (const kept of this.patchOrDropAt(index, curId, byId.get(curId))) {
         consumed.add(kept);
       }
     }
@@ -189,8 +208,14 @@ export class ReactiveRows {
   }
 
   /** Patch the row at `index` from `next` (returning `[next.id]`), or drop it when `next` is absent
-   *  (returning `[]`). The single-element-list result keeps the caller free of an `undefined` literal. */
-  private patchOrDropAt(index: number, next: Maybe<Readonly<Row>>): string[] {
+   *  (returning `[]`). The single-element-list result keeps the caller free of an `undefined` literal.
+   *  A pending id (an in-flight optimistic write) is left untouched: when `next` is present its keys are not
+   *  overwritten (the update survives) and when `next` is absent the row is not dropped (the append survives),
+   *  but the id is still reported consumed so `reconcile` does not re-append a duplicate. */
+  private patchOrDropAt(index: number, id: string, next: Maybe<Readonly<Row>>): string[] {
+    if (this.pending.has(id)) {
+      return [id];
+    }
     if (next) {
       this.overwriteAt(index, next);
       return [next.id];
@@ -373,6 +398,21 @@ function viewAs(rows: readonly Readonly<Row>[]): readonly unknown[] {
   return rows;
 }
 
+/** Run an optimistic write off the caller's path while the slug's collection marks `id` pending — so a
+ *  freshness poll landing in this window skips the row (no flicker) — clearing the mark once the write
+ *  settles, win or fail, so the next poll reconciles it normally. The collection is resolved from `slug`
+ *  (a plain string), never passed in, so the rule wall against a mutable-instance parameter holds. */
+function writeThrough(slug: string, id: string, send: () => Promise<void>): void {
+  collections.get(slug)?.markPending(id);
+  detach(async () => {
+    try {
+      await send();
+    } finally {
+      collections.get(slug)?.clearPending(id);
+    }
+  });
+}
+
 /** The shared reactive collection for an entity slug — same array for every caller; DB-backed. */
 export function useCollection<T>(slug: string): Collection<T> {
   const list = listFor(slug);
@@ -387,16 +427,16 @@ export function useCollection<T>(slug: string): Collection<T> {
     append: (item): void => {
       for (const row of toRowList(item)) {
         list.push(row);
+        writeThrough(slug, row.id, async () => {
+          await write(dbPath(slug), "POST", JSON.stringify(item));
+        });
       }
-      detach(async () => {
-        await write(dbPath(slug), "POST", JSON.stringify(item));
-      });
     },
     items: viewAs<T>(list.rows),
     removeAt: (index): void => {
       const id = list.removeAt(index);
       if (typeof id === "string") {
-        detach(async () => {
+        writeThrough(slug, id, async () => {
           await write(dbPath(slug, id), "DELETE");
         });
       }
@@ -404,14 +444,14 @@ export function useCollection<T>(slug: string): Collection<T> {
     removeById: (id): void => {
       const removed = list.removeById(id);
       if (typeof removed === "string") {
-        detach(async () => {
+        writeThrough(slug, removed, async () => {
           await write(dbPath(slug, removed), "DELETE");
         });
       }
     },
     update: (id, patch): void => {
       list.update(id, patch);
-      detach(async () => {
+      writeThrough(slug, id, async () => {
         await write(dbPath(slug, id), "PATCH", JSON.stringify(patch));
       });
     },
