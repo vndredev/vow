@@ -2,11 +2,13 @@
 // oxlint-disable prefer-readonly-parameter-types -- the middleware bridges the mutable Node req/res objects
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Server, createServer } from "node:http";
-import { agentApi, issuesApi } from "../src/dev-api.ts";
+import { agentApi, issuesApi, runAgentRun, vowBin } from "../src/dev-api.ts";
 import { expect, test } from "vite-plus/test";
 import type { AddressInfo } from "node:net";
 import type { IssueDetail } from "@vow/observability";
+import { existsSync } from "node:fs";
 import { once } from "node:events";
+import path from "node:path";
 
 /** A dev middleware — the shape `issuesApi`/`agentApi` return; resolved here so the test imports no type. */
 type Middleware = ReturnType<typeof issuesApi>;
@@ -105,4 +107,35 @@ test("a malformed start-work body returns 400 and never dispatches a phantom run
     server.close();
     await once(server, "close");
   }
+});
+
+test("vowBin resolves the workspace-root bin, not the cwd's app-local node_modules", () => {
+  // The dev server's cwd is the Vite app root (apps/<slug>); the walk up finds the workspace root above it.
+  const appCwd = path.join(process.cwd(), "apps", "studio");
+  const resolved = vowBin(appCwd);
+  expect(resolved.endsWith(path.join("node_modules", ".bin", "vow"))).toBe(true);
+  // Resolved against the WORKSPACE root, never the app-local node_modules (which has no vow bin).
+  expect(resolved.includes(path.join("apps", "studio"))).toBe(false);
+  expect(existsSync(resolved)).toBe(true);
+});
+
+test("a spawn failure on the real spawn line LOGS and never crashes the dev process", async () => {
+  /* Exercise the real `runAgentRun` spawn line (not the recording fake) with a bin that ENOENTs — the
+     `error` event fires asynchronously after dispatch; the real listener must log it, never throw it. The
+     returned child lets us await that real event; the process surviving the await is the proof it never
+     crashed (an unhandled `error` event would be an uncaught exception). `stderr.write` is captured to
+     assert the listener logged the issue, then restored. */
+  const logged: string[] = [];
+  const original = process.stderr.write.bind(process.stderr);
+  process.stderr.write = ((chunk: string | Uint8Array): boolean => {
+    logged.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const child = runAgentRun(path.join(process.cwd(), "no-such-vow-bin"), process.cwd(), ISSUE);
+    await once(child, "error");
+  } finally {
+    process.stderr.write = original;
+  }
+  expect(logged.some((line) => line.includes(`#${ISSUE}`))).toBe(true);
 });
