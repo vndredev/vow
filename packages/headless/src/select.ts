@@ -12,6 +12,8 @@ export interface SelectState {
   readonly open: boolean;
   /** The highlighted option value while open (drives aria-activedescendant + data-active). */
   readonly active: string;
+  /** The type-ahead buffer the host holds; the adapter clears it after a short idle (~500ms). */
+  readonly typed?: string;
   /** A stable base id to wire trigger, listbox and options. */
   readonly id: string;
   /** The trigger's id — defaults to `<id>-trigger`; a form overrides it so a `<label for>` lines up. */
@@ -54,12 +56,38 @@ function nextOptionValue(values: readonly string[], current: string, dir: Step):
   return values.at(nextIndex) ?? current;
 }
 
+/** A printable single character — the type-ahead keys (excludes Space, which commits). */
+function isTypeAheadChar(key: string): boolean {
+  return key.length === 1 && key !== " ";
+}
+
+/**
+ * The first option whose label starts with `buffer` (case-insensitive), scanning from `active` onward and
+ * wrapping, or `active` if none match — the pure core of type-ahead (the adapter owns only the buffer's
+ * debounce timer).
+ */
+function typeaheadMatch(options: readonly SelectOption[], active: string, buffer: string): string {
+  if (buffer === "") {
+    return active;
+  }
+  const needle = buffer.toLowerCase();
+  const offset = Math.max(
+    0,
+    options.findIndex((option) => option.value === active),
+  );
+  // Rotate by slicing (no indexed access) so the scan starts at the active option and wraps the end.
+  const rotated = [...options.slice(offset), ...options.slice(0, offset)];
+  const hit = rotated.find((option) => option.label.toLowerCase().startsWith(needle));
+  return hit?.value ?? active;
+}
+
 /** The transitions a select can make — the verbs the trigger's click + keydown call. */
 interface SelectActions {
   readonly openWith: () => void;
   readonly close: () => void;
   readonly setActive: (value: string) => void;
   readonly commit: (value: string) => void;
+  readonly typeAhead: (char: string) => void;
 }
 
 /** Build the select's transitions over the current state + setter. */
@@ -87,6 +115,11 @@ function selectActions(
     },
     setActive(value: string): void {
       set({ ...state, active: value });
+    },
+    typeAhead(char: string): void {
+      const typed = (state.typed ?? "") + char;
+      const active = typeaheadMatch(state.options, state.active, typed);
+      set({ ...state, active, typed });
     },
   };
 }
@@ -136,6 +169,23 @@ function commitOrClose(key: string, actions: Readonly<SelectActions>, active: st
   return false;
 }
 
+/** Apply an open select's non-Tab key (move the highlight, commit, close, or type-ahead); was it handled? */
+function applyOpenKey(key: string, ctx: Readonly<SelectKeyContext>): boolean {
+  const moved = movedActive(key, ctx);
+  if (moved !== ctx.active) {
+    ctx.actions.setActive(moved);
+    return true;
+  }
+  if (commitOrClose(key, ctx.actions, ctx.active)) {
+    return true;
+  }
+  if (isTypeAheadChar(key)) {
+    ctx.actions.typeAhead(key);
+    return true;
+  }
+  return false;
+}
+
 /** Drive an OPEN select's keydown: move the highlight, commit it, or close (Tab closes silently). */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event type, inherently mutable.
 function navigateKeydown(event: KeyboardEvent, ctx: Readonly<SelectKeyContext>): void {
@@ -144,11 +194,7 @@ function navigateKeydown(event: KeyboardEvent, ctx: Readonly<SelectKeyContext>):
     ctx.actions.close();
     return;
   }
-  const moved = movedActive(key, ctx);
-  if (moved !== ctx.active) {
-    event.preventDefault();
-    ctx.actions.setActive(moved);
-  } else if (commitOrClose(key, ctx.actions, ctx.active)) {
+  if (applyOpenKey(key, ctx)) {
     event.preventDefault();
   }
 }
@@ -230,8 +276,9 @@ function optionProps(option: Readonly<SelectOption>, ctx: Readonly<OptionContext
  * The select (listbox) primitive — WAI-ARIA APG combobox/listbox, Reka-style. A `role="combobox"`
  * button toggles a `role="listbox"` of `role="option"`s. Focus stays on the trigger; the highlighted
  * option is tracked with `aria-activedescendant` (no per-option DOM focus). Keyboard: Arrow/Home/End
- * move the highlight, Enter/Space commit, Esc closes, Tab closes. `open` + `active` are transient UI
- * state the host holds; `value` is the selection. State is mirrored as `data-state`/`data-active`.
+ * move the highlight, a printable character type-aheads to the next matching label, Enter/Space commit,
+ * Esc closes, Tab closes. `open` + `active` + `typed` are transient UI state the host holds; `value` is
+ * the selection. State is mirrored as `data-state`/`data-active`.
  */
 export function select(state: Readonly<SelectState>, set: (next: SelectState) => void): SelectApi {
   const values = state.options.map((option) => option.value);
