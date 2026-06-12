@@ -5,6 +5,7 @@ import {
   emitForm,
   emitView,
   knownViewType,
+  listedEntities,
   referencedPrimitives,
 } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
@@ -95,6 +96,26 @@ test("list with an unknown entity throws", () => {
   expect(() => emitView(view([{ type: "list", value: "ghost" }]), ["task"])).toThrow(
     /unknown entity/u,
   );
+});
+
+test("listedEntities reports a plain list as read-only (delete off, the studio's default)", () => {
+  expect(listedEntities(view([{ type: "list", value: "task" }]))).toEqual([
+    { delete: false, of: "task" },
+  ]);
+});
+
+test("listedEntities reads the opt-in actions: [delete] into the list ref", () => {
+  const nodes = view([{ type: "list", value: { actions: ["delete"], of: "task" } }]);
+  expect(listedEntities(nodes)).toEqual([{ delete: true, of: "task" }]);
+});
+
+test("listedEntities unions delete across the same entity's lists — one opt-in switches it on", () => {
+  const nodes = view([
+    { type: "list", value: "task" },
+    { type: "list", value: { actions: ["delete"], of: "task" } },
+  ]);
+  // The shared Task list is emitted once; any referencing node opting in enables the column.
+  expect(listedEntities(nodes)).toEqual([{ delete: true, of: "task" }]);
 });
 
 test("primitives are the escape hatch: flex with props + children", () => {

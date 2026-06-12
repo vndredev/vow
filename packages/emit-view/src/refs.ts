@@ -38,6 +38,19 @@ function ofSlug(value: unknown): string {
   return str(asRecord(value)["of"]);
 }
 
+/** The opt-in row actions a `list:` node enables, e.g. `list: { of: task, actions: [delete] }` — only the
+ *  recognised `delete` is honoured (the studio's read-only stance is the default). */
+export interface ListRef {
+  readonly of: string;
+  readonly delete: boolean;
+}
+
+/** Whether a `list:` node's `actions:` (an array of action names) opts into the per-row delete button. */
+function wantsDelete(value: unknown): boolean {
+  const { actions } = asRecord(value);
+  return Array.isArray(actions) && actions.includes("delete");
+}
+
 /** Every entity slug a node of `kind` references via its `of` (scalar or `{ of }`). */
 function slugsFor(view: ReadonlyVow, kind: string): string[] {
   const found = new Set<string>();
@@ -69,11 +82,21 @@ function fieldRefsFor(view: ReadonlyVow, kind: string): FieldRef[] {
 }
 
 /**
- * Every entity slug a view references via `list:` — recursing into primitive `children`. The plugin
+ * Every entity a view references via `list:` — recursing into primitive `children` — de-duplicated by
+ * slug, each carrying whether ANY of its `list:` nodes opted into the per-row delete action. The plugin
  * uses this to emit each referenced entity's list on demand (the entity itself stays a pure model).
  */
-export function listedEntities(view: ReadonlyVow): string[] {
-  return slugsFor(view, "list");
+export function listedEntities(view: ReadonlyVow): ListRef[] {
+  const byOf = new Map<string, ListRef>();
+  walkNodes(view, (type, value) => {
+    if (type !== "list") {
+      return;
+    }
+    const of = ofSlug(value);
+    const wants = wantsDelete(value) || (byOf.get(of)?.delete ?? false);
+    byOf.set(of, { delete: wants, of });
+  });
+  return [...byOf.values()];
 }
 
 /** The `cards: <entity>` references a `## view` makes — so the plugin can emit each composition. */

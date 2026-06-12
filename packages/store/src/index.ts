@@ -79,6 +79,10 @@ export interface Collection<T> {
   readonly items: T[];
   /** Remove the item at an index (optimistic; written through). */
   removeAt(index: number): void;
+  /** Remove the item carrying `id` (optimistic; written through). The id-keyed delete the generated
+   *  list uses — it loops over filtered/sorted/grouped items, so the displayed index is not the store
+   *  index; deleting by id removes the right row regardless of slice/order. */
+  removeById(id: string): void;
   /** Patch an item by id (optimistic; written through). */
   update(id: string, patch: Partial<T>): void;
 }
@@ -144,6 +148,21 @@ export class ReactiveRows {
     this.rows.splice(index, 1);
     this.notify();
     return id;
+  }
+
+  /** Remove the row carrying `id` in place; returns the id when a row matched (so the write-through fires),
+   *  else an absent id (a no-op). The id is resolved to the live store index HERE, so a caller looping over a
+   *  filtered/sorted/grouped view deletes the right row, never the displayed position. The matching index is
+   *  collected into a one-or-zero list, then spliced through `removeAt` — keeping the absent case off any
+   *  `undefined` literal (the `patchOrDropAt` precedent). */
+  public removeById(id: string): Maybe<string> {
+    const at: number[] = [];
+    for (const [index, row] of this.rows.entries()) {
+      if (row.id === id) {
+        at.push(index);
+      }
+    }
+    return at.map((index) => this.removeAt(index)).at(0);
   }
 
   /** Patch the row carrying `id` in place; a no-op when no row matches. */
@@ -379,6 +398,14 @@ export function useCollection<T>(slug: string): Collection<T> {
       if (typeof id === "string") {
         detach(async () => {
           await write(dbPath(slug, id), "DELETE");
+        });
+      }
+    },
+    removeById: (id): void => {
+      const removed = list.removeById(id);
+      if (typeof removed === "string") {
+        detach(async () => {
+          await write(dbPath(slug, removed), "DELETE");
         });
       }
     },

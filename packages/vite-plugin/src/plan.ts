@@ -39,10 +39,18 @@ export interface GroupRef {
   readonly by: string;
 }
 
+/** A reference to an entity's list composition: the entity slug and whether the opt-in per-row delete is on.
+ *  Mirrors `@vow/emit-view`'s `ListRef` structurally (the `listedEntities` return), kept local so the cross-
+ *  package type stays out of the import sort — exactly how `GroupRef` mirrors that package's `FieldRef`. */
+export interface ListRef {
+  readonly of: string;
+  readonly delete: boolean;
+}
+
 /** What one vow contributes: its direct files, the compositions it references, and the page it adds. */
 export interface Contribution {
   readonly files: readonly Artifact[];
-  readonly listed: readonly string[];
+  readonly listed: readonly ListRef[];
   readonly stats: readonly GroupRef[];
   readonly cards: readonly string[];
   readonly boards: readonly GroupRef[];

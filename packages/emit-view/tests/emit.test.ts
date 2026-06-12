@@ -91,6 +91,32 @@ test("the list carries no heading of its own — the referencing view owns headi
   expectMissing(sfc, ["vow-view__title", "<h1"]);
 });
 
+test("the opt-in delete action adds a per-row delete button wired to the store by id", () => {
+  const sfc = emitEntityList(entity, new Map(), { delete: true });
+  expectContains(sfc, [
+    // The store binding now also pulls removeById; the trailing Actions column + a per-row delete Button.
+    'const { items: rows, removeById } = useCollection<Task>("task");',
+    'import Button from "./Button.vue";',
+    "vow-view__delete",
+    'icon="trash"',
+    // Delete BY ID (item.id), never the displayed loop index of a filtered/sorted/grouped list.
+    '@click="removeById(item.id)"',
+    ':aria-label="`Delete this task`"',
+  ]);
+});
+
+test("a delete list spans the extra Actions column in its group header (colspan = fields + 1)", () => {
+  // Two fields + the delete column → colspan 3, so a grouped section still spans the full table width.
+  const sfc = emitEntityList(entity, new Map(), { delete: true });
+  expect(sfc).toContain('colspan="3"');
+});
+
+test("the default list stays read-only — no delete button, no removeById, no Button import", () => {
+  const sfc = emitEntityList(entity);
+  expectMissing(sfc, ["removeById", 'import Button from "./Button.vue";', 'icon="trash"']);
+  expect(sfc).toContain('const { items: rows } = useCollection<Task>("task");');
+});
+
 test("a select field renders read-only as a Badge cell", () => {
   const ticket: VowNode = {
     ...entity,

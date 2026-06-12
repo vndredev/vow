@@ -37,8 +37,9 @@ The catalog of ready-made components — you name them, vow brings the markup:
 
 - **`hero`** — `{ eyebrow?, title?, lead? }` → a column with an eyebrow, headline and lead.
 - **`features`** — a list of `{ title?, body? }` → a three-column grid of cards.
-- **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its read-only
-  **table** — a header from the fields, a row per record — imported automatically).
+- **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, a **table** — a header
+  from the fields, a row per record — imported automatically). **Read-only by default**; opt a row action in
+  with `list: { of: task, actions: [delete] }` (see [Row actions](#row-actions)).
 - **`stats: { of: <entity>, by: <select field> }`** — a generated **counts strip**: one
   [`Stat`](/guide/primitives/stats) per option of the field, counting the rows in that group, live from
   the store (`stats: { of: task, by: status }` → backlog 3 · doing 2 · done 5).
@@ -66,6 +67,23 @@ The catalog of ready-made components — you name them, vow brings the markup:
 **Pages & routing.** The `root: true` view is the app's home (`/`); **every other view and every `emit form`
 becomes a page at `/<slug>`** automatically — vow generates the route table, the boot serves them from one
 client router, and a `link:` navigates between them without a reload.
+
+## Row actions
+
+A `list:` is **read-only by default** — the studio's stance, where the agent mutates the data through the
+[MCP](/guide/mcp). Opt a per-row action in with `actions:` on the object form:
+
+```yaml
+## view
+
+- list: { of: task, actions: [delete] }
+```
+
+`actions: [delete]` adds a trailing **Actions** column with a per-row delete [`button`](/guide/primitives/button)
+(a `trash` icon and a per-row `aria-label`). The delete is wired to the store **by the row's id**, never the
+displayed position — so it removes the right record even when the list is sorted, filtered or grouped. The same
+list is emitted once per entity; if **any** referencing `list:` opts in, the column appears. Only `delete` is
+recognised today (edit is on the roadmap); everything else stays read-only.
 
 ## Primitives — the escape hatch
 

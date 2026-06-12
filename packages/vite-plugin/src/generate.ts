@@ -1,5 +1,6 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type Artifact, type Contribution, type GroupRef, planVow } from "./plan.ts";
+import { type Artifact, type Contribution, type GroupRef, type ListRef, planVow } from "./plan.ts";
+// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import {
   LAYOUT_SUFFIX,
   ROUTES_SUFFIX,
@@ -73,7 +74,7 @@ function withShellKey(
 /** The folded plan — every contribution merged (collections deduped), ready for compose + write. */
 interface Plan {
   readonly files: readonly Artifact[];
-  readonly listed: readonly string[];
+  readonly listed: readonly ListRef[];
   readonly stats: readonly GroupRef[];
   readonly cards: readonly string[];
   readonly boards: readonly GroupRef[];
@@ -93,6 +94,17 @@ function dedupeGroups(refs: readonly GroupRef[]): GroupRef[] {
   return [...byKey.values()];
 }
 
+/** Dedupe list references by `of` — one list per entity, with delete enabled when ANY referencing node
+ *  opted in (so a single `actions: [delete]` switches the shared list on, the rest read-only is the floor). */
+function dedupeLists(refs: readonly ListRef[]): ListRef[] {
+  const byOf = new Map<string, ListRef>();
+  for (const ref of refs) {
+    const wants = ref.delete || (byOf.get(ref.of)?.delete ?? false);
+    byOf.set(ref.of, { delete: wants, of: ref.of });
+  }
+  return [...byOf.values()];
+}
+
 /** Fold the per-vow contributions into one plan — collecting then deduping each composition kind. */
 function foldPlan(contributions: readonly Contribution[]): Plan {
   return {
@@ -100,7 +112,7 @@ function foldPlan(contributions: readonly Contribution[]): Plan {
     cards: [...new Set(contributions.flatMap((part) => part.cards))],
     files: contributions.flatMap((part) => part.files),
     issueViews: [...new Set(contributions.flatMap((part) => part.issueViews))],
-    listed: [...new Set(contributions.flatMap((part) => part.listed))],
+    listed: dedupeLists(contributions.flatMap((part) => part.listed)),
     needsLayout: contributions.some((part) => part.needsLayout),
     needsTimeline: contributions.some((part) => part.needsTimeline),
     pages: contributions.flatMap((part) => part.pages),

@@ -96,6 +96,28 @@ test("a `## view` with `list: task` pulls in the entity's read-only list (Table 
   });
 });
 
+test("a `list: { of, actions: [delete] }` emits the per-row delete button + the Button adapter", () => {
+  const page: VowNode = {
+    children: [],
+    fields: [],
+    fulfills: { as: "view", kind: "emit" },
+    id: "vow_page",
+    intent: "A page",
+    proof: [],
+    slug: "page",
+    view: [{ type: "list", value: { actions: ["delete"], of: "task" } }],
+  };
+  inTempDir((dir) => {
+    generateFiles([page, task], { outDir: dir, srcDir: dir });
+    // The opt-in delete materialises the Button adapter the list now references.
+    expect(readdirSync(dir)).toContain("Button.vue");
+    const taskVue = readFileSync(path.join(dir, "Task.vue"), "utf8");
+    // Wired BY ID (item.id), never the filtered/sorted/grouped loop index.
+    expect(taskVue).toContain('@click="removeById(item.id)"');
+    expect(taskVue).toContain('icon="trash"');
+  });
+});
+
 test("a `root` page generates the boot (main.ts) + the env shims", () => {
   inTempDir((dir) => {
     generateFiles([{ ...shell, root: true }], { outDir: dir, srcDir: dir });

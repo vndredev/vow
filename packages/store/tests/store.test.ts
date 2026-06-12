@@ -35,6 +35,32 @@ test("useCollection shares one reactive array per slug; different slugs are sepa
   expect(first.items).toHaveLength(0);
 });
 
+test("removeById deletes the row carrying that id — never the displayed index", () => {
+  const list = createList();
+  list.push({ id: "a", title: "first" });
+  list.push({ id: "b", title: "second" });
+  list.push({ id: "c", title: "third" });
+  // Delete the MIDDLE row by id; the surrounding rows survive (a sorted/grouped view's index would differ).
+  expect(list.removeById("b")).toBe("b");
+  expect(list.rows.map((row: Readonly<{ id: string }>) => row.id)).toEqual(["a", "c"]);
+});
+
+test("removeById is a no-op for an unknown id — nothing is removed", () => {
+  const list = createList();
+  list.push({ id: "a", title: "first" });
+  expect(list.removeById("missing")).toBeUndefined();
+  expect(list.rows).toHaveLength(1);
+});
+
+test("the collection's removeById writes through by id (the list's per-row delete path)", () => {
+  const collection = useCollection<{ id: string; title: string }>("notes");
+  collection.append({ id: "n1", title: "keep" });
+  collection.append({ id: "n2", title: "drop" });
+  collection.removeById("n1");
+  // The first row went, the second stayed — the delete keyed off the id, not position 0.
+  expect(collection.items.map((row: Readonly<{ id: string }>) => row.id)).toEqual(["n2"]);
+});
+
 test("update patches an item in place, by id", () => {
   const expectedCount = 2;
   const collection = useCollection<{ id: string; count: number }>("thing");

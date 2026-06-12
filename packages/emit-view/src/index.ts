@@ -14,7 +14,7 @@ export { VOW_ENV_DTS, emitAppLayout, emitAppRoutes, emitBoot } from "./boot.ts";
 export type { RoutedPage, ShellSpec } from "./boot.ts";
 export { emitEntityBoard } from "./entity-board.ts";
 export { emitEntityCards } from "./entity-cards.ts";
-export { emitEntityList } from "./entity-list.ts";
+export { type ListActions, emitEntityList } from "./entity-list.ts";
 export { emitEntityStats } from "./entity-stats.ts";
 export { fieldControl } from "./field-control.ts";
 export { emitForm } from "./form.ts";
@@ -29,6 +29,7 @@ export {
 } from "./naming.ts";
 export {
   type FieldRef,
+  type ListRef,
   boardRefs,
   cardsRefs,
   issueLayouts,
