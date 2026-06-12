@@ -1,4 +1,4 @@
-import type { Artifact, GroupRef } from "./plan.ts";
+import type { Artifact, GroupRef, ListRef } from "./plan.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, type ReadonlyVow, defined } from "@vow/core";
 import {
@@ -50,33 +50,38 @@ function primitivesFor(files: readonly Artifact[], parts: readonly string[]): re
   return [];
 }
 
-/** The Table parts every read-only list composes; a select cell adds a Badge. */
-function listPrimitives(entity: ReadonlyVow): readonly string[] {
+/** The Table parts every list composes; a select cell adds a Badge, the opt-in delete action adds a Button. */
+function listPrimitives(entity: ReadonlyVow, ref: ListRef): readonly string[] {
   const parts = ["Table", "TableRow", "TableHead", "TableCell"];
   if (entity.fields.some((field) => field.type === "select")) {
     // A select cell renders as a <Badge>.
-    return [...parts, "Badge"];
+    parts.push("Badge");
+  }
+  if (ref.delete) {
+    // The per-row delete renders as a <Button>.
+    parts.push("Button");
   }
   return parts;
 }
 
-/** A view's `list: <entity>` → that entity's read-only CRUD list (Table parts; Badge for a select cell). */
+/** A view's `list: <entity>` → that entity's CRUD list (Table parts; Badge for a select cell; Button for an
+ *  opt-in `actions: [delete]`). Read-only by default — the delete column appears only when the view opts in. */
 export function composeLists(
-  listed: readonly string[],
+  listed: readonly ListRef[],
   entities: readonly ReadonlyVow[],
   outDir: string,
 ): Composed {
   const index = mutableIndex(entities);
   const files: Artifact[] = [];
   const primitives = new Set<string>();
-  for (const slug of listed) {
-    const entity = bySlug(entities, slug);
+  for (const ref of listed) {
+    const entity = bySlug(entities, ref.of);
     if (defined(entity)) {
       files.push({
         path: path.join(outDir, `${viewComponentName(mutable(entity))}.vue`),
-        source: emitEntityList(mutable(entity), index),
+        source: emitEntityList(mutable(entity), index, { delete: ref.delete }),
       });
-      for (const part of listPrimitives(entity)) {
+      for (const part of listPrimitives(entity, ref)) {
         primitives.add(part);
       }
     }
