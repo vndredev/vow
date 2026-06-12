@@ -136,6 +136,16 @@ function classed(tag: string, cls: string, children: readonly UiNode[]): UiNode 
   };
 }
 
+/** The actions cell the issue layouts share — start-work, close/reopen and the session link grouped so they
+ *  travel as one unit (the card's CSS pushes the group to the trailing edge), never scattered. */
+function issueActions(): UiNode {
+  return classed("div", "vow-issue-actions", [
+    startWorkButton(),
+    issueActionButton(),
+    issueSessionLink(),
+  ]);
+}
+
 /** The `<thead>` of the issue table — one head cell per column. */
 function tableHead(): UiNode {
   return el("thead", [
@@ -263,17 +273,12 @@ function boardCardAssignees(): UiNode {
   };
 }
 
-/** A board card per issue in a column — number, title, labels, assignee and the action button. */
+/** A board card per issue in a column — the title leads (the content), then any labels, then a meta footer:
+ *  the number + assignee grouped at the start, the actions trailing. Same hierarchy as a roadmap item. */
 function boardCard(): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-board__card" }],
     children: [
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-issue-board__num" }],
-        children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
-        kind: "element",
-        tag: "span",
-      },
       {
         attrs: [{ kind: "static", name: "class", value: "vow-issue-board__title" }],
         children: [{ expr: "it.issue.title", kind: "interp" }],
@@ -281,10 +286,16 @@ function boardCard(): UiNode {
         tag: "span",
       },
       boardCardLabels(),
-      boardCardAssignees(),
-      startWorkButton(),
-      issueActionButton(),
-      issueSessionLink(),
+      classed("div", "vow-issue-board__meta", [
+        {
+          attrs: [{ kind: "static", name: "class", value: "vow-issue-board__num" }],
+          children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
+          kind: "element",
+          tag: "span",
+        },
+        boardCardAssignees(),
+        issueActions(),
+      ]),
     ],
     for: { as: "it", each: "col.items", key: "it.issue.number" },
     kind: "element",
@@ -362,34 +373,18 @@ const ROADMAP_SCRIPT = [
   `});`,
 ];
 
-/** One roadmap item `<li>` — its number, status Badge, action button and title. */
+/** One roadmap item `<li>` — the title leads (the content), then a meta footer: the number + status grouped
+ *  at the start, the actions trailing. The layout reads title-first, so the card has a clear hierarchy. */
 function roadmapItem(): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-roadmap__item" }],
     children: [
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__meta" }],
-        children: [
-          {
-            attrs: [{ kind: "static", name: "class", value: "vow-roadmap__num" }],
-            children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
-            kind: "element",
-            tag: "span",
-          },
-          statusBadge("it.status"),
-          startWorkButton(),
-          issueActionButton(),
-          issueSessionLink(),
-        ],
-        kind: "element",
-        tag: "div",
-      },
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__title" }],
-        children: [{ expr: "it.issue.title", kind: "interp" }],
-        kind: "element",
-        tag: "span",
-      },
+      classed("span", "vow-roadmap__title", [{ expr: "it.issue.title", kind: "interp" }]),
+      classed("div", "vow-roadmap__meta", [
+        classed("span", "vow-roadmap__num", [txt("#"), { expr: "it.issue.number", kind: "interp" }]),
+        statusBadge("it.status"),
+        issueActions(),
+      ]),
     ],
     for: { as: "it", each: "p.items", key: "it.issue.number" },
     kind: "element",
