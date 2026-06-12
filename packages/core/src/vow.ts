@@ -61,7 +61,8 @@ export type FieldType = z.infer<typeof FieldType>;
 const FieldName = z
   .string()
   .regex(/^[a-z][a-zA-Z0-9]*$/u, "field name must be a camelCase identifier");
-export const Field = z.object({
+/** The bare field shape, before the per-type rules below tighten it. */
+const FieldShape = z.object({
   name: FieldName,
   /** Allowed values for a `select` field — absent for other types. */
   options: z.array(z.string()).optional(),
@@ -69,6 +70,36 @@ export const Field = z.object({
   ref: z.string().optional(),
   required: z.boolean().default(false),
   type: FieldType,
+});
+
+/** The two type-specific keys the rules below inspect — read-only to their leaves (no mutable array). */
+interface FieldDraft {
+  readonly options?: readonly string[] | undefined;
+  readonly ref?: string | undefined;
+  readonly type: FieldType;
+}
+
+/** A `reference` carries a non-empty `ref`; any other type is unconstrained on `ref`. */
+function refOk(field: FieldDraft): boolean {
+  return field.type !== "reference" || (field.ref ?? "") !== "";
+}
+
+/** A `select` carries a non-empty `options`; any other type is unconstrained on `options`. */
+function optionsOk(field: FieldDraft): boolean {
+  return field.type !== "select" || (field.options ?? []).length > 0;
+}
+
+/*
+ * A `reference` is meaningless without a target, and a `select` without its values; reject those shapes
+ * here with an actionable message, so the boundary (add_field / add_entity) fails precisely rather than
+ * later as "references the empty string, which is not a known entity".
+ */
+export const Field = FieldShape.refine(refOk, {
+  error: "a reference field requires a non-empty ref naming the target entity",
+  path: ["ref"],
+}).refine(optionsOk, {
+  error: "a select field requires a non-empty options list",
+  path: ["options"],
 });
 export type Field = z.infer<typeof Field>;
 
