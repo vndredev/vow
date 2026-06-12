@@ -1,4 +1,4 @@
-import { FormSpec, Vow } from "./vow.ts";
+import { FieldType, FormSpec, Vow } from "./vow.ts";
 import { asRecord, defined, isRecord, mapDefined } from "./guard.ts";
 import { parse as parseYaml } from "yaml";
 
@@ -161,13 +161,59 @@ function typedPart(head: string): {
   return { type: head };
 }
 
+/** A known name scored by its edit distance to a typo — the rows ranked by `nearestKnown`. */
+interface Scored {
+  readonly candidate: string;
+  readonly distance: number;
+}
+
+/** The Levenshtein edit distance between `from` and `into` — insertions, deletions, substitutions. */
+function editDistance(from: string, into: string): number {
+  let prev = Array.from({ length: into.length + 1 }, (_unused, index) => index);
+  for (let row = 0; row < from.length; row += 1) {
+    const next = [row + 1];
+    for (let col = 0; col < into.length; col += 1) {
+      const substitute = (prev[col] ?? 0) + Number(from[row] !== into[col]);
+      next.push(Math.min(substitute, (prev[col + 1] ?? 0) + 1, (next[col] ?? 0) + 1));
+    }
+    prev = next;
+  }
+  return prev[into.length] ?? 0;
+}
+
+/** The known name a typo is closest to within `NEAR_MISS` — or absent when it is a stranger, not a typo. */
+function nearestKnown(word: string, known: readonly string[]): string | undefined {
+  const ranked: readonly Scored[] = known
+    .map((candidate) => ({ candidate, distance: editDistance(word, candidate) }))
+    .filter((scored: Readonly<Scored>) => scored.distance > 0 && scored.distance <= NEAR_MISS)
+    .toSorted((left: Scored, right: Scored) => left.distance - right.distance);
+  return ranked[0]?.candidate;
+}
+
+/** The closed `FieldType` set as a plain string list — for a membership test free of an unsafe cast. */
+const FIELD_TYPES: readonly string[] = FieldType.options;
+
+/**
+ * Reject a field type outside the closed `FieldType` set at parse time — while the field name is in
+ * hand — so a typo (`nummber`) surfaces as a vow-level hint, not a raw `Vow.parse` ZodError blob.
+ */
+function assertKnownFieldType(slug: string, name: string, type: string): void {
+  if (FIELD_TYPES.includes(type)) {
+    return;
+  }
+  const hint = mapDefined(nearestKnown(type, FIELD_TYPES), (near) => ` (did you mean "${near}"?)`);
+  throw new Error(
+    `vow: field "${name}" in "${slug}" has unknown type "${type}" — allowed: ${FIELD_TYPES.join(", ")}${hint ?? ""}`,
+  );
+}
+
 /**
  * Parse one `## fields` line:
  *   `title: text, required`        → { name, type: "text", required: true }
  *   `status: select(a|b|c)`        → { name, type: "select", options: ["a","b","c"] }
  *   `assignee: reference(user)`    → { name, type: "reference", ref: "user" }
  */
-function parseFieldLine(item: string): FieldDraft {
+function parseFieldLine(slug: string, item: string): FieldDraft {
   const { name, rest } = splitFieldLine(item);
   /*
    * The head is the type — possibly `select(a|b|c)` / `reference(entity)`, whose parens can hold
@@ -178,7 +224,9 @@ function parseFieldLine(item: string): FieldDraft {
   if (OPEN_PAREN.test(rest) && !head.endsWith(")")) {
     throw new Error(`vow: field "${name}" has a malformed type "${rest}" — unbalanced parentheses`);
   }
-  return { name, required: hasRequired(rest, head), ...typedPart(head) };
+  const typed = typedPart(head);
+  assertKnownFieldType(slug, name, typed.type);
+  return { name, required: hasRequired(rest, head), ...typed };
 }
 
 /** The body of a fenced ```yaml block under `## <heading>`, or absent when the section is missing. */
@@ -255,35 +303,6 @@ function splitDocument(content: string): {
   };
 }
 
-/** A known name scored by its edit distance to a typo — the rows ranked by `nearestKnown`. */
-interface Scored {
-  readonly candidate: string;
-  readonly distance: number;
-}
-
-/** The Levenshtein edit distance between `from` and `into` — insertions, deletions, substitutions. */
-function editDistance(from: string, into: string): number {
-  let prev = Array.from({ length: into.length + 1 }, (_unused, index) => index);
-  for (let row = 0; row < from.length; row += 1) {
-    const next = [row + 1];
-    for (let col = 0; col < into.length; col += 1) {
-      const substitute = (prev[col] ?? 0) + Number(from[row] !== into[col]);
-      next.push(Math.min(substitute, (prev[col + 1] ?? 0) + 1, (next[col] ?? 0) + 1));
-    }
-    prev = next;
-  }
-  return prev[into.length] ?? 0;
-}
-
-/** The known name a typo is closest to within `NEAR_MISS` — or absent when it is a stranger, not a typo. */
-function nearestKnown(word: string, known: readonly string[]): string | undefined {
-  const ranked: readonly Scored[] = known
-    .map((candidate) => ({ candidate, distance: editDistance(word, candidate) }))
-    .filter((scored: Readonly<Scored>) => scored.distance > 0 && scored.distance <= NEAR_MISS)
-    .toSorted((left: Scored, right: Scored) => left.distance - right.distance);
-  return ranked[0]?.candidate;
-}
-
 /** The keys of `frontmatter` that fall outside the closed `KNOWN_KEYS` contract. */
 function unknownKeys(frontmatter: Readonly<Frontmatter>): string[] {
   return Object.keys(frontmatter).filter((key) => !KNOWN_KEYS.includes(key));
@@ -332,7 +351,7 @@ export function parseVowMd(slug: string, content: string): VowNode {
   assertNoMistypedSections(body);
   const intent = firstGroup(INTENT, body)?.trim() ?? "";
   return Vow.parse({
-    fields: itemsUnder(body, "fields").map((item) => parseFieldLine(item)),
+    fields: itemsUnder(body, "fields").map((item) => parseFieldLine(slug, item)),
     form: parseForm(body),
     fulfills: parseFulfills(frontmatter["fulfills"]),
     id: frontmatter["id"],

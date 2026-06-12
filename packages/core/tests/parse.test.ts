@@ -65,6 +65,22 @@ test("a malformed type with unbalanced parens throws a clear error", () => {
   expect(() => parseVowMd("widget", md)).toThrow(/malformed type/u);
 });
 
+test("an unknown field type throws an actionable hint, not a raw ZodError", () => {
+  // The most common authoring typo — `nummber` (distance 1 from `number`).
+  const md = `---\nid: vow_widget\nfulfills: emit entity\n---\n# Widget\n\n## fields\n- priority: nummber\n`;
+  expect(() => parseVowMd("widget", md)).toThrow(
+    /vow: field "priority" in "widget" has unknown type "nummber" — allowed: text, longtext, number, boolean, select, date, reference \(did you mean "number"\?\)/u,
+  );
+});
+
+test("a stranger field type names the field + the slug, but offers no false hint", () => {
+  // `json` is no near-miss of any known type — name + slug, allowed list, no did-you-mean.
+  const md = `---\nid: vow_widget\nfulfills: emit entity\n---\n# Widget\n\n## fields\n- payload: json\n`;
+  expect(() => parseVowMd("widget", md)).toThrow(
+    /vow: field "payload" in "widget" has unknown type "json" — allowed: text, longtext, number, boolean, select, date, reference$/u,
+  );
+});
+
 test("`fulfills: bind <module>#<export>` parses to a bind fulfilment", () => {
   const md = `---\nid: vow_r\nfulfills: bind @vow/core#rollup\n---\n# Status roll-up\n`;
   const vow = parseVowMd("rollup", md);
