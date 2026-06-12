@@ -8,11 +8,13 @@ import {
   openDb,
   remove,
   renameColumn,
+  seedEntity,
   update,
 } from "../src/db.ts";
 import { expect, test } from "vite-plus/test";
+import { mkdtempSync, readFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { readFileSync } from "node:fs";
 
 // A live SQLite handle, derived from `openDb` so no separate type import is needed.
 type Db = ReturnType<typeof openDb>;
@@ -128,6 +130,24 @@ test("bootstrap rolls back a partial seed so the table stays empty and a later b
   bootstrap(db, [task]);
   expect(list(db, task)).toHaveLength(1);
   expect(list(db, task)[0]?.["title"]).toBe("Seeded");
+});
+
+test("seedEntity is a no-op on an already-seeded table (the cross-process race's loser)", () => {
+  // Two separate handles on the SAME file mirror the dev server + the MCP: both pass `bootstrap`'s
+  // Outer `isEmpty` while the table is empty. `dbA` wins and commits the seed; `dbB` is the race's
+  // Loser — its `seedEntity` takes the write lock, re-checks `isEmpty` INSIDE the transaction, sees
+  // The committed rows, and seeds nothing (seed rows carry no `id`, so a re-seed would otherwise mint
+  // Fresh UUIDs and duplicate every row).
+  const dir = mkdtempSync(path.join(os.tmpdir(), "vow-db-"));
+  const file = path.join(dir, "data.db");
+  const dbA = openDb(file);
+  const dbB = openDb(file);
+  migrate(dbA, [task]);
+  bootstrap(dbA, [task]);
+  // The loser reaches `seedEntity` on a now-non-empty table — it must add nothing.
+  seedEntity(dbB, task, task.seed ?? []);
+  expect(list(dbB, task)).toHaveLength(1);
+  expect(list(dbA, task)).toHaveLength(1);
 });
 
 test("migrate is additive — a new field adds its column and keeps existing rows", () => {

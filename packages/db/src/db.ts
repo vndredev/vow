@@ -220,10 +220,21 @@ export function insert(db: Db, entity: ReadonlyVow, record: ReadRow): Row {
   return full;
 }
 
-/** Seed every record of one entity inside a transaction — all rows land or none do. */
-function seedEntity(db: Db, entity: ReadonlyVow, seed: readonly ReadRow[]): void {
-  db.exec("BEGIN");
+/**
+ * Seed every record of one entity inside a transaction — all rows land or none do. `BEGIN IMMEDIATE`
+ * takes the write lock up front, then `isEmpty` is re-checked INSIDE the transaction: when two processes
+ * (the dev server and the MCP) race to seed a freshly empty table, the loser sees the winner's committed
+ * rows and seeds nothing, so seed-once stays atomic across handles (seed rows carry no `id`, so a re-seed
+ * would otherwise mint fresh UUIDs and duplicate the rows).
+ */
+export function seedEntity(db: Db, entity: ReadonlyVow, seed: readonly ReadRow[]): void {
+  db.exec("BEGIN IMMEDIATE");
   try {
+    if (!isEmpty(db, entity.slug)) {
+      // The race's loser: the winner already committed the seed, so seed nothing.
+      db.exec("ROLLBACK");
+      return;
+    }
     for (const record of seed) {
       insert(db, entity, record);
     }
