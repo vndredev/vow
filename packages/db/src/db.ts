@@ -201,14 +201,27 @@ export function insert(db: Db, entity: ReadonlyVow, record: ReadRow): Row {
   return full;
 }
 
+/** Seed every record of one entity inside a transaction — all rows land or none do. */
+function seedEntity(db: Db, entity: ReadonlyVow, seed: readonly ReadRow[]): void {
+  db.exec("BEGIN");
+  try {
+    for (const record of seed) {
+      insert(db, entity, record);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    // A mid-loop failure rolls the table back to empty, so the next bootstrap retries the whole seed.
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 /** Seed-if-empty from each entity's `## seed` — idempotent (mirrors the old in-memory `seed()`). */
 export function bootstrap(db: Db, entities: readonly ReadonlyVow[]): void {
   for (const entity of entities) {
     const { seed } = entity;
     if (defined(seed) && seed.length > 0 && isEmpty(db, entity.slug)) {
-      for (const record of seed) {
-        insert(db, entity, record);
-      }
+      seedEntity(db, entity, seed);
     }
   }
 }
