@@ -135,7 +135,7 @@
   --vow-radius-1: 0.3125rem; /* 5px — controls: inputs, buttons (r-sm) */
   --vow-radius-2: 0.4375rem; /* 7px — list rows */
   --vow-radius-3: 0.5rem; /* 8px — cards, boxes (r-md) */
-  --vow-radius-badge: 3px; /* r-xs — the mono pill */
+  --vow-radius-badge: 999px; /* r-pill — vow's badges are ROUND pills (typed.build's are angular) */
   --vow-border: 1.5px; /* the kit's signature crisp hairline */
 
   /* Elevation — a flat, dry lift, and the signature hard ink offset (the "Werkstatt" stamp). */
@@ -207,23 +207,25 @@ body {
 }
 .vow-app h1 {
   font-family: var(--vow-font-display);
-  font-size: var(--vow-text-3xl);
-  font-weight: var(--vow-weight-display);
-  line-height: var(--vow-leading-tight);
-  letter-spacing: var(--vow-tracking-tight);
+  font-size: clamp(2.2rem, 4vw, 3.4rem); /* the kit's --text-h1 */
+  font-weight: var(--vow-weight-bold);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 .vow-app h2 {
   font-family: var(--vow-font-display);
-  font-size: var(--vow-text-2xl);
-  font-weight: var(--vow-weight-bold);
-  line-height: var(--vow-leading-tight);
+  font-size: clamp(1.6rem, 2.6vw, 2.2rem); /* the kit's --text-h2 */
+  font-weight: var(--vow-weight-semibold);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
   margin: 0;
 }
 .vow-app h3 {
-  font-size: var(--vow-text-lg);
+  font-size: 1.3rem; /* the kit's --text-h3 (sans) */
   font-weight: var(--vow-weight-semibold);
-  line-height: var(--vow-leading-normal);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   margin: 0 0 var(--vow-space-2);
 }
 .vow-app p {
@@ -463,6 +465,13 @@ body {
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-3);
   cursor: grab;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+.vow-board__card:hover {
+  border-color: var(--vow-color-border-hover);
+  box-shadow: var(--vow-shadow-1);
 }
 .vow-board__card:active {
   cursor: grabbing;
@@ -628,15 +637,17 @@ body {
 /* The button primitive — the ONE structural control with no headless core. The variant/size surface is
    pure theme, hooked via `data-variant` / `data-size` (which compose freely with any `data-state`). */
 .vow-button {
+  --vow-tone: var(--vow-color-ink); /* the data-tone colour; neutral = ink fill / text */
+  --vow-tone-on: var(--vow-color-bg);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--vow-space-2);
-  padding: 0.75rem 1.25rem; /* 12px 20px — the kit's .btn */
+  padding: 0.75rem 1.25rem; /* md — the kit's .btn */
   border: var(--vow-border) solid transparent;
   border-radius: var(--vow-radius-1);
-  background: var(--vow-color-accent);
-  color: var(--vow-color-on-accent);
+  background: transparent;
+  color: var(--vow-color-text);
   cursor: pointer;
   font-family: inherit;
   font-size: 0.95rem;
@@ -649,50 +660,98 @@ body {
     transform 0.1s,
     color 0.12s;
 }
-.vow-button[data-variant="default"]:active {
-  transform: translateY(1px);
-}
 .vow-button:focus-visible {
-  outline: 2px solid var(--vow-color-accent);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--vow-color-accent-tint);
 }
 .vow-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.vow-button[data-variant="default"] {
-  background: var(--vow-color-accent);
-  border-color: var(--vow-color-accent);
-  color: var(--vow-color-on-accent);
+.vow-button:active {
+  transform: translateY(1px);
 }
-.vow-button[data-variant="default"]:hover {
-  background: var(--vow-color-accent-hover);
-  border-color: var(--vow-color-accent-hover);
+/* Tone — the data-tone colour the variants read (neutral is the base ink above). */
+.vow-button[data-tone="accent"] {
+  --vow-tone: var(--vow-color-accent);
+  --vow-tone-on: var(--vow-color-on-accent);
+}
+.vow-button[data-tone="success"] {
+  --vow-tone: var(--vow-color-success);
+  --vow-tone-on: var(--vow-color-bg);
+}
+.vow-button[data-tone="warning"] {
+  --vow-tone: var(--vow-color-warning);
+  --vow-tone-on: var(--vow-color-bg);
+}
+.vow-button[data-tone="danger"] {
+  --vow-tone: var(--vow-color-danger);
+  --vow-tone-on: var(--vow-color-on-accent);
+}
+.vow-button[data-tone="info"] {
+  --vow-tone: var(--vow-color-accent);
+  --vow-tone-on: var(--vow-color-on-accent);
+}
+/* Variant — the treatment over the tone. */
+.vow-button[data-variant="solid"] {
+  background: var(--vow-tone);
+  border-color: var(--vow-tone);
+  color: var(--vow-tone-on);
+}
+.vow-button[data-variant="solid"]:hover {
+  filter: brightness(0.92); /* the kit darkens the primary on hover (btn-sig → signal-600) */
+}
+.vow-button[data-variant="soft"] {
+  background: color-mix(in srgb, var(--vow-tone) 14%, transparent);
+  color: var(--vow-tone);
+}
+.vow-button[data-variant="soft"]:hover {
+  background: color-mix(in srgb, var(--vow-tone) 22%, transparent);
 }
 .vow-button[data-variant="outline"] {
-  background: transparent;
   border-color: var(--vow-color-border);
   color: var(--vow-color-text);
 }
 .vow-button[data-variant="outline"]:hover {
-  background: var(--vow-color-surface);
-  border-color: var(--vow-color-border-hover);
+  border-color: var(--vow-tone);
+  color: var(--vow-tone);
 }
 .vow-button[data-variant="ghost"] {
-  background: transparent;
-  border-color: transparent;
   color: var(--vow-color-text);
 }
 .vow-button[data-variant="ghost"]:hover {
   background: var(--vow-color-surface);
+  color: var(--vow-tone);
+}
+.vow-button[data-variant="link"] {
+  padding-right: 0;
+  padding-left: 0;
+  color: var(--vow-tone);
+}
+.vow-button[data-variant="link"]:hover {
+  text-decoration: underline;
+}
+/* Size — the control scale (md is the base above). */
+.vow-button[data-size="xs"] {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8rem;
 }
 .vow-button[data-size="sm"] {
-  padding: 0.5rem 0.875rem; /* 8px 14px — the kit's .btn--sm */
+  padding: 0.5rem 0.875rem;
   font-size: 0.85rem;
 }
 .vow-button[data-size="lg"] {
-  padding: 0.9375rem 1.625rem; /* 15px 26px — the kit's .btn--lg */
+  padding: 0.9375rem 1.625rem;
   font-size: 1.05rem;
+}
+.vow-button[data-size="xl"] {
+  padding: 1.125rem 2rem;
+  font-size: 1.15rem;
+}
+/* Density — compact tightens the control vertically. */
+.vow-button[data-density="compact"] {
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
 }
 
 /* The badge primitive — the kit's status/label chip: a small mono, UPPERCASE pill (the technical voice).
