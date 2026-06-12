@@ -1,3 +1,4 @@
+import { LAYOUT_SUFFIX, ROUTES_EXPORT, ROUTES_SUFFIX } from "@vow/emit-view";
 import { buildLlms, buildSidebar, docSlug, generateDocs, routePath } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -111,6 +112,18 @@ test("generateDocs renders each .md into a prose .vue + a routes manifest", () =
   expect(written).toHaveLength(SINGLE_PAGE_FILES);
   expectProse(out);
   expectManifest(out);
+});
+
+test("the docs chrome honors the boot glob convention — shared suffixes + routes export", () => {
+  const { out, written } = generateIntro();
+  // The boot globs `*.routes.ts` / `*.layout.vue`; both producer files must end with the shared suffix.
+  const routesFile = written.find((file) => file.endsWith(ROUTES_SUFFIX));
+  const layoutFile = written.find((file) => file.endsWith(LAYOUT_SUFFIX));
+  expect(routesFile).toBeDefined();
+  expect(layoutFile).toBeDefined();
+  // The routes manifest must export the shared key the boot reads each fragment by.
+  const manifest = readFileSync(path.join(out, "vow-docs.routes.ts"), "utf8");
+  expect(manifest).toContain(`export const ${ROUTES_EXPORT}: Route[] =`);
 });
 
 test("buildLlms builds an llms.txt index + a full single-file dump", () => {
