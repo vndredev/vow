@@ -21,17 +21,23 @@ function bodyField(field: ReadonlyField): UiNode {
   };
 }
 
+/** The field that titles a record — the first `text`/`longtext` field, else the first field of any kind. */
+export function titleField(entity: ReadonlyVow): ReadonlyField | undefined {
+  return (
+    entity.fields.find((field) => field.type === "text" || field.type === "longtext") ??
+    entity.fields[0]
+  );
+}
+
 /** The Card header + body for one record in a generated card/board view (title field → header, rest → body). */
 export function recordCard(entity: ReadonlyVow, omit: readonly string[]): UiNode[] {
-  const titleField =
-    entity.fields.find((field) => field.type === "text" || field.type === "longtext") ??
-    entity.fields[0];
+  const title = titleField(entity);
   const bodyFields = entity.fields.filter(
-    (field) => field.name !== titleField?.name && !omit.includes(field.name),
+    (field) => field.name !== title?.name && !omit.includes(field.name),
   );
   const children: UiNode[] = [];
-  if (defined(titleField)) {
-    children.push(comp("CardHeader", [], [{ expr: `item.${titleField.name}`, kind: "interp" }]));
+  if (defined(title)) {
+    children.push(comp("CardHeader", [], [{ expr: `item.${title.name}`, kind: "interp" }]));
   }
   if (bodyFields.length > 0) {
     children.push(
