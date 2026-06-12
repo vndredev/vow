@@ -55,6 +55,13 @@ test("subscribe fires a listener on each mutation; the returned unsubscribe stop
   expect(calls).toEqual(["fired", "fired"]);
 });
 
+test("version rises on each mutation — the snapshot token a binding compares", () => {
+  const list = createList();
+  const before = list.version;
+  list.push({ id: "1", title: "a" });
+  expect(list.version).toBeGreaterThan(before);
+});
+
 test("parseIssuePlan carries a doing item's agent session (the open PR + url); omits a malformed one", () => {
   const plan = parseIssuePlan([
     {
