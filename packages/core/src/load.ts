@@ -1,3 +1,5 @@
+// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
+import { type Maybe, NONE, asRecord, defined } from "./guard.ts";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import type { ReadonlyVow } from "./readonly.ts";
 import type { Vow } from "./vow.ts";
@@ -56,6 +58,71 @@ export function validateReferences(vows: readonly ReadonlyVow[]): void {
       if (field.type === "reference" && !entities.has(field.ref ?? "")) {
         throw new Error(
           `vow: "${vow.slug}.${field.name}" references "${field.ref ?? ""}", which is not a known entity`,
+        );
+      }
+    }
+  }
+}
+
+/** An authored icon string and where it sits, so a rejection names the exact source (`<slug> nav`, …). */
+interface IconUse {
+  readonly name: string;
+  readonly where: string;
+}
+
+/** The view-node types that carry an icon, mapped to the value key that holds it — an `icon:` node keys
+ *  its glyph under `name`, a `link:` node under `icon`. A node type not here carries no icon. */
+const ICON_NODE_KEYS: Readonly<Record<string, string>> = { icon: "name", link: "icon" };
+
+/** One node of a vow's view — its `{ type, value }`, read-only (the strict-wall parameter shape). */
+type ViewNode = NonNullable<ReadonlyVow["view"]>[number];
+
+/** The icon string a view node carries (an `icon:`/`link:` node), or absent for any node without one. */
+function nodeIcon(node: ViewNode): Maybe<string> {
+  const key = ICON_NODE_KEYS[node.type];
+  const named = asRecord(node.value)[key ?? ""];
+  if (typeof named === "string") {
+    return named;
+  }
+  return NONE;
+}
+
+/** The icon strings the `icon:` / `link:` nodes of a view carry, each tagged with its source location. */
+function viewNodeIcons(vow: ReadonlyVow): IconUse[] {
+  const uses: IconUse[] = [];
+  for (const node of vow.view ?? []) {
+    const named = nodeIcon(node);
+    if (defined(named)) {
+      uses.push({ name: named, where: `${vow.slug} view (${node.type}:)` });
+    }
+  }
+  return uses;
+}
+
+/** Every authored icon string in a vow — its nav `icon:` plus each view `icon:` / `link:` icon. */
+function iconUses(vow: ReadonlyVow): IconUse[] {
+  const uses: IconUse[] = [...viewNodeIcons(vow)];
+  const navIcon = vow.nav?.icon;
+  if (defined(navIcon)) {
+    uses.push({ name: navIcon, where: `${vow.slug} nav` });
+  }
+  return uses;
+}
+
+/**
+ * Cross-vow icon integrity: every authored icon string (a nav `icon:`, a view `icon:` / `link:` icon) must
+ * name a real `@vow/icons` glyph. A typo would otherwise drift the `string` source past the strict leaf
+ * union (tsgo never deep-checks the generated `<script setup>` literal) and render an empty SVG with a green
+ * build — so reject it loudly here, the way `validateReferences` rejects a dangling reference. `valid` is
+ * injected (the `@vow/icons` name list) to keep this foundation module Vue-free.
+ */
+export function validateIcons(vows: readonly ReadonlyVow[], valid: readonly string[]): void {
+  const known = new Set(valid);
+  for (const vow of everyVow(vows)) {
+    for (const use of iconUses(vow)) {
+      if (!known.has(use.name)) {
+        throw new Error(
+          `vow: "${use.where}" uses icon "${use.name}", which is not a known @vow/icons name`,
         );
       }
     }

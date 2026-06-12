@@ -9,7 +9,7 @@
 export { uncoveredScenarios } from "./coverage.ts";
 export { type EmitTarget, isEmit, isEmitEntity } from "./fulfillment.ts";
 export { asRecord, defined, isRecord, mapDefined, type Maybe } from "./guard.ts";
-export { SUFFIX, loadVow, loadVows, validateReferences } from "./load.ts";
+export { SUFFIX, loadVow, loadVows, validateIcons, validateReferences } from "./load.ts";
 export {
   addEntity,
   addField,

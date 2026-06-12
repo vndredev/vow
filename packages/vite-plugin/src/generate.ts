@@ -1,7 +1,14 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Artifact, type Contribution, type GroupRef, planVow } from "./plan.ts";
-// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type Maybe, type ReadonlyVow, defined, validateReferences } from "@vow/core/node";
+/* oxlint-disable consistent-type-specifier-style -- one import; the wrapped specifiers trip no-duplicate-imports if split */
+import {
+  type Maybe,
+  type ReadonlyVow,
+  defined,
+  validateIcons,
+  validateReferences,
+} from "@vow/core/node";
+/* oxlint-enable consistent-type-specifier-style */
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Page, allVows, isEmitEntity } from "./vows.ts";
 import { VOW_ENV_DTS, emitAppLayout, emitAppRoutes, emitBoot } from "@vow/emit-view";
@@ -17,6 +24,7 @@ import {
 } from "./compose.ts";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { NONE } from "./none.ts";
+import { iconNames } from "@vow/icons";
 
 /**
  * The generator — folds every fulfilled vow into a plan, then writes the real `.vue`/`.ts` files into the
@@ -264,8 +272,9 @@ function writeArtifact(artifact: Artifact): void {
  * Returns the written paths.
  */
 export function generateFiles(vows: readonly ReadonlyVow[], dirs: Dirs, title?: string): string[] {
-  // Fail loud on a dangling `reference(<entity>)` before generating anything.
+  // Fail loud on a dangling `reference(<entity>)` or an unknown nav/view/link icon before generating.
   validateReferences(vows);
+  validateIcons(vows, iconNames);
   mkdirSync(dirs.outDir, { recursive: true });
   const all = allVows(vows);
   // Filter `all` directly — `entityVows(all)` re-flattens it + duplicates nested entities.
