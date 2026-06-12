@@ -5,7 +5,7 @@ order: 3.7
 
 # Switch
 
-A boolean as an on/off **toggle** — a pill track with a sliding thumb. HTML has no stylable native switch, so this primitive earns its place: modelled on Reka UI, the control is a `<button role="switch">` that carries the WAI-ARIA semantics over an element you _can_ style. It's the toggle-flavoured sibling of the [Checkbox](/guide/primitives/checkbox).
+A boolean as an on/off **toggle** — a pill track with a sliding thumb. HTML has no stylable native switch, so this primitive earns its place: the control is a `<button role="switch">` that carries the WAI-ARIA semantics over an element you _can_ style. It's the toggle-flavoured sibling of the [Checkbox](/guide/primitives/checkbox).
 
 ## See it run
 

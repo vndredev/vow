@@ -5,7 +5,7 @@ order: 3.7
 
 # Table
 
-A `<table>` is native and accessible, so `Table` is a **structural** primitive — no headless core, just class hooks. And it's **composable parts** (like shadcn / Reka tables), not a data-driven black box: assemble the table any composition needs.
+A `<table>` is native and accessible, so `Table` is a **structural** primitive — no headless core, just class hooks. And it's **composable parts**, not a data-driven black box: assemble the table any composition needs.
 
 ## See it run
 

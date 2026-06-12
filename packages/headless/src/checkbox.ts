@@ -20,7 +20,7 @@ export interface CheckboxApi {
 }
 
 /**
- * The checkbox primitive — WAI-ARIA APG conformant, Reka-style. The control is a `<button>` carrying
+ * The checkbox primitive — WAI-ARIA APG conformant. The control is a `<button>` carrying
  * `role="checkbox"` + `aria-checked`; **Space** toggles, **Enter** does not (a checkbox never toggles
  * on Enter), and we `preventDefault` both keys so the native button activation can't fire a second
  * toggle. `disabled` uses the native button `disabled` (out of the tab order, inert). State is mirrored

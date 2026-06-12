@@ -5,7 +5,7 @@ order: 3.4
 
 # Select
 
-A listbox dropdown: a button that opens a list of options and commits one — how a `select`-type field offers a fixed set of choices that a native `<select>` can't fully style. Modelled on Reka UI and the WAI-ARIA APG select-only combobox: a `role="combobox"` button over a `role="listbox"`, with focus kept on the trigger and the highlight tracked via `aria-activedescendant`.
+A listbox dropdown: a button that opens a list of options and commits one — how a `select`-type field offers a fixed set of choices that a native `<select>` can't fully style. Modelled on the WAI-ARIA APG select-only combobox: a `role="combobox"` button over a `role="listbox"`, with focus kept on the trigger and the highlight tracked via `aria-activedescendant`.
 
 ## See it run
 

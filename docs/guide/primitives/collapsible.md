@@ -5,7 +5,7 @@ order: 3.2
 
 # Collapsible
 
-A disclosure: a button that expands and collapses a region of content. It's how the sidebar groups fold, and how an FAQ row opens. Modelled on Reka UI — the trigger is a real `<button>` (so the keyboard contract is native: Space/Enter toggles), and the two parts are wired with `aria-expanded` / `aria-controls` / `aria-labelledby`.
+A disclosure: a button that expands and collapses a region of content. It's how the sidebar groups fold, and how an FAQ row opens. The trigger is a real `<button>` (so the keyboard contract is native: Space/Enter toggles), and the two parts are wired with `aria-expanded` / `aria-controls` / `aria-labelledby`.
 
 ## See it run
 
