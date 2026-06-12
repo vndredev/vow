@@ -47,7 +47,13 @@ test("parseProtection falls back to the loose state for a partial gh object (dri
 
 test("protectionDrift flags a loosened protection, and is empty when it holds", () => {
   const loose = { checks: [], enforceAdmins: false, requirePr: false, reviews: 1 };
-  expect(protectionDrift(loose, MAIN_PROTECTION).length).toBeGreaterThan(0);
+  const drift = protectionDrift(loose, MAIN_PROTECTION);
+  // Each invariant must have its OWN drift line; a bare length check would let any one (e.g. the
+  // NON-NEGOTIABLE enforce_admins guard) be dropped and still go green.
+  expect(drift).toContain('the "gate" check is not required');
+  expect(drift).toContain("a PR is not required");
+  expect(drift).toContain("enforce_admins=false, want true");
+  expect(drift).toContain("required reviews=1, want 0");
   const tight = { checks: ["gate"], enforceAdmins: true, requirePr: true, reviews: 0 };
   expect(protectionDrift(tight, MAIN_PROTECTION)).toEqual([]);
 });
