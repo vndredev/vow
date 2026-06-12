@@ -9,9 +9,12 @@ type EntityScenario = ReturnType<typeof entityScenarios>[number];
 
 /**
  * The `emit entity` test emitter — a Vitest suite whose test names ARE the proven scenarios, with each
- * body derived from the entity's required fields (a build-and-assert for the valid case, a `.toThrow`
- * for each omitted-required-field rejection).
+ * body derived from the entity's required fields (a build-and-assert for the valid case, an
+ * issues-path assertion for each omitted-required-field rejection).
  */
+
+/** The shape a caught `Schema.parse` failure exposes — a `ZodError` carries `issues` with a `path`. */
+const ZOD_ISSUES_TYPE = "readonly { readonly path: readonly PropertyKey[] }[]";
 
 /** The shared inputs every generated test needs — the entity name and its required fields. */
 interface TestContext {
@@ -27,10 +30,29 @@ function validEntries(ctx: TestContext, exclude: ReadonlyField | undefined): str
     .join(", ");
 }
 
+/**
+ * The body of an omitted-required-field test — pinned to the FIELD, not to any throw. It captures the
+ * `Schema.parse` failure and asserts the `ZodError` flags the omitted field by path, so an unrelated
+ * throw (a `crypto` refactor, a bug rejecting a different field) no longer false-greens the guarantee.
+ * Not throwing leaves `issues` empty, so the assertion still fails — the guarantee stays pinned.
+ */
+function rejectionBody(ctx: TestContext, missing: ReadonlyField): readonly string[] {
+  const field = JSON.stringify(missing.name);
+  return [
+    `  let issues: ${ZOD_ISSUES_TYPE} = [];`,
+    `  try {`,
+    `    create${ctx.name}({ ${validEntries(ctx, missing)} });`,
+    `  } catch (error) {`,
+    `    ({ issues } = error as { issues: ${ZOD_ISSUES_TYPE} });`,
+    `  }`,
+    `  expect(issues.some((issue) => issue.path[0] === ${field})).toBe(true);`,
+  ];
+}
+
 /** The body of a single generated test — a rejection check, or a build-and-assert. */
 function testBody(ctx: TestContext, missing: ReadonlyField | undefined): readonly string[] {
   if (defined(missing)) {
-    return [`  expect(() => create${ctx.name}({ ${validEntries(ctx, missing)} })).toThrow();`];
+    return rejectionBody(ctx, missing);
   }
   const lines: string[] = [`  const value = create${ctx.name}({ ${validEntries(ctx, missing)} });`];
   for (const field of ctx.required) {

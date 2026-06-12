@@ -105,7 +105,14 @@ test("emitEntityTest names each generated test after its proven scenario", () =>
   const code = emitEntityTest(task);
   expect(code).toContain('test("A valid Task is built from its required fields"');
   expect(code).toContain("test(\"Task without 'title' is rejected\"");
-  expect(code).toContain("toThrow()");
+});
+
+test("the rejection test is pinned to the omitted field's issues path, not any throw", () => {
+  const code = emitEntityTest(task);
+  // It captures the parse failure and asserts the omitted field by path.
+  // A bare `.toThrow()` false-greens on any unrelated throw (a crypto refactor, a different-field bug).
+  expect(code).not.toContain("toThrow()");
+  expect(code).toContain('expect(issues.some((issue) => issue.path[0] === "title")).toBe(true);');
 });
 
 test("the entity emitters fail fast on a non-entity vow", () => {
