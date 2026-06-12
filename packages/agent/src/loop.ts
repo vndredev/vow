@@ -22,7 +22,7 @@ async function publish(
   const { issue, ops } = request;
   const at = task.cwd;
   const title = prTitle(issue);
-  const body = `Closes #${issue.number}\n\n${prBody(task.plan, verdict)}`;
+  const body = prBody(issue, verdict);
   await ops.run({ args: stageArgs(), bin: "git" }, at);
   await ops.run({ args: commitArgs(title), bin: "git" }, at);
   await ops.run({ args: pushArgs(task.branch), bin: "git" }, at);

@@ -12,6 +12,8 @@ import type { RunResult } from "../src/types.ts";
 
 const TITLE_MAX = 72;
 const OVERLONG = 100;
+// The `## Proof` checkboxes the pr-body gate requires: one per gate (vp check · pnpm -r test) + the doc.
+const PROOF_CHECKBOXES = 3;
 
 /** A fake exec: any command containing "fail" exits non-zero with a stderr-style reason, the rest pass. No
  *  process is spawned. */
@@ -36,13 +38,24 @@ test("verify keeps a failed gate's captured output (the reason), not just its co
   expect(red.results[0]?.output).toBe("fail this: boom");
 });
 
-test("prBody renders a failed gate's captured output under its ✗ — the reason reaches the PR", () => {
-  const body = prBody("THE PLAN", {
-    ok: false,
-    results: [{ command: "vp check", ok: false, output: "src/x.ts(3,1): TS2304" }],
-  });
-  expect(body).toContain("- ✗ `vp check`");
-  expect(body).toContain("src/x.ts(3,1): TS2304");
+test("prBody is the template the pr-body gate demands — Summary/What/Proof/Next + Closes, a failed gate unchecked", () => {
+  const body = prBody(
+    { number: 98, title: "the loop" },
+    {
+      ok: false,
+      results: [
+        { command: "vp check", ok: false, output: "TS2304" },
+        { command: "pnpm -r test", ok: true },
+      ],
+    },
+  );
+  for (const heading of ["## Summary", "## What", "## Proof", "## Next"]) {
+    expect(body).toContain(heading);
+  }
+  expect(body).toContain("Closes #98");
+  // A failed gate stays unchecked, marking the draft; the proof has the 3 checkboxes the gate requires.
+  expect(body).toContain("- [ ] `vp check`");
+  expect(body.match(/- \[[ x]\]/gu)?.length).toBe(PROOF_CHECKBOXES);
 });
 
 test("a failing run opens a DRAFT pr, never a mergeable one", () => {
@@ -50,11 +63,13 @@ test("a failing run opens a DRAFT pr, never a mergeable one", () => {
   expect(prCreateArgs("t", "b", false)).toContain("--draft");
 });
 
-test("pushArgs publishes the branch; prBody shows the verdict + the plan", () => {
+test("pushArgs publishes the branch; prBody checks a passed gate", () => {
   expect(pushArgs("feat/issue-98")).toEqual(["push", "-u", "origin", "feat/issue-98"]);
-  const body = prBody("THE PLAN", { ok: false, results: [{ command: "vp check", ok: false }] });
-  expect(body).toContain("vp check");
-  expect(body).toContain("THE PLAN");
+  const body = prBody(
+    { number: 98, title: "t" },
+    { ok: true, results: [{ command: "vp check", ok: true }] },
+  );
+  expect(body).toContain("- [x] `vp check`");
 });
 
 test("prTitle is a conventional-commit subject — defaulted to feat, lower-cased, capped at 72", () => {
