@@ -33,3 +33,7 @@ export type Size = (typeof SIZES)[number];
 export function unionType(values: readonly string[]): string {
   return values.map((value) => `'${value}'`).join(" | ");
 }
+
+/* The design language — intent → token resolution (the target the primitives are rebuilt against). The
+   legacy vocabulary above stays until each primitive migrates; both are exposed from the one entry. */
+export * from "./design.ts";
