@@ -14,11 +14,12 @@ import process from "node:process";
 import { z } from "zod";
 
 /** The shape `add_issue` parses — the feature-issue fields plus the optional toolkit extras. */
-const AddIssue = {
+export const AddIssue = {
   assignee: z.string().optional(),
   element: z.string(),
   labels: z.array(z.string()).optional(),
   milestone: z.string().optional(),
+  project: z.string().optional(),
   title: z.string(),
   why: z.string(),
 };
@@ -28,6 +29,7 @@ interface AddIssueInput {
   readonly element: string;
   readonly labels: Maybe<readonly string[]>;
   readonly milestone: Maybe<string>;
+  readonly project: Maybe<string>;
   readonly title: string;
   readonly why: string;
 }
@@ -42,7 +44,7 @@ function envProjectId(): Maybe<string> {
 }
 
 /** A present, non-empty project id from the input or the environment — absent otherwise. */
-function projectId(given: Maybe<string>): Maybe<string> {
+export function projectId(given: Maybe<string>): Maybe<string> {
   if (defined(given) && given !== "") {
     return given;
   }
@@ -74,7 +76,7 @@ function openIssue(appDir: string, input: AddIssueInput): TextResult {
     title: input.title,
     ...milestoneOf(input.milestone),
   });
-  const project = envProjectId();
+  const project = projectId(input.project);
   if (defined(project)) {
     addToProject(appDir, project, url);
     return text(`opened ${url} — assigned + added to the Project`);

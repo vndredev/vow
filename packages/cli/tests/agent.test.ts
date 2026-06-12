@@ -1,7 +1,17 @@
 import { AGENT_SUBCOMMANDS, agentHelp, agentRouteNames } from "../src/agent.ts";
 import { DEFAULT_MAX_ROUNDS, maxRoundsOf } from "../src/agent-auto.ts";
 import { expect, test } from "vite-plus/test";
-import { failedResult, flagValue, issueArg, issueNumbers, phaseLine } from "../src/agent-run.ts";
+import {
+  failedResult,
+  flagValue,
+  flagValueless,
+  issueArg,
+  issueNumbers,
+  parseRun,
+  parseRunAll,
+  phaseLine,
+} from "../src/agent-run.ts";
+import { providerFor } from "@vow/agent";
 
 const ISSUE = 42;
 
@@ -13,10 +23,54 @@ test("issueArg reads a positive issue number, else 0 for a missing/non-numeric/n
   expect(issueArg(["plan", "5.5"])).toBe(0);
 });
 
+const FIRST = 7;
+const SECOND = 9;
+
+test("issueArg finds the first positive integer past the sub-command, even after a flag (flag-first run)", () => {
+  expect(issueArg(["run", "--provider", "codex", String(ISSUE)])).toBe(ISSUE);
+  expect(issueArg(["merge", "--json", String(ISSUE)])).toBe(ISSUE);
+  expect(issueArg(["run", "--auth", "api", String(FIRST), String(SECOND)])).toBe(FIRST);
+});
+
 test("flagValue reads the value after a flag, else empty for a missing flag or a trailing flag", () => {
   expect(flagValue(["run", "5", "--provider", "codex"], "--provider")).toBe("codex");
   expect(flagValue(["run", "5", "--dry-run"], "--provider")).toBe("");
   expect(flagValue(["run", "5", "--provider"], "--provider")).toBe("");
+});
+
+test("flagValueless is true only when the flag is present but its value is missing or another flag", () => {
+  expect(flagValueless(["run", "5", "--provider"], "--provider")).toBe(true);
+  expect(flagValueless(["run", "5", "--provider", "--json"], "--provider")).toBe(true);
+  expect(flagValueless(["run", "5", "--provider", "codex"], "--provider")).toBe(false);
+  expect(flagValueless(["run", "5", "--json"], "--provider")).toBe(false);
+});
+
+test("parseRun accepts a flag-first issue and resolves the provider (the common flag-first invocation)", () => {
+  const args = parseRun(["run", "--provider", "codex", String(ISSUE)]);
+  expect(args).toEqual({
+    auth: "subscription",
+    issue: ISSUE,
+    json: false,
+    provider: providerFor("codex"),
+  });
+});
+
+test("parseRun blames the missing value, not the provider, when --provider has no value", () => {
+  expect(parseRun(["run", String(ISSUE), "--provider", "--json"])).toBe(
+    "vow agent run: --provider needs a value",
+  );
+  expect(parseRun(["run", String(ISSUE), "--provider"])).toBe(
+    "vow agent run: --provider needs a value",
+  );
+});
+
+test("parseRunAll blames the missing value, not the provider, when --provider has no value", () => {
+  expect(parseRunAll(["run-all", "1", "2", "--provider", "--json"])).toBe(
+    "vow agent run-all: --provider needs a value",
+  );
+  expect(parseRunAll(["run-all", "1", "--provider"])).toBe(
+    "vow agent run-all: --provider needs a value",
+  );
 });
 
 test("issueNumbers collects positive numeric args, dropping flags + non-numbers", () => {
