@@ -25,3 +25,16 @@ test("buildNav leads with Home + ungrouped pages, then each surface, ordered", (
 test("buildNav with no pages is just Home", () => {
   expect(buildNav([])).toEqual([{ items: [{ icon: "home", path: "/", title: "Home" }] }]);
 });
+
+test("a group whose items declare a lower order than Home leads the sidebar", () => {
+  const pages: Page[] = [
+    { group: "Plan", order: -1, path: "/board", title: "Board" },
+    { order: 1, path: "/team", title: "Team" },
+  ];
+  const sections = buildNav(pages);
+
+  /* The "Plan" surface sorts above the headerless Home/ungrouped section (-1 < Home's default 0). */
+  expect(sections[0]?.title).toBe("Plan");
+  expect(sections[1]?.title).toBeUndefined();
+  expect(sections[1]?.items.map((item) => item.title)).toEqual(["Home", "Team"]);
+});
