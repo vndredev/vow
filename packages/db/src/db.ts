@@ -191,6 +191,20 @@ export function migrate(db: Db, entities: readonly ReadonlyVow[]): void {
   }
 }
 
+/**
+ * Rename a field's column so the stored data follows the rename — `migrate` is strictly additive (it
+ * only adds the new name as a fresh empty column and orphans the old one), so a field rename must issue
+ * `ALTER TABLE … RENAME COLUMN` here. A no-op when `from`/`to` are equal or the source column is absent.
+ * The 4-arg shape (db, slug, from, to) mirrors `update`'s — the seam the studio binds to.
+ */
+// eslint-disable-next-line max-params
+export function renameColumn(db: Db, slug: string, from: string, to: string): void {
+  if (from === to || !columnNames(db, slug).has(from)) {
+    return;
+  }
+  db.exec(`ALTER TABLE "${slug}" RENAME COLUMN "${from}" TO "${to}";`);
+}
+
 export function insert(db: Db, entity: ReadonlyVow, record: ReadRow): Row {
   const full = complete(entity, record);
   const cols = ["id", ...entity.fields.map((field) => field.name)];

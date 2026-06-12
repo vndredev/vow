@@ -17,8 +17,12 @@ export {
   addView,
   removeField,
   removeVow,
+  setField,
+  setForm,
   setIntent,
   setNav,
+  setSeed,
+  setView,
 } from "./mutate.ts";
 export { parseVowMd } from "./parse.ts";
 export type { DeepReadonly, ReadonlyField, ReadonlyVow } from "./readonly.ts";
