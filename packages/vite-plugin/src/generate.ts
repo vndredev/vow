@@ -1,5 +1,13 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Artifact, type Contribution, type GroupRef, planVow } from "./plan.ts";
+import {
+  LAYOUT_SUFFIX,
+  ROUTES_SUFFIX,
+  VOW_ENV_DTS,
+  emitAppLayout,
+  emitAppRoutes,
+  emitBoot,
+} from "@vow/emit-view";
 /* oxlint-disable consistent-type-specifier-style -- one import; the wrapped specifiers trip no-duplicate-imports if split */
 import {
   type Maybe,
@@ -11,7 +19,6 @@ import {
 /* oxlint-enable consistent-type-specifier-style */
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Page, allVows, isEmitEntity } from "./vows.ts";
-import { VOW_ENV_DTS, emitAppLayout, emitAppRoutes, emitBoot } from "@vow/emit-view";
 import {
   composeBoards,
   composeCards,
@@ -130,9 +137,9 @@ function composeRoutes(
   }
   const appTitle = rootVow?.title ?? shell.title;
   return [
-    { path: `${shell.outDir}/vow-pages.routes.ts`, source: emitAppRoutes(pages) },
+    { path: `${shell.outDir}/vow-pages${ROUTES_SUFFIX}`, source: emitAppRoutes(pages) },
     {
-      path: `${shell.outDir}/vow-app.layout.vue`,
+      path: `${shell.outDir}/vow-app${LAYOUT_SUFFIX}`,
       source: emitAppLayout(pages, appTitle, shellConfig(rootVow)),
     },
   ];
