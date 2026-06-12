@@ -41,6 +41,9 @@ test("emitViewTest mounts the page's .vue + runs axe, named after the scenarios"
   expect(code).toContain(`import axe from "axe-core";`);
   expect(code).toContain(`test("The Tasks view renders", () => {`);
   expect(code).toContain(`const wrapper = mount(Tasks);`);
+  // The render scenario pins a real ELEMENT_NODE root, not the always-true wrapper.exists().
+  expect(code).toContain(`expect(wrapper.element.nodeType).toBe(1);`);
+  expect(code).not.toContain(`expect(wrapper.exists()).toBe(true);`);
   expect(code).toContain(`test("The Tasks view has no accessibility violations", async () => {`);
   expect(code).toContain(`const results = await axe.run(wrapper.element);`);
 });
