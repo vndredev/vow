@@ -133,6 +133,7 @@ export const emitSelectSfc = primitive({
     { default: '""', name: "modelValue", optional: true, tsType: "string" },
     { name: "options", tsType: "{ value: string; label: string }[]" },
     { name: "label", tsType: "string" },
+    { name: "controlId", optional: true, tsType: "string" },
     { name: "disabled", optional: true, tsType: "boolean" },
   ],
   setup: [
@@ -148,6 +149,7 @@ export const emitSelectSfc = primitive({
     "      open: open.value,",
     "      active: active.value,",
     "      id: uid,",
+    "      triggerId: props.controlId,",
     "      disabled: props.disabled,",
     "    },",
     "    (next) => {",

@@ -14,6 +14,8 @@ export interface SelectState {
   readonly active: string;
   /** A stable base id to wire trigger, listbox and options. */
   readonly id: string;
+  /** The trigger's id — defaults to `<id>-trigger`; a form overrides it so a `<label for>` lines up. */
+  readonly triggerId?: string;
   readonly disabled?: boolean;
 }
 
@@ -236,7 +238,7 @@ export function select(state: Readonly<SelectState>, set: (next: SelectState) =>
   const ids: SelectIds = {
     listboxId: `${state.id}-listbox`,
     optionId: (value) => `${state.id}-option-${values.indexOf(value)}`,
-    triggerId: `${state.id}-trigger`,
+    triggerId: state.triggerId ?? `${state.id}-trigger`,
   };
   const actions = selectActions(state, values, set);
   const ctx: SelectKeyContext = {

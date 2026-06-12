@@ -28,7 +28,7 @@ fulfills: emit entity
 - **`task.ts`** — a `Task` interface + a validating `createTask` factory (a missing required field throws). Every entity also gets a stable auto-`id` (the factory generates it) — the identity a `reference` points at.
 - **`task.test.ts`** — a Vitest suite **derived from the fields** (a happy path + one reject per required field). No one writes it; the test names _are_ the proven scenarios (see [proof](/guide/proof)).
 
-**Field types:** `text` · `longtext` (multi-line — a `string`, rendered as a `<textarea>`) · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`) · `reference(entity)` (the target entity's id, typed as `string`; in a view it's a **dropdown** of the target's items via the shared store, labelled by the target's first text field). Resolving a referent for display (showing its name in place of the id) is on the [roadmap](/guide/changelog).
+**Field types:** `text` · `longtext` (multi-line — a `string`, rendered as a `<textarea>`) · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`) · `reference(entity)` (the target entity's id, typed as `string`; in a view it's a **dropdown** of the target's items via the shared store, labelled by the target's first text field). For display, a reference resolves to its target's **name** — its first text field — shown in place of the id (see [emit view](#emit-view)).
 
 An entity is **data, not a screen** — it never renders by itself. To put it on the page, a view lists it.
 

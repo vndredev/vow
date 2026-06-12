@@ -72,6 +72,22 @@ test("addView writes a view + nav; setNav updates it", () => {
   }
 });
 
+test("setNav patches (omitted keys keep their existing value)", () => {
+  const dir = freshDir();
+  try {
+    addView(dir, {
+      intent: "The home",
+      nav: { group: "main", icon: "home", label: "Home" },
+      slug: "home",
+      view: [{ type: "h1", value: "Hi" }],
+    });
+    setNav(dir, "home", { order: 2 });
+    expect(loadVows(dir)[0]?.nav).toEqual({ group: "main", icon: "home", label: "Home", order: 2 });
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
 test("addForm writes a bound `## form` vow that loads back", () => {
   const dir = freshDir();
   try {
