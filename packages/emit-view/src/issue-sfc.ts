@@ -381,7 +381,10 @@ function roadmapItem(): UiNode {
     children: [
       classed("span", "vow-roadmap__title", [{ expr: "it.issue.title", kind: "interp" }]),
       classed("div", "vow-roadmap__meta", [
-        classed("span", "vow-roadmap__num", [txt("#"), { expr: "it.issue.number", kind: "interp" }]),
+        classed("span", "vow-roadmap__num", [
+          txt("#"),
+          { expr: "it.issue.number", kind: "interp" },
+        ]),
         statusBadge("it.status"),
         issueActions(),
       ]),
