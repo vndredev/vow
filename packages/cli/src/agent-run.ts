@@ -20,6 +20,7 @@ import {
   issueLabels,
   prCiState,
   prCiStateForHead,
+  resolveProjectId,
   syncProjectStatus,
 } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/observability value import above; PrCi needs a top-level type import
@@ -302,11 +303,13 @@ export async function runAll(rest: readonly string[]): Promise<number> {
 }
 
 /** Reconcile the GitHub Project's Status to the studio's derived status right after a merge (the moment an
- *  issue closes), so the board never drifts. No-op when `VOW_PROJECT_ID` is unset; local gh auth, no PAT. */
+ *  issue closes), so the board never drifts. The Project node id comes from `VOW_PROJECT_ID` or, when that
+ *  is unset, the studio config's `project:` URL — so the sync runs without a shell env var instead of
+ *  silently skipping. A genuine no-op only when neither is configured; local gh auth, no PAT. */
 function syncBoard(cwd: string): void {
-  // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = no board to sync
-  const pid = process.env["VOW_PROJECT_ID"] ?? "";
-  if (pid === "") {
+  // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = fall back to config
+  const pid = resolveProjectId(cwd, process.env["VOW_PROJECT_ID"]);
+  if (typeof pid !== "string") {
     return;
   }
   const { changed, matched } = syncProjectStatus(cwd, pid);
