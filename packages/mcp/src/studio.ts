@@ -185,12 +185,41 @@ function rejectUnknownKeys(entity: ReadonlyVow, keys: readonly string[]): void {
   }
 }
 
+/** Throw when a `select` field's value is not one of its declared options (listing the allowed set) — so
+ *  a value outside the options never lands as a blank/broken generated select. A non-select field, or a
+ *  select with no options declared, passes through untouched. */
+function rejectBadOption(entity: ReadonlyVow, field: string, value: unknown): void {
+  const found = entity.fields.find((candidate: ReadonlyField) => candidate.name === field);
+  if (!defined(found) || found.type !== "select" || !defined(found.options)) {
+    return;
+  }
+  if (!found.options.includes(String(value))) {
+    const allowed = found.options.join(", ");
+    throw new Error(
+      `"${String(value)}" is not an option of ${entity.slug}.${field} — allowed: ${allowed}`,
+    );
+  }
+}
+
+/** Throw when a `required` field is absent (or set to an empty string) on a full record — so the MCP
+ *  author path never silently defaults a missing required value, as the running app's zod factory
+ *  rejects it. Mirrors `create<Name>`'s required check; a one-field patch never runs this. */
+function rejectMissingRequired(entity: ReadonlyVow, record: Readonly<Row>): void {
+  const missing = entity.fields.find(
+    (field: ReadonlyField) => field.required && (record[field.name] ?? "") === "",
+  );
+  if (defined(missing)) {
+    throw new Error(`required field "${missing.name}" is missing on ${entity.slug}`);
+  }
+}
+
 /** Resolve one reference field's value (a name → the target id; a non-reference value passes through). */
 type ResolveField = (entity: ReadonlyVow, field: string, value: unknown) => unknown;
 
 /** A record with every field run through `resolveField` — so a reference passed as a display name on
  *  insert resolves to the target id (no dangling ref), exactly as a one-field patch does on update.
- *  Unknown keys throw first (a typo never resolves to a silently dropped column). */
+ *  Unknown keys throw first (a typo never resolves to a silently dropped column); a `select` value
+ *  outside its options throws too (never stored as a blank/broken select). */
 function resolveRecord(
   resolveField: ResolveField,
   entity: ReadonlyVow,
@@ -199,6 +228,7 @@ function resolveRecord(
   rejectUnknownKeys(entity, Object.keys(record));
   const resolved: Row = {};
   for (const [field, value] of Object.entries(record)) {
+    rejectBadOption(entity, field, value);
     resolved[field] = resolveField(entity, field, value);
   }
   return resolved;
@@ -241,6 +271,7 @@ export function openStudio(appDir: string): Studio {
   return {
     addRecord: (entity, record) => {
       const target = entityOf(entity);
+      rejectMissingRequired(target, record);
       return insert(db, target, resolveRecord(resolveRef, target, record));
     },
     appDir,
