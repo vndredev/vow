@@ -1,6 +1,6 @@
 import type { Component, ImportDecl, ReadonlyField, ReadonlyVow, UiNode } from "./types.ts";
 import { FIELD_KINDS, defined, isEmitEntity } from "@vow/core";
-import { pascalCase, renderVueSfc } from "@vow/component";
+import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
 import { fieldControl } from "./field-control.ts";
 
@@ -68,7 +68,7 @@ function booleanField(field: ReadonlyField): UiNode {
       {
         attrs: [
           { expr: `draft.${field.name}`, kind: "model" },
-          { kind: "static", name: "label", value: field.name },
+          { kind: "static", name: "label", value: humanizeFieldName(field.name) },
         ],
         children: [],
         kind: "component",
@@ -88,7 +88,7 @@ function formField(field: ReadonlyField): UiNode {
   }
   return {
     attrs: [
-      { kind: "static", name: "label", value: field.name },
+      { kind: "static", name: "label", value: humanizeFieldName(field.name) },
       { expr: `${field.name}Id`, kind: "bound", name: "control-id" },
       { expr: `errors.${field.name}`, kind: "bound", name: "error" },
     ],
