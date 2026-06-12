@@ -5,6 +5,15 @@ import {
   vowOrchestrateSkill,
 } from "../src/agent-templates.ts";
 import { expect, test } from "vite-plus/test";
+import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+
+// The three skills `vow agent init` scaffolds — the user-facing wording must name every one (1:1).
+const INIT_SKILLS = ["develop", "orchestrate", "audit"] as const;
+
+function source(relative: string): string {
+  return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
+}
 
 test("the AGENTS.md contract states the red line + the gates", () => {
   const md = agentsMd();
@@ -35,4 +44,19 @@ test("the vow-audit skill files findings into vow issues, via the host workflow"
   expect(skill).toContain("vow agent audit --prompt");
   expect(skill).toContain("vow agent audit --file");
   expect(skill).toContain("/workflows");
+});
+
+test("the CLI help string names every skill init scaffolds (no undercount)", () => {
+  const help = source("../src/cli.ts");
+  expect(help).toContain(`${INIT_SKILLS.join("/")} skills`);
+});
+
+test("the init doc comment names every skill it scaffolds (develop, orchestrate, audit)", () => {
+  const comment = source("../src/agent.ts");
+  expect(comment).toContain("develop, orchestrate & audit skills");
+});
+
+test("cli.md documents init scaffolding every skill, not just develop", () => {
+  const doc = source("../../../docs/guide/cli.md");
+  expect(doc).toContain(`the ${INIT_SKILLS.join("/")} skills`);
 });

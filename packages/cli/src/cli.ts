@@ -28,7 +28,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
   vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
   vow reconcile        report backlog drift — open issues a merged PR already closed (retire candidates)
-  vow agent init       scaffold the agent integration (AGENTS.md + a develop skill)
+  vow agent init       scaffold the agent integration (AGENTS.md + develop/orchestrate/audit skills)
 
   apps: ${APPS.map((app) => `${app.slug} (:${app.port})`).join(" · ")}`;
 
