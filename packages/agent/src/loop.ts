@@ -1,4 +1,4 @@
-import type { AgentTask, TaskOutcome, TaskRequest, VerifyResult } from "./types.ts";
+import type { AgentOps, AgentTask, TaskOutcome, TaskRequest, VerifyResult } from "./types.ts";
 import { branchFor, buildPlan } from "./plan.ts";
 import {
   commitArgs,
@@ -29,23 +29,45 @@ async function publish(
   await ops.run({ args: prCreateArgs(title, body, verdict.ok), bin: "gh" }, at);
 }
 
-/** Develop the task inside its worktree — dispatch the provider, re-run the gates, and publish a
- *  successful run as a PR. Each step emits a `Phase` via `onPhase`, so a fleet's progress is live. The
+/** Auto-format the worktree before the gate — `vp fmt` writes, so a whitespace/format deviation in the
+ *  provider's output is corrected in place and can NEVER fail the verify gate (which then judges real
+ *  defects, not layout). `publish` stages the result; best-effort — the verify gate is the judge, not
+ *  fmt's exit. This is why a formatting issue can't draft an otherwise-green run. */
+async function format(task: AgentTask, ops: AgentOps): Promise<void> {
+  await ops.run(gateCommand("vp fmt"), task.cwd);
+}
+
+/** Publish a developed outcome as a PR — but only when the provider run itself succeeded (a failed run
+ *  developed nothing to publish). Emits the `publish` phase before the work hits GitHub. */
+async function publishOutcome(
+  request: TaskRequest,
+  task: AgentTask,
+  outcome: TaskOutcome,
+): Promise<void> {
+  if (!outcome.run.ok) {
+    return;
+  }
+  request.onPhase?.("publish");
+  await publish(task, outcome.verdict, request);
+}
+
+/** Develop the task inside its worktree — dispatch the provider, auto-format, re-run the gates, and publish
+ *  a successful run as a PR. Each step emits a `Phase` via `onPhase`, so a fleet's progress is live. The
  *  worktree's setup + teardown stay in `runTask`. */
 async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutcome> {
   request.onPhase?.("develop");
   const run = await dispatch(task, request.provider, request.ops);
+  request.onPhase?.("format");
+  await format(task, request.ops);
   request.onPhase?.("gates");
   const verdict = await verify(request.context.verify, task.cwd, async (command, dir) => {
     const result = await request.ops.run(gateCommand(command), dir);
     return result;
   });
-  if (run.ok) {
-    request.onPhase?.("publish");
-    await publish(task, verdict, request);
-  }
+  const outcome = { run, verdict };
+  await publishOutcome(request, task, outcome);
   request.onPhase?.("done");
-  return { run, verdict };
+  return outcome;
 }
 
 /** The task for `request` in its isolated worktree — the per-issue branch, the worktree path (distinct from
