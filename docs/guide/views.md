@@ -37,7 +37,7 @@ The catalog of ready-made components — you name them, vow brings the markup:
 
 - **`hero`** — `{ eyebrow?, title?, lead? }` → a column with an eyebrow, headline and lead.
 - **`features`** — a list of `{ title?, body? }` → a three-column grid of cards.
-- **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its full CRUD
+- **`list: <entity>`** — the generated view of an entity (`list: task` → `<Task />`, its read-only
   **table** — a header from the fields, a row per record — imported automatically).
 - **`stats: { of: <entity>, by: <select field> }`** — a generated **counts strip**: one
   [`Stat`](/guide/primitives/stats) per option of the field, counting the rows in that group, live from
