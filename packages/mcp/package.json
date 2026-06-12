@@ -5,7 +5,8 @@
   "description": "vow's MCP server — an agent operates the studio (structure via @vow/core, data via @vow/db) over stdio.",
   "type": "module",
   "exports": {
-    ".": "./src/server.ts"
+    ".": "./src/server.ts",
+    "./http": "./src/http.ts"
   },
   "scripts": {
     "start": "node --experimental-strip-types src/server.ts",

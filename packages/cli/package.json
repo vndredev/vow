@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@vow/agent": "workspace:*",
+    "@vow/mcp": "workspace:*",
     "@vow/observability": "workspace:*"
   },
   "devDependencies": {
