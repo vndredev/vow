@@ -28,14 +28,6 @@ export async function verify(
   return { ok: results.every((result) => result.ok), results };
 }
 
-/** A pass/fail mark for the PR body. */
-function mark(ok: boolean): string {
-  if (ok) {
-    return "✓";
-  }
-  return "✗";
-}
-
 /** The `git push` args that publish the task's branch upstream. */
 export function pushArgs(branch: string): readonly string[] {
   return ["push", "-u", "origin", branch];
@@ -51,21 +43,44 @@ export function prCreateArgs(title: string, body: string, verified: boolean): re
   return [...base, "--draft"];
 }
 
-/** A gate's line in the PR body — the mark + command, and (for a failed gate with captured output) the
- *  reason in a fenced block, so a reviewer sees WHY it failed without re-running it locally. */
-function gateLine(result: GateResult): string {
-  const head = `- ${mark(result.ok)} \`${result.command}\``;
-  const output = result.output?.trim() ?? "";
-  if (output.length > 0) {
-    return [head, "", "  ```", output, "  ```"].join("\n");
+/** One `## Proof` checkbox per gate — `[x]` when it passed, `[ ]` when it failed, so a draft shows which
+ *  gate is red right in the proof list. */
+function proofLine(result: GateResult): string {
+  if (result.ok) {
+    return `- [x] \`${result.command}\``;
   }
-  return head;
+  return `- [ ] \`${result.command}\``;
 }
 
-/** The PR body: the gate verdict, then the plan the run was developed against. */
-export function prBody(plan: string, verdict: VerifyResult): string {
-  const gates = verdict.results.map((result) => gateLine(result)).join("\n");
-  return [`## Verification ${mark(verdict.ok)}`, gates, "", "## Plan", plan].join("\n");
+/**
+ * The PR body — the template the pr-body gate demands (Summary · What · Proof · Next), so an agent's PR
+ * passes that gate and reads as a real record, plus the `Closes #n` link. The Proof checkboxes carry the
+ * gate verdict (a failed gate stays unchecked, marking the draft). The plan is NOT dumped: it carries its
+ * own `##` headings that would pollute the section structure, and it's derivable via `vow agent plan <n>`.
+ */
+export function prBody(
+  issue: Readonly<{ number: number; title: string }>,
+  verdict: VerifyResult,
+): string {
+  const proof = [
+    ...verdict.results.map((result) => proofLine(result)),
+    "- [ ] the doc page updated with the change (verify on review)",
+  ];
+  return [
+    "## Summary",
+    `${issue.title} — developed autonomously through the vow agent loop.`,
+    "",
+    "## What",
+    `- The change fulfilling issue #${issue.number}, developed against its verification-gated plan (see the diff).`,
+    "",
+    "## Proof",
+    ...proof,
+    "",
+    "## Next",
+    "—",
+    "",
+    `Closes #${issue.number}`,
+  ].join("\n");
 }
 
 /** The `git add -A` args — stage the agent's edits + any new files before committing. */
