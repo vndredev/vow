@@ -36,7 +36,7 @@ A `header`/`footer` bar lists the pages **flat** (groups are a sidebar idea); a 
 
 When an app has more than its home page, the plugin generates a thin `vow-app.layout.vue` that imports `@vow/shell`'s `Shell.vue` and passes the routed **pages** (each with its `nav` config) + the current **path** + the app **title**; the boot globs it as the layout for every route.
 
-The sidebar nav is built from those pages: **Home** first, then the ungrouped pages, then each **`group:`** (a _surface_) as its own titled section — ordered by `order` then title, each with its optional **`icon:`** (a `@vow/icons` glyph). Every `nav` field is optional: a view with no `nav:` still appears, labelled by its `# intent`. Add a page, and it joins the nav — none to hand-maintain. (`vow({ title })` in `vite.config` still works as a fallback brand.)
+The sidebar nav is built from those pages: **Home** + the ungrouped pages form one headerless section, then each **`group:`** (a _surface_) is its own titled section. The headerless section and each group are ordered by their **effective `order`** (the lowest `order` among their items): **Home** leads by default, but a group whose items declare a lower `order` leads the sidebar instead — ties keep the headerless section first, then group insertion order. Within a section, items sort by `order` then title, each with its optional **`icon:`** (a `@vow/icons` glyph). Every `nav` field is optional: a view with no `nav:` still appears, labelled by its `# intent`. Add a page, and it joins the nav — none to hand-maintain. (`vow({ title })` in `vite.config` still works as a fallback brand.)
 
 ## The container model
 
