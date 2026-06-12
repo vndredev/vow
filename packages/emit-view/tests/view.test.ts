@@ -212,6 +212,8 @@ test("a Select field forwards the field id as control-id so the label points at 
     ':control-id="statusId"',
     `:described-by="statusId + '-error'"`,
     ':invalid="!!errors.status"',
+    // The unselected trigger shows a placeholder (the humanized field name), not a blank button.
+    'placeholder="Status"',
     'import Select from "./Select.vue";',
   ]);
 });
