@@ -1,3 +1,4 @@
+import { AGENT_SUBCOMMANDS, agentHelp, agentRouteNames } from "../src/agent.ts";
 import { DEFAULT_MAX_ROUNDS, maxRoundsOf } from "../src/agent-auto.ts";
 import { expect, test } from "vite-plus/test";
 import { failedResult, flagValue, issueArg, issueNumbers, phaseLine } from "../src/agent-run.ts";
@@ -49,4 +50,17 @@ test("maxRoundsOf reads a positive --max-rounds, else the default safety cap (th
   expect(maxRoundsOf(["auto"])).toBe(DEFAULT_MAX_ROUNDS);
   expect(maxRoundsOf(["auto", "--max-rounds", "0"])).toBe(DEFAULT_MAX_ROUNDS);
   expect(maxRoundsOf(["auto", "--max-rounds", "abc"])).toBe(DEFAULT_MAX_ROUNDS);
+});
+
+test("the agent-subcommand catalogue covers exactly the routes — help can't drift from what runs", () => {
+  const cataloguedNames = AGENT_SUBCOMMANDS.map((sub) => sub.name).toSorted();
+  expect(cataloguedNames).toEqual(agentRouteNames().toSorted());
+});
+
+test("agentHelp lists every agent sub-command with its summary (the front door surfaces the whole loop)", () => {
+  const help = agentHelp();
+  for (const sub of AGENT_SUBCOMMANDS) {
+    expect(help).toContain(`vow agent ${sub.name}`);
+    expect(help).toContain(sub.summary);
+  }
 });
