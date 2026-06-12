@@ -6,7 +6,7 @@ export interface Page {
   readonly group?: string;
   /** A @vow/icons glyph shown before the label. */
   readonly icon?: IconName;
-  /** Sort order within Home/ungrouped, or within the group. */
+  /** Sort order within Home/ungrouped or within the group; a group's lowest `order` also places its section. */
   readonly order?: number;
   readonly path: string;
   readonly title: string;
