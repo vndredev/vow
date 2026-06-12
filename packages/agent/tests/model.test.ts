@@ -21,10 +21,14 @@ test("a provider omits the model flag when the task pins no model", () => {
   expect(claudeCode.command(task).args).not.toContain("--model");
 });
 
-test("claudeCode audits + plans on Fable by default (the hard roles), executes on a cheaper model", () => {
+test("claudeCode's per-role models follow the capability priority Fable > Opus > Sonnet (never Haiku)", () => {
+  /* The clear Anthropic rule, by reasoning-need: audit (whole-codebase) → Fable, plan (designs the gated
+     plan the executor follows) → Opus, execute (follows the plan) → Sonnet. Haiku never these roles. */
   expect(modelFor(claudeCode.models, "audit")).toBe("claude-fable-5");
-  expect(modelFor(claudeCode.models, "plan")).toBe("claude-fable-5");
-  expect(modelFor(claudeCode.models, "execute")).not.toBe(modelFor(claudeCode.models, "plan"));
+  expect(modelFor(claudeCode.models, "plan")).toBe("claude-opus-4-8");
+  expect(modelFor(claudeCode.models, "execute")).toBe("claude-sonnet-4-6");
+  const roles = ["audit", "execute", "plan"] as const;
+  expect(roles.map((role) => modelFor(claudeCode.models, role))).not.toContain("claude-haiku-4-5");
 });
 
 test("an un-tuned provider defaults to its own brain — no model override per role", () => {
