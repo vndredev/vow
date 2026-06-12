@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { serialize, writeVow } from "../src/serialize.ts";
 import { loadVow } from "../src/load.ts";
 import { parseVowMd } from "../src/parse.ts";
@@ -126,6 +126,24 @@ test("writeVow saves a vow that loadVow reads back identically", () => {
   try {
     writeVow(dir, vow);
     expect(loadVow(dir, "task")).toEqual(vow);
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
+// The write is atomic (temp-file + renameSync): the watcher never observes a half-written file, and no
+// `.tmp` artifact is left behind once the rename completes.
+test("writeVow writes atomically — only the final file remains, no .tmp left over", () => {
+  const vow = parseVowMd(
+    "task",
+    ["---", "id: vow_task", "fulfills: emit entity", "---", "", "# A task", ""].join("\n"),
+  );
+  const dir = mkdtempSync(path.join(tmpdir(), "vow-ser-"));
+  try {
+    writeVow(dir, vow);
+    const entries = readdirSync(dir);
+    expect(entries).toEqual(["task.vow.md"]);
+    expect(entries.some((name) => name.endsWith(".tmp"))).toBe(false);
   } finally {
     rmSync(dir, { force: true, recursive: true });
   }
