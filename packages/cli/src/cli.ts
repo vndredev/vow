@@ -5,6 +5,7 @@ import { build, check, test } from "./basics.ts";
 import { runDev, status, stopApps } from "./dev.ts";
 import { guard } from "./guard.ts";
 import { reconcile } from "./reconcile.ts";
+import { runEvents } from "./events.ts";
 import { runServe } from "./serve.ts";
 import { smoke } from "./smoke.ts";
 
@@ -25,6 +26,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
                        "all" = every app). Background it yourself — the harness, \`&\`, a supervisor.
   vow status [app...]  which app ports are responding (default: all)
   vow stop [app...]    stop app(s) — frees their ports (default: all)
+  vow events           print the realtime-observability trace (the hub's recorded event stream)
 
   vow check            vp check — fmt + lint + typecheck (forwards flags, e.g. --fix)
   vow build [app...]   vp build (default: every app)
@@ -101,6 +103,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   build,
   check,
   dev,
+  events: runEvents,
   guard,
   help: showHelp,
   reconcile,

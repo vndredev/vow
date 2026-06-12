@@ -22,6 +22,7 @@ import {
   prCiState,
   prCiStateForHead,
   prMerged,
+  recordEvent,
   releaseIssue,
   resolveProjectId,
   syncProjectStatus,
@@ -175,6 +176,7 @@ async function developClaimed(input: DevInput): Promise<DevResult> {
     issue: spec,
     onPhase: (phase) => {
       process.stdout.write(`${phaseLine(issue, phase, json)}\n`);
+      recordEvent(cwd, "run.phase", { issue, phase });
     },
     ops: realOps(),
     provider,
@@ -190,10 +192,21 @@ async function developClaimed(input: DevInput): Promise<DevResult> {
  *  `doing` from the moment the agent starts (not only once a PR exists, #479), and release it when the run
  *  ends — a merged/open PR then carries the status, a failed run drops back to `planned`. Both halves are
  *  best-effort (they never throw), so a board hiccup can't fail the develop. */
+/** The `detail` an `run.finished` event carries — the run's verdict as a word for the trace. */
+function runOutcome(ok: boolean): string {
+  if (ok) {
+    return "ok";
+  }
+  return "failed";
+}
+
 export async function develop(input: DevInput): Promise<DevResult> {
+  recordEvent(input.cwd, "run.started", { issue: input.issue });
   claimIssue(input.cwd, input.issue);
   try {
-    return await developClaimed(input);
+    const result = await developClaimed(input);
+    recordEvent(input.cwd, "run.finished", { detail: runOutcome(result.ok), issue: input.issue });
+    return result;
   } finally {
     releaseIssue(input.cwd, input.issue);
   }
@@ -384,6 +397,7 @@ function execMerge(pr: number, cwd: string, expectedHead: string): void {
 export function mergePr(pr: number, cwd: string, expectedHead: string): number {
   execMerge(pr, cwd, expectedHead);
   process.stdout.write(`pr #${pr}: merged (green CI)\n`);
+  recordEvent(cwd, "pr.merged", { pr });
   const line = reconcileAfterMerge(pr, () => boardLine(cwd));
   if (line !== "") {
     process.stdout.write(`${line}\n`);

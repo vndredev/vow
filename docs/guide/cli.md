@@ -50,6 +50,14 @@ vow smoke            # boot the dev app + assert its client bundle is browser-sa
 
 `vow smoke` is the runtime gate the static ones miss: it boots `vp dev`, crawls the client module graph, and fails if any `node:` builtin leaked into the browser bundle — a class of bug that lint, type-check, and the production build all pass (the build tree-shakes the leak away; the tests run in Node).
 
+## Realtime observability
+
+```bash
+vow events           # print the recorded trace — the hub's live activity stream
+```
+
+The hub records what it does to an append-only feed (`.vow/events.jsonl`): a develop run starting (`run.started`), each phase (`run.phase`), a run finishing (`run.finished`), a merge (`pr.merged`). `vow events` prints the recent trace; the studio renders the same stream as a live panel, and an orchestrator tails the log to react to observed state (see [the local hub](/guide/serve#roadmap)). The feed is best-effort — recording an event never breaks the operation it observes.
+
 ## The agent loop
 
 `vow agent` scaffolds and drives the **agent-native layer** — autonomous agents developing issues through vow's verification gates, opening PRs, and merging when green. One per vow; the executor is an LLM (Claude, Codex, etc.), not the user.
