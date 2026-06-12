@@ -1,7 +1,9 @@
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
 import { type App, repoRoot, resolveApps } from "./apps.ts";
 /* oxlint-enable consistent-type-specifier-style */
+import { autoConfirmed, runAuto } from "./agent-auto.ts";
 import type { Server } from "node:http";
+import { setTimeout as delay } from "node:timers/promises";
 import { mcpHttpServer } from "@vow/mcp/http";
 import { once } from "node:events";
 import path from "node:path";
@@ -9,30 +11,70 @@ import { runDev } from "./dev.ts";
 
 /**
  * `vow serve` — the central LOCAL hub. One supervised front door that brings up the **studio** (operate
- * vow) + the **docs** (and with them the `/__vow/*` control API on the studio's dev server), plus the
- * persistent **MCP channel** over HTTP so any number of agents/clients dock into one always-on server
- * (replacing the stdio-per-editor-session launch). Everything local — no GitHub runner, no Cloudflare; the
- * GitHub Actions stay only as the PR gates. The agent watch-loop mounts onto this same hub next (#490).
+ * vow) + the **docs** (and with them the `/__vow/*` control API on the studio's dev server), the persistent
+ * **MCP channel** over HTTP (any number of agents/clients dock into one always-on server, replacing the
+ * stdio-per-editor-session launch), and — opt-in via `--watch` — the **agent watch-loop** (the always-on
+ * self-heal runtime). Everything local — no GitHub runner, no Cloudflare; the GitHub Actions stay only as
+ * the PR gates (#490).
  */
 
 // The port the persistent MCP channel listens on — beside the apps (studio 5173 · docs 5174 · starter 5175).
 const MCP_PORT = 5176;
 // The width the slug column is padded to in the banner.
 const SLUG_PAD = 8;
+// How often the watch loop re-runs an auto spiral (it develops new work as it appears, idling between).
+const MS_PER_SECOND = 1000;
+const WATCH_INTERVAL_SECONDS = 60;
+const WATCH_INTERVAL_MS = WATCH_INTERVAL_SECONDS * MS_PER_SECOND;
+// The opted-in `vow agent auto` invocation each watch tick fires (the `--yes` is the #486 live-run gate).
+const WATCH_ARGS: readonly string[] = ["auto", "--yes"];
+
+/** The watch loop's state: `off` (no `--watch`), `refuse` (`--watch` without the opt-in), or `run`. */
+export type Watch = "off" | "refuse" | "run";
+
+/** Decide the watch state — `--watch` plus the auto opt-in (`--yes` / `VOW_AGENT_AUTO=1`, #486) runs the
+    loop; `--watch` alone refuses (the unsupervised loop needs the explicit opt-in); no `--watch` is off.
+    Pure, so the gate is unit-testable. */
+export function watchDecision(watch: boolean, confirmed: boolean): Watch {
+  if (!watch) {
+    return "off";
+  }
+  if (!confirmed) {
+    return "refuse";
+  }
+  return "run";
+}
+
+/** The app names in `rest` — the positional args, with the `--flags` (`--watch`, `--yes`, …) dropped so
+    `resolveApps` never mistakes a flag for an app slug. */
+export function appNames(rest: readonly string[]): readonly string[] {
+  return rest.filter((arg) => !arg.startsWith("--"));
+}
 
 /** The hub's MCP studio dir — the studio app's `app/` tree (the same source a running studio regenerates). */
 function hubAppDir(): string {
   return path.join(repoRoot(), "apps", "studio", "app");
 }
 
+/** The watch line for the banner — names whether the agent loop is on, refused (needs the opt-in), or off. */
+function watchLine(watch: Watch): string {
+  if (watch === "run") {
+    return `  ${"agent".padEnd(SLUG_PAD)} watch loop ON — vow agent auto --yes every ${WATCH_INTERVAL_SECONDS}s`;
+  }
+  if (watch === "refuse") {
+    return `  ${"agent".padEnd(SLUG_PAD)} --watch ignored — the loop needs --yes (or VOW_AGENT_AUTO=1)`;
+  }
+  return `  ${"agent".padEnd(SLUG_PAD)} watch loop off — add --watch --yes to run the self-heal loop`;
+}
+
 /** The banner `vow serve` prints — names the local hub and lists each surface's URL (the apps + the MCP
-    channel), so one glance shows what is up. Pure, so the line shape is unit-testable. */
-export function serveBanner(apps: readonly App[], mcpPort: number): string {
+    channel) plus the watch state, so one glance shows what is up. Pure, so the line shape is unit-testable. */
+export function serveBanner(apps: readonly App[], mcpPort: number, watch: Watch): string {
   const urls = apps
     .map((app) => `  ${app.slug.padEnd(SLUG_PAD)} http://localhost:${app.port}/`)
     .join("\n");
   const mcp = `  ${"mcp".padEnd(SLUG_PAD)} http://localhost:${mcpPort}/mcp  (agent channel)`;
-  return `vow serve — your local hub (studio · docs · the /__vow control API · the MCP channel)\n${urls}\n${mcp}\n`;
+  return `vow serve — your local hub (studio · docs · the /__vow control API · the MCP channel)\n${urls}\n${mcp}\n${watchLine(watch)}\n`;
 }
 
 /** Close the MCP HTTP server, resolving once it has stopped listening (so shutdown awaits it cleanly). */
@@ -43,15 +85,61 @@ async function closeMcp(server: Server): Promise<void> {
   await closed;
 }
 
-/** `vow serve [app...]` — run the local hub in the foreground: the persistent MCP channel + the apps
-    (default: studio + docs; names override, `all` = every app), reusing `runDev`'s supervised spawn. Stays
-    pending until interrupted, then tears the MCP channel + the children down. Background it yourself (the
-    harness, `&`, a supervisor) — it is the always-on entry. */
+/** Ignore a promise that handles its own errors — keeps `runServe` from awaiting the background watch loop
+    (which runs for the hub's lifetime + catches its own failures). */
+// oxlint-disable-next-line prefer-readonly-parameter-types -- a Promise has no readonly form
+function ignore(promise: Promise<void>): boolean {
+  return promise instanceof Promise;
+}
+
+/** Run one opted-in auto spiral, swallowing (logging) a failure so a bad round never tears the hub down. */
+async function spiralOnce(): Promise<void> {
+  try {
+    await runAuto(WATCH_ARGS);
+  } catch (error) {
+    process.stderr.write(`vow serve: watch spiral failed: ${String(error)}\n`);
+  }
+}
+
+/** The always-on agent loop inside the hub: run an auto spiral, then re-run every interval — developing new
+    issues as they appear, the daemon staying up between spirals. Stops when `stop` aborts (the hub shutting
+    down). The inter-spiral wait is abortable, so shutdown is prompt, not up to a full interval late. The
+    awaits are sequential by design (spiral, then wait, then repeat) — the whole point is a serial loop. */
+/* oxlint-disable no-await-in-loop -- the watch loop is intentionally serial: one spiral, wait, repeat */
+async function watchLoop(stop: Readonly<AbortSignal>): Promise<void> {
+  while (!stop.aborted) {
+    await spiralOnce();
+    try {
+      // The resolve value (`true`) is unused — a placeholder so the abort `signal` option can be passed.
+      await delay(WATCH_INTERVAL_MS, true, { signal: stop });
+    } catch {
+      return;
+    }
+  }
+}
+/* oxlint-enable no-await-in-loop */
+
+/** Start the watch loop in the background when opted in — kept out of `runServe` so it stays under the
+    statement cap; a no-op for `off`/`refuse`. */
+function startWatch(watch: Watch, stop: Readonly<AbortSignal>): void {
+  if (watch === "run") {
+    ignore(watchLoop(stop));
+  }
+}
+
+/** `vow serve [app...] [--watch [--yes]]` — run the local hub in the foreground: the persistent MCP channel
+    + the apps (default: studio + docs; names override, `all` = every app), and — with `--watch --yes` — the
+    agent watch-loop in the background. Stays pending until interrupted, then tears the MCP channel + the
+    children down. Background it yourself — it is the always-on entry. */
 export async function runServe(rest: readonly string[]): Promise<number> {
-  const apps = resolveApps(rest);
+  const apps = resolveApps(appNames(rest));
+  const watch = watchDecision(rest.includes("--watch"), autoConfirmed(rest));
   const mcp = mcpHttpServer(hubAppDir(), MCP_PORT);
-  process.stdout.write(serveBanner(apps, MCP_PORT));
+  const stop = new AbortController();
+  process.stdout.write(serveBanner(apps, MCP_PORT, watch));
+  startWatch(watch, stop.signal);
   const code = await runDev(apps);
+  stop.abort();
   await closeMcp(mcp);
   return code;
 }
