@@ -30,5 +30,7 @@ dist-ssr
 # AI agent worktrees
 .claude/worktrees/
 .vow-worktrees/
+# Per-session Workflow orchestration scripts (ephemeral, never source)
+.claude/workflows/scripts/
 # Plan-mode working files (kept project-local via plansDirectory) — transient; the real plan is the issues
 .claude/plans/
