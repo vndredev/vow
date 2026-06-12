@@ -1,5 +1,5 @@
+import { Field, Vow } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
-import { Vow } from "../src/index.ts";
 
 const leaf = {
   fulfills: { export: "Vow", kind: "bind", module: "@vow/core" },
@@ -63,4 +63,28 @@ test("a pure-composition vow needs no fulfilment", () => {
 test("references use immutable ids, labels are kebab-case slugs", () => {
   expect(Vow.safeParse({ id: "BAD ID", intent: "abc", slug: "ok" }).success).toBe(false);
   expect(Vow.safeParse({ id: "vow_ok", intent: "abc", slug: "Bad Slug" }).success).toBe(false);
+});
+
+test("a reference field requires a ref — the empty/absent shape is rejected at the boundary", () => {
+  const missing = Field.safeParse({ name: "owner", type: "reference" });
+  expect(missing.success).toBe(false);
+  const blank = Field.safeParse({ name: "owner", ref: "", type: "reference" });
+  expect(blank.success).toBe(false);
+  // The error names the fix (a reference needs a ref) — not the downstream "references the empty string".
+  const issue = missing.error?.issues[0];
+  expect(issue?.message).toContain("ref");
+  expect(issue?.path).toEqual(["ref"]);
+  const valid = Field.safeParse({ name: "owner", ref: "user", type: "reference" });
+  expect(valid.success).toBe(true);
+});
+
+test("a select field requires a non-empty options list", () => {
+  expect(Field.safeParse({ name: "status", type: "select" }).success).toBe(false);
+  expect(Field.safeParse({ name: "status", options: [], type: "select" }).success).toBe(false);
+  expect(Field.safeParse({ name: "status", options: ["open"], type: "select" }).success).toBe(true);
+});
+
+test("non-reference, non-select fields need neither ref nor options", () => {
+  expect(Field.safeParse({ name: "title", type: "text" }).success).toBe(true);
+  expect(Field.safeParse({ name: "count", type: "number" }).success).toBe(true);
 });
