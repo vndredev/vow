@@ -142,6 +142,46 @@ test("the store builds its data URLs under the server's mount prefix — the sha
   expect(dbPath("widget", "1").startsWith(VOW_API.db)).toBe(true);
 });
 
+test("a pending update is not reverted by a reconcile against still-stale rows", () => {
+  const list = createList();
+  list.push({ id: "1", title: "old" });
+  // The user edits; the optimistic write is in flight (markPending), the DB still has the old value.
+  list.update("1", { title: "new" });
+  list.markPending("1");
+  list.reconcile([{ id: "1", title: "old" }]);
+  // The edit survives — reconcile skipped the pending row instead of overwriting it (no flicker).
+  expect(list.rows[0]).toEqual({ id: "1", title: "new" });
+  // Once the write settles the next poll reconciles normally.
+  list.clearPending("1");
+  list.reconcile([{ id: "1", title: "new" }]);
+  expect(list.rows[0]).toEqual({ id: "1", title: "new" });
+});
+
+test("a pending append is not dropped by a reconcile that has not seen it yet", () => {
+  const list = createList();
+  // The user appends; the optimistic POST is in flight, so the fetched set has no such row yet.
+  list.push({ id: "new1", title: "draft" });
+  list.markPending("new1");
+  list.reconcile([]);
+  // The appended row survives — reconcile skipped the drop for the pending id (no flicker).
+  expect(list.rows.map((row: Readonly<{ id: string }>) => row.id)).toEqual(["new1"]);
+  // After the POST settles, a fetch that now includes it reconciles in place (no duplicate).
+  list.clearPending("new1");
+  list.reconcile([{ id: "new1", title: "draft" }]);
+  expect(list.rows.map((row: Readonly<{ id: string }>) => row.id)).toEqual(["new1"]);
+});
+
+test("a pending delete is not re-added by a reconcile that still returns the row", () => {
+  const list = createList();
+  list.push({ id: "gone", title: "removed" });
+  // The user deletes; the optimistic DELETE is in flight, so the fetch still returns the row.
+  list.removeById("gone");
+  list.markPending("gone");
+  list.reconcile([{ id: "gone", title: "removed" }]);
+  // The row stays gone — reconcile skipped re-adding the pending-deleted id (no flicker).
+  expect(list.rows).toHaveLength(0);
+});
+
 test("reconcile patches in place (keeps identity), adds new + drops missing", () => {
   const newCount = 9;
   const list = createList();
