@@ -23,12 +23,13 @@ export { VOW_API } from "@vow/db/routes";
 
 /** The status codes the data + issue APIs answer with — named so the replies read as intent. */
 const STATUS = {
-  badRequest: 500,
+  badRequest: 400,
   created: 201,
   noContent: 204,
   notAllowed: 405,
   notFound: 404,
   ok: 200,
+  serverError: 500,
 } as const;
 
 /** The TTL (ms) of the issue-plan cache — `gh` shells synchronously, so a poll must not block per call. */
@@ -184,7 +185,7 @@ async function serveData(req: IncomingMessage, res: ServerResponse, route: Route
     const body = await readBody(req);
     writeReply(res, dataReply({ body, db, entity, method: req.method ?? "GET" }, id));
   } catch (error) {
-    writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.badRequest });
+    writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.serverError });
   }
 }
 
@@ -279,7 +280,7 @@ async function serveIssueWrite(
     applyIssueWrite(state.cwd, write);
     writeReply(res, { body: refreshPlan(state), status: STATUS.ok });
   } catch (error) {
-    writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.badRequest });
+    writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.serverError });
   }
 }
 

@@ -21,13 +21,19 @@ function errorNode(name: string): UiNode {
 /**
  * Wire a control to its field. A native element takes the shared id (so the `<label for>` lines up),
  * aria-describedby and aria-invalid. A Select component takes the same id as `control-id`, which it forwards
- * to its trigger — so the label's `for` points at the real combobox (click-to-focus + association).
+ * to its trigger — so the label's `for` points at the real combobox (click-to-focus + association) — plus
+ * `described-by` + `invalid`, which it forwards as the trigger's aria-describedby + aria-invalid.
  */
 function withControlId(control: UiNode, name: string): UiNode {
   if (control.kind === "component") {
     return {
       ...control,
-      attrs: [...control.attrs, { expr: `${name}Id`, kind: "bound", name: "control-id" }],
+      attrs: [
+        ...control.attrs,
+        { expr: `${name}Id`, kind: "bound", name: "control-id" },
+        { expr: `${name}Id + '-error'`, kind: "bound", name: "described-by" },
+        { expr: `!!errors.${name}`, kind: "bound", name: "invalid" },
+      ],
     };
   }
   if (control.kind !== "element") {

@@ -43,6 +43,30 @@ function wrapAtEdge(event: KeyboardEvent, active: Element | null, edges: TabEdge
   }
 }
 
+/**
+ * Tab from the content container itself (`tabindex="-1"`, where focus rests right after open): it sits
+ * outside the focusable order, so Shift+Tab wraps to the last edge and plain Tab steps into the first.
+ */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- platform DOM types, inherently mutable.
+function wrapFromContent(event: KeyboardEvent, edges: TabEdges): void {
+  event.preventDefault();
+  if (event.shiftKey) {
+    edges.last.focus();
+  } else {
+    edges.first.focus();
+  }
+}
+
+/** Route a trapped Tab to the right wrap: from the content container itself, or off a tab-order edge. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- platform DOM types, inherently mutable.
+function wrapTab(event: KeyboardEvent, content: HTMLElement, edges: TabEdges): void {
+  if (content.ownerDocument.activeElement === content) {
+    wrapFromContent(event, edges);
+  } else {
+    wrapAtEdge(event, content.ownerDocument.activeElement, edges);
+  }
+}
+
 /** Wrap focus from one edge of the tab order to the other when Tab would leave the content. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- platform DOM types, inherently mutable.
 function wrapFocus(event: KeyboardEvent, content: HTMLElement): void {
@@ -53,7 +77,7 @@ function wrapFocus(event: KeyboardEvent, content: HTMLElement): void {
     event.preventDefault();
     return;
   }
-  wrapAtEdge(event, content.ownerDocument.activeElement, { first, last });
+  wrapTab(event, content, { first, last });
 }
 
 /**

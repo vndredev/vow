@@ -1,4 +1,10 @@
-import { LAYOUT_PRIMITIVES, emitContainerSfc, emitStackSfc, layoutSfcs } from "../src/index.ts";
+import {
+  LAYOUT_ADAPTERS,
+  LAYOUT_PRIMITIVES,
+  emitContainerSfc,
+  emitStackSfc,
+  layoutSfcs,
+} from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
 test("Container centers a max-width step from the theme", () => {
@@ -20,13 +26,9 @@ test("Stack is a flex column with a gap (the common page/form arrangement)", () 
   expect(sfc).toContain('<div class="vow-stack" :style="style">');
 });
 
-test("layoutSfcs and LAYOUT_PRIMITIVES cover all five primitives in order", () => {
-  expect(layoutSfcs().map((entry) => entry.name)).toEqual([
-    "Flex",
-    "Stack",
-    "Grid",
-    "Box",
-    "Container",
-  ]);
-  expect(LAYOUT_PRIMITIVES).toEqual(["Flex", "Stack", "Grid", "Box", "Container"]);
+test("LAYOUT_ADAPTERS is the single source; layoutSfcs and LAYOUT_PRIMITIVES derive from it", () => {
+  const names = ["Box", "Container", "Flex", "Grid", "Stack"];
+  expect(Object.keys(LAYOUT_ADAPTERS)).toEqual(names);
+  expect(layoutSfcs().map((entry) => entry.name)).toEqual(names);
+  expect(LAYOUT_PRIMITIVES).toEqual(names);
 });

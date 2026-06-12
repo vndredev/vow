@@ -78,6 +78,30 @@ test("Escape closes without committing", () => {
   expect(sel.get().value).toBe("vue");
 });
 
+test("a printable character type-aheads to the matching label (case-insensitive)", () => {
+  const sel = makeHarness(base({ active: "vue", open: true }), select);
+  // "r" jumps from Vue to React (case-insensitive, scanning forward).
+  pressKey(sel.api().triggerProps, "r");
+  expect(sel.get().active).toBe("react");
+});
+
+test("type-ahead scans from the active option onward, wrapping past the end", () => {
+  const sel = makeHarness(base({ active: "react", open: true }), select);
+  // From React, "v" finds nothing below, wraps to the top and lands on Vue.
+  pressKey(sel.api().triggerProps, "v");
+  expect(sel.get().active).toBe("vue");
+});
+
+test("type-ahead accumulates the buffer to disambiguate (S then o -> Solid)", () => {
+  const sel = makeHarness(base({ active: "vue", open: true }), select);
+  pressKey(sel.api().triggerProps, "s");
+  expect(sel.get().active).toBe("solid");
+  pressKey(sel.api().triggerProps, "o");
+  // "so" still only matches Solid; no spurious move.
+  expect(sel.get().active).toBe("solid");
+  expect(sel.get().typed).toBe("so");
+});
+
 test("option props mark selected + active for the theme", () => {
   const api = makeHarness(base({ active: "react", open: true, value: "vue" }), select).api();
   expect(api.optionProps(VUE)["aria-selected"]).toBe(true);

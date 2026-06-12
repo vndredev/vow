@@ -110,6 +110,26 @@ test("bootstrap fills once from the seed (idempotent), defaults for absent field
   expect(rows[0]?.["done"]).toBe(false);
 });
 
+test("bootstrap rolls back a partial seed so the table stays empty and a later bootstrap retries", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  // Two records share one explicit id — the first insert lands, the second trips the PK UNIQUE
+  // Constraint, so without a transaction the table would be left holding one stray row forever.
+  const clashing = entity("task", task.fields, [
+    { id: "dup", title: "First" },
+    { id: "dup", title: "Second" },
+  ]);
+  expect(() => {
+    bootstrap(db, [clashing]);
+  }).toThrow();
+  // The failed seed rolled back to empty — no permanent partial seed.
+  expect(list(db, task)).toHaveLength(0);
+  // The empty table self-heals — a corrected seed now lands fully.
+  bootstrap(db, [task]);
+  expect(list(db, task)).toHaveLength(1);
+  expect(list(db, task)[0]?.["title"]).toBe("Seeded");
+});
+
 test("migrate is additive — a new field adds its column and keeps existing rows", () => {
   const db = openDb(":memory:");
   migrate(db, [task]);
