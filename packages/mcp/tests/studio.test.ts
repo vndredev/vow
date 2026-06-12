@@ -88,3 +88,42 @@ test("addRecord and set_record_field resolve a reference name identically", () =
     expect(viaCreate["owner"]).toBe(bob["id"]);
   });
 });
+
+test("addRecord throws on an unknown field rather than silently dropping the typo", () => {
+  withStudio((studio) => {
+    // A typo of `title` — the db layer copies only known fields, so it would drop the key and return a
+    //  Row with an empty title as if the write succeeded; the seam must reject the unknown key instead.
+    expect(() => studio.addRecord("task", { titel: "Ship it" })).toThrow(
+      /unknown field "titel" on task/u,
+    );
+  });
+});
+
+test("addRecord's unknown-field error lists the entity's known fields", () => {
+  withStudio((studio) => {
+    expect(() => studio.addRecord("task", { titel: "x" })).toThrow(/known: id, title, owner/u);
+  });
+});
+
+test("set_record_field throws on an unknown field rather than a silent no-op patch", () => {
+  withStudio((studio) => {
+    const created = studio.addRecord("task", { title: "Plan" });
+    // An unknown column is a no-op UPDATE that still returns the unchanged row as success — reject it.
+    expect(() =>
+      studio.updateRecord({
+        entity: "task",
+        field: "titel",
+        id: String(created["id"]),
+        value: "x",
+      }),
+    ).toThrow(/unknown field "titel" on task/u);
+  });
+});
+
+test("addRecord still accepts an explicit id plus declared fields", () => {
+  withStudio((studio) => {
+    const stored = studio.addRecord("task", { id: "t1", title: "Ship it" });
+    expect(stored["id"]).toBe("t1");
+    expect(stored["title"]).toBe("Ship it");
+  });
+});
