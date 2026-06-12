@@ -55,7 +55,7 @@ function tabbableOption(options: readonly string[], value: string): string {
 }
 
 /**
- * The radio-group primitive — WAI-ARIA APG, Reka-style. A `role="radiogroup"` of `role="radio"` buttons
+ * The radio-group primitive — WAI-ARIA APG. A `role="radiogroup"` of `role="radio"` buttons
  * with **roving focus**: only the checked option (or the first, if none) is tabbable (`tabindex` 0, the
  * rest -1); an Arrow key moves focus AND selects (APG radio behaviour), wrapping. State is mirrored as
  * `data-state="checked|unchecked"` / `data-disabled` for the theme, never stored.

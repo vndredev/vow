@@ -1,6 +1,6 @@
 /**
  * The plan-builder — turns an issue into the self-contained, verification-gated plan an autonomous
- * executor develops (the shadcn/improve discipline). Written for the weakest plausible executor: every
+ * executor develops (vow's gated-plan discipline). Written for the weakest plausible executor: every
  * gate is a command with a checkable result, the boundaries are explicit, and a commit stamp lets the
  * executor detect a stale plan before touching anything — so a cheaper model runs it without drifting.
  *

@@ -22,7 +22,7 @@ type Component = Parameters<typeof renderVueSfc>[0];
 const EDGE =
   "const edge = (v: string): string =>\n  v === 'start' ? 'flex-start' : v === 'end' ? 'flex-end' : v === 'between' ? 'space-between' : v;";
 
-/** A flex container. Props mirror the CSS, with ergonomic enum values (Radix-style). */
+/** A flex container. Props mirror the CSS, with ergonomic enum values. */
 const flex: Component = {
   doc: [
     "Layout primitive: a flex container. Generated from the canonical component model — do not edit.",

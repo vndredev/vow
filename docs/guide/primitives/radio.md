@@ -5,7 +5,7 @@ order: 3.8
 
 # Radio group
 
-A single choice from a small set, shown all at once — the inline, always-visible alternative to a [Select](/guide/primitives/select) dropdown. Native radios can't be consistently styled and need real roving-focus keyboard logic, so this primitive earns its place: modelled on Reka UI, a `role="radiogroup"` of `role="radio"` buttons with the WAI-ARIA semantics over elements you _can_ style.
+A single choice from a small set, shown all at once — the inline, always-visible alternative to a [Select](/guide/primitives/select) dropdown. Native radios can't be consistently styled and need real roving-focus keyboard logic, so this primitive earns its place: a `role="radiogroup"` of `role="radio"` buttons with the WAI-ARIA semantics over elements you _can_ style.
 
 ## See it run
 

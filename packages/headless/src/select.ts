@@ -276,7 +276,7 @@ function optionProps(option: Readonly<SelectOption>, ctx: Readonly<OptionContext
 }
 
 /**
- * The select (listbox) primitive — WAI-ARIA APG combobox/listbox, Reka-style. A `role="combobox"`
+ * The select (listbox) primitive — WAI-ARIA APG combobox/listbox. A `role="combobox"`
  * button toggles a `role="listbox"` of `role="option"`s. Focus stays on the trigger; the highlighted
  * option is tracked with `aria-activedescendant` (no per-option DOM focus). Keyboard: Arrow/Home/End
  * move the highlight, a printable character type-aheads to the next matching label, Enter/Space commit,

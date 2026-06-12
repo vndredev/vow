@@ -16,7 +16,7 @@ The buttons below are the **exact** generated adapter — `emitButtonSfc()` writ
 
 ## Variants, the vow way
 
-shadcn/ui reaches for `cva` + `tailwind-merge` to compose variant classes at runtime. vow never concatenates class strings — it spreads typed prop objects — so a variant is just another **`data-*` hook**, exactly like a primitive's `data-state`. You pick the look with a typed prop; the theme maps it to tokens.
+Many UI kits compose variant classes at runtime by concatenating strings. vow never concatenates class strings — it spreads typed prop objects — so a variant is just another **`data-*` hook**, exactly like a primitive's `data-state`. You pick the look with a typed prop; the theme maps it to tokens.
 
 ```md
 ## view

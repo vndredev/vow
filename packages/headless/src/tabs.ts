@@ -105,7 +105,7 @@ function tabProps(item: string, ctx: Readonly<TabContext>): Props {
 }
 
 /**
- * The tabs primitive — WAI-ARIA APG tablist, Reka-style. A `role="tablist"` of `role="tab"` buttons
+ * The tabs primitive — WAI-ARIA APG tablist. A `role="tablist"` of `role="tab"` buttons
  * over `role="tabpanel"` regions. Roving focus: only the selected tab is tabbable (`tabindex` 0, the
  * rest -1), and Arrow/Home/End move selection *and* focus (automatic activation). The focus move runs
  * in the keydown handler against the event's OWN DOM subtree (no globals) — so it's proven against the

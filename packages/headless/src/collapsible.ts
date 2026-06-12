@@ -20,7 +20,7 @@ export interface CollapsibleApi {
 }
 
 /**
- * The collapsible (disclosure) primitive — Reka-style. A `<button>` trigger toggles a content region;
+ * The collapsible (disclosure) primitive. A `<button>` trigger toggles a content region;
  * the button is the whole keyboard contract (native Space/Enter), so there's no custom key handling —
  * "only build what HTML can't". `aria-expanded` on the trigger + `aria-controls`/`aria-labelledby`
  * wire the two parts; state is mirrored as `data-state="open|closed"` (+ `data-disabled`) for the theme.

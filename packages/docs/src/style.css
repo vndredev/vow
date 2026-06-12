@@ -3,7 +3,7 @@
 /* @vow/docs — the docs layer's own stylesheet. The docs CHROME (nav, sidebar, layout, TOC)
    + prose (.vow-doc) + the markdown extensions it renders (callouts, code-group). Built on @vow/theme
    tokens (--vow-*); loaded by the generated docs layout. Kept OUT of vow.css (the shared design system).
-   Self-hosts Inter (above) so the docs read 1:1 with the VitePress default. */
+   Self-hosts Inter (above) so the docs read with vow's docs default. */
 /* The docs opt into Inter (self-hosted, loaded by the generated layout) — overriding the shared
    --vow-font-sans token just for the docs; other vow apps keep the base system-ui stack. */
 :root {
@@ -33,7 +33,7 @@ body {
   box-sizing: border-box;
 }
 
-/* Prose — a generated doc page (.vow-doc, from emitProse). Token-driven; reads like VitePress. */
+/* Prose — a generated doc page (.vow-doc, from emitProse). Token-driven, vow's docs default. */
 .vow-doc {
   max-width: 44rem;
   min-width: 0;
@@ -301,7 +301,7 @@ body {
   margin: 0;
   padding: 0;
   list-style: none;
-  /* the left vertical guide line that leads the nested items (VitePress-style) */
+  /* the left vertical guide line that leads the nested items */
   border-left: 1px solid var(--vow-color-border);
 }
 /* a nested page list (e.g. the primitive subpages under Primitives) — indented under its parent */

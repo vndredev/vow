@@ -1,5 +1,5 @@
 /**
- * Headless primitives for vow — framework-agnostic UI logic (our own "Zag/Reka", scoped to what we need).
+ * Headless primitives for vow — framework-agnostic UI logic, vow's own, scoped to what we need.
  *
  * Each primitive is a pure function: it takes the current state + a setter and returns the DOM props
  * (ARIA attributes + event handlers + `data-*` state hooks) for each part. Framework adapters (Vue,
@@ -8,7 +8,7 @@
  *
  * We build a primitive ONLY where HTML can't do it natively. A `<button>` is already accessible, so
  * there's no Button here — but a custom checkbox needs role/aria/keyboard/state wiring, so it earns
- * one. Modelled on Reka UI: the control is a `<button role="checkbox">`, state is exposed as
+ * one. vow's convention: the control is a `<button role="checkbox">`, state is exposed as
  * `data-state="checked|unchecked"` (+ `data-disabled`), and a separate indicator part shows the mark.
  *
  * The public API is one focused module per primitive, re-exported here.

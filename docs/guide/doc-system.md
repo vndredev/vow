@@ -41,7 +41,7 @@ vow is LLM-first, so the docs ship in a form a model can read whole. On every bu
 - **`/llms.txt`** — a curated index: the title, a one-line summary, and every page as a grouped link with a short description.
 - **`/llms-full.txt`** — the entire documentation inlined into one file, so a model loads it all in one request.
 
-Both are generated from the same markdown the site renders, so they can't drift. (Vite+'s own docs do this with a VitePress plugin; vow generates it from its own pipeline.)
+Both are generated from the same markdown the site renders, so they can't drift — vow generates them from its own docs pipeline, no external plugin.
 
 ## Routing: `@vow/router`
 

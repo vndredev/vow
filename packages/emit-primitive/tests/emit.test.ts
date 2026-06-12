@@ -18,7 +18,7 @@ test("emitCheckboxSfc binds the agnostic headless core (logic + a11y live there)
   expect(sfc).toContain('emit("update:modelValue", next.checked)');
 });
 
-test("emitCheckboxSfc emits a Reka-style control + indicator with class + data hooks, no styling", () => {
+test("emitCheckboxSfc emits a control + indicator with class + data hooks, no styling", () => {
   const sfc = emitCheckboxSfc();
   // A <button role=checkbox> control wrapping an indicator part; spreads the core's props.
   expect(sfc).toContain("<button ");
