@@ -172,16 +172,33 @@ function targetId(db: Db, target: ReadonlyVow, value: unknown): string {
   throw new Error(`no ${target.slug} with id or ${labelField(target)} "${raw}"`);
 }
 
+/** The keys a record may carry on an entity — `id` (minted/matched) plus every declared field name. */
+function knownKeys(entity: ReadonlyVow): readonly string[] {
+  return ["id", ...entity.fields.map((field: ReadonlyField) => field.name)];
+}
+
+/** Throw on any record key that is not `id` or a declared field — so a typo is caught, never dropped
+ *  silently (the db layer copies only known fields, so an unknown key would otherwise vanish). */
+function rejectUnknownKeys(entity: ReadonlyVow, keys: readonly string[]): void {
+  const known = knownKeys(entity);
+  const stray = keys.find((key) => !known.includes(key));
+  if (defined(stray)) {
+    throw new Error(`unknown field "${stray}" on ${entity.slug} — known: ${known.join(", ")}`);
+  }
+}
+
 /** Resolve one reference field's value (a name → the target id; a non-reference value passes through). */
 type ResolveField = (entity: ReadonlyVow, field: string, value: unknown) => unknown;
 
 /** A record with every field run through `resolveField` — so a reference passed as a display name on
- *  insert resolves to the target id (no dangling ref), exactly as a one-field patch does on update. */
+ *  insert resolves to the target id (no dangling ref), exactly as a one-field patch does on update.
+ *  Unknown keys throw first (a typo never resolves to a silently dropped column). */
 function resolveRecord(
   resolveField: ResolveField,
   entity: ReadonlyVow,
   record: Readonly<Row>,
 ): Row {
+  rejectUnknownKeys(entity, Object.keys(record));
   const resolved: Row = {};
   for (const [field, value] of Object.entries(record)) {
     resolved[field] = resolveField(entity, field, value);
@@ -238,8 +255,8 @@ export function openStudio(appDir: string): Studio {
     syncDb,
     updateRecord: (patch) => {
       const entity = entityOf(patch.entity);
-      const value = resolveRef(entity, patch.field, patch.value);
-      return update(db, entity, patch.id, { [patch.field]: value });
+      const resolved = resolveRecord(resolveRef, entity, { [patch.field]: patch.value });
+      return update(db, entity, patch.id, resolved);
     },
     viewSlugs: () =>
       loadVows(appDir)
