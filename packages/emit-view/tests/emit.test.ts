@@ -122,10 +122,19 @@ test("the empty state distinguishes loading / failed / genuinely empty — not a
   // A failed fetch shows "Couldn't load this data"; "Nothing here yet." is gated on not-loading-not-error.
   const sfc = emitEntityList(entity);
   expectContains(sfc, [
-    '<p class="vow-empty" v-if="state.loading && rows.length === 0">Loading…</p>',
+    '<p class="vow-empty" v-if="state.loading && !state.error && rows.length === 0">Loading…</p>',
     '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
     '<p class="vow-empty" v-if="!state.loading && !state.error && rows.length === 0">Nothing here yet.</p>',
   ]);
+});
+
+test("the loading state is exclusive of the error state — they never render together (#476)", () => {
+  // After a failed fetch on an empty collection (error=true), a quiet retry re-sets loading mid-flight.
+  // Without `!state.error` the loading and error <p>s would both render; the guard carries `!state.error`,
+  // So the steady error copy holds through the quiet retries instead of stacking "Loading…" on top.
+  const sfc = emitEntityList(entity);
+  expect(sfc).toContain('v-if="state.loading && !state.error && rows.length === 0"');
+  expect(sfc).not.toContain('v-if="state.loading && rows.length === 0"');
 });
 
 test("a select field renders read-only as a Badge cell", () => {
@@ -220,10 +229,13 @@ test("emitEntityStats counts rows per a select field, composing Stats/Stat", () 
   expect(statsComponentName("ticket", "status")).toBe("TicketStatusStats");
   const sfc = emitEntityStats(ticket, "status");
   expectContains(sfc, [
-    'const { items: rows } = useCollection<Ticket>("ticket");',
+    'const { items: rows, state } = useCollection<Ticket>("ticket");',
     'const options = ["todo","doing","done"];',
     "rows.filter((r) => r.status === o).length",
     '<Stat :value="s.value" :label="s.label"',
+    // A failed fetch leaves every count at zero; the error branch surfaces it (#475).
+    // The all-zero stats are then not silently read as a genuinely empty dataset.
+    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
   ]);
   // `by` must be a select field of the entity.
   expect(() => emitEntityStats(ticket, "title")).toThrow();
@@ -242,17 +254,20 @@ test("emitEntityCards renders a Card per record, titled by the first text field"
   expect(cardsComponentName("ticket")).toBe("TicketCards");
   const sfc = emitEntityCards(ticket);
   // Group-by: a section per group (one when ungrouped); a non-title field is labelled in the body.
-  // A root `vow-view` wrapper carries a sibling `vow-empty` paragraph when no records are displayed
-  // (the cards twin of the list's empty state) — v-if and v-for never share one element.
+  // The grid rides a `v-if="rows.length > 0"` wrapper (v-if and v-for never share one element).
+  // The shared loading / failed / empty trio sits beside it — the cards twin of the list's status states.
   expectContains(sfc, [
-    'const { items: rows } = useCollection<Ticket>("ticket");',
+    'const { items: rows, state } = useCollection<Ticket>("ticket");',
     'import Card from "./Card.vue";',
     'class="vow-view vow-view--ticket"',
+    '<div v-if="rows.length > 0">',
     'v-for="grp in grouped"',
     'v-for="item in grp.items"',
     "<CardHeader>{{ item.title }}</CardHeader>",
     "Status: ",
-    '<p class="vow-empty" v-if="displayed.length === 0">Nothing here yet.</p>',
+    '<p class="vow-empty" v-if="state.loading && !state.error && rows.length === 0">Loading…</p>',
+    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
+    '<p class="vow-empty" v-if="!state.loading && !state.error && rows.length === 0">Nothing here yet.</p>',
   ]);
   const notEntity: VowNode = { ...ticket, fulfills: { as: "view", kind: "emit" } };
   expect(() => emitEntityCards(notEntity)).toThrow();
@@ -278,8 +293,11 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
     "@dragover.prevent",
     '@dragstart="dragged = item"',
     '@drop="onDrop(col.option)"',
-    'const { items: rows, update } = useCollection<Ticket>("ticket");',
+    'const { items: rows, state, update } = useCollection<Ticket>("ticket");',
     'update(dragged.value.id, { ["status"]: option });',
+    // A failed fetch leaves every column at zero; the error branch surfaces it (#475).
+    // The empty board is then not silently read as zero records.
+    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
     "defineProps<{ filter?: Record<string, unknown>; sort?: keyof Ticket; group?: keyof Ticket }>",
     "const visible = computed(()",
     "visible.value.filter((r) => r.status === o)",

@@ -6,13 +6,14 @@ import { boardComponentName } from "./naming.ts";
 import { defined } from "@vow/core";
 import { scriptJson } from "./helpers.ts";
 import { sliceComputed } from "./slice.ts";
+import { statusMessage } from "./status-message.ts";
 
 /** The board setup — the store, the option list, the per-column computed, drag + keyboard handlers. */
 function boardSetup(entity: ReadonlyVow, by: string, field: ReadonlyField): string[] {
   const type = pascalCase(entity.slug);
   const key = JSON.stringify(by);
   return [
-    `const { items: rows, update } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+    `const { items: rows, state, update } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
     `const options = ${scriptJson(field.options ?? [])};`,
     ...sliceComputed(type, "visible"),
     `const columns = computed(() =>`,
@@ -122,7 +123,10 @@ function boardCard(entity: ReadonlyVow, by: string): UiNode {
   };
 }
 
-/** The board view — a column per option, each holding its draggable cards. */
+/** The board view — a column per option, each holding its draggable cards. A failed fetch leaves every
+ *  column at zero, indistinguishable from a genuinely empty board, so the error branch surfaces it: a
+ *  `.vow-empty` "Couldn't load this data" when the fetch errored on an empty set (never rendered as zero
+ *  records). The columns stay rendered so a partial/late load keeps its drop targets. */
 function boardView(entity: ReadonlyVow, by: string): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-board" }],
@@ -139,6 +143,7 @@ function boardView(entity: ReadonlyVow, by: string): UiNode {
         tag: "div",
       },
       boardLiveRegion(),
+      statusMessage("state.error && rows.length === 0", "Couldn't load this data"),
     ],
     kind: "element",
     tag: "div",

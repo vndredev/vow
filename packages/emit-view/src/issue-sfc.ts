@@ -1,5 +1,6 @@
 import type { Component, UiNode } from "./types.ts";
 import { bound, comp, el, txt } from "./helpers.ts";
+import { emptyStates } from "./status-message.ts";
 import { renderVueSfc } from "@vow/component";
 
 /**
@@ -22,30 +23,15 @@ const ISSUE_VARIANT_LINES = [
 /** The shared setup line every issue SFC opens with — the live plan, its fetch state, and the actions. */
 const ISSUE_SETUP_LINE = `const { items, state, closeIssue, reopenIssue, startWork } = useIssues();`;
 
-/** A `.vow-empty` status message shown in place of the layout when the plan is empty — guarded by `cond`
- *  (a `v-if`) so only the matching one renders. The three states are mutually exclusive (no `v-else` in the
- *  component model): loading, a failed fetch, or a genuinely empty plan. */
-function statusMessage(cond: string, message: string): UiNode {
-  return {
-    attrs: [
-      { kind: "static", name: "class", value: "vow-empty" },
-      { expr: cond, kind: "cond", type: "if" },
-    ],
-    children: [txt(message)],
-    kind: "element",
-    tag: "p",
-  };
-}
-
 /** The three empty-state messages every issue layout shares — only one shows, keyed off `state`/`items`.
  *  "Loading the plan…" while the first fetch is in flight, "Couldn't reach GitHub" when it failed, and the
  *  entity-list "Nothing here yet." when the plan is genuinely empty. */
 function issueEmptyStates(): readonly UiNode[] {
-  return [
-    statusMessage("state.loading && items.length === 0", "Loading the plan…"),
-    statusMessage("state.error && items.length === 0", "Couldn't reach GitHub"),
-    statusMessage("!state.loading && !state.error && items.length === 0", "Nothing here yet."),
-  ];
+  return emptyStates("items.length", {
+    empty: "Nothing here yet.",
+    failed: "Couldn't reach GitHub",
+    loading: "Loading the plan…",
+  });
 }
 
 /** Add the `items.length > 0` guard to a layout node so it renders only when the plan has items — its own

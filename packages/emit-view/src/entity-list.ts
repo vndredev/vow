@@ -11,6 +11,7 @@ import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
 import { FIELD_KINDS } from "@vow/core";
 import { assertEmitEntity } from "./entity-guard.ts";
+import { emptyStates } from "./status-message.ts";
 
 /** A reference cell labels its target by the target entity's first text field (else its id). */
 function labelFieldOf(byId?: EntityLookup): (ref?: string) => string {
@@ -255,32 +256,6 @@ function tableBody(entity: ReadonlyVow, actions: ListActions): UiNode {
   };
 }
 
-/** A `.vow-empty` status message shown in place of the table, guarded by `cond` (a `v-if`) so only the one
- *  matching state renders. The three are mutually exclusive (no `v-else` in the component model). */
-function statusMessage(cond: string, message: string): UiNode {
-  return {
-    attrs: [
-      { kind: "static", name: "class", value: "vow-empty" },
-      { expr: cond, kind: "cond", type: "if" },
-    ],
-    children: [{ kind: "text", text: message }],
-    kind: "element",
-    tag: "p",
-  };
-}
-
-/** The three mutually-exclusive empty-state messages over an empty collection — "Loading…" while the first
- *  fetch is in flight, "Couldn't load this data" when it failed, and "Nothing here yet." only when the fetch
- *  succeeded and the collection is genuinely empty (guarded by `!state.loading && !state.error`, so the
- *  studio's first screen no longer reads as empty mid-load). Mirrors the issue views' three status lines. */
-function listEmptyStates(): readonly UiNode[] {
-  return [
-    statusMessage("state.loading && rows.length === 0", "Loading…"),
-    statusMessage("state.error && rows.length === 0", "Couldn't load this data"),
-    statusMessage("!state.loading && !state.error && rows.length === 0", "Nothing here yet."),
-  ];
-}
-
 /** The whole list view — the Table when there are rows, else one of the three status messages (loading /
  *  failed / genuinely empty) so the first screen never reads "Nothing here yet." while the load is in flight. */
 function listView(entity: ReadonlyVow, actions: ListActions): UiNode {
@@ -293,7 +268,11 @@ function listView(entity: ReadonlyVow, actions: ListActions): UiNode {
         kind: "component",
         name: "Table",
       },
-      ...listEmptyStates(),
+      ...emptyStates("rows.length", {
+        empty: "Nothing here yet.",
+        failed: "Couldn't load this data",
+        loading: "Loading…",
+      }),
     ],
     kind: "element",
     tag: "section",
