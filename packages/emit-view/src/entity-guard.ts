@@ -6,6 +6,11 @@ export function assertEmitEntity(entity: ReadonlyVow, label: string): void {
   if (!isEmitEntity(entity)) {
     throw new Error(`emit-view: \`${label}:\` target "${entity.slug}" must be an \`emit entity\``);
   }
+  if (entity.fields.length === 0) {
+    throw new Error(
+      `emit-view: \`${label}:\` target "${entity.slug}" needs >=1 field to render a list/cards/board`,
+    );
+  }
 }
 
 /** The select field named `by` on `entity` — throws when it is missing or not a select. */
