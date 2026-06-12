@@ -117,15 +117,18 @@ export const ViewNode = z.object({ type: z.string(), value: z.unknown() });
 
 /**
  * An `emit form` spec (a `## form`): a form bound to an entity (`of: <slug>`), with a submit label.
- * Optional members carry `| undefined` so the zod-inferred output (always `key?: T | undefined`)
- * is assignable under `exactOptionalPropertyTypes` — `Vow.parse(...)` returns exactly this shape.
+ * `edit: true` makes it a singleton editor — it pre-loads the entity's latest row and updates it in
+ * place (instead of appending a new record). Optional members carry `| undefined` so the zod-inferred
+ * output (always `key?: T | undefined`) is assignable under `exactOptionalPropertyTypes`.
  */
 export interface FormSpec {
+  readonly edit?: boolean | undefined;
   readonly of?: string | undefined;
   readonly submit: string;
 }
 
 export const FormSpec = z.object({
+  edit: z.boolean().optional(),
   of: z.string().optional(),
   submit: z.string().default("Submit"),
 });

@@ -75,11 +75,13 @@ export function expectedScenarios(
   if (vow.fulfills?.kind === "emit" && vow.fulfills.as === "form") {
     const target = vow.form?.of ?? "";
     const entity = entities.find((candidate) => candidate.slug === target);
-    const hasRequired = entity?.fields.some((field) => field.required) ?? false;
+    // An edit/singleton form has no empty-submit scenario (it guards on a loaded row); a create form does.
+    const provesSubmit =
+      (entity?.fields.some((field) => field.required) ?? false) && vow.form?.edit !== true;
     return [
       ...vow.proof.map((scenario) => scenario.claim),
       ...viewProves(widen(vow)),
-      ...formProves(widen(vow), hasRequired),
+      ...formProves(widen(vow), provesSubmit),
     ];
   }
   return vow.proof.map((scenario) => scenario.claim);
