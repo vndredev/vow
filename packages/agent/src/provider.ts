@@ -39,12 +39,21 @@ function modelSetting(envKey: string, fallback: string): string {
   return process.env[envKey] ?? fallback;
 }
 
-/** Claude Code's per-role models — native vow settings defaulting to Fable (the most capable, for the
- *  hardest + longest-running roles) for audit + plan, and a cheap Haiku for the bulk execute role. */
+/**
+ * Claude Code's per-role models — the clear Anthropic rule. Capability (knowledge) priority:
+ * **Fable 5 > Opus 4.8 > Sonnet 4.6 > Haiku 4.5**. Each role gets a model by how much capability it
+ * demands, top-down:
+ *   - `audit`   — open-ended, whole-codebase bug-finding (the most knowledge) → **Fable 5**
+ *   - `execute` — writes the complete, gate-green code for an issue           → **Opus 4.8**
+ *   - `plan`    — structures one issue into its verification-gated plan        → **Sonnet 4.6**
+ * Haiku is the floor — NEVER one of these roles: a cheap execute drafted a broken #502, so the role that
+ * ships code must be capable. A native per-role setting (`VOW_*_MODEL`) can override per deployment, but
+ * the default IS the rule.
+ */
 const CLAUDE_MODELS: ModelPolicy = {
   audit: modelSetting("VOW_AUDIT_MODEL", "claude-fable-5"),
-  execute: modelSetting("VOW_EXECUTE_MODEL", "claude-haiku-4-5"),
-  plan: modelSetting("VOW_PLAN_MODEL", "claude-fable-5"),
+  execute: modelSetting("VOW_EXECUTE_MODEL", "claude-opus-4-8"),
+  plan: modelSetting("VOW_PLAN_MODEL", "claude-sonnet-4-6"),
 };
 
 /** Claude Code — `claude -p` headless: print mode, edits accepted, structured output. The plan is the
