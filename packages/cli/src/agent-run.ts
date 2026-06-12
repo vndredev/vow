@@ -27,6 +27,7 @@ import type { PrCi } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
 import type { Provider } from "@vow/agent";
 import { execFileSync } from "node:child_process";
+import { readPrompt } from "./agent-prompts.ts";
 
 /**
  * The shared run/merge primitives behind `vow agent` — develop an issue in a worktree, run a fleet, and act
@@ -158,7 +159,14 @@ export async function develop(input: DevInput): Promise<DevResult> {
   const { focus } = agentFor(DEFAULT_ROSTER, areaOf(issueLabels(cwd, issue)));
   const outcome = await runTask({
     auth,
-    context: { commit: headCommit(cwd), focus, verify: RUN_GATES },
+    // Thread the scaffolded plan TEMPLATE into the LIVE run, so a user-edited `.claude/prompts/plan.md`
+    // Drives the agent's actual plan — not only the `vow agent plan` preview (else preview/run diverge).
+    context: {
+      commit: headCommit(cwd),
+      focus,
+      planTemplate: readPrompt(cwd, "plan"),
+      verify: RUN_GATES,
+    },
     cwd,
     issue: spec,
     onPhase: (phase) => {
@@ -208,9 +216,11 @@ export interface RunAllArgs {
   readonly provider: Provider;
 }
 
-/** Parse + validate `run-all` args (issues + provider + auth + `--json`), or a usage/error string. */
+/** Parse + validate `run-all` args (issues + provider + auth + `--json`), or a usage/error string. The issue
+ *  numbers are DEDUPED (`run-all 5 5` -> one lane for #5): two lanes for one issue derive the same branch +
+ *  worktree path, and the loser's teardown would force-remove the winner's live worktree. */
 export function parseRunAll(rest: readonly string[]): RunAllArgs | string {
-  const issues = issueNumbers(rest);
+  const issues = [...new Set(issueNumbers(rest))];
   if (issues.length === 0) {
     return "usage: vow agent run-all <n>... [--provider <name>] [--auth subscription|api] [--json]";
   }
@@ -340,10 +350,10 @@ export function actOnPr(pr: number, cwd: string): number {
 /** Like `actOnPr`, but the verdict is PINNED to `expectedHead` — a green rollup only merges when it belongs
  *  to that exact head SHA. After an `update-branch` rebase, gh can still report the prior (green) run until
  *  the fresh one registers; pinning treats that stale read as pending so the loop waits, never merging a
- *  branch whose post-rebase CI never ran. An empty `expectedHead` falls back to the unpinned read. */
+ *  branch whose post-rebase CI never ran. The empty-pin semantics live in ONE place — the pure layer's
+ *  `ciStateForHead` maps `""` -> pending — so a transient `prHeadOid` failure (head `""`) reads as pending
+ *  (skip this round, re-read next) rather than un-pinning to the stale-green unpinned read. The explicit
+ *  `vow agent merge <pr>` front door keeps `actOnPr` for an unpinned read. */
 export function actOnPrForHead(pr: number, cwd: string, expectedHead: string): number {
-  if (expectedHead === "") {
-    return actOnPr(pr, cwd);
-  }
   return actOnCi(pr, cwd, prCiStateForHead(cwd, pr, expectedHead));
 }

@@ -72,6 +72,18 @@ export function childEnv(
   return env;
 }
 
+/** Force-remove the worktree at `path`, tolerant of an absent / not-a-worktree path. Force drops a dirty
+ *  worktree; pruning the not-a-worktree case makes the remove idempotent (so a double teardown never throws
+ *  and masks the original error). The shared teardown for `worktreeRemove` + the self-cleanup on a failed
+ *  install. */
+function removeWorktree(path: string): void {
+  try {
+    execFileSync("git", [...worktreeRemoveArgs(path)], { cwd: process.cwd() });
+  } catch {
+    execFileSync("git", ["worktree", "prune"], { cwd: process.cwd() });
+  }
+}
+
 /** Run a `command` in `cwd` synchronously, capturing exit + stdout (its `unsetEnv` stripped from the
  *  child). The codebase shells via `execFileSync`; each agent run is its own process, so blocking is fine. */
 function execText(command: Command, cwd: string): RunResult {
@@ -102,20 +114,25 @@ export function realOps(): AgentOps {
     },
     worktreeAdd: async (path, branch) => {
       await Promise.resolve();
+      // `git worktree add` establishes OWNERSHIP of `path`: it throws when the path already exists (a
+      // Duplicate run-all lane, a collision) without touching that sibling's checkout. So a throw here means
+      // THIS op created nothing; the caller must NOT tear `path` down (it would destroy the owner's
+      // Worktree). Only past this line did this op materialize the worktree.
       execFileSync("git", [...worktreeAddArgs(path, branch)], { cwd: process.cwd() });
-      // A fresh worktree has no node_modules (gitignored) — install so the re-run gates have their deps.
-      execFileSync("vp", ["install"], { cwd: path });
+      try {
+        // A fresh worktree has no node_modules (gitignored) — install so the re-run gates have their deps.
+        execFileSync("vp", ["install"], { cwd: path });
+      } catch (error) {
+        // Git-add succeeded but install failed: this op OWNS the half-built worktree, so it cleans up after
+        // Itself (never stranding the path for the next attempt) and re-throws. The caller then sees a failed
+        // Add — and, because the path is already gone, must not remove it again.
+        removeWorktree(path);
+        throw error;
+      }
     },
     worktreeRemove: async (path) => {
       await Promise.resolve();
-      // Tolerant of an absent path. The teardown runs in a finally, so worktreeAdd may have thrown before
-      // Registering the worktree — a `git worktree remove` throw there would then mask the original error.
-      // Force already drops a dirty worktree; pruning the not-a-worktree case makes the remove idempotent.
-      try {
-        execFileSync("git", [...worktreeRemoveArgs(path)], { cwd: process.cwd() });
-      } catch {
-        execFileSync("git", ["worktree", "prune"], { cwd: process.cwd() });
-      }
+      removeWorktree(path);
     },
   };
 }
