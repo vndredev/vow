@@ -86,12 +86,12 @@ function formField(field: ReadonlyField): UiNode {
 function formEntity(form: ReadonlyVow, byId: EntityLookup): ReadonlyVow {
   const target = form.form?.of;
   if (!defined(target) || target.length === 0) {
-    throw new Error(`emit-form: "${form.slug}" needs a \`## form\` with \`of: <entity>\``);
+    throw new Error(`emit-view: "${form.slug}" needs a \`## form\` with \`of: <entity>\``);
   }
   const entity = byId.get(target);
   const emits = entity?.fulfills?.kind === "emit" && entity.fulfills.as === "entity";
   if (!defined(entity) || !emits) {
-    throw new Error(`emit-form: "${form.slug}" form \`of: ${target}\` is not a known entity`);
+    throw new Error(`emit-view: "${form.slug}" form \`of: ${target}\` is not a known entity`);
   }
   return entity;
 }
