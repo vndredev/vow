@@ -1,5 +1,5 @@
 import type { DeepReadonly, ReadonlyField, ReadonlyVow } from "./readonly.ts";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { SUFFIX } from "./load.ts";
 import type { ViewNode } from "./vow.ts";
 import { defined } from "./guard.ts";
@@ -132,10 +132,15 @@ export function serialize(vow: ReadonlyVow): string {
 }
 
 /** Write a vow (and recursively its children) to `<dir>/<slug>.vow.md`, mirroring `loadVows`'s mapping —
- *  children live in a sibling `<slug>/` folder. The save half of the author layer. */
+ *  children live in a sibling `<slug>/` folder. The save half of the author layer. The write is atomic:
+ *  the text lands in a sibling `.tmp` then `renameSync`s into place (atomic on the same filesystem), so
+ *  the dev watcher never observes a half-written `.vow.md` (it sees the old file, then the new one). */
 export function writeVow(dir: string, vow: ReadonlyVow): void {
   mkdirSync(dir, { recursive: true });
-  writeFileSync(path.join(dir, vow.slug + SUFFIX), serialize(vow), "utf8");
+  const file = path.join(dir, vow.slug + SUFFIX);
+  const tmp = `${file}.tmp`;
+  writeFileSync(tmp, serialize(vow), "utf8");
+  renameSync(tmp, file);
   if (vow.children.length > 0) {
     const childDir = path.join(dir, vow.slug);
     for (const child of vow.children) {
