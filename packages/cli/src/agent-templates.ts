@@ -1,3 +1,5 @@
+import { promptRelPath } from "@vow/agent";
+
 /** The `AGENTS.md` contract — the provider-neutral instructions any coding agent follows in this repo. */
 export function agentsMd(): string {
   return `# AGENTS.md
@@ -34,8 +36,11 @@ for a side-file or an ad-hoc parallel IS the drift vow exists to prevent.
 `;
 }
 
-/** The \`/vow-develop\` skill — points a session at the develop flow + the AGENTS.md contract. */
+/** The \`/vow-develop\` skill — a POINTER, not a copy: the operative develop instruction is the scaffolded
+ *  \`.claude/prompts/develop.md\` (what the native agent reads too), so editing that one file changes every
+ *  surface. The path comes from \`promptRelPath\` so the skill can never drift from where \`init\` writes it. */
 export function vowDevelopSkill(): string {
+  const developPrompt = promptRelPath("develop");
   return `---
 name: vow-develop
 description: Develop an issue through vow's red line — branch, verify, PR, agent-merge. Use when picking up a vow issue.
@@ -43,13 +48,7 @@ description: Develop an issue through vow's red line — branch, verify, PR, age
 
 # Develop through vow
 
-Read \`AGENTS.md\` first — it is the contract. To develop an issue:
-
-1. Branch \`<type>/<slug>\` off main.
-2. Make the change; keep it one coherent element.
-3. Verify: \`vp check\` = 0 AND \`pnpm -r test\` = 0.
-4. PR with \`Closes #N\`. Watch the CI \`gate\`.
-5. When green, merge with \`gh pr merge <N> --squash --delete-branch\`. Red → leave a draft.
+Read \`AGENTS.md\` first — it is the contract. The OPERATIVE develop instruction lives in **\`${developPrompt}\`** — read that file and follow it; it is the single source of truth (the native agent reads it too, so editing it changes every surface). If it is absent (a fresh repo, no \`vow agent init\`), the built-in default applies.
 
 The plan is the GitHub issues (run \`vow reconcile\` to check the board is honest). Never a side-file.
 `;
@@ -90,8 +89,11 @@ One issue, no watching → \`vow agent run <n>\`. Headless / CI (no live view ne
 }
 
 /** The \`/vow-audit\` skill — the in-session entry to run a LIVE multi-agent audit whose findings become vow
- *  ISSUES (the plan), not a side-file. The host workflow fans the audit out; vow gives the prompt + filing. */
+ *  ISSUES (the plan), not a side-file. The host workflow fans the audit out; the per-dimension instruction is
+ *  NOT restated here — it is the scaffolded \`.claude/prompts/audit.md\` (the single source \`vow agent audit
+ *  --prompt\` renders too), so editing that one file changes both the native path and this skill. */
 export function vowAuditSkill(): string {
+  const auditPrompt = promptRelPath("audit");
   return `---
 name: vow-audit
 description: Audit the codebase via a live fleet of agents — findings become vow issues (the plan), never a side-file. Use when the user wants a multi-agent audit of the code.
@@ -105,7 +107,7 @@ The user wants a multi-agent audit whose findings become vow ISSUES (the plan), 
 
 Fan out one agent per dimension (correctness, security, performance, types, tests, docs, …). Each agent:
 
-1. Gets its instruction: \`vow agent audit --prompt <dimension>\` — review read-only, output a JSON array of findings (\`{title, area, evidence, fix}\`).
+1. Gets its instruction from \`vow agent audit --prompt <dimension>\` — which renders the OPERATIVE audit prompt at **\`${auditPrompt}\`** (the single source of truth; the native agent reads it too, so editing that one file retunes every surface) with \`{dimension}\` filled. It defines the output: a JSON findings array. Don't restate it — read it.
 2. Audits the codebase — it edits NOTHING.
 3. Returns its findings JSON.
 
