@@ -12,7 +12,8 @@
     "check": "vp check"
   },
   "dependencies": {
-    "@vow/component": "workspace:*"
+    "@vow/component": "workspace:*",
+    "@vow/theme": "workspace:*"
   },
   "devDependencies": {
     "vite-plus": "catalog:"

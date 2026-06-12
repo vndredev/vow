@@ -1,7 +1,17 @@
 import { VOW_API, dbPath } from "@vow/db/routes";
 import { createList, useCollection, useIssues } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
+import type { PlanItem } from "@vow/observability";
 import { parseIssuePlan } from "../src/issues.ts";
+
+/** The parser's element type — what `parseIssuePlan` actually yields, pinned to the producer below. */
+type Parsed = ReturnType<typeof parseIssuePlan>[number];
+
+/** The wire shape is pinned to the producer: a parsed entry IS `@vow/observability`'s `PlanItem` (the type
+ *  the `/__vow/issues` endpoint writes), so a field/status added on the producer fails the consumer's
+ *  typecheck here instead of being silently downgraded. The two `extends` arms assert mutual assignability. */
+type Mutual<Left, Right> = Left extends Right ? (Right extends Left ? true : false) : false;
+const WIRE_TYPE_PINNED: Mutual<Parsed, PlanItem> = true;
 
 /**
  * The store is DB-backed via fetch; with no dev server the fetch rejects and the optimistic local array
@@ -79,6 +89,17 @@ test("parseIssuePlan carries a doing item's agent session (the open PR + url); o
   expect(plan[0]?.session).toEqual({ number: 175, url: "https://github.com/o/r/pull/175" });
   // A malformed session (no numeric `number`) is dropped, not carried.
   expect(plan[1]).not.toHaveProperty("session");
+});
+
+test("the parsed plan IS the producer's PlanItem shape — the wire type is single-sourced", () => {
+  // `WIRE_TYPE_PINNED` is `true` only when the parsed entry stays mutually assignable with `PlanItem`.
+  expect(WIRE_TYPE_PINNED).toBe(true);
+  const [item] = parseIssuePlan([
+    { issue: { assignees: [], labels: [], number: 1, state: "open", title: "t" }, status: "done" },
+  ]);
+  // The parsed entry is consumable as a `PlanItem` — the round-trip the endpoint guarantees.
+  const asPlanItem: PlanItem | undefined = item;
+  expect(asPlanItem?.status).toBe("done");
 });
 
 test("useIssues exposes a reactive state with loading + error flags the views branch on", () => {

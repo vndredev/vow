@@ -1,32 +1,23 @@
+import type { GitHubIssue, IssueStatus, PlanItem } from "@vow/observability";
 import { asNumber, asString, isObject, toStringArray } from "./guards.ts";
 
 /**
- * The issue-plan concern of `@vow/store` — the read-only `IssueItem` shape (mirroring
- * `@vow/observability`'s `PlanItem`) plus the runtime parser that turns a `/__vow/issues` JSON response
- * into a validated `IssueItem[]`. Kept separate from the row-collection store, and local to the browser
- * bundle so it pulls in no node code (GitHub is the single source; this view is read-only).
+ * The issue-plan concern of `@vow/store` — the runtime parser that turns a `/__vow/issues` JSON response
+ * into a validated `IssueItem[]`. The shape is `@vow/observability`'s `PlanItem` itself (the producer of
+ * the wire), imported type-only — a `type` import is erased, so it stays a downward L2 -> L0 edge with no
+ * node code in the browser bundle, yet a drift in the producer's shape now fails this parser's typecheck.
+ * Kept separate from the row-collection store (GitHub is the single source; this view is read-only).
  */
 
-/** One issue on the plan — mirrors `@vow/observability`'s `PlanItem` (the `/__vow/issues` shape). The
- *  `session` is the open PR redeeming a `doing` issue — the link the human follows to watch the run. */
-export interface IssueItem {
-  readonly issue: {
-    readonly assignees: readonly string[];
-    readonly labels: readonly string[];
-    readonly milestone?: { readonly title: string; readonly dueOn?: string };
-    readonly number: number;
-    readonly state: "open" | "closed";
-    readonly title: string;
-  };
-  readonly session?: { readonly number: number; readonly url: string };
-  readonly status: "planned" | "doing" | "done";
-}
+/** One issue on the plan — the `/__vow/issues` wire shape, pinned to `@vow/observability`'s `PlanItem` (the
+ *  producer). The `session` is the open PR redeeming a `doing` issue — the link the human watches the run at. */
+export type IssueItem = PlanItem;
 
-type Milestone = NonNullable<IssueItem["issue"]["milestone"]>;
-type Session = NonNullable<IssueItem["session"]>;
+type Milestone = NonNullable<GitHubIssue["milestone"]>;
+type Session = NonNullable<PlanItem["session"]>;
 
 /** Narrow a free-form status to the plan's three states (anything else is treated as planned). */
-function toStatus(value: unknown): IssueItem["status"] {
+function toStatus(value: unknown): IssueStatus {
   if (value === "doing" || value === "done") {
     return value;
   }
@@ -34,7 +25,7 @@ function toStatus(value: unknown): IssueItem["status"] {
 }
 
 /** Narrow a free-form state to the issue's two states (anything but `"closed"` reads as open). */
-function toState(value: unknown): IssueItem["issue"]["state"] {
+function toState(value: unknown): GitHubIssue["state"] {
   if (value === "closed") {
     return "closed";
   }

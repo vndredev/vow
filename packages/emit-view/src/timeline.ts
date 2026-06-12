@@ -1,3 +1,4 @@
+import { BADGE_VARIANTS, unionType } from "@vow/theme";
 import type { BadgeVariant, Component, TimelineEntry, UiNode } from "./types.ts";
 import { defined } from "@vow/core";
 import { renderVueSfc } from "@vow/component";
@@ -49,7 +50,7 @@ export function toGroups(entries: readonly TimelineEntry[]): TimelineGroup[] {
 
 const GROUPS_TYPE =
   "{ version: string; date: string; items: { title: string; type?: string; " +
-  "variant?: 'neutral' | 'accent' | 'success' | 'warning' | 'danger'; pr?: number }[] }[]";
+  `variant?: ${unionType(BADGE_VARIANTS)}; pr?: number }[] }[]`;
 
 /** The type Badge of a timeline item — only present when the entry carries a `type`. */
 function typeBadge(): UiNode {

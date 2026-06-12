@@ -3,7 +3,17 @@
   "version": "0.0.0",
   "private": true,
   "description": "vow's minimal default theme — structural CSS over the class + data-* hooks. Swappable.",
+  "type": "module",
   "exports": {
+    ".": "./src/vocab.ts",
     "./vow.css": "./vow.css"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
   }
 }
