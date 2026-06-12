@@ -231,13 +231,17 @@ test("emitEntityCards renders a Card per record, titled by the first text field"
   expect(cardsComponentName("ticket")).toBe("TicketCards");
   const sfc = emitEntityCards(ticket);
   // Group-by: a section per group (one when ungrouped); a non-title field is labelled in the body.
+  // A root `vow-view` wrapper carries a sibling `vow-empty` paragraph when no records are displayed
+  // (the cards twin of the list's empty state) — v-if and v-for never share one element.
   expectContains(sfc, [
     'const { items: rows } = useCollection<Ticket>("ticket");',
     'import Card from "./Card.vue";',
+    'class="vow-view vow-view--ticket"',
     'v-for="grp in grouped"',
     'v-for="item in grp.items"',
     "<CardHeader>{{ item.title }}</CardHeader>",
     "Status: ",
+    '<p class="vow-empty" v-if="displayed.length === 0">Nothing here yet.</p>',
   ]);
   const notEntity: VowNode = { ...ticket, fulfills: { as: "view", kind: "emit" } };
   expect(() => emitEntityCards(notEntity)).toThrow();
