@@ -12,6 +12,7 @@ export {
   archiveTable,
   assertColumnAbsent,
   assertColumnFree,
+  assertNoReferrers,
   assertTableFree,
   assertValuesCovered,
   bootstrap,
