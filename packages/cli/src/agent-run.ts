@@ -15,12 +15,14 @@ import {
   runTask,
 } from "@vow/agent";
 import {
+  claimIssue,
   headCommit,
   issueDetail,
   issueLabels,
   prCiState,
   prCiStateForHead,
   prMerged,
+  releaseIssue,
   resolveProjectId,
   syncProjectStatus,
 } from "@vow/observability";
@@ -154,7 +156,7 @@ export function phaseLine(issue: number, phase: string, json: boolean): string {
 
 /** Develop one issue via the live loop — worktree → dispatch the provider → re-run the gates — emitting
  *  each phase live; the report is the text run-report or, in `--json` mode, a compact `{issue, ok}`. */
-export async function develop(input: DevInput): Promise<DevResult> {
+async function developClaimed(input: DevInput): Promise<DevResult> {
   const { auth, cwd, issue, json, provider } = input;
   const spec = issueDetail(cwd, issue);
   // Route to the area's specialist (the roster) — its focus narrows the executor to the issue's concern.
@@ -182,6 +184,19 @@ export async function develop(input: DevInput): Promise<DevResult> {
     return { ok, report: JSON.stringify({ issue, ok }) };
   }
   return { ok, report: runReport(spec, outcome) };
+}
+
+/** Develop one issue, bracketing the live run with the board claim: apply `in-progress` so the board reads
+ *  `doing` from the moment the agent starts (not only once a PR exists, #479), and release it when the run
+ *  ends — a merged/open PR then carries the status, a failed run drops back to `planned`. Both halves are
+ *  best-effort (they never throw), so a board hiccup can't fail the develop. */
+export async function develop(input: DevInput): Promise<DevResult> {
+  claimIssue(input.cwd, input.issue);
+  try {
+    return await developClaimed(input);
+  } finally {
+    releaseIssue(input.cwd, input.issue);
+  }
 }
 
 /** `vow agent run <n> [--provider <name>]` (live) — develop the issue, print its report, exit on the
