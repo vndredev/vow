@@ -30,7 +30,7 @@ import {
   composeStats,
   composeTimeline,
 } from "./compose.ts";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { NONE } from "./none.ts";
 import { iconNames } from "@vow/icons";
 
@@ -287,6 +287,59 @@ function writeArtifact(artifact: Artifact): void {
 }
 
 /**
+ * The on-disk record of the paths vow itself wrote last pass — so a fresh process (an empty in-memory
+ * cache) still knows which files are vow's own and can prune the ones the new plan no longer emits.
+ * `@vow/docs` co-owns the same `.generated/`, so vow may only ever delete files it remembers writing.
+ */
+const MANIFEST = ".vow-manifest.json";
+
+/** The manifest's full path inside the output dir — vow's durable list of its own written files. */
+function manifestPath(outDir: string): string {
+  return `${outDir}/${MANIFEST}`;
+}
+
+/** The paths vow wrote on the previous pass, parsed from the manifest, or none when there is no manifest. */
+function readManifest(outDir: string): readonly string[] {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(manifestPath(outDir), "utf8"));
+    if (Array.isArray(parsed)) {
+      return parsed.filter((entry): entry is string => typeof entry === "string");
+    }
+    return [];
+  } catch {
+    // No manifest yet (or unreadable) — there is nothing prior to reconcile against.
+    return [];
+  }
+}
+
+/**
+ * Prune vow's own orphans — every path vow wrote last pass but did not (re)write this pass, so a removed
+ * vow/scenario leaves no stale file behind. Only paths from vow's own manifest are touched; `@vow/docs`
+ * files (never in the manifest) and anything outside the output dir stay untouched.
+ */
+function pruneOrphans(outDir: string, written: readonly string[]): void {
+  const current = new Set(written);
+  for (const prior of readManifest(outDir)) {
+    if (!current.has(prior) && prior.startsWith(`${outDir}/`)) {
+      rmSync(prior, { force: true });
+      lastWritten.delete(prior);
+    }
+  }
+  writeFileSync(manifestPath(outDir), JSON.stringify([...written]), "utf8");
+}
+
+/** Write every artifact (changed-only) then prune vow's orphans, returning the written paths. */
+function writeAll(artifacts: readonly Artifact[], outDir: string): string[] {
+  const paths = artifacts.map((artifact) => artifact.path);
+  assertNoCollision(paths);
+  for (const artifact of artifacts) {
+    writeArtifact(artifact);
+  }
+  pruneOrphans(outDir, paths);
+  return paths;
+}
+
+/**
  * Write the real files per fulfilled vow into `dirs.outDir`. `title` is the app-shell brand fallback.
  * Returns the written paths.
  */
@@ -302,10 +355,5 @@ export function generateFiles(vows: readonly ReadonlyVow[], dirs: Dirs, title?: 
     all.filter((vow) => isEmitEntity(vow)),
     { dirs, title },
   );
-  const paths = artifacts.map((artifact) => artifact.path);
-  assertNoCollision(paths);
-  for (const artifact of artifacts) {
-    writeArtifact(artifact);
-  }
-  return paths;
+  return writeAll(artifacts, dirs.outDir);
 }

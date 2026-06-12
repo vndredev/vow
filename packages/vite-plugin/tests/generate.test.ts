@@ -1,8 +1,16 @@
 // @vitest-environment node
 import { ROUTES_EXPORT, ROUTES_SUFFIX } from "@vow/emit-view";
 import { caseCollision, generateFiles } from "../src/index.ts";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { expect, test } from "vite-plus/test";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import type { Vow as VowNode } from "@vow/core";
 import path from "node:path";
 import { tmpdir } from "node:os";
@@ -146,6 +154,33 @@ test("a re-generate with identical sources skips the write (unchanged artifacts 
     // Generate again with the exact same vows — the content is identical, so nothing is rewritten.
     generateFiles([shell], { outDir: dir, srcDir: dir });
     expect(statSync(target).mtimeMs).toBe(before);
+  });
+});
+
+test("a regenerate prunes a vow's orphan when it drops from the plan, sparing a co-owned file", () => {
+  const about: VowNode = {
+    children: [],
+    fields: [],
+    fulfills: { as: "view", kind: "emit" },
+    id: "vow_about",
+    intent: "About",
+    proof: [],
+    slug: "about",
+    view: [{ type: "flex", value: { children: [{ text: "about" }], direction: "column", gap: 4 } }],
+  };
+  inTempDir((dir) => {
+    // First pass: both views are in the plan, so both files exist.
+    generateFiles([shell, about], { outDir: dir, srcDir: dir });
+    expect(existsSync(path.join(dir, "about.vue"))).toBe(true);
+    // A file vow never wrote (a `@vow/docs` co-owner) — it must survive the prune.
+    const coOwned = path.join(dir, "doc-intro.vue");
+    writeFileSync(coOwned, "<template>co-owned</template>", "utf8");
+    // Second pass: the plan no longer emits `about`, so its file is an orphan that must be pruned.
+    generateFiles([shell], { outDir: dir, srcDir: dir });
+    expect(existsSync(path.join(dir, "about.vue"))).toBe(false);
+    // The remaining view stays, and the co-owned file vow never wrote is untouched.
+    expect(existsSync(path.join(dir, "shell.vue"))).toBe(true);
+    expect(existsSync(coOwned)).toBe(true);
   });
 });
 
