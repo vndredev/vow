@@ -8,6 +8,7 @@
 
 export type { Db, Row } from "./db.ts";
 export {
+  assertColumnFree,
   bootstrap,
   get,
   insert,
