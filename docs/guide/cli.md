@@ -46,9 +46,16 @@ vow build            # vp build, every app
 vow build studio     # one app
 vow test             # pnpm -r test (per-package — never `vp test`, which can't resolve jsdom)
 vow smoke            # boot the dev app + assert its client bundle is browser-safe (default: studio)
+vow pr-body --check  # validate a PR body (piped on stdin) against the template, before gh pr create
 ```
 
 `vow smoke` is the runtime gate the static ones miss: it boots `vp dev`, crawls the client module graph, and fails if any `node:` builtin leaked into the browser bundle — a class of bug that lint, type-check, and the production build all pass (the build tree-shakes the leak away; the tests run in Node).
+
+`vow pr-body --check` is the **pre-flight** for the PR-body gate: it runs the exact same `prBodyProblems` rule CI runs, so a missing or empty template section (Summary / What / Proof / Next) is caught locally, never first in CI. Pipe the body in before opening the PR:
+
+```bash
+vow pr-body --check < body.md && gh pr create --body-file body.md
+```
 
 ## Realtime observability
 

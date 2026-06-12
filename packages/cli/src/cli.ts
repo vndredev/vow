@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --experimental-strip-types
 import { APPS, resolveApps } from "./apps.ts";
 import { agent, agentHelp } from "./agent.ts";
-import { build, check, test } from "./basics.ts";
+import { build, check, prBody, test } from "./basics.ts";
 import { runDev, status, stopApps } from "./dev.ts";
 import { guard } from "./guard.ts";
 import { reconcile } from "./reconcile.ts";
@@ -36,6 +36,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow test             pnpm -r test
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
   vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
+  vow pr-body --check  validate a PR body (piped on stdin) against the template before \`gh pr create\`
   vow reconcile        report backlog drift — open issues a merged PR already closed (retire candidates)
 
   the agent loop (autonomous issue -> PR through vow's gates):
@@ -110,6 +111,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   events: runEvents,
   guard,
   help: showHelp,
+  "pr-body": prBody,
   reconcile,
   serve: runServe,
   smoke,
