@@ -1,11 +1,14 @@
 // @vitest-environment node
 // oxlint-disable prefer-readonly-parameter-types -- the middleware bridges the mutable Node req/res objects
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
+import { type Db, insert, migrate, openDb } from "@vow/db";
+// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Server, createServer } from "node:http";
-import { agentApi, issuesApi, runAgentRun, vowBin } from "../src/dev-api.ts";
+import { agentApi, dataApi, issuesApi, runAgentRun, vowBin } from "../src/dev-api.ts";
 import { expect, test } from "vite-plus/test";
 import type { AddressInfo } from "node:net";
 import type { IssueDetail } from "@vow/observability";
+import type { ReadonlyVow } from "@vow/core";
 import { existsSync } from "node:fs";
 import { once } from "node:events";
 import path from "node:path";
@@ -103,6 +106,63 @@ test("a malformed start-work body returns 400 and never dispatches a phantom run
     expect(status).toBe(BAD_REQUEST);
     expect(text).toContain("expected");
     expect(calls).toEqual([]);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
+});
+
+const CONFLICT = 409;
+const NO_CONTENT = 204;
+
+/** A minimal entity vow — only the parts `@vow/db` reads (slug, fields). */
+function entity(slug: string, fields: ReadonlyVow["fields"]): ReadonlyVow {
+  return { children: [], fields, id: `vow_${slug}`, intent: slug, proof: [], slug };
+}
+
+const userVow = entity("user", [{ name: "name", required: true, type: "text" }]);
+const taskVow = entity("task", [
+  { name: "title", required: true, type: "text" },
+  { name: "owner", ref: "user", required: false, type: "reference" },
+]);
+
+/** DELETE `path` on the loopback `server` and return the response + its text. */
+async function del(server: Server, route: string): Promise<{ status: number; text: string }> {
+  const response = await fetch(`http://127.0.0.1:${portOf(server.address())}${route}`, {
+    method: "DELETE",
+  });
+  return { status: response.status, text: await response.text() };
+}
+
+/** A `:memory:` DB seeded with Alice (user) + a task whose `owner` references her — the dangling-ref shape. */
+function seededDb(): { db: Db; aliceId: string } {
+  const db: Db = openDb(":memory:");
+  migrate(db, [userVow, taskVow]);
+  const alice = insert(db, userVow, { name: "Alice" });
+  insert(db, taskVow, { owner: String(alice["id"]), title: "Ship it" });
+  return { aliceId: String(alice["id"]), db };
+}
+
+/** A `dataApi` middleware over a fixed DB + the user/task entity set. */
+function dataMiddleware(db: Db): Middleware {
+  const entities = [userVow, taskVow];
+  return dataApi(
+    () => db,
+    () => entities,
+  );
+}
+
+test("the dev DELETE refuses (409) to delete a row another entity still references", async () => {
+  const { db, aliceId } = seededDb();
+  const server = await listening(dataMiddleware(db));
+  try {
+    // The generated UI's delete hits the same path the MCP `remove_record` does — both run the guard.
+    const refused = await del(server, `/user/${aliceId}`);
+    expect(refused.status).toBe(CONFLICT);
+    expect(refused.text).toContain("still referenced by task.owner");
+    // The unreferenced task itself deletes (204) — the guard only blocks a referenced row.
+    const free = await del(server, `/task/${String(insert(db, taskVow, { title: "Free" })["id"])}`);
+    expect(free.status).toBe(NO_CONTENT);
   } finally {
     server.close();
     await once(server, "close");

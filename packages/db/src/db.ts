@@ -461,6 +461,83 @@ export function update(db: Db, entity: ReadonlyVow, id: string, patch: ReadRow):
   return get(db, entity, id);
 }
 
+/** One reference column pointing at the dropped entity — the entity holding it + its field name. */
+interface Referrer {
+  readonly entity: ReadonlyVow;
+  readonly field: string;
+}
+
+/** Every `reference(<target>)` field across the live entity set — the columns a `target` id can sit in.
+ *  The data-layer mirror of `validateReferences`' field scan: where `validateReferences` checks a
+ *  reference points at a real entity, this finds where a real entity's id is pointed AT, so a delete can
+ *  refuse to strand them. */
+function referrersOf(entities: readonly ReadonlyVow[], target: ReadonlyVow): readonly Referrer[] {
+  const found: Referrer[] = [];
+  for (const entity of entities) {
+    for (const field of entity.fields) {
+      if (field.type === "reference" && field.ref === target.slug) {
+        found.push({ entity, field: field.name });
+      }
+    }
+  }
+  return found;
+}
+
+/** The single-row count — the boundary the refusal phrase pluralizes above ("row" -> "rows"). */
+const ONE_ROW = 1;
+
+/** "row" for a single referrer, "rows" for many — the pluralized noun in the refusal phrase. */
+function rowNoun(count: number): string {
+  if (count === ONE_ROW) {
+    return "row";
+  }
+  return "rows";
+}
+
+/** How many rows hold `id` in `referrer`'s column — the count behind the referenced-delete refusal. */
+function referrerCount(db: Db, referrer: Readonly<Referrer>, id: string): number {
+  const { entity, field } = referrer;
+  const sql = `SELECT COUNT(*) AS n FROM "${entity.slug}" WHERE "${field}" = ?`;
+  return countOf(db.prepare(sql).get(id) ?? {});
+}
+
+/** A referrer's blocking phrase (`task.owner (2 rows)`), or `""` when no row holds the id (not blocking). */
+function referrerPhrase(db: Db, referrer: Readonly<Referrer>, id: string): string {
+  const count = referrerCount(db, referrer, id);
+  if (count === 0) {
+    return EMPTY;
+  }
+  return `${referrer.entity.slug}.${referrer.field} (${count} ${rowNoun(count)})`;
+}
+
+/**
+ * Throw when deleting row `id` of `target` would strand a stored reference to it — the data-layer mirror
+ * of `removeVow`'s `validateReferences` (which refuses dropping a referenced *entity*; this refuses
+ * dropping a referenced *row*). The write side is carefully guarded against dangling refs (a reference
+ * value that matches no target row throws on insert/patch), so a delete must not punch the same hole from
+ * the other end: every referrer would point at a now-missing id (display resolves nothing; re-setting the
+ * ref throws on the dead id). Scans every `reference(<target>)` column across the live entity set, lists
+ * each referencing `entity.field (N rows)`, and refuses with an actionable message. A no-op when no live
+ * entity references the target or no row holds the id. Called by BOTH the MCP `removeRecord` and the dev
+ * API DELETE — the shared remove path the studio and the generated UI both hit.
+ */
+// eslint-disable-next-line max-params
+export function assertNoReferrers(
+  db: Db,
+  entities: readonly ReadonlyVow[],
+  target: ReadonlyVow,
+  id: string,
+): void {
+  const phrases = referrersOf(entities, target)
+    .map((referrer) => referrerPhrase(db, referrer, id))
+    .filter((phrase) => phrase !== EMPTY);
+  if (phrases.length > 0) {
+    throw new Error(
+      `cannot delete ${target.slug} "${id}": still referenced by ${phrases.join(", ")} — clear or repoint the reference first`,
+    );
+  }
+}
+
 export function remove(db: Db, entity: ReadonlyVow, id: string): boolean {
   return db.prepare(`DELETE FROM "${entity.slug}" WHERE "id" = ?`).run(id).changes > 0;
 }
