@@ -291,6 +291,7 @@ function submitButton(form: ReadonlyVow): UiNode {
     attrs: [
       { kind: "static", name: "type", value: "submit" },
       { kind: "static", name: "label", value: form.form?.submit ?? "" },
+      { kind: "static", name: "tone", value: "accent" },
     ],
     children: [],
     kind: "component",

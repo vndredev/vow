@@ -1,4 +1,4 @@
-import { BADGE_VARIANTS, BUTTON_VARIANTS, SIZES, SIZE_DEFAULT } from "../src/vocab.ts";
+import { BADGE_VARIANTS, CONTROL_SIZES, SIZE_DEFAULT, TONES, VARIANTS } from "../src/vocab.ts";
 import { expect, test } from "vite-plus/test";
 import path from "node:path";
 import { readFileSync } from "node:fs";
@@ -23,13 +23,20 @@ test("every badge variant has a vow.css selector", () => {
 });
 
 test("every button variant has a vow.css selector", () => {
-  for (const variant of BUTTON_VARIANTS) {
+  for (const variant of VARIANTS) {
     expect(hasSelector("vow-button", "data-variant", variant), variant).toBe(true);
   }
 });
 
+test("every button tone has a vow.css selector (neutral is the base rule)", () => {
+  for (const tone of TONES) {
+    const exempt = tone === "neutral";
+    expect(hasSelector("vow-button", "data-tone", tone) || exempt, tone).toBe(true);
+  }
+});
+
 test("every non-default size has a vow.css selector (the default is the base `.vow-button` rule)", () => {
-  for (const size of SIZES) {
+  for (const size of CONTROL_SIZES) {
     const exempt = size === SIZE_DEFAULT;
     expect(hasSelector("vow-button", "data-size", size) || exempt, size).toBe(true);
   }
