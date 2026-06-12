@@ -87,11 +87,11 @@ function create(appDir: string, draft: Draft): Vow {
 }
 
 /** Assert no two fields share a name — a duplicate is a silent second column/key in the entity. */
-function assertFieldsUnique(slug: string, fields: readonly Field[]): void {
+function assertFieldsUnique(action: string, slug: string, fields: readonly Field[]): void {
   const seen = new Set<string>();
   for (const field of fields) {
     if (seen.has(field.name)) {
-      throw new Error(`add_field: "${slug}" already has a field "${field.name}"`);
+      throw new Error(`${action}: "${slug}" already has a field "${field.name}"`);
     }
     seen.add(field.name);
   }
@@ -110,7 +110,7 @@ export function addEntity(
   opts: { readonly slug: string; readonly intent: string; readonly fields?: readonly Field[] },
 ): Vow {
   const fields = opts.fields ?? [];
-  assertFieldsUnique(opts.slug, fields);
+  assertFieldsUnique("add_entity", opts.slug, fields);
   return create(appDir, {
     fields,
     fulfills: { as: "entity", kind: "emit" },
@@ -150,12 +150,17 @@ export function addView(
 /**
  * Assert a form's `of:` target resolves to a known `emit entity` — synchronously, at the call, mirroring
  * `validateReferences` for reference fields (else a typo'd target defers a false-success to a build error).
+ * The 4-arg shape (action, appDir, slug, of) carries the calling action so the throw names it (add_form /
+ * set_form), like every other mutate guard.
  */
-function assertFormTarget(appDir: string, slug: string, of: string): void {
+// eslint-disable-next-line max-params
+function assertFormTarget(action: string, appDir: string, slug: string, of: string): void {
   const entities = loadVows(appDir).filter((vow: ReadonlyVow) => isEmitEntity(vow));
   if (!entities.some((vow: ReadonlyVow) => vow.slug === of)) {
     const known = entities.map((vow: ReadonlyVow) => vow.slug).join(", ");
-    throw new Error(`form "${slug}" of: "${of}" is not a known entity — known: ${known}`);
+    throw new Error(
+      `${action}: form "${slug}" of: "${of}" is not a known entity — known: ${known}`,
+    );
   }
 }
 
@@ -172,7 +177,7 @@ export function addForm(
     readonly nav?: ReadonlyVow["nav"];
   },
 ): Vow {
-  assertFormTarget(appDir, opts.slug, opts.of);
+  assertFormTarget("add_form", appDir, opts.slug, opts.of);
   return create(appDir, {
     fields: [],
     form: { edit: opts.edit, of: opts.of, submit: opts.submit },
@@ -209,7 +214,7 @@ function mergeForm(form: Form | undefined, patch: FormPatch): Form {
 /** Edit an `emit form`'s `of`/`submit`/`edit` in place. Re-validates a changed `of` against the tree. */
 export function setForm(appDir: string, slug: string, patch: FormPatch): Vow {
   if (defined(patch.of)) {
-    assertFormTarget(appDir, slug, patch.of);
+    assertFormTarget("set_form", appDir, slug, patch.of);
   }
   return replace(appDir, slug, (vow) => ({ ...vow, form: mergeForm(vow.form, patch) }));
 }
@@ -219,7 +224,7 @@ export function addField(appDir: string, slug: string, field: Field): Vow {
   return replace(appDir, slug, (vow) => {
     assertEmitEntity("add_field", vow);
     const fields = [...vow.fields, field];
-    assertFieldsUnique(slug, fields);
+    assertFieldsUnique("add_field", slug, fields);
     return { ...vow, fields };
   });
 }
@@ -276,7 +281,7 @@ export function setField(appDir: string, slug: string, name: string, patch: Fiel
       }
       return field;
     });
-    assertFieldsUnique(slug, fields);
+    assertFieldsUnique("set_field", slug, fields);
     return { ...vow, fields };
   });
 }

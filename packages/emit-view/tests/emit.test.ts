@@ -242,13 +242,17 @@ test("emitEntityCards renders a Card per record, titled by the first text field"
   expect(cardsComponentName("ticket")).toBe("TicketCards");
   const sfc = emitEntityCards(ticket);
   // Group-by: a section per group (one when ungrouped); a non-title field is labelled in the body.
+  // A root `vow-view` wrapper carries a sibling `vow-empty` paragraph when no records are displayed
+  // (the cards twin of the list's empty state) — v-if and v-for never share one element.
   expectContains(sfc, [
     'const { items: rows } = useCollection<Ticket>("ticket");',
     'import Card from "./Card.vue";',
+    'class="vow-view vow-view--ticket"',
     'v-for="grp in grouped"',
     'v-for="item in grp.items"',
     "<CardHeader>{{ item.title }}</CardHeader>",
     "Status: ",
+    '<p class="vow-empty" v-if="displayed.length === 0">Nothing here yet.</p>',
   ]);
   const notEntity: VowNode = { ...ticket, fulfills: { as: "view", kind: "emit" } };
   expect(() => emitEntityCards(notEntity)).toThrow();
@@ -325,7 +329,7 @@ test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not dra
   expectContains(sfc, [
     'tabindex="0"',
     'role="group"',
-    `:aria-label="\`status: ${interp("item.status")}. Use the left and right arrows to move.\`"`,
+    `:aria-label="\`${interp("item.title")}. Status: ${interp("item.status")}. Use the left and right arrows to move.\`"`,
     '@keydown.left="moveCard(item, -1)"',
     '@keydown.right="moveCard(item, 1)"',
     "function move(card: Ticket, delta: number): void {",
@@ -336,6 +340,24 @@ test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not dra
   ]);
   // The move is announced to assistive tech through a polite live region.
   expectContains(sfc, ['role="status"', 'aria-live="polite"', "{{ announce }}"]);
+});
+
+test("emitEntityBoard names the card by its title field, not just the column value", () => {
+  const ticket: VowNode = {
+    ...entity,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "planStatus", options: ["todo", "done"], required: false, type: "select" },
+    ],
+    id: "vow_ticket",
+    slug: "ticket",
+  };
+  const sfc = emitEntityBoard(ticket, "planStatus");
+  // The label leads with the record's title (so each card in a column is distinguishable to AT) and
+  // Humanizes the grouped field name — not the raw camelCase identifier.
+  expect(sfc).toContain(
+    `:aria-label="\`${interp("item.title")}. Plan status: ${interp("item.planStatus")}. Use the left and right arrows to move.\`"`,
+  );
 });
 
 test("emitEntityBoard restores focus after a keyboard move so it is not single-use (WCAG 2.4.3)", () => {
