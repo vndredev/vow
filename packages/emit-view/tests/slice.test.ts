@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { sliceAttrs, sliceComputed } from "../src/slice.ts";
+import { propsToAttrs, sliceAttrs, sliceComputed } from "../src/slice.ts";
 import { quote } from "../src/helpers.ts";
 
 test("sliceComputed emits a type-aware sort — numeric subtraction for numbers, localeCompare for text", () => {
@@ -39,4 +39,25 @@ test("a filter value carrying a backslash + newline reaches the bound attr fully
   expect(attrs).toEqual([
     { expr: String.raw`{ status: 'a\\b\nc' }`, kind: "bound", name: "filter" },
   ]);
+});
+
+test("a hostile filter key that breaks out of the object literal is rejected (#305)", () => {
+  // The confirmed breakout: a key like `a }; alert(1); ({` would close the literal and run on render.
+  // The emitter rejects it at the key (object-literal-key sink), never emitting the broken `:filter`.
+  expect(() => sliceAttrs({ filter: { "a }; alert(1); ({": "x" } })).toThrow(
+    /not a safe identifier/u,
+  );
+  // A valid field-name key stays byte-stable (the guard is inert for legitimate input).
+  expect(sliceAttrs({ filter: { status: "open" } })).toEqual([
+    { expr: "{ status: 'open' }", kind: "bound", name: "filter" },
+  ]);
+});
+
+test("a hostile prop name that forges a directive is rejected (#305)", () => {
+  // The confirmed breakout: a prop key `class="x" @click` would become a real `@click` on the node.
+  expect(() => propsToAttrs({ 'class="x" @click': "doEvil()" })).toThrow(
+    /not a safe attribute name/u,
+  );
+  // A valid prop name stays byte-stable.
+  expect(propsToAttrs({ label: "Hi" })).toEqual([{ expr: "'Hi'", kind: "bound", name: "label" }]);
 });

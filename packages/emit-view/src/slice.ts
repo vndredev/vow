@@ -1,6 +1,7 @@
 import type { Attr, UiNode } from "./types.ts";
 import { asRecord, defined } from "@vow/core";
 import { bound, objectExpr, quote, str } from "./helpers.ts";
+import { assertAttrName } from "@vow/component";
 
 /**
  * The slice/group plumbing a `## view` shares — the `sort`/`filter`/`group` attrs a sliced node carries,
@@ -72,12 +73,15 @@ export function groupedLines(type: string, src: string): string[] {
  * Map raw props (every key but `children`) to bound attrs: numbers stay numbers, else string literals.
  * The reserved `model:` key becomes a two-way binding (`v-model="<expr>"`) — its value is the expression.
  */
-/** One prop entry (`name`, raw value) as a bound/model attr. */
+/** One prop entry (`name`, raw value) as a bound/model attr. The `name` becomes the rendered attribute
+ *  name (`:<name>=...`), so a non-`model` key is validated first: a raw YAML key like `'class="x" @click'`
+ *  would otherwise forge a real directive on the node. */
 function propToAttr(entry: readonly [string, unknown]): Attr {
   const [name, raw] = entry;
   if (name === "model") {
     return { expr: String(raw), kind: "model" };
   }
+  assertAttrName(name);
   if (typeof raw === "number") {
     return bound(name, String(raw));
   }

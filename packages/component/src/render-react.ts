@@ -1,4 +1,5 @@
 import type { Attr, ConditionalAttr, EventAttr, Loop, UiNode } from "./model.ts";
+import { assertAttrName } from "./validate-name.ts";
 import { defined } from "./defined.ts";
 import { escapeHtml } from "./escape.ts";
 
@@ -96,6 +97,7 @@ function renderReactAttr(attr: Attr): string {
     return `${reactAttrName(attr.name)}="${escapeHtml(attr.value)}"`;
   }
   if (attr.kind === "bound") {
+    assertAttrName(attr.name);
     return `${reactAttrName(attr.name)}={${attr.expr}}`;
   }
   if (attr.kind === "event") {
