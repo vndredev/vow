@@ -6,8 +6,10 @@ import { defined } from "./guard.ts";
 /**
  * The data layer — a local SQLite DB (`node:sqlite`) shared by the browser studio (via the dev API) and
  * the node MCP/agent. One table per entity; records are plain JSON objects (`id` + one key per field),
- * the same shape the views bind to. Validation lives in the generated `create<Name>` / the MCP — this
- * layer only maps JS values to/from SQLite (boolean to/from INTEGER) and enforces a column allow-list.
+ * the same shape the views bind to. Validation lives a layer up — the generated `create<Name>` (runtime
+ * forms) and the MCP studio (required-presence, select-option, reference, and unknown-key checks before
+ * a write). This layer only maps JS values to/from SQLite (boolean to/from INTEGER), fills absent fields
+ * with their defaults, and enforces a column allow-list — it never validates a value it is handed.
  */
 
 export type Row = Record<string, unknown>;
