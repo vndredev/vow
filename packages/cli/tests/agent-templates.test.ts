@@ -5,6 +5,7 @@ import {
   vowOrchestrateSkill,
 } from "../src/agent-templates.ts";
 import { expect, test } from "vite-plus/test";
+import { agentHelp } from "../src/agent.ts";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 
@@ -47,8 +48,7 @@ test("the vow-audit skill files findings into vow issues, via the host workflow"
 });
 
 test("the CLI help string names every skill init scaffolds (no undercount)", () => {
-  const help = source("../src/cli.ts");
-  expect(help).toContain(`${INIT_SKILLS.join("/")} skills`);
+  expect(agentHelp()).toContain(`${INIT_SKILLS.join("/")} skills`);
 });
 
 test("the init doc comment names every skill it scaffolds (develop, orchestrate, audit)", () => {

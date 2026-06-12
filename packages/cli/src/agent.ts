@@ -118,6 +118,50 @@ function runAudit(rest: readonly string[]): number {
   return 1;
 }
 
+/** One agent sub-command for the catalogue: its name, the argument hint shown in help, + a one-line
+ *  summary. */
+interface AgentSubcommand {
+  readonly args: string;
+  readonly name: string;
+  readonly summary: string;
+}
+
+/**
+ * The agent-native sub-command catalogue — every sub-command's name + summary, in display order, in ONE
+ * place. This is the SINGLE source (mirroring `@vow/mcp`'s `tools.ts`): `agent` routes off it, the usage
+ * line lists from it, and `cli.ts`'s `--help` derives its agent section from it via `agentHelp()` — so
+ * the front door can't drift from the real sub-commands. A test guards that the routes match the catalogue.
+ */
+export const AGENT_SUBCOMMANDS: readonly AgentSubcommand[] = [
+  {
+    args: "",
+    name: "init",
+    summary: "scaffold the agent integration (AGENTS.md + develop/orchestrate/audit skills)",
+  },
+  { args: "<n>", name: "plan", summary: "print the verification-gated plan for issue <n>" },
+  {
+    args: "<n> [--dry-run]",
+    name: "run",
+    summary: "develop issue <n> + open a PR (--dry-run previews)",
+  },
+  { args: "<n>...", name: "run-all", summary: "develop multiple issues concurrently (a fleet)" },
+  {
+    args: "<pr>",
+    name: "merge",
+    summary: "merge a green PR / draft a red one (never off a red gate)",
+  },
+  {
+    args: "",
+    name: "auto",
+    summary: "the self-heal loop — pick + develop open issues round by round",
+  },
+  {
+    args: "--file <f.json>",
+    name: "audit",
+    summary: "file audit findings as vow issues (audit -> plan)",
+  },
+];
+
 /** The agent-native sub-commands by name — keeps the front door flat (no long if-chain). */
 const SUBCOMMANDS: Record<string, (rest: readonly string[]) => number | Promise<number>> = {
   audit: runAudit,
@@ -129,6 +173,32 @@ const SUBCOMMANDS: Record<string, (rest: readonly string[]) => number | Promise<
   "run-all": runAll,
 };
 
+/** The names that route — every key of `SUBCOMMANDS`. A test asserts the catalogue covers exactly these,
+ *  so a new sub-command without a help entry (or a help entry that no longer routes) fails the gate. */
+export function agentRouteNames(): readonly string[] {
+  return Object.keys(SUBCOMMANDS);
+}
+
+/** The `vow agent <name> [args]` invocation shown in help — the args are appended only when present. */
+function invocationOf(sub: AgentSubcommand): string {
+  return `vow agent ${sub.name} ${sub.args}`.trimEnd();
+}
+
+/** The `vow agent` block for the CLI `--help`, one indented line per sub-command, derived from the
+ *  catalogue (so help can never drift from the real sub-commands). The summaries align on a column sized
+ *  to the longest invocation. */
+export function agentHelp(): string {
+  const pad = Math.max(...AGENT_SUBCOMMANDS.map((sub) => invocationOf(sub).length));
+  return AGENT_SUBCOMMANDS.map((sub) => `  ${invocationOf(sub).padEnd(pad)}  ${sub.summary}`).join(
+    "\n",
+  );
+}
+
+/** The `usage: vow agent <…>` line, listing the sub-command names from the catalogue. */
+function agentUsage(): string {
+  return `usage: vow agent <${AGENT_SUBCOMMANDS.map((sub) => sub.name).join("|")}>\n`;
+}
+
 /** `vow agent <sub>` — the agent-native front door: `init` (scaffold) · `plan <n>` (the executor-ready
  *  plan) · `run <n> [--dry-run]` (the live run / preview) · `run-all <n>...` (a fleet) · `merge <pr>` (merge
  *  a green PR / draft a red) · `auto` (the self-heal loop) · `audit` (findings -> issues). */
@@ -138,6 +208,6 @@ export function agent(rest: readonly string[]): number | Promise<number> {
   if (handler) {
     return handler(rest);
   }
-  process.stderr.write("usage: vow agent <init|plan|run|run-all|merge|auto|audit>\n");
+  process.stderr.write(agentUsage());
   return 1;
 }
