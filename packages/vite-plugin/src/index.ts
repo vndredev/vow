@@ -50,7 +50,7 @@ function resolveDir(root: string, dir: string): string {
 }
 
 /** The mutable state the plugin threads through its hooks — the live tree, dirs, DB, and entity tables. */
-interface State {
+export interface State {
   vows: readonly ReadonlyVow[];
   vowDir: string;
   genDir: string;
@@ -87,12 +87,34 @@ function regenerate(state: State, options: VowOptions): void {
   }
 }
 
+/**
+ * Open the dev DB + sync its schema, guarded: a corrupt `.vow/data.db` must not abort the dev server.
+ * On failure it logs via `logError`, leaves the DB absent (the data API then `next()`s past every
+ * `/__vow/db` request), and the watcher + sibling startup paths stay alive — symmetric with the two
+ * already-guarded regenerate paths. A `file is not a database` error also logs the remedy.
+ */
+// oxlint-disable-next-line prefer-readonly-parameter-types -- openDb mutates state.db / state.entities
+export function openDevDbGuarded(state: State, logError: (message: string) => void): void {
+  try {
+    const db = openDevDb(state.root);
+    state.db = db;
+    state.entities = syncEntities(db, state.vows);
+  } catch (error) {
+    const message = errorMessage(error);
+    logError(`[vow] dev DB open failed: ${message}`);
+    if (message.includes("file is not a database")) {
+      logError("[vow] the `.vow/data.db` is corrupt — delete it and restart.");
+    }
+    state.db = NONE;
+  }
+}
+
 /** Wire the dev server: open the DB, mount the `/__vow` APIs, and watch `app/` for regenerate-on-save. */
 // oxlint-disable-next-line prefer-readonly-parameter-types -- a plugin must mutate the dev server
 function setupServer(server: ViteDevServer, state: State, options: VowOptions): void {
-  const db = openDevDb(state.root);
-  state.db = db;
-  state.entities = syncEntities(db, state.vows);
+  openDevDbGuarded(state, (message) => {
+    server.config.logger.error(message);
+  });
   server.middlewares.use(
     "/__vow/db",
     dataApi(
