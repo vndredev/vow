@@ -111,7 +111,12 @@ export const PROVIDERS: readonly Provider[] = [claudeCode, codex, gemini];
 /** The default provider's name — used when a task doesn't pin one. */
 export const DEFAULT_PROVIDER = "claude-code";
 
-/** The provider named `name`, or undefined when no backend matches. */
+/** Friendly aliases for a provider's canonical name — the obvious short name a user/LLM reaches for (and
+ *  the one the docs document) maps to the real backend, so `--provider claude` resolves `claude-code`. */
+const PROVIDER_ALIASES: Readonly<Record<string, string>> = { claude: "claude-code" };
+
+/** The provider named `name` (or its alias), or undefined when no backend matches. */
 export function providerFor(name: string): Provider | undefined {
-  return PROVIDERS.find((provider) => provider.name === name);
+  const canonical = PROVIDER_ALIASES[name] ?? name;
+  return PROVIDERS.find((provider) => provider.name === canonical);
 }

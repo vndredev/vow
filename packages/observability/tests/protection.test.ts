@@ -27,6 +27,24 @@ test("parseProtection lifts the subset vow cares about from a gh protection obje
   });
 });
 
+test("parseProtection falls back to the loose state for a partial gh object (drift IS the live path)", () => {
+  expect(parseProtection("{}")).toEqual({
+    checks: [],
+    enforceAdmins: false,
+    requirePr: false,
+    reviews: 0,
+  });
+  const noReviews = JSON.stringify({ enforce_admins: { enabled: false } });
+  expect(parseProtection(noReviews)).toEqual({
+    checks: [],
+    enforceAdmins: false,
+    requirePr: false,
+    reviews: 0,
+  });
+  const dirtyContexts = JSON.stringify({ required_status_checks: { contexts: ["gate", 1, true] } });
+  expect(parseProtection(dirtyContexts).checks).toEqual(["gate"]);
+});
+
 test("protectionDrift flags a loosened protection, and is empty when it holds", () => {
   const loose = { checks: [], enforceAdmins: false, requirePr: false, reviews: 1 };
   expect(protectionDrift(loose, MAIN_PROTECTION).length).toBeGreaterThan(0);
