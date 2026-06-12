@@ -90,9 +90,29 @@ export class ReactiveRows {
   /** The live reactive array — the same instance for every reader, so identity is shared. */
   public readonly rows: Row[] = reactive<Row[]>([]) as Row[];
 
+  /** Listeners notified after every mutation — the framework-neutral seam non-Vue bindings (React's
+   *  useSyncExternalStore, a Solid signal) subscribe to. Vue tracks `rows` directly and ignores this. */
+  private readonly listeners = new Set<() => void>();
+
+  /** Subscribe to mutations; returns the unsubscribe. The neutral observer seam for the #101 adapters. */
+  public subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  /** Fire every subscribed listener — called after each mutation below. */
+  private notify(): void {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+
   /** Append an already-validated row (a fresh, mutable copy so later in-place patches are safe). */
   public push(row: Readonly<Row>): void {
     this.rows.push({ ...row });
+    this.notify();
   }
 
   /** Reconcile the live array to `fresh` by id — patch each survivor in place, drop the missing, append
@@ -104,12 +124,14 @@ export class ReactiveRows {
         this.rows.push({ ...row });
       }
     }
+    this.notify();
   }
 
   /** Remove the row at `index` in place; returns its id (or `undefined` when the slot was empty). */
   public removeAt(index: number): Maybe<string> {
     const id = this.rows.at(index)?.id;
     this.rows.splice(index, 1);
+    this.notify();
     return id;
   }
 
@@ -118,6 +140,7 @@ export class ReactiveRows {
     const cur = this.rows.find((row: Readonly<Row>) => row.id === id);
     if (cur) {
       Object.assign(cur, patch);
+      this.notify();
     }
   }
 
