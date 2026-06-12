@@ -1,7 +1,9 @@
+import { NONE, defined } from "./guard.ts";
 import { SUFFIX, loadVows, validateReferences } from "./load.ts";
 import { existsSync, rmSync } from "node:fs";
 import type { ReadonlyVow } from "./readonly.ts";
 import { Vow } from "./vow.ts";
+import { isEmitEntity } from "./fulfillment.ts";
 import path from "node:path";
 import { writeVow } from "./serialize.ts";
 
@@ -19,6 +21,16 @@ type Field = ReadonlyVow["fields"][number];
 type ViewNode = NonNullable<ReadonlyVow["view"]>[number];
 /** A draft vow — a readonly structure passed to `Vow.parse` (which validates and freezes the shape). */
 type Draft = Omit<ReadonlyVow, "children" | "id">;
+/** A vow's nav entry — label · icon · order · group (the surface `setNav` patches). */
+type Nav = NonNullable<ReadonlyVow["nav"]>;
+/** A nav entry that may be absent — the stored shape (`ReadonlyVow["nav"]`). */
+type MaybeNav = ReadonlyVow["nav"];
+/**
+ * A nav patch: each key may carry a new value or `null` (the unset sentinel — drop the key), the whole
+ * patch may be `null` (clear the entry), and an absent patch is a no-op. The complete inverse of every
+ * nav field the LLM can set.
+ */
+type NavPatch = null | undefined | { readonly [Key in keyof Nav]?: Nav[Key] | null };
 
 /** A stable id from a slug — `vow_<slug without hyphens>` (the `^[a-z]+_[a-z0-9]+$` shape). */
 function idFor(slug: string): string {
@@ -59,13 +71,33 @@ function create(appDir: string, draft: Draft): Vow {
   return vow;
 }
 
+/** Assert no two fields share a name — a duplicate is a silent second column/key in the entity. */
+function assertFieldsUnique(slug: string, fields: readonly Field[]): void {
+  const seen = new Set<string>();
+  for (const field of fields) {
+    if (seen.has(field.name)) {
+      throw new Error(`add_field: "${slug}" already has a field "${field.name}"`);
+    }
+    seen.add(field.name);
+  }
+}
+
+/** Assert a slug resolves to an `emit entity` — fields/forms over a view/form slug are inert. */
+function assertEmitEntity(action: string, vow: ReadonlyVow): void {
+  if (!isEmitEntity(vow)) {
+    throw new Error(`${action}: "${vow.slug}" is not an entity`);
+  }
+}
+
 /** Add a new `emit entity` vow (a data model). */
 export function addEntity(
   appDir: string,
   opts: { readonly slug: string; readonly intent: string; readonly fields?: readonly Field[] },
 ): Vow {
+  const fields = opts.fields ?? [];
+  assertFieldsUnique(opts.slug, fields);
   return create(appDir, {
-    fields: opts.fields ?? [],
+    fields,
     fulfills: { as: "entity", kind: "emit" },
     intent: opts.intent,
     proof: [],
@@ -100,6 +132,18 @@ export function addView(
   });
 }
 
+/**
+ * Assert a form's `of:` target resolves to a known `emit entity` — synchronously, at the call, mirroring
+ * `validateReferences` for reference fields (else a typo'd target defers a false-success to a build error).
+ */
+function assertFormTarget(appDir: string, slug: string, of: string): void {
+  const entities = loadVows(appDir).filter((vow: ReadonlyVow) => isEmitEntity(vow));
+  if (!entities.some((vow: ReadonlyVow) => vow.slug === of)) {
+    const known = entities.map((vow: ReadonlyVow) => vow.slug).join(", ");
+    throw new Error(`form "${slug}" of: "${of}" is not a known entity — known: ${known}`);
+  }
+}
+
 /** Add a new `emit form` vow (a bound, validated `## form` over an entity). */
 export function addForm(
   appDir: string,
@@ -111,6 +155,7 @@ export function addForm(
     readonly nav?: ReadonlyVow["nav"];
   },
 ): Vow {
+  assertFormTarget(appDir, opts.slug, opts.of);
   return create(appDir, {
     fields: [],
     form: { of: opts.of, submit: opts.submit },
@@ -122,9 +167,14 @@ export function addForm(
   });
 }
 
-/** Add a field to an entity. */
+/** Add a field to an entity — rejects a non-entity target and a duplicate field name. */
 export function addField(appDir: string, slug: string, field: Field): Vow {
-  return replace(appDir, slug, (vow) => ({ ...vow, fields: [...vow.fields, field] }));
+  return replace(appDir, slug, (vow) => {
+    assertEmitEntity("add_field", vow);
+    const fields = [...vow.fields, field];
+    assertFieldsUnique(slug, fields);
+    return { ...vow, fields };
+  });
 }
 
 /** Remove a field from an entity by name. */
@@ -140,9 +190,53 @@ export function setIntent(appDir: string, slug: string, intent: string): Vow {
   return replace(appDir, slug, (vow) => ({ ...vow, intent }));
 }
 
-/** Patch a vow's nav entry (label · icon · order · group) — omitted keys keep their existing value. */
-export function setNav(appDir: string, slug: string, nav: ReadonlyVow["nav"]): Vow {
-  return replace(appDir, slug, (vow) => ({ ...vow, nav: { ...vow.nav, ...nav } }));
+/**
+ * Resolve one nav key against a patch: a `null` patch value clears it (absence), a present value
+ * overwrites, and an omitted key keeps its current value — the per-key shallow-merge with unset.
+ */
+function pickNav<Value>(
+  current: Value | undefined,
+  patch: Value | null | undefined,
+): Value | undefined {
+  if (patch === null) {
+    return NONE;
+  }
+  if (defined(patch)) {
+    return patch;
+  }
+  return current;
+}
+
+/**
+ * Merge a nav patch over the existing entry: a `null` patch clears the whole entry; a `null` value per
+ * key drops that key; any other value overwrites. Omitted keys keep their existing value (a shallow merge).
+ * An entry with no surviving keys folds back to absence (no `nav:` line is written).
+ */
+function mergeNav(current: MaybeNav, patch: NavPatch): MaybeNav {
+  if (patch === null) {
+    return NONE;
+  }
+  if (!defined(patch)) {
+    return current;
+  }
+  const merged: Nav = {
+    group: pickNav(current?.group, patch.group),
+    icon: pickNav(current?.icon, patch.icon),
+    label: pickNav(current?.label, patch.label),
+    order: pickNav(current?.order, patch.order),
+  };
+  if (Object.values(merged).every((value) => !defined(value))) {
+    return NONE;
+  }
+  return merged;
+}
+
+/**
+ * Patch a vow's nav entry (label · icon · order · group). Omitted keys keep their existing value; a `null`
+ * per key unsets that key; a `null` patch clears the whole entry — every field the LLM sets, it can unset.
+ */
+export function setNav(appDir: string, slug: string, nav: NavPatch): Vow {
+  return replace(appDir, slug, (vow) => ({ ...vow, nav: mergeNav(vow.nav, nav) }));
 }
 
 /** Delete a vow — remove its `.md` (and any child folder). The tree must stay reference-valid. */
