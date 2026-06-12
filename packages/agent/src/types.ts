@@ -100,7 +100,7 @@ export type CiState = "fail" | "pass" | "pending";
 
 /** A step in one issue's run — emitted live so a fleet's orchestration is visible (the terminal now, the
  *  studio later) instead of a silent wait then a final dump. */
-export type Phase = "develop" | "done" | "format" | "gates" | "publish" | "worktree";
+export type Phase = "develop" | "done" | "fix" | "format" | "gates" | "publish" | "worktree";
 
 /** Everything one full loop over an issue needs — bundled so `runTask` takes a single argument. */
 export interface TaskRequest {
