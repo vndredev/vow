@@ -1,6 +1,9 @@
-import type { ReadonlyField, ReadonlyVow } from "@vow/core";
+// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
+import { type ReadonlyField, type ReadonlyVow, isRecord } from "@vow/core";
 import { bootstrap, insert, list, migrate, openDb, remove, update } from "../src/db.ts";
 import { expect, test } from "vite-plus/test";
+import path from "node:path";
+import { readFileSync } from "node:fs";
 
 // A live SQLite handle, derived from `openDb` so no separate type import is needed.
 type Db = ReturnType<typeof openDb>;
@@ -93,4 +96,45 @@ test("migrate is additive — a new field adds its column and keeps existing row
   expect(columnNames(db, "task")).toContain("note");
   // Data is preserved across the additive migration.
   expect(list(db, grown)).toHaveLength(1);
+});
+
+// The repo root, three levels up from this test (packages/db/tests).
+const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
+
+// The major version segment in a semver-ish string ("24.13.2" -> "24").
+const MAJOR = /^(\d+)\./u;
+
+// The first group in a single-group regex match.
+const FIRST_GROUP = 1;
+
+// The `node-version: <n>` line CI runs on, read off the workflow.
+const CI_NODE = /node-version:\s*(\d+)/u;
+
+// Read the leading major version number out of a semver-ish string.
+function major(version: string): string {
+  return MAJOR.exec(version)?.[FIRST_GROUP] ?? "";
+}
+
+// Read @vow/db's own resolved `@types/node` version, or empty when the field is absent.
+function resolvedTypesNodeVersion(): string {
+  const pkg: unknown = JSON.parse(
+    readFileSync(
+      path.join(REPO_ROOT, "packages", "db", "node_modules", "@types", "node", "package.json"),
+      "utf8",
+    ),
+  );
+  if (isRecord(pkg) && typeof pkg["version"] === "string") {
+    return pkg["version"];
+  }
+  return "";
+}
+
+// `@types/node` types Node APIs by major, so a copy ahead of the CI runtime can compile green yet
+// Break at runtime: the experimental node:sqlite surface db.ts leans on shifts across Node majors.
+// Guarding the @types/node resolved for @vow/db keeps it aligned to the Node version CI exercises.
+test("the resolved @types/node major matches the Node version CI runs on", () => {
+  const ciYml = readFileSync(path.join(REPO_ROOT, ".github", "workflows", "ci.yml"), "utf8");
+  const ciMajor = CI_NODE.exec(ciYml)?.[FIRST_GROUP] ?? "";
+  expect(ciMajor).not.toBe("");
+  expect(major(resolvedTypesNodeVersion())).toBe(ciMajor);
 });
