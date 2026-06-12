@@ -5,19 +5,25 @@
  * stage is tested without running the gates or touching the network.
  */
 
-import type { GateResult, VerifyResult } from "./types.ts";
+import type { GateResult, RunResult, VerifyResult } from "./types.ts";
 
 /** Re-run each verification gate in `cwd`; the verdict is the conjunction. The exec is injected, so this
- *  is tested without running the gates. */
+ *  is tested without running the gates. A failed gate keeps its captured output, so the reason reaches the
+ *  PR body — a self-healing loop can't act on a bare ✗. */
 export async function verify(
   gates: readonly string[],
   cwd: string,
-  run: (command: string, cwd: string) => Promise<number>,
+  run: (command: string, cwd: string) => Promise<RunResult>,
 ): Promise<VerifyResult> {
   const results = await Promise.all(
-    gates.map(
-      async (command): Promise<GateResult> => ({ command, ok: (await run(command, cwd)) === 0 }),
-    ),
+    gates.map(async (command): Promise<GateResult> => {
+      const result = await run(command, cwd);
+      const ok = result.code === 0;
+      if (ok) {
+        return { command, ok };
+      }
+      return { command, ok, output: result.output };
+    }),
   );
   return { ok: results.every((result) => result.ok), results };
 }
@@ -45,11 +51,20 @@ export function prCreateArgs(title: string, body: string, verified: boolean): re
   return [...base, "--draft"];
 }
 
+/** A gate's line in the PR body — the mark + command, and (for a failed gate with captured output) the
+ *  reason in a fenced block, so a reviewer sees WHY it failed without re-running it locally. */
+function gateLine(result: GateResult): string {
+  const head = `- ${mark(result.ok)} \`${result.command}\``;
+  const output = result.output?.trim() ?? "";
+  if (output.length > 0) {
+    return [head, "", "  ```", output, "  ```"].join("\n");
+  }
+  return head;
+}
+
 /** The PR body: the gate verdict, then the plan the run was developed against. */
 export function prBody(plan: string, verdict: VerifyResult): string {
-  const gates = verdict.results
-    .map((result) => `- ${mark(result.ok)} \`${result.command}\``)
-    .join("\n");
+  const gates = verdict.results.map((result) => gateLine(result)).join("\n");
   return [`## Verification ${mark(verdict.ok)}`, gates, "", "## Plan", plan].join("\n");
 }
 

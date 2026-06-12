@@ -38,7 +38,7 @@ async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutco
   request.onPhase?.("gates");
   const verdict = await verify(request.context.verify, task.cwd, async (command, dir) => {
     const result = await request.ops.run(gateCommand(command), dir);
-    return result.code;
+    return result;
   });
   if (run.ok) {
     request.onPhase?.("publish");
@@ -71,8 +71,10 @@ export async function runTask(request: TaskRequest): Promise<TaskOutcome> {
     title: issue.title,
   };
   request.onPhase?.("worktree");
-  await ops.worktreeAdd(worktree, branch);
+  // The add is INSIDE the try: a throw AFTER the dir materializes (e.g. a flaky `vp install`) still runs the
+  // Teardown. Otherwise the stranded path fails the next attempt at this issue.
   try {
+    await ops.worktreeAdd(worktree, branch);
     return await develop(request, task);
   } finally {
     await ops.worktreeRemove(worktree);

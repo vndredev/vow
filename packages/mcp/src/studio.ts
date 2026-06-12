@@ -27,6 +27,7 @@ import {
   setView,
 } from "@vow/core/node";
 import {
+  assertColumnFree,
   bootstrap,
   get,
   insert,
@@ -99,8 +100,11 @@ type StructureSeam = Pick<
 >;
 
 /** The seams the structure mutations bind to: a schema-resync thunk + a column-rename (run after a
- *  field rename, so the stored data follows the new column name before the schema is re-derived). */
+ *  field rename, so the stored data follows the new column name before the schema is re-derived) + a
+ *  pre-write collision guard (run BEFORE the vow `.md` is rewritten, so a rename onto an orphaned column
+ *  throws an actionable error while the vow and DB are still in step). */
 interface StructureDeps {
+  readonly guardRename: (entity: string, from: string, to: string) => void;
   readonly renameField: (entity: string, from: string, to: string) => void;
   readonly syncDb: () => void;
 }
@@ -160,10 +164,14 @@ function createSeam(appDir: string, syncDb: () => void): CreateSeam {
 
 /** Build the edit methods over the app dir + the schema-resync + column-rename seams. */
 function editSeam(appDir: string, deps: StructureDeps): EditSeam {
-  const { renameField, syncDb } = deps;
+  const { guardRename, renameField, syncDb } = deps;
   return {
     editField: (entity, name, patch) => {
-      // Validate + rewrite the vow first (it throws on a bad patch, leaving the DB untouched).
+      // Guard the rename collision BEFORE the vow `.md` is rewritten — a rename onto an orphaned column
+      // (one a prior `remove_field` left behind) must throw here, not as a raw SQLite error after the
+      // `.md` already moved, so the vow and DB never diverge.
+      guardRename(entity, name, patch.name ?? name);
+      // Validate + rewrite the vow (it throws on a bad patch, leaving the DB untouched).
       setField(appDir, entity, name, patch);
       // Carry the column data across a rename — `migrate` is additive and would orphan the old column.
       renameField(entity, name, patch.name ?? name);
@@ -266,6 +274,21 @@ function rejectBadOption(entity: ReadonlyVow, field: string, value: unknown): vo
   }
 }
 
+/** Throw when a record carries an explicit, already-taken `id` — so a re-run (an LLM re-issuing a call
+ *  it thought failed) gets an actionable recovery path, never SQLite's opaque "UNIQUE constraint failed".
+ *  An absent or empty `id` (the mint-a-fresh-one path) passes through untouched. */
+function rejectDuplicateId(db: Db, entity: ReadonlyVow, record: Readonly<Row>): void {
+  const { id } = record;
+  if (typeof id !== "string" || id === "") {
+    return;
+  }
+  if (defined(get(db, entity, id))) {
+    throw new Error(
+      `a ${entity.slug} with id "${id}" already exists — use set_record_field to update it, or omit id to mint a new one`,
+    );
+  }
+}
+
 /** Throw when a `required` field is absent (or set to an empty string) on a full record — so the MCP
  *  author path never silently defaults a missing required value, as the running app's zod factory
  *  rejects it. Mirrors `create<Name>`'s required check; a one-field patch never runs this. */
@@ -326,6 +349,7 @@ function dataSeam(appDir: string, db: Db, deps: DataDeps): DataSeam {
   return {
     addRecord: (entity, record) => {
       const target = entityOf(entity);
+      rejectDuplicateId(db, target, record);
       rejectMissingRequired(target, record);
       return insert(db, target, resolveRecord(resolveRef, target, record));
     },
@@ -365,11 +389,15 @@ export function openStudio(appDir: string): Studio {
   const entities = (): Vow[] =>
     loadVows(appDir).filter((vow: ReadonlyVow) => isEmit(vow, "entity"));
   const entityOf = (slug: string): Vow => {
-    const found = entities().find((vow: ReadonlyVow) => vow.slug === slug);
+    const live = entities();
+    const found = live.find((vow: ReadonlyVow) => vow.slug === slug);
     if (defined(found)) {
       return found;
     }
-    throw new Error(`no entity "${slug}"`);
+    // List the known entities (the established `… — known: …` convention) — this is the hottest MCP error
+    // Path (it backs every data + field tool), so a slug typo must offer a recovery, never dead-end.
+    const known = live.map((vow: ReadonlyVow) => vow.slug).join(", ");
+    throw new Error(`no entity "${slug}" — known: ${known}`);
   };
   const resolveRef = (entity: ReadonlyVow, field: string, value: unknown): unknown => {
     const ref = referenceRef(entity, field);
@@ -387,12 +415,16 @@ export function openStudio(appDir: string): Studio {
   const renameField = (entity: string, from: string, to: string): void => {
     renameColumn(db, entityOf(entity).slug, from, to);
   };
+  // Reject a rename onto an orphaned column BEFORE the vow `.md` is rewritten (keeps vow + DB in step).
+  const guardRename = (entity: string, from: string, to: string): void => {
+    assertColumnFree(db, entityOf(entity).slug, from, to);
+  };
   syncDb();
   return {
     appDir,
     syncDb,
     ...dataSeam(appDir, db, { entityOf, resolveRef }),
-    ...structureSeam(appDir, { renameField, syncDb }),
+    ...structureSeam(appDir, { guardRename, renameField, syncDb }),
   };
 }
 
