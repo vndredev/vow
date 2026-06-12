@@ -8,7 +8,8 @@
   },
   "type": "module",
   "exports": {
-    ".": "./src/cli.ts"
+    ".": "./src/cli.ts",
+    "./agent-prompts": "./src/agent-prompts.ts"
   },
   "scripts": {
     "test": "vp test",

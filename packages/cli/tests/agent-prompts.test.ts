@@ -6,7 +6,7 @@ import {
   renderAuditPrompt,
 } from "@vow/agent";
 import { expect, test } from "vite-plus/test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { promptPath, readPrompt } from "../src/agent-prompts.ts";
 import path from "node:path";
 import { tmpdir } from "node:os";
@@ -77,4 +77,20 @@ test("renderAuditPrompt fills {dimension} into the scaffolded (or default) audit
 
 test("promptPath resolves the role under the repo root", () => {
   expect(promptPath("/repo", "plan")).toBe(path.join("/repo", ".claude", "prompts", "plan.md"));
+});
+
+test("the reader is exported as ONE clean entry — the @vow/cli/agent-prompts subpath names its source", () => {
+  // Host-orchestration scripts + the native agent import the SAME reader via a declared subpath export.
+  // The package manifest must expose the reader's source at `./agent-prompts` (never a private copy).
+  const manifest = readFileSync(new URL("../package.json", import.meta.url), "utf8");
+  expect(manifest).toContain(`"./agent-prompts": "./src/agent-prompts.ts"`);
+  // And the reader it points to carries the built-in-default fallback (the seam-can't-lie check).
+  const cwd = tempRepo();
+  try {
+    for (const role of PROMPT_ROLES) {
+      expect(readPrompt(cwd, role)).toBe(defaultPrompt(role));
+    }
+  } finally {
+    rmSync(cwd, { force: true, recursive: true });
+  }
 });

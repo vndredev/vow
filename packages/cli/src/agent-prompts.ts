@@ -5,10 +5,12 @@ import type { PromptRole } from "@vow/agent";
 import path from "node:path";
 
 /**
- * The prompt READER — the file glue that lets a user-edited prompt drive the agent. `@vow/agent` owns the
- * canonical defaults + the paths (pure); this resolves the scaffolded file under the repo root and reads it,
- * falling back to the built-in default when it is absent. So editing `.claude/prompts/audit.md` changes the
- * agent's behaviour without touching vow's source, while a fresh repo (no scaffold) still runs the default.
+ * The prompt READER — the ONE file glue that lets a user-edited prompt drive every surface. `@vow/agent` owns
+ * the canonical defaults + the paths (pure); this resolves the scaffolded file under the repo root and reads
+ * it, falling back to the built-in default when it is absent. So editing `.claude/prompts/audit.md` changes
+ * the agent's behaviour without touching vow's source, while a fresh repo (no scaffold) still runs the
+ * default. Exported via the `@vow/cli/agent-prompts` subpath so EVERY caller — the native agent (plan/audit),
+ * and the host-orchestration scripts — imports the same reader with the same fallback, never a private copy.
  * The seam can't lie: the same `defaultPrompt(role)` is both the fallback HERE and exactly what `init` writes.
  */
 

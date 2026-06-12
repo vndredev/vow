@@ -7,6 +7,7 @@ import {
 import { expect, test } from "vite-plus/test";
 import { agentHelp } from "../src/agent.ts";
 import { fileURLToPath } from "node:url";
+import { promptRelPath } from "@vow/agent";
 import { readFileSync } from "node:fs";
 
 // The three skills `vow agent init` scaffolds — the user-facing wording must name every one (1:1).
@@ -24,10 +25,12 @@ test("the AGENTS.md contract states the red line + the gates", () => {
   expect(md).toContain("provider-neutrality");
 });
 
-test("the vow-develop skill carries valid frontmatter + the develop steps", () => {
+test("the vow-develop skill carries valid frontmatter + points at the scaffolded prompt", () => {
   const skill = vowDevelopSkill();
   expect(skill).toContain("name: vow-develop");
-  expect(skill).toContain("gh pr merge");
+  // A POINTER, not a copy: the operative instruction is the single source of truth at this path.
+  expect(skill).toContain(promptRelPath("develop"));
+  expect(skill).toContain(".claude/prompts/develop.md");
 });
 
 test("the vow-orchestrate skill points at the host workflow (live), not a passive bash", () => {
@@ -45,6 +48,13 @@ test("the vow-audit skill files findings into vow issues, via the host workflow"
   expect(skill).toContain("vow agent audit --prompt");
   expect(skill).toContain("vow agent audit --file");
   expect(skill).toContain("/workflows");
+});
+
+test("the vow-audit skill points at the scaffolded prompt as the operative instruction", () => {
+  const skill = vowAuditSkill();
+  // The per-dimension instruction is the single source of truth, not restated in the skill.
+  expect(skill).toContain(promptRelPath("audit"));
+  expect(skill).toContain(".claude/prompts/audit.md");
 });
 
 test("the CLI help string names every skill init scaffolds (no undercount)", () => {
