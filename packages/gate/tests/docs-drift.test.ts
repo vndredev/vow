@@ -61,7 +61,7 @@ function sourceFilesUnder(dir: string): string[] {
 test("every vow.md example in the docs/README parses against the real core (no drift)", () => {
   const files = [
     path.join(root, "README.md"),
-    path.join(root, "CLAUDE.md"),
+    path.join(root, "AGENTS.md"),
     ...mdFilesUnder(path.join(root, "docs")),
   ];
   const examples = files.flatMap((file) =>
@@ -174,7 +174,7 @@ test("the codebase and docs are English-only (no German umlauts or words)", () =
     ...sourceFilesUnder(path.join(root, "packages")),
     ...sourceFilesUnder(path.join(root, "apps")),
     ...sourceFilesUnder(path.join(root, "docs/guide")),
-    path.join(root, "CLAUDE.md"),
+    path.join(root, "AGENTS.md"),
     path.join(root, "README.md"),
   ];
   const offenders = scanned
