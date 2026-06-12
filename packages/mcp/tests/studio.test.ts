@@ -1,7 +1,9 @@
+// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
+import { NONE, type Vow } from "@vow/core";
 import { expect, test } from "vite-plus/test";
 import { idByLabel, labelField, openStudio, referenceRef } from "../src/studio.ts";
 import { mkdtempSync, rmSync } from "node:fs";
-import type { Vow } from "@vow/core";
+import type { FieldPatch } from "../src/types.ts";
 import path from "node:path";
 import { tmpdir } from "node:os";
 
@@ -128,6 +130,63 @@ test("addRecord still accepts an explicit id plus declared fields", () => {
     const stored = studio.addRecord("task", { id: "t1", title: "Ship it" });
     expect(stored["id"]).toBe("t1");
     expect(stored["title"]).toBe("Ship it");
+  });
+});
+
+test("addRecord rejects an explicit id that is already taken, with an actionable message", () => {
+  withStudio((studio) => {
+    studio.addRecord("task", { id: "t1", title: "Ship it" });
+    // A re-run with the same id (the LLM re-issuing a call it thought failed) must throw an actionable
+    // Recovery, not SQLite's opaque "UNIQUE constraint failed".
+    expect(() => studio.addRecord("task", { id: "t1", title: "Again" })).toThrow(
+      /a task with id "t1" already exists — use set_record_field to update it, or omit id/u,
+    );
+  });
+});
+
+test("addRecord still mints a fresh id when none is supplied (the duplicate guard is id-only)", () => {
+  withStudio((studio) => {
+    const first = studio.addRecord("task", { title: "Ship it" });
+    const second = studio.addRecord("task", { title: "Ship it" });
+    expect(first["id"]).not.toBe(second["id"]);
+  });
+});
+
+test("entityOf's error lists the known entity slugs (the hottest MCP path never dead-ends)", () => {
+  withStudio((studio) => {
+    // A slug typo hits every data tool — the message must list the live entities to recover from.
+    expect(() => studio.listRecords("tsk")).toThrow(/no entity "tsk" — known: task, user/u);
+  });
+});
+
+/** A `set_field` patch that only renames — the other keys are absent (an unchanged field aspect). */
+function renameTo(name: string): FieldPatch {
+  return { name, options: NONE, ref: NONE, required: NONE, type: NONE };
+}
+
+test("editField rename onto an orphaned column throws BEFORE the vow .md is rewritten", () => {
+  withStudio((studio) => {
+    // Remove_field is additive at the DB layer — dropping `status` from the vow orphans its column.
+    studio.dropField("task", "status");
+    // Renaming `title` onto the orphaned `status` column must throw an actionable error, and the vow
+    // Must stay untouched (no divergence: the field is still `title`, never silently rewritten).
+    expect(() => {
+      studio.editField("task", "title", renameTo("status"));
+    }).toThrow(
+      /cannot rename field to "status": an orphaned column "status" still exists — remove it first/u,
+    );
+    const task2 = studio.getVow("task");
+    expect(task2?.fields.map((field) => field.name)).toContain("title");
+    expect(task2?.fields.some((field) => field.name === "status")).toBe(false);
+  });
+});
+
+test("editField rename to a free column still carries the stored data across", () => {
+  withStudio((studio) => {
+    const stored = studio.addRecord("task", { title: "Carry me" });
+    studio.editField("task", "title", renameTo("label"));
+    const got = studio.getRecord("task", String(stored["id"]));
+    expect(got?.["label"]).toBe("Carry me");
   });
 });
 
