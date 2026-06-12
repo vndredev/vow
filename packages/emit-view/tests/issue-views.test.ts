@@ -93,7 +93,7 @@ test("each issue SFC shows the layout only when the plan has items (no bare head
 
 test("each issue SFC carries the loading / error / empty status messages, mutually exclusive", () => {
   for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
-    expect(sfc).toContain('v-if="state.loading && items.length === 0"');
+    expect(sfc).toContain('v-if="state.loading && !state.error && items.length === 0"');
     expect(sfc).toContain("Loading the plan");
     expect(sfc).toContain('v-if="state.error && items.length === 0"');
     expect(sfc).toContain("Couldn't reach GitHub");
