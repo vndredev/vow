@@ -84,3 +84,55 @@ export function prCiState(cwd: string, pr: number): PrCi {
     return "pending";
   }
 }
+
+/** The `headRefOid` from a `gh pr view` payload, or `""` when absent / malformed. */
+function headOf(json: string): string {
+  try {
+    const data: unknown = JSON.parse(json);
+    if (isObject(data) && typeof data["headRefOid"] === "string") {
+      return data["headRefOid"];
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+/** A SHA-pinned verdict: the rollup must belong to `expectedHead`. After an `update-branch` rebase, gh can
+    still report the PREVIOUS (green) run until the fresh run registers; treating any non-matching head as
+    `pending` makes the merge loop WAIT for the rebased CI rather than merge a stale-green branch. Pure. */
+export function ciStateForHead(json: string, expectedHead: string): PrCi {
+  if (expectedHead === "" || headOf(json) !== expectedHead) {
+    return "pending";
+  }
+  return ciStateFrom(json);
+}
+
+/** The CI verdict for PR `pr` pinned to `expectedHead` via `gh pr view --json headRefOid,statusCheckRollup`;
+    `pending` when gh can't be read or the reported head doesn't match (the rebased run hasn't registered). */
+export function prCiStateForHead(cwd: string, pr: number, expectedHead: string): PrCi {
+  try {
+    const out = execFileSync(
+      "gh",
+      ["pr", "view", String(pr), "--json", "headRefOid,statusCheckRollup"],
+      { cwd, encoding: "utf8" },
+    );
+    return ciStateForHead(out, expectedHead);
+  } catch {
+    return "pending";
+  }
+}
+
+/** PR `pr`'s current head commit SHA via `gh pr view --json headRefOid`, or `""` when gh can't be read — the
+    pin the settle loop captures right after `update-branch` so it only merges on a run for that exact head. */
+export function prHeadOid(cwd: string, pr: number): string {
+  try {
+    const out = execFileSync("gh", ["pr", "view", String(pr), "--json", "headRefOid"], {
+      cwd,
+      encoding: "utf8",
+    });
+    return headOf(out);
+  } catch {
+    return "";
+  }
+}

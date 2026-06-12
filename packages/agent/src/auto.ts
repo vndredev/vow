@@ -19,18 +19,40 @@ export interface AutoState {
  *  `exhausted` = the safety round cap was hit. */
 export type AutoOutcome = "audit" | "develop" | "done" | "exhausted";
 
-/** The pure auto-loop decision: develop while there is work, stop at the round cap, else (empty backlog)
- *  audit for new findings — and only when a full audit pass came back clean, power down. This is the
- *  self-healing spiral's stop condition: develop -> audit -> develop -> ... -> done (findings-free). */
+/** The pure auto-loop decision: the round cap is an UNCONDITIONAL ceiling (checked first) so a permanently
+ *  un-mergeable issue — whose drafted PR keeps the backlog non-empty forever — can never spin the loop past
+ *  the cap. Below the cap: develop while there is work, else (empty backlog) audit for new findings, and only
+ *  when a full audit pass came back clean, power down. The spiral's stop condition: develop -> audit ->
+ *  develop -> ... -> done (findings-free), or -> exhausted once the round cap is reached. */
 export function autoDecision(state: Readonly<AutoState>): AutoOutcome {
-  if (state.openIssues > 0) {
-    return "develop";
-  }
   if (state.round >= state.maxRounds) {
     return "exhausted";
+  }
+  if (state.openIssues > 0) {
+    return "develop";
   }
   if (state.auditedClean) {
     return "done";
   }
   return "audit";
+}
+
+/** The default per-issue develop-attempt cap — an issue that fails to produce a mergeable PR this many times
+ *  is dropped from the backlog (surfaced for a human) so the rest of the loop keeps progressing. */
+export const DEFAULT_ATTEMPT_CAP = 3;
+
+/** One issue's develop-attempt tally so far — `[issue, attempts]`. A readonly-array pair (not a `Map`), since
+ *  the strict wall does not treat `ReadonlyMap` as a readonly parameter type. */
+export type AttemptCount = readonly [number, number];
+
+/** The backlog issues still WITHIN their per-issue attempt budget: an issue that has already been attempted
+ *  `cap` (or more) times without resolving is excluded, so a single permanently-failing issue can't stall the
+ *  loop while healthy issues keep going. Pure (the CLI tracks the attempt counts across rounds). */
+export function backlogWithinCap(
+  backlog: readonly number[],
+  attempts: readonly AttemptCount[],
+  cap: number,
+): number[] {
+  const counts = new Map(attempts);
+  return backlog.filter((issue) => (counts.get(issue) ?? 0) < cap);
 }
