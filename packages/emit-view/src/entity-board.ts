@@ -1,8 +1,9 @@
 import type { Component, ReadonlyField, ReadonlyVow, UiNode } from "./types.ts";
 import { assertEmitEntity, selectField } from "./entity-guard.ts";
-import { pascalCase, renderVueSfc } from "@vow/component";
+import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
+import { recordCard, titleField } from "./record-card.ts";
 import { boardComponentName } from "./naming.ts";
-import { recordCard } from "./record-card.ts";
+import { defined } from "@vow/core";
 import { scriptJson } from "./helpers.ts";
 import { sliceComputed } from "./slice.ts";
 
@@ -79,6 +80,20 @@ function boardColumnHead(): UiNode {
 }
 
 /**
+ * The card's accessible name — its title field (so every card in a column is distinguishable), then the
+ * humanized grouped field and its value. Falls back to the humanized grouped field alone when the entity
+ * has no resolvable title field.
+ */
+function cardAriaLabel(by: string, title: ReadonlyField | undefined): string {
+  const column = `${humanizeFieldName(by)}: \${item.${by}}`;
+  const move = "Use the left and right arrows to move.";
+  if (!defined(title)) {
+    return `\`${column}. ${move}\``;
+  }
+  return `\`\${item.${title.name}}. ${column}. ${move}\``;
+}
+
+/**
  * A card per record in a column (the grouped field is omitted from its body). Draggable for pointers,
  * and a keyboard-operable control too: focusable (`tabindex`) with an `aria-label`, the left/right arrows
  * move it to the adjacent column — the pointer-free path to the board's only mutation (WCAG 2.1.1).
@@ -91,7 +106,7 @@ function boardCard(entity: ReadonlyVow, by: string): UiNode {
       { kind: "static", name: "tabindex", value: "0" },
       { kind: "static", name: "role", value: "group" },
       {
-        expr: `\`${by}: \${item.${by}}. Use the left and right arrows to move.\``,
+        expr: cardAriaLabel(by, titleField(entity)),
         kind: "bound",
         name: "aria-label",
       },
