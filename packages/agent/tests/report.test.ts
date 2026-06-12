@@ -39,3 +39,20 @@ test("runReport reports a failed provider run as no-PR, even when the (meaningle
   expect(report).toContain("nothing developed, no PR");
   expect(report).not.toContain("would merge");
 });
+
+test("runReport appends a failed provider run's output (the reason) under a reason: heading", () => {
+  const report = runReport(ISSUE, {
+    run: { ok: false, output: "  Error: gh: not authenticated\n" },
+    verdict: { ok: true, results: [{ command: "vp check", ok: true }] },
+  });
+  expect(report).toContain("reason:");
+  expect(report).toContain("  Error: gh: not authenticated");
+});
+
+test("runReport adds no reason for a successful run", () => {
+  const report = runReport(ISSUE, {
+    run: { ok: true, output: "all good" },
+    verdict: { ok: true, results: [{ command: "vp check", ok: true }] },
+  });
+  expect(report).not.toContain("reason:");
+});
