@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { AddIssue, projectId } from "../src/register-github.ts";
+import { AddIssue, openedReport, projectFailedReport, projectId } from "../src/register-github.ts";
 import { NONE, defined } from "@vow/core";
 import { afterEach, beforeEach, expect, test } from "vite-plus/test";
 import process from "node:process";
@@ -62,6 +62,32 @@ test("projectId falls back to the environment when no input is given", () => {
 
 test("projectId treats an empty input and an empty environment as absent — never a stray id", () => {
   process.env[ENV] = "";
-  expect(projectId("")).toBe("");
-  expect(projectId(NONE)).toBe("");
+  expect(defined(projectId(""))).toBe(false);
+  expect(defined(projectId(NONE))).toBe(false);
+});
+
+test("the partial-success report always carries the issue URL — a Project-add failure never loses it", () => {
+  const url = "https://github.com/vndredev/vow/issues/9";
+  const report = projectFailedReport(url, new Error("bad VOW_PROJECT_ID"));
+  expect(report).toContain(url);
+  expect(report).toContain("bad VOW_PROJECT_ID");
+});
+
+test("the partial-success report instructs the LLM not to re-create — no duplicate over a half write", () => {
+  const report = projectFailedReport("https://example/issues/1", new Error("network"));
+  expect(report).toContain("do NOT re-create it");
+  expect(report).toContain("retry sync_project");
+});
+
+test("the partial-success report stringifies a non-Error throw — the URL still survives", () => {
+  const url = "https://example/issues/2";
+  const report = projectFailedReport(url, "raw string failure");
+  expect(report).toContain(url);
+  expect(report).toContain("raw string failure");
+});
+
+test("the success report names the URL and the Project — both phases of the write done", () => {
+  const url = "https://example/issues/3";
+  expect(openedReport(url)).toContain(url);
+  expect(openedReport(url)).toContain("Project");
 });
