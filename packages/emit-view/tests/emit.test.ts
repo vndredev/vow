@@ -277,8 +277,8 @@ test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not dra
     'tabindex="0"',
     'role="group"',
     `:aria-label="\`status: ${interp("item.status")}. Use the left and right arrows to move.\`"`,
-    '@keydown.left="move(item, -1)"',
-    '@keydown.right="move(item, 1)"',
+    '@keydown.left="moveCard(item, -1)"',
+    '@keydown.right="moveCard(item, 1)"',
     "function move(card: Ticket, delta: number): void {",
     "const option = options[options.indexOf(card.status as string) + delta];",
     "if (option === undefined) return;",
@@ -287,6 +287,31 @@ test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not dra
   ]);
   // The move is announced to assistive tech through a polite live region.
   expectContains(sfc, ['role="status"', 'aria-live="polite"', "{{ announce }}"]);
+});
+
+test("emitEntityBoard restores focus after a keyboard move so it is not single-use (WCAG 2.4.3)", () => {
+  const ticket: VowNode = {
+    ...entity,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "status", options: ["todo", "done"], required: false, type: "select" },
+    ],
+    id: "vow_ticket",
+    slug: "ticket",
+  };
+  const sfc = emitEntityBoard(ticket, "status");
+  // The move re-renders the card into another column's v-for (unmounting the focused element), so the
+  // Handler awaits the next tick and refocuses the card by its stable id; without it the move dropped
+  // Focus to <body> and was usable exactly once.
+  expectContains(sfc, [
+    ':data-card-id="item.id"',
+    "async function moveCard(card: Ticket, delta: number): Promise<void> {",
+    "move(card, delta);",
+    "await nextTick();",
+    `document.querySelector<HTMLElement>(\`[data-card-id="${interp("card.id")}"]\`)?.focus();`,
+  ]);
+  // `nextTick` is imported (the DOM must settle before the re-mounted card exists to focus).
+  expect(sfc).toContain('import { computed, nextTick, ref } from "vue";');
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {
