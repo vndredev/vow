@@ -2,12 +2,20 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Db, get, insert, list, remove, update } from "@vow/db";
 import type { IncomingMessage, ServerResponse } from "node:http";
-// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
+/* oxlint-disable consistent-type-specifier-style -- one mixed import per module; separate trips no-duplicate-imports */
+import {
+  type IssueDetail,
+  type PlanItem,
+  closeIssue,
+  issueDetail,
+  issuePlan,
+  reopenIssue,
+} from "@vow/observability";
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
-// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type PlanItem, closeIssue, issuePlan, reopenIssue } from "@vow/observability";
+/* oxlint-enable consistent-type-specifier-style */
 import { NONE } from "./none.ts";
 import { mutable } from "./mutable.ts";
+import { spawn } from "node:child_process";
 
 /**
  * The dev HTTP layer — the connect-style middlewares the dev server mounts under `/__vow`.
@@ -23,6 +31,7 @@ export { VOW_API } from "@vow/db/routes";
 
 /** The status codes the data + issue APIs answer with — named so the replies read as intent. */
 const STATUS = {
+  accepted: 202,
   badRequest: 400,
   created: 201,
   noContent: 204,
@@ -50,7 +59,7 @@ interface DataRequest {
 }
 
 /** A connect-style middleware: read the request, write the response, or pass to the next handler. */
-type Middleware = (
+export type Middleware = (
   req: IncomingMessage,
   res: ServerResponse,
   next: (err?: unknown) => void,
@@ -303,5 +312,94 @@ export function issuesApi(cwd: string): Middleware {
       return;
     }
     writeReply(res, { body: servePlan(state), status: STATUS.ok });
+  };
+}
+
+/** A parsed start-work signal — the human's one "agent, begin this issue" for a numbered issue. */
+interface StartWork {
+  readonly action: "start";
+  readonly issue: number;
+}
+
+/** Parse + validate a start-work body (`{ action: "start", number }`) — absent when malformed, so a bad
+ *  payload answers 400 (a client error), never dispatches a phantom run. */
+function parseStartWork(body: string): Maybe<StartWork> {
+  const { action, number } = parseBody(body);
+  if (action === "start" && typeof number === "number") {
+    return { action, issue: number };
+  }
+  return NONE;
+}
+
+/** Dispatch an agent session for an issue number — the one seam from the start-work signal to the agent
+ *  run. It resolves the issue (number, title, body — the spec injected into the session) and starts the run,
+ *  returning what it dispatched (so the reply echoes it). Injected so a test substitutes a fake that neither
+ *  shells `gh` nor spawns a run; the default below does both. */
+type Dispatch = (cwd: string, issue: number) => IssueDetail;
+
+/**
+ * Resolve an issue + fire the agent's live run for it — the channel from the studio signal to an agent
+ * session. The issue's number/title/body is read via `gh` (the spec injected into the session, per the
+ * channel), then `vow agent run <n>` is spawned detached + unref'd so the dev server returns at once and
+ * the long-running session outlives the request. stdio is ignored: the run logs to its own worktree, not
+ * the dev console. The resolved detail is returned so the reply echoes exactly what was dispatched.
+ */
+function dispatchAgent(cwd: string, issue: number): IssueDetail {
+  const detail = issueDetail(cwd, issue);
+  const child = spawn("vow", ["agent", "run", String(issue)], {
+    cwd,
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  return detail;
+}
+
+/** The start-work state — the cwd the agent runs in + the dispatch seam (the real spawn, or a test's). */
+interface AgentState {
+  readonly cwd: string;
+  readonly dispatch: Dispatch;
+}
+
+/**
+ * Read a start-work signal, dispatch the agent for the issue (resolving + injecting number/title/body), and
+ * reply `202 Accepted` with the dispatched issue. The status is derived, never set: the signal means "agent,
+ * begin this issue", and the run's resulting PR is what derives `doing`. One seam for the human (the studio
+ * board action) — the agent half of the loop the close/reopen seam already serves for the user + the MCP.
+ */
+async function serveStartWork(
+  req: IncomingMessage,
+  res: ServerResponse,
+  state: AgentState,
+): Promise<void> {
+  try {
+    const signal = parseStartWork(await readBody(req));
+    if (!defined(signal)) {
+      const error = "expected { action: 'start', number }";
+      writeReply(res, { body: { error }, status: STATUS.badRequest });
+      return;
+    }
+    const issue = state.dispatch(state.cwd, signal.issue);
+    writeReply(res, { body: { issue, started: true }, status: STATUS.accepted });
+  } catch (error) {
+    writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.serverError });
+  }
+}
+
+/**
+ * The dev agent API — `/__vow/agent`. POST a start-work signal (`{ action: "start", number }`) and the dev
+ * server dispatches an agent session for that issue (the project-local `vow agent run <n>`), injecting the
+ * issue's number/title/body. The studio board's "Start work" action POSTs it — the human's one signal to
+ * begin, the trigger half of the agent loop. `dispatch` is injectable so a test asserts the dispatch without
+ * shelling `gh` or spawning a real run; the default resolves + shells the agent CLI detached.
+ */
+export function agentApi(cwd: string, dispatch: Dispatch = dispatchAgent): Middleware {
+  const state: AgentState = { cwd, dispatch };
+  return (req, res, next) => {
+    if ((req.method ?? "GET") !== "POST") {
+      next();
+      return;
+    }
+    ignore(serveStartWork(req, res, state));
   };
 }

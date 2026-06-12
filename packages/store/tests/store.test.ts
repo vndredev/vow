@@ -23,6 +23,9 @@ const mockFetch: typeof fetch = async (): Promise<Response> => {
 };
 globalThis.fetch = mockFetch;
 
+/** An arbitrary issue number for the start-work signal test (a named constant, not a magic literal). */
+const SOME_ISSUE = 42;
+
 test("useCollection shares one reactive array per slug; different slugs are separate", () => {
   const first = useCollection<{ id: string }>("widget");
   const second = useCollection<{ id: string }>("widget");
@@ -167,6 +170,16 @@ test("useIssues exposes a reactive state with loading + error flags the views br
   const { state } = useIssues();
   expect(typeof state.loading).toBe("boolean");
   expect(typeof state.error).toBe("boolean");
+});
+
+test("useIssues exposes startWork — the board action's signal to the agent — a safe no-op without a server", () => {
+  const { startWork } = useIssues();
+  expect(typeof startWork).toBe("function");
+  // No DOM / dev server here, so the POST is skipped and the call must not throw. The dev-API test drives
+  // The live POST end to end (signal -> /__vow/agent -> dispatch the run).
+  expect(() => {
+    startWork(SOME_ISSUE);
+  }).not.toThrow();
 });
 
 test("the store builds its data URLs under the server's mount prefix — the shared contract holds", () => {

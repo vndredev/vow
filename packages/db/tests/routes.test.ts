@@ -7,9 +7,10 @@ import { expect, test } from "vite-plus/test";
  * two ends — the old duplicated literals let that pass every check while every fetch 404'd at runtime.
  */
 
-test("VOW_API holds the two dev-API mount points under /__vow", () => {
+test("VOW_API holds the dev-API mount points under /__vow", () => {
   expect(VOW_API.db).toBe("/__vow/db");
   expect(VOW_API.issues).toBe("/__vow/issues");
+  expect(VOW_API.agent).toBe("/__vow/agent");
 });
 
 test("dbPath builds the collection path from VOW_API.db when no id is given", () => {

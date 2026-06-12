@@ -9,8 +9,13 @@
  */
 
 /** The dev-API mount points, under `/__vow`. `db` is the data layer (`/__vow/db/<slug>[/<id>]`); `issues`
- *  is the gh-direct issue plan (`/__vow/issues`). Both the client fetch and the server mount read these. */
-export const VOW_API = { db: "/__vow/db", issues: "/__vow/issues" } as const;
+ *  is the gh-direct issue plan (`/__vow/issues`); `agent` is the start-work signal that dispatches an agent
+ *  session for an issue (`/__vow/agent`). Both the client fetch and the server mount read these. */
+export const VOW_API = {
+  agent: "/__vow/agent",
+  db: "/__vow/db",
+  issues: "/__vow/issues",
+} as const;
 
 /** The data-layer path for a slug, optionally a single record — `/__vow/db/<slug>` or
  *  `/__vow/db/<slug>/<id>`. The store builds its fetch URL with this; the server's `parsePath` reverses it.

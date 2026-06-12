@@ -22,6 +22,7 @@ export type {
   AgentSession,
   GitHubIssue,
   GitHubPr,
+  IssueDetail,
   IssueStatus,
   Milestone,
   PlanItem,
