@@ -54,7 +54,7 @@ vow smoke            # boot the dev app + assert its client bundle is browser-sa
 `vow agent` scaffolds and drives the **agent-native layer** — autonomous agents developing issues through vow's verification gates, opening PRs, and merging when green. One per vow; the executor is an LLM (Claude, Codex, etc.), not the user.
 
 ```bash
-vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit skills
+vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit skills + prompts
 vow agent plan <n>                                      # print the verification-gated plan for issue <n>
 vow agent run <n>                                       # develop issue <n>, open a PR
 vow agent run <n> --dry-run                             # preview the run (branch, commands, gates)
@@ -67,6 +67,8 @@ vow agent audit --file <findings.json>                  # file audit findings as
 ```
 
 The gates (`vp check` + `pnpm -r test`) run in the worktree after the provider completes — a PR merges only when the gates pass. Dry-run shows the branch, commands, and expected gates without running them.
+
+`init` also scaffolds the operative agent **prompts** as editable templates under `.claude/prompts/` — `develop.md`, `audit.md`, and `plan.md`. These ARE the agent's behaviour: `vow agent plan` builds its plan from `plan.md`, and `vow agent audit` runs `audit.md` (with `{dimension}` filled in). The agent READS the scaffolded file, falling back to vow's built-in default when it is absent — so editing a prompt tunes the agent without touching vow's source. `init` is idempotent: it never clobbers a prompt you have edited.
 
 ::: tip The split is the point
 **`vow` is for people; the [MCP](/guide/mcp) is for LLMs.** Process management (run · stop · status) lives in the CLI, never in an LLM tool; authoring (vows · records · the plan) lives in the MCP, never in the CLI.
