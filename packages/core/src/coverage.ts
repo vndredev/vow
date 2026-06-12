@@ -6,6 +6,13 @@
  * themselves; a `bind` vow's hand-written test must be named the claim verbatim. A claim with no
  * exact match — or an empty/blank claim — is an unproven promise → the gate is red. This also catches
  * a generated test that was never run (e.g. `.generated/` not built): its claim shows up uncovered.
+ *
+ * HONEST LIMIT: `testNames` are scanned, not executed, so this is NAMING-coverage, not behavioral-
+ * coverage. A green claim means a test of that exact name EXISTS — not that it runs or asserts. For
+ * `emit` vows the body ships with the name (lock-step), so the distinction is moot. For the hand-
+ * written `bind` path it matters: an empty `test("<claim>", () => {})` would cover the claim here
+ * without proving the bound behaviour. Naming-coverage is the gate; the real assertion is the
+ * author's responsibility.
  */
 export function uncoveredScenarios(
   expected: readonly string[],

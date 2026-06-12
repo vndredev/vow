@@ -19,6 +19,13 @@ import path from "node:path";
  * then checks that every scenario promised across the whole vow tree has a matching test in the
  * corpus. Any uncovered claim is an unproven promise, so the caller fails the gate.
  *
+ * HONEST LIMIT: this is NAMING-coverage, not behavioral-coverage. `collectTestNames` scans test
+ * sources for `test("<name>")` strings — it never executes them. So the gate proves a test NAMED
+ * after each claim exists, not that the test runs or asserts anything. For `emit` vows that is
+ * enough (the same emitter writes both the claim and a real body, in lock-step). For the `bind` path
+ * the body is hand-written, so a green name here means "a test of this name exists", NOT "the bound
+ * behaviour is proven" — the author still owns writing a test that actually exercises the symbol.
+ *
  * The `@vow/core` types are derived from the value imports rather than imported as types: a value +
  * type pair from one module is forbidden by the import rules, and a separate type-only import would
  * duplicate the module. `Maybe` is defined locally for the same reason.
@@ -216,24 +223,42 @@ export function checkVowExample(content: string): Maybe<string> {
  * The type-drift gate — keeps the docs' type examples honest against the real code.
  *
  * `components.md` documents the `Attr`/`UiNode` discriminant kinds and `emit.md` lists the field
- * types — both are claims about the code. We read the real kinds off the Vue adapter's `switch` arms
- * and the field types off the core's `FieldType` enum, then check the docs mention each one. So adding
- * a kind or a field type without updating the prose fails a test instead of drifting silently.
+ * types — both are claims about the code. We read the real kinds off the Vue adapter's dispatch and
+ * the field types off the core's `FieldType` enum, then check the docs mention each one. So adding a
+ * kind or a field type without updating the prose fails a test instead of drifting silently.
+ *
+ * The adapter dispatches kinds two ways: `Attr` kinds via `case "<kind>":` switch arms (render-attr),
+ * `UiNode` kinds via `node.kind === "<kind>"` comparisons (render-node). Both forms are read, so the
+ * gate covers the whole discriminant surface — not just the half a single regex happens to match.
  */
 
-/** A `case "<kind>":` switch arm — group 1 is the discriminant kind. */
-const SWITCH_ARM = /case "([a-z]+)":/gu;
+/**
+ * A `case "<kind>":` switch arm OR a `.kind === "<kind>"` comparison — group 1 is the discriminant
+ * kind. The adapter dispatches `Attr` kinds the first way (render-attr) and `UiNode` kinds the second
+ * (render-node), so one regex covers the whole discriminant surface.
+ */
+const KIND_DISPATCH = /(?:case "([a-z]+)":|\.kind === "([a-z]+)")/gu;
 
-/** The discriminant kinds the Vue adapter handles — read off its `case "<kind>":` switch arms. */
-export function adapterKinds(renderVueSource: string): string[] {
-  return [...renderVueSource.matchAll(SWITCH_ARM)].map(
-    (match: readonly string[]) => match[BODY_GROUP] ?? "",
+/** The capture group for the `.kind === "<kind>"` form (the switch-arm form is group 1). */
+const COMPARISON_GROUP = 2;
+
+/**
+ * The discriminant kinds the Vue adapter handles — read off both its `case "<kind>":` switch arms and
+ * its `node.kind === "<kind>"` comparisons, de-duplicated. Pass the adapter's render sources
+ * (render-attr + render-node); a single source covers only the dispatch form it happens to use.
+ */
+export function adapterKinds(...renderSources: readonly string[]): string[] {
+  const kinds = renderSources.flatMap((source) =>
+    [...source.matchAll(KIND_DISPATCH)].map(
+      (match: readonly string[]) => match[BODY_GROUP] ?? match[COMPARISON_GROUP] ?? "",
+    ),
   );
+  return [...new Set(kinds)];
 }
 
 /** Adapter kinds not mentioned (as `"<kind>"`) in the component-model doc — drift. */
-export function undocumentedKinds(renderVueSource: string, docSource: string): string[] {
-  return adapterKinds(renderVueSource).filter((kind) => !docSource.includes(`"${kind}"`));
+export function undocumentedKinds(renderSources: readonly string[], docSource: string): string[] {
+  return adapterKinds(...renderSources).filter((kind) => !docSource.includes(`"${kind}"`));
 }
 
 /** The `FieldType = z.enum([...])` declaration — group 1 is the bracketed list. */
