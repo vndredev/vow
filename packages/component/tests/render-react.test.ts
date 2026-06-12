@@ -74,17 +74,90 @@ test("an interp leaf becomes JSX's {expr}", () => {
   expect(renderReactView(node, 0)).toBe("{item.title}");
 });
 
-test("an out-of-scope node kind (slot) throws — a #101 follow-up, not a half-feature", () => {
-  const node: UiNode = { children: [], kind: "slot", name: "header" };
-  expect(() => renderReactView(node, 0)).toThrow("out of scope");
-});
-
-test("an out-of-scope attribute kind (event) throws", () => {
+test("an event attr becomes a React handler prop: @click -> onClick={() => add}", () => {
   const node: UiNode = {
-    attrs: [{ expr: "add", kind: "event", name: "click" }],
-    children: [],
+    attrs: [{ expr: "add(item)", kind: "event", name: "click" }],
+    children: [{ kind: "text", text: "Add" }],
     kind: "element",
     tag: "button",
   };
+  expect(renderReactView(node, 0)).toBe(`<button onClick={() => add(item)}>Add</button>`);
+});
+
+test("a multi-word event capitalizes only the first letter: dragstart -> onDragStart", () => {
+  const node: UiNode = {
+    attrs: [{ expr: "pick(item)", kind: "event", name: "dragstart" }],
+    children: [],
+    kind: "component",
+    name: "Card",
+  };
+  expect(renderReactView(node, 0)).toBe(`<Card onDragStart={() => pick(item)} />`);
+});
+
+test("a v-if conditional wraps the node as {expr && (node)}", () => {
+  const node: UiNode = {
+    attrs: [
+      { expr: "open", kind: "cond", type: "if" },
+      { kind: "static", name: "class", value: "panel" },
+    ],
+    children: [{ kind: "text", text: "hi" }],
+    kind: "element",
+    tag: "p",
+  };
+  const expected = [`{open && (`, `  <p className="panel">hi</p>`, `)}`].join("\n");
+  expect(renderReactView(node, 0)).toBe(expected);
+});
+
+test("a v-for loop maps the node and keys the inner element's opener", () => {
+  const node: UiNode = {
+    attrs: [{ kind: "static", name: "class", value: "row" }],
+    children: [{ expr: "row.title", kind: "interp" }],
+    for: { as: "row", each: "rows", key: "row.id" },
+    kind: "element",
+    tag: "li",
+  };
+  const expected = [
+    `{rows.map((row) => (`,
+    `  <li className="row" key={row.id}>{row.title}</li>`,
+    `))}`,
+  ].join("\n");
+  expect(renderReactView(node, 0)).toBe(expected);
+});
+
+test("a v-for + v-if nests loop-outermost, conditional inside, deepening the element", () => {
+  const node: UiNode = {
+    attrs: [{ expr: "row.show", kind: "cond", type: "if" }],
+    children: [{ expr: "row.title", kind: "interp" }],
+    for: { as: "row", each: "rows", key: "row.id" },
+    kind: "element",
+    tag: "li",
+  };
+  const expected = [
+    `{rows.map((row) => (`,
+    `  {row.show && (`,
+    `    <li key={row.id}>{row.title}</li>`,
+    `  )}`,
+    `))}`,
+  ].join("\n");
+  expect(renderReactView(node, 0)).toBe(expected);
+});
+
+test("a slot outlet maps to React's universal {children} prop", () => {
+  const node: UiNode = { children: [], kind: "slot", name: "header" };
+  expect(renderReactView(node, 0)).toBe(`{children}`);
+});
+
+test("an out-of-scope attribute kind (model) throws — a #101 follow-up, not a half-feature", () => {
+  const node: UiNode = {
+    attrs: [{ expr: "draft.name", kind: "model" }],
+    children: [],
+    kind: "element",
+    tag: "input",
+  };
+  expect(() => renderReactView(node, 0)).toThrow("out of scope");
+});
+
+test("an out-of-scope node kind (raw) throws", () => {
+  const node: UiNode = { html: "<svg/>", kind: "raw" };
   expect(() => renderReactView(node, 0)).toThrow("out of scope");
 });

@@ -1,4 +1,5 @@
-import type { Attr, UiNode } from "./model.ts";
+import type { Attr, ConditionalAttr, EventAttr, Loop, UiNode } from "./model.ts";
+import { defined } from "./defined.ts";
 import { escapeHtml } from "./escape.ts";
 
 /**
@@ -6,11 +7,12 @@ import { escapeHtml } from "./escape.ts";
  * adapter), but as React JSX. This is the second renderer over one model: the proof that the view
  * model is framework-neutral (one spec, every framework — part of #101).
  *
- * Scope is the core, stateless view nodes only, mirroring render-node.ts's wrapped/frame/leaf shape:
- * element (tag; class -> className, for -> htmlFor), component (PascalCase name), text (escaped via
- * escapeHtml), interp ({expr}), static attrs (name="value"), and bound attrs (name={expr}). Event
- * attrs, conditionals, loops, slots, and the setup/script translation are explicit follow-ups —
- * out of scope here, so they fail loudly rather than render half a feature.
+ * Scope is structural — mirroring render-node.ts / render-attr.ts: element (tag; class -> className,
+ * for -> htmlFor), component (PascalCase name), text (escaped via escapeHtml), interp ({expr}), static
+ * attrs (name="value"), bound attrs (name={expr}), event attrs (@click -> onClick={() => expr}),
+ * conditionals (v-if -> {expr && (node)}), loops (the for {as, each, key} -> {each.map((as) => node)}),
+ * and slots ({children}). The setup/script + data-layer translation stays the strategic follow-up;
+ * model attrs, spread attrs, and raw nodes still throw loudly rather than render half a feature.
  */
 
 type HostNode = Extract<UiNode, { kind: "component" | "element" }>;
@@ -52,12 +54,43 @@ const REACT_ATTR_NAMES = new Map([
   ["for", "htmlFor"],
 ]);
 
+/**
+ * DOM events whose React handler is camelCased across a word boundary the bare name can't recover
+ * (`dragstart` -> `onDragStart`). Single-word events fall back to first-letter capitalization.
+ */
+const REACT_EVENT_NAMES = new Map([
+  ["dragend", "DragEnd"],
+  ["dragenter", "DragEnter"],
+  ["dragleave", "DragLeave"],
+  ["dragover", "DragOver"],
+  ["dragstart", "DragStart"],
+  ["keydown", "KeyDown"],
+  ["keyup", "KeyUp"],
+  ["mousedown", "MouseDown"],
+  ["mouseup", "MouseUp"],
+]);
+
 /** The JSX attribute name for a Vue-side name (renamed where React differs, e.g. class). */
 function reactAttrName(name: string): string {
   return REACT_ATTR_NAMES.get(name) ?? name;
 }
 
-/** Render one in-scope attribute as JSX: static `name="value"`, bound `name={expr}`. */
+/** First-letter-capitalize a single-word event name (`click` -> `Click`, `drop` -> `Drop`). */
+function capitalize(name: string): string {
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+}
+
+/** The React handler prop for a DOM event: `click` -> `onClick`, `dragstart` -> `onDragStart`. */
+function reactEventName(name: string): string {
+  return `on${REACT_EVENT_NAMES.get(name) ?? capitalize(name)}`;
+}
+
+/** An event attr as a JSX handler prop: `@click="add"` -> `onClick={() => add}` (modifiers ignored). */
+function renderReactEvent(attr: EventAttr): string {
+  return `${reactEventName(attr.name)}={() => ${attr.expr}}`;
+}
+
+/** Render one in-scope attribute as JSX: static `name="value"`, bound `name={expr}`, event `onX={...}`. */
 function renderReactAttr(attr: Attr): string {
   if (attr.kind === "static") {
     return `${reactAttrName(attr.name)}="${escapeHtml(attr.value)}"`;
@@ -65,12 +98,23 @@ function renderReactAttr(attr: Attr): string {
   if (attr.kind === "bound") {
     return `${reactAttrName(attr.name)}={${attr.expr}}`;
   }
+  if (attr.kind === "event") {
+    return renderReactEvent(attr);
+  }
   throw new Error(`render-react: attribute kind "${attr.kind}" is out of scope (a #101 follow-up)`);
 }
 
-/** Attrs as a leading-space-prefixed string, in array order (no sorting). */
+/** A node's conditional (`v-if`) attr, if present — the one attr that wraps the node, not its tag. */
+function conditionOf(attrs: readonly Attr[]): ConditionalAttr | undefined {
+  return attrs.find((attr): attr is ConditionalAttr => attr.kind === "cond");
+}
+
+/** Attrs as a leading-space-prefixed string, in array order, skipping the wrapping `cond` attr. */
 function renderReactAttrs(attrs: readonly Attr[]): string {
-  return attrs.map((attr) => ` ${renderReactAttr(attr)}`).join("");
+  return attrs
+    .filter((attr) => attr.kind !== "cond")
+    .map((attr) => ` ${renderReactAttr(attr)}`)
+    .join("");
 }
 
 /** True when every child is text or interp — the cue to keep them on one line. */
@@ -101,6 +145,14 @@ function hostName(node: HostNode): string {
   return node.tag;
 }
 
+/** The ` key={expr}` part for a looped host, in React's spot (the opener), or "" when keyless. */
+function reactKey(loop?: Loop): string {
+  if (defined(loop) && defined(loop.key)) {
+    return ` key={${loop.key}}`;
+  }
+  return "";
+}
+
 /** An element or component as a `Wrapped`: self-closing for void/empty, inline when marked or all text. */
 function wrapHost(node: HostNode): Wrapped {
   const isVoid = node.kind === "element" && VOID_ELEMENTS.has(node.tag);
@@ -109,7 +161,7 @@ function wrapHost(node: HostNode): Wrapped {
     children: node.children,
     close: hostName(node),
     layout: layoutFor(node.children, isVoid, markedInline),
-    open: `${hostName(node)}${renderReactAttrs(node.attrs)}`,
+    open: `${hostName(node)}${renderReactAttrs(node.attrs)}${reactKey(node.for)}`,
   };
 }
 
@@ -145,17 +197,75 @@ function renderLeaf(node: Extract<UiNode, { kind: "interp" | "text" }>, pad: str
   return pad + escapeHtml(node.text);
 }
 
+/** A `{head (` / `tail)}` brace shell around an inner JSX block — the loop/conditional wrappers share it. */
+interface Brace {
+  readonly head: string;
+  readonly tail: string;
+}
+
+/** Wrap an inner JSX block in a brace shell at `depth`; `inner` already sits one level deeper. */
+function braceWrap(brace: Brace, inner: string, depth: number): string {
+  const pad = INDENT.repeat(depth);
+  return `${pad}{${brace.head} (\n${inner}\n${pad}${brace.tail})}`;
+}
+
+/** A conditional (`v-if`) host as React's `{expr && (node)}` — mounted only when the expr is truthy. */
+function wrapConditional(cond: ConditionalAttr, inner: string, depth: number): string {
+  return braceWrap({ head: `${cond.expr} &&`, tail: "" }, inner, depth);
+}
+
+/** A looped host as React's `{each.map((as) => (node))}` — the `:key` rides the inner element's opener. */
+function wrapLoop(loop: Loop, inner: string, depth: number): string {
+  return braceWrap({ head: `${loop.each}.map((${loop.as}) =>`, tail: ")" }, inner, depth);
+}
+
+/** A slot outlet as React's `{children}` — the slot maps to the universal `children` prop. */
+function renderSlot(depth: number): string {
+  return `${INDENT.repeat(depth)}{children}`;
+}
+
+/** How many indent levels a present wrapper adds (1 per truthy seam, 0 when absent). */
+function bump(present: boolean): number {
+  if (present) {
+    return 1;
+  }
+  return 0;
+}
+
 /**
- * Render a UiNode to React JSX at the given indent depth (in INDENT units). Mirrors render-node.ts:
- * a host (element/component) frames its children; a leaf (text/interp) is the base case. Inline when
- * all children are text/interp. Out-of-scope kinds (slot/raw) throw — they are #101 follow-ups.
+ * Render a host (element/component), then wrap it in its conditional and loop, outermost-loop-first.
+ * The loop wraps the conditional, so each present wrapper deepens the element it holds by one level.
+ */
+function renderHost(node: HostNode, depth: number, render: RenderChild): string {
+  const cond = conditionOf(node.attrs);
+  const condDepth = depth + bump(defined(node.for));
+  const innerDepth = condDepth + bump(defined(cond));
+  let out = frame(wrapHost(node), innerDepth, render);
+  if (defined(cond)) {
+    out = wrapConditional(cond, out, condDepth);
+  }
+  if (defined(node.for)) {
+    out = wrapLoop(node.for, out, depth);
+  }
+  return out;
+}
+
+/**
+ * Render a UiNode to React JSX at the given indent depth (in INDENT units). Mirrors render-node.ts /
+ * render-attr.ts structurally: a host (element/component) frames its children and wraps in its
+ * conditional ({expr && (node)}) and loop ({each.map(...)}); a slot maps to {children}; a leaf
+ * (text/interp) is the base case. The setup/data-layer translation + model/spread/raw stay #101
+ * follow-ups — they throw rather than render half a feature.
  */
 export function renderReactView(node: UiNode, depth: number): string {
   if (node.kind === "text" || node.kind === "interp") {
     return renderLeaf(node, INDENT.repeat(depth));
   }
+  if (node.kind === "slot") {
+    return renderSlot(depth);
+  }
   if (node.kind === "element" || node.kind === "component") {
-    return frame(wrapHost(node), depth, renderReactView);
+    return renderHost(node, depth, renderReactView);
   }
   throw new Error(`render-react: node kind "${node.kind}" is out of scope (a #101 follow-up)`);
 }
