@@ -1,5 +1,11 @@
-import { AGENT_SUBCOMMANDS, agentHelp, agentRouteNames } from "../src/agent.ts";
-import { DEFAULT_MAX_ROUNDS, maxRoundsOf } from "../src/agent-auto.ts";
+import {
+  AGENT_SUBCOMMANDS,
+  agent,
+  agentHelp,
+  agentRouteNames,
+  helpRequested,
+} from "../src/agent.ts";
+import { DEFAULT_MAX_ROUNDS, autoConfirmed, maxRoundsOf } from "../src/agent-auto.ts";
 import { expect, test } from "vite-plus/test";
 import {
   failedResult,
@@ -142,6 +148,27 @@ test("maxRoundsOf reads a positive --max-rounds, else the default safety cap (th
   expect(maxRoundsOf(["auto"])).toBe(DEFAULT_MAX_ROUNDS);
   expect(maxRoundsOf(["auto", "--max-rounds", "0"])).toBe(DEFAULT_MAX_ROUNDS);
   expect(maxRoundsOf(["auto", "--max-rounds", "abc"])).toBe(DEFAULT_MAX_ROUNDS);
+});
+
+test("helpRequested is true for --help/-h anywhere or a `help` sub, false otherwise (#486)", () => {
+  expect(helpRequested(["auto", "--help"])).toBe(true);
+  expect(helpRequested(["-h"])).toBe(true);
+  expect(helpRequested(["help"])).toBe(true);
+  expect(helpRequested(["auto"])).toBe(false);
+  expect(helpRequested(["run", "5"])).toBe(false);
+});
+
+test("agent intercepts --help BEFORE dispatch — `vow agent auto --help` prints help, never starts the loop (#486)", () => {
+  // The bug: --help was treated as args and started the auto loop. Help must return 0 synchronously (the
+  // Help branch), NOT a Promise (a live run) nor 1 (the no-opt-in refusal it would hit past the guard).
+  expect(agent(["auto", "--help"])).toBe(0);
+  expect(agent(["run", "--help"])).toBe(0);
+});
+
+test("autoConfirmed gates the unsupervised loop on an explicit opt-in — --yes (#486)", () => {
+  // Without --yes (and no VOW_AGENT_AUTO env) the loop must refuse; --yes is the explicit confirmation.
+  expect(autoConfirmed(["auto", "--yes"])).toBe(true);
+  expect(autoConfirmed(["auto"])).toBe(false);
 });
 
 test("the agent-subcommand catalogue covers exactly the routes — help can't drift from what runs", () => {

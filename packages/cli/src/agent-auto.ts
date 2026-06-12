@@ -398,13 +398,37 @@ async function loop(args: AutoArgs, cwd: string): Promise<number> {
   }
 }
 
-/** `vow agent auto [--provider <name>] [--auth subscription|api] [--max-rounds <n>]` — the self-heal SPIRAL:
- *  develop the backlog + settle the PRs each round; when it empties, audit the codebase + file findings as
- *  new work; loop until a full audit pass is findings-free (done) or the round cap (exhausted). */
+/** Whether the unsupervised auto loop is explicitly opted into — `--yes` on the command, or `VOW_AGENT_AUTO=1`
+ *  in the env (the opt-in a scheduled/CI run sets). Without it `vow agent auto` REFUSES to start: it audits +
+ *  develops + merges with no human in the loop, so no probe / typo / `--help` may ever launch it (#486). */
+export function autoConfirmed(rest: readonly string[]): boolean {
+  // oxlint-disable-next-line no-process-env -- the CI/scheduled opt-in for the otherwise-unsupervised loop
+  return rest.includes("--yes") || process.env["VOW_AGENT_AUTO"] === "1";
+}
+
+/** The refusal shown when `vow agent auto` runs without the opt-in — names what it WOULD do + the flag to
+ *  confirm, so the loud default is "explain, don't run" (never silently start the merge loop). */
+function autoRefusal(args: AutoArgs): string {
+  return [
+    "vow agent auto: refusing to start the unsupervised self-heal loop without an explicit opt-in.",
+    `  It would audit + develop every open issue and merge green PRs, up to ${args.maxRounds} rounds, via ${args.provider.name}.`,
+    "  Re-run with --yes (or set VOW_AGENT_AUTO=1 for a scheduled run) to confirm.",
+    "",
+  ].join("\n");
+}
+
+/** `vow agent auto --yes [--provider <name>] [--auth subscription|api] [--max-rounds <n>]` — the self-heal
+ *  SPIRAL: develop the backlog + settle the PRs each round; when it empties, audit the codebase + file
+ *  findings as new work; loop until a full audit pass is findings-free (done) or the round cap (exhausted).
+ *  REFUSES to start without `--yes` / `VOW_AGENT_AUTO=1` — the unsupervised merge loop is opt-in only (#486). */
 export function runAuto(rest: readonly string[]): number | Promise<number> {
   const args = parseAuto(rest);
   if (typeof args === "string") {
     process.stderr.write(`${args}\n`);
+    return 1;
+  }
+  if (!autoConfirmed(rest)) {
+    process.stderr.write(autoRefusal(args));
     return 1;
   }
   return loop(args, process.cwd());
