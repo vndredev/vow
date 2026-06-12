@@ -1,8 +1,8 @@
 import type { Component, ImportDecl, PropDef } from "./model.ts";
 import { defined } from "./defined.ts";
 
-/** Render one import: a default binding, named bindings, or both. */
-function renderImport(decl: ImportDecl): string {
+/** Render one import: a default binding, named bindings, or both. Shared by every adapter's shell. */
+export function renderImport(decl: ImportDecl): string {
   const parts: string[] = [];
   if (defined(decl.default)) {
     parts.push(decl.default);
