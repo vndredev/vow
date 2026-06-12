@@ -1,5 +1,5 @@
-import type { Attr, UiNode } from "@vow/component";
-import type { ReadonlyField } from "@vow/core";
+import type { Attr, FieldControl, ReadonlyField, UiNode } from "./types.ts";
+import { FIELD_KINDS } from "@vow/core";
 import { quote } from "./helpers.ts";
 
 /** Vow's Select primitive over a fixed option list. */
@@ -82,24 +82,30 @@ function inputControl(field: ReadonlyField, model: string): UiNode {
   };
 }
 
-/**
- * The input control for one field — the shared field→control map used by the standalone `## form`.
- * select + reference render vow's Select primitive; date a native date input; longtext a textarea;
- * text/number a native input. `model` is the v-model expression (e.g. `draft.title`); a reference reads
- * its target's `<field>Choices` (a computed the caller defines in setup).
- */
-export function fieldControl(field: ReadonlyField, model: string): UiNode {
-  if (field.type === "select") {
-    return selectControl(field, model);
-  }
+/** Vow's Select primitive — over a reference's target collection, else over a fixed option list. */
+function anySelectControl(field: ReadonlyField, model: string): UiNode {
   if (field.type === "reference") {
     return referenceControl(field, model);
   }
-  if (field.type === "date") {
-    return dateControl(field, model);
-  }
-  if (field.type === "longtext") {
-    return longtextControl(field, model);
-  }
-  return inputControl(field, model);
+  return selectControl(field, model);
+}
+
+/** The builder per control kind. `checkbox` maps to the native input: a boolean self-labels as a
+ *  `<Checkbox>` in the form before `fieldControl` is reached, so this is the inert fall-through. */
+const CONTROLS: Record<FieldControl, (field: ReadonlyField, model: string) => UiNode> = {
+  checkbox: inputControl,
+  date: dateControl,
+  input: inputControl,
+  select: anySelectControl,
+  textarea: longtextControl,
+};
+
+/**
+ * The input control for one field — driven by `FIELD_KINDS[type].control`. A `select` control covers vow's
+ * Select primitive over a fixed option list AND over a reference's target collection; `date` a native date
+ * input; `textarea` a longtext box; `input` a native input (text/number). `model` is the v-model expression
+ * (e.g. `draft.title`); a reference reads its target's `<field>Choices` (a computed the caller defines).
+ */
+export function fieldControl(field: ReadonlyField, model: string): UiNode {
+  return CONTROLS[FIELD_KINDS[field.type].control](field, model);
 }

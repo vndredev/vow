@@ -1,7 +1,15 @@
-import type { Component, ImportDecl, ReadonlyField, ReadonlyVow, UiNode } from "./types.ts";
+import type {
+  Component,
+  FieldCell,
+  ImportDecl,
+  ReadonlyField,
+  ReadonlyVow,
+  UiNode,
+} from "./types.ts";
 import { groupedLines, sliceComputed } from "./slice.ts";
 import { pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
+import { FIELD_KINDS } from "@vow/core";
 import { assertEmitEntity } from "./entity-guard.ts";
 
 /** A reference cell labels its target by the target entity's first text field (else its id). */
@@ -75,26 +83,45 @@ function listSetup(
   ];
 }
 
+/** A boolean cell — a Yes/No interpolation. */
+function yesnoCell(field: ReadonlyField): UiNode {
+  return { expr: `item.${field.name} ? "Yes" : "No"`, kind: "interp" };
+}
+
+/** A reference cell — the target's resolved display name (not its id). */
+function nameCell(field: ReadonlyField): UiNode {
+  return { expr: `${field.name}Name(item.${field.name})`, kind: "interp" };
+}
+
+/** A select cell — a `<Badge>` status chip over the stored value. */
+function badgeCell(field: ReadonlyField): UiNode {
+  return {
+    attrs: [{ expr: `String(item.${field.name})`, kind: "bound", name: "label" }],
+    children: [],
+    kind: "component",
+    name: "Badge",
+  };
+}
+
+/** Any other cell — the raw value interpolated. */
+function valueCell(field: ReadonlyField): UiNode {
+  return { expr: `item.${field.name}`, kind: "interp" };
+}
+
+/** The cell builder per cell kind — the list-display twin of `FIELD_KINDS[type].cell`. */
+const CELLS: Record<FieldCell, (field: ReadonlyField) => UiNode> = {
+  badge: badgeCell,
+  name: nameCell,
+  value: valueCell,
+  yesno: yesnoCell,
+};
+
 /**
- * One display cell per field: boolean → Yes/No; reference → the target's resolved name (not its id);
- * select → a `<Badge>` status chip; everything else → the value.
+ * One display cell per field, driven by `FIELD_KINDS[type].cell`: boolean → Yes/No; reference → the
+ * target's resolved name (not its id); select → a `<Badge>` status chip; everything else → the value.
  */
 function cellContent(field: ReadonlyField): UiNode {
-  if (field.type === "boolean") {
-    return { expr: `item.${field.name} ? "Yes" : "No"`, kind: "interp" };
-  }
-  if (field.type === "reference") {
-    return { expr: `${field.name}Name(item.${field.name})`, kind: "interp" };
-  }
-  if (field.type === "select") {
-    return {
-      attrs: [{ expr: `String(item.${field.name})`, kind: "bound", name: "label" }],
-      children: [],
-      kind: "component",
-      name: "Badge",
-    };
-  }
-  return { expr: `item.${field.name}`, kind: "interp" };
+  return CELLS[FIELD_KINDS[field.type].cell](field);
 }
 
 /** A `<TableHead>` labelled `field.name`, scoped to its column. */

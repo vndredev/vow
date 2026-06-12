@@ -7,6 +7,13 @@
  */
 
 export { uncoveredScenarios } from "./coverage.ts";
+export {
+  type FieldCell,
+  type FieldControl,
+  type FieldKind,
+  FIELD_KINDS,
+  type SqlColumn,
+} from "./field-kind.ts";
 export { type EmitTarget, isEmit, isEmitEntity } from "./fulfillment.ts";
 export { NONE, asRecord, defined, isRecord, mapDefined, type Maybe } from "./guard.ts";
 export { parseVowMd } from "./parse.ts";

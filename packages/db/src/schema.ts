@@ -1,37 +1,32 @@
-import type { ReadonlyField, ReadonlyVow } from "@vow/core";
+import type { ReadonlyField, ReadonlyVow, SqlColumn } from "./types.ts";
+import { FIELD_KINDS } from "@vow/core";
 
 /**
- * The schema half of `@vow/db` — driver-agnostic SQL + value mapping, derived from an entity's fields.
- * This is the **typed.build seam**: the same builders run under `node:sqlite` (dev) and D1 (prod, =
- * SQLite); only the executor differs. SQLite has affinity, not strict types, so the mapping is simple.
+ * The schema half of `@vow/db` — driver-agnostic SQL + value mapping, derived from an entity's fields via
+ * `@vow/core`'s `FIELD_KINDS` registry. This is the **typed.build seam**: the same builders run under
+ * `node:sqlite` (dev) and D1 (prod, = SQLite); only the executor differs. SQLite has affinity, not strict
+ * types, so the mapping is simple.
  */
 
-/** A SQLite column type for a field — REAL for number, INTEGER for boolean, else TEXT. */
-export function columnType(field: ReadonlyField): "TEXT" | "REAL" | "INTEGER" {
-  if (field.type === "number") {
-    return "REAL";
-  }
-  // INTEGER 0/1, coerced back to a JS bool on read.
-  if (field.type === "boolean") {
-    return "INTEGER";
-  }
-  // TEXT covers text, longtext, select, date, and reference (the target's id).
-  return "TEXT";
+/** A SQLite column type for a field — REAL for number, INTEGER for a 0/1 boolean, else TEXT. */
+export function columnType(field: ReadonlyField): SqlColumn {
+  return FIELD_KINDS[field.type].sqlColumn;
 }
 
-/** The default JS value for an absent field — mirrors the generated `create<Name>` factory exactly. */
+/** The empty default JS value per SQLite column — mirrors the generated `create<Name>` factory exactly. */
+const COLUMN_DEFAULT: Record<SqlColumn, string | number | boolean> = {
+  INTEGER: false,
+  REAL: 0,
+  TEXT: "",
+};
+
+/** The default JS value for an absent field — mirrors the generated `create<Name>` factory exactly. A
+ *  select carries its first option; every other type takes the empty value for its column. */
 export function defaultValue(field: ReadonlyField): string | number | boolean {
   if (field.type === "select") {
     return field.options?.[0] ?? "";
   }
-  if (field.type === "number") {
-    return 0;
-  }
-  if (field.type === "boolean") {
-    return false;
-  }
-  // The empty string covers text, longtext, date, and reference.
-  return "";
+  return COLUMN_DEFAULT[FIELD_KINDS[field.type].sqlColumn];
 }
 
 /** `CREATE TABLE IF NOT EXISTS` for an entity — an `id` primary key plus one column per field. */

@@ -1,6 +1,6 @@
+import type { ReadonlyField, ReadonlyVow, SqlColumn } from "./types.ts";
 import { columnType, createTableSql, defaultValue } from "./schema.ts";
 import { DatabaseSync } from "node:sqlite";
-import type { ReadonlyVow } from "@vow/core";
 import { defined } from "./guard.ts";
 
 /**
@@ -107,16 +107,21 @@ function toText(value: unknown): string {
   return EMPTY;
 }
 
-/** A JS value to its SQLite-storable form (boolean to 0/1, number coerced, else a string). */
+/** The value encoder per SQLite column — INTEGER 0/1 for a boolean, REAL for a number, else TEXT. */
+const ENCODERS: Record<SqlColumn, (value: unknown) => Storable> = {
+  INTEGER: boolToInt,
+  REAL: toNumber,
+  TEXT: toText,
+};
+
+/** A JS value to its SQLite-storable form, by the field's column affinity (INTEGER 0/1 for a boolean, REAL
+ *  for a number, else TEXT) — a stray column with no field is TEXT. */
 function encode(entity: ReadonlyVow, col: string, value: unknown): Storable {
   const field = entity.fields.find((candidate) => candidate.name === col);
-  if (field?.type === "boolean") {
-    return boolToInt(value);
+  if (!defined(field)) {
+    return toText(value);
   }
-  if (field?.type === "number") {
-    return toNumber(value);
-  }
-  return toText(value);
+  return ENCODERS[columnType(field)](value);
 }
 
 /** A full record: an `id` (minted if absent) + every field (its default if absent); strays dropped. */
@@ -128,9 +133,9 @@ function complete(entity: ReadonlyVow, record: ReadRow): Row {
   return out;
 }
 
-/** One stored cell to its JS form — an INTEGER for a boolean field becomes a real JS bool. */
-function decodeField(type: string, value: unknown): unknown {
-  if (type === "boolean") {
+/** One stored cell to its JS form — an INTEGER column (a boolean field) becomes a real JS bool. */
+function decodeField(field: ReadonlyField, value: unknown): unknown {
+  if (columnType(field) === "INTEGER") {
     return Boolean(value);
   }
   return value;
@@ -140,7 +145,7 @@ function decodeField(type: string, value: unknown): unknown {
 function decode(entity: ReadonlyVow, row: ReadRow): Row {
   const out: Row = { id: row["id"] };
   for (const field of entity.fields) {
-    out[field.name] = decodeField(field.type, row[field.name]);
+    out[field.name] = decodeField(field, row[field.name]);
   }
   return out;
 }
