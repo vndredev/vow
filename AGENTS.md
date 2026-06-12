@@ -17,7 +17,8 @@ on one red line, every step gated. Read this before changing anything.
 
 framework-neutrality (no raw framework templates outside the component model) · layer-DAG (no upward
 imports) · provider-neutrality (a provider CLI only behind the provider seam) · has-a-doc · coverage ·
-docs-drift · branch-protection. A gate fails the build; that is the point.
+docs-drift · branch-protection · pr-title (commitlint) · pr-body (fill the template — Summary / What /
+Proof / Next, not a bare `Closes #N`). A gate fails the build; that is the point.
 
 ## Commands
 

@@ -1,0 +1,24 @@
+name: PR body
+
+# Force every PR through the template. commitlint already gates the PR TITLE (ci.yml); this gates the
+# BODY the same way — Summary / What / Proof / Next from .github/PULL_REQUEST_TEMPLATE.md — so a PR can't
+# ship a bare `Closes #N` and skip its traceable record. The structure rule is `prBodyProblems`
+# (@vow/observability, unit-tested); this workflow only feeds it the body and surfaces the verdict. The
+# check has no runtime deps, so it runs straight off node (no install) and stays fast.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  body:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Check PR body against the template
+        run: node --experimental-strip-types packages/observability/src/pr-body-check.ts
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
