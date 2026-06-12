@@ -54,13 +54,16 @@ function storeBinding(actions: ListActions): string {
   return "{ items: rows }";
 }
 
-/** A name-resolver pair per `reference` field — its option list + an id → display-name function. */
+/** A name-resolver pair per `reference` field — its option list, a memoized id → label index (O(N+M), not the
+ *  per-row O(rows x items) `.find()`), and the id → display-name lookup. The index stores a label only when truthy,
+ *  so the `?? String(id ?? "")` on the lookup keeps today's raw-id fallback for a null/empty target label. */
 function referenceResolvers(entity: ReadonlyVow, label: (ref?: string) => string): string[] {
   const lines: string[] = [];
   for (const field of entity.fields.filter((candidate) => candidate.type === "reference")) {
     lines.push(
       `const ${field.name}Options = useCollection<{ id: string } & Record<string, unknown>>(${JSON.stringify(field.ref ?? "")}).items;`,
-      `const ${field.name}Name = (id: unknown): string => String(${field.name}Options.find((t) => t.id === id)?.${label(field.ref)} ?? id ?? "");`,
+      `const ${field.name}ById = computed(() => new Map(${field.name}Options.filter((t) => t.${label(field.ref)}).map((t) => [String(t.id), String(t.${label(field.ref)})])));`,
+      `const ${field.name}Name = (id: unknown): string => ${field.name}ById.value.get(String(id)) ?? String(id ?? "");`,
     );
   }
   return lines;

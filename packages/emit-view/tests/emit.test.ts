@@ -167,10 +167,20 @@ test("a reference cell resolves the stored id to the target's display name (not 
   const sfc = emitEntityList(issue);
   expectContains(sfc, [
     'const assigneeOptions = useCollection<{ id: string } & Record<string, unknown>>("user").items;',
-    "const assigneeName = (id: unknown): string =>",
+    'const assigneeName = (id: unknown): string => assigneeById.value.get(String(id)) ?? String(id ?? "");',
     "{{ assigneeName(item.assignee) }}",
   ]);
   expect(sfc).not.toContain("assigneeChoices");
+});
+
+test("a reference cell memoizes an id index instead of a per-row .find() scan", () => {
+  // O(N+M): the index recomputes only when the referenced collection changes, not per row per render.
+  // A truthy-only filter preserves the raw-id fallback when a target's label is null/empty.
+  const sfc = emitEntityList(issue);
+  expectContains(sfc, [
+    "const assigneeById = computed(() => new Map(assigneeOptions.filter((t) => t.id).map((t) => [String(t.id), String(t.id)])));",
+  ]);
+  expect(sfc).not.toContain("assigneeOptions.find((t) => t.id === id)");
 });
 
 test("a reference cell labels its target by the target's first text field", () => {
@@ -181,8 +191,10 @@ test("a reference cell labels its target by the target's first text field", () =
     slug: "user",
   };
   const sfc = emitEntityList(issue, new Map([["user", user]]));
-  // The resolver reads the target's `name`.
-  expect(sfc).toContain("?.name ?? id");
+  // The memoized index reads the target's `name`.
+  expect(sfc).toContain(
+    "assigneeOptions.filter((t) => t.name).map((t) => [String(t.id), String(t.name)])",
+  );
 });
 
 test("emitEntityStats counts rows per a select field, composing Stats/Stat", () => {
