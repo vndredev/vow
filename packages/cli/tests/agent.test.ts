@@ -1,5 +1,6 @@
+import { DEFAULT_MAX_ROUNDS, maxRoundsOf } from "../src/agent-auto.ts";
 import { expect, test } from "vite-plus/test";
-import { flagValue, issueArg, issueNumbers, phaseLine } from "../src/agent.ts";
+import { flagValue, issueArg, issueNumbers, phaseLine } from "../src/agent-run.ts";
 
 const ISSUE = 42;
 
@@ -27,4 +28,13 @@ test("issueNumbers collects positive numeric args, dropping flags + non-numbers"
 test("phaseLine is JSON for an LLM/studio, human text for the terminal", () => {
   expect(phaseLine(ISSUE, "develop", true)).toBe(`{"issue":${ISSUE},"phase":"develop"}`);
   expect(phaseLine(ISSUE, "develop", false)).toBe(`  [#${ISSUE}] develop`);
+});
+
+const ROUNDS = 4;
+
+test("maxRoundsOf reads a positive --max-rounds, else the default safety cap (the loop's round bound)", () => {
+  expect(maxRoundsOf(["auto", "--max-rounds", String(ROUNDS)])).toBe(ROUNDS);
+  expect(maxRoundsOf(["auto"])).toBe(DEFAULT_MAX_ROUNDS);
+  expect(maxRoundsOf(["auto", "--max-rounds", "0"])).toBe(DEFAULT_MAX_ROUNDS);
+  expect(maxRoundsOf(["auto", "--max-rounds", "abc"])).toBe(DEFAULT_MAX_ROUNDS);
 });
