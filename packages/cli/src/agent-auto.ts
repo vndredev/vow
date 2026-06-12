@@ -5,16 +5,18 @@ import type { Auth } from "./agent-run.ts";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
 import type { Provider } from "@vow/agent";
 import { execFileSync } from "node:child_process";
+import { runAuditPass } from "./agent-audit.ts";
 
-/** What `autoDecision` returns — `develop` (run another round), `done` (backlog empty), or `exhausted`
- *  (the round cap). Derived from the brain so this wrapper needs no second @vow/agent type import. */
-type AutoOutcome = ReturnType<typeof autoDecision>;
+/** A terminal outcome — the loop stops on either; the rest (`develop`, `audit`) run another round. */
+type TerminalOutcome = "done" | "exhausted";
 
 /**
- * `vow agent auto` — the self-heal loop. Each round develops the PR-less open issues, then settles the open
- * PRs (update their branch, wait on CI, merge green / draft red), until the backlog is empty (`done`) or a
- * safety round cap is hit (`exhausted`). The pure decision is `autoDecision` in @vow/agent; this file is its
- * gh-shelling wrapper. It imports the shared run + merge primitives from `agent-run.ts` (no import cycle).
+ * `vow agent auto` — the self-heal SPIRAL. Each round develops the PR-less open issues, then settles the
+ * open PRs (update their branch, wait on CI, merge green / draft red). When the backlog empties, it AUDITS
+ * the codebase (read-only, every dimension) and files what it finds as new issues — generating its own next
+ * work — until a full audit pass comes back clean (`done`) or the safety round cap is hit (`exhausted`).
+ * The pure decision is `autoDecision` in @vow/agent; this file is its gh-shelling wrapper. It imports the
+ * shared run + merge primitives from `agent-run.ts` + the audit pass from `agent-audit.ts` (no import cycle).
  */
 
 /** The default safety cap on rounds — without an empty backlog the loop still powers down after this many. */
@@ -149,37 +151,49 @@ async function autoRound(args: AutoArgs, cwd: string, round: number): Promise<vo
   settleRound(cwd);
 }
 
-/** The exit + banner for a terminal outcome — 0 when the backlog drained (`done`), 1 when the cap was hit. */
-function reportOutcome(outcome: AutoOutcome): number {
+/** The exit + banner for a terminal outcome — 0 when the codebase is findings-free (`done`), 1 when the cap
+ *  was hit. */
+function reportOutcome(outcome: TerminalOutcome): number {
   if (outcome === "done") {
-    process.stdout.write("auto: backlog empty — powering down (done)\n");
+    process.stdout.write("auto: findings-free — powering down (done)\n");
     return 0;
   }
   process.stdout.write("auto: round cap hit — stopping (exhausted)\n");
   return 1;
 }
 
-/** The auto-heal loop — until `autoDecision` says stop, run a round; exit 0 when the backlog drained, else 1
- *  (the safety cap was hit). The decision is the pure `autoDecision`; this only shells gh + runs the round. */
+/** The auto-heal SPIRAL — until `autoDecision` says stop, either develop a round or, on an empty backlog,
+ *  audit for new work; exit 0 when a full audit pass is clean (`done`), else 1 (the safety cap was hit). The
+ *  decision is the pure `autoDecision`; this shells gh + runs the round or the audit pass. `auditedClean`
+ *  carries a clean (zero-finding) audit into the next decision, so the loop powers down once findings-free. */
 async function loop(args: AutoArgs, cwd: string): Promise<number> {
   let round = 0;
+  let auditedClean = false;
   for (;;) {
     const outcome = autoDecision({
+      auditedClean,
       maxRounds: args.maxRounds,
       openIssues: openIssues(cwd).length,
       round,
     });
-    if (outcome !== "develop") {
+    if (outcome === "develop") {
+      round += 1;
+      // A develop round changes the code — any prior clean audit is stale, so re-audit when it drains.
+      auditedClean = false;
+      // oxlint-disable-next-line no-await-in-loop -- a round depends on the prior's merges; rounds ARE sequential
+      await autoRound(args, cwd, round);
+    } else if (outcome === "audit") {
+      // A clean pass (zero filed) marks the codebase findings-free for the next decision -> `done`.
+      auditedClean = runAuditPass(args.auth, cwd) === 0;
+    } else {
       return reportOutcome(outcome);
     }
-    round += 1;
-    // oxlint-disable-next-line no-await-in-loop -- a round depends on the prior's merges; rounds ARE sequential
-    await autoRound(args, cwd, round);
   }
 }
 
-/** `vow agent auto [--provider <name>] [--auth subscription|api] [--max-rounds <n>]` — the self-heal loop:
- *  develop the backlog + settle the PRs each round until findings-free (done) or the round cap (exhausted). */
+/** `vow agent auto [--provider <name>] [--auth subscription|api] [--max-rounds <n>]` — the self-heal SPIRAL:
+ *  develop the backlog + settle the PRs each round; when it empties, audit the codebase + file findings as
+ *  new work; loop until a full audit pass is findings-free (done) or the round cap (exhausted). */
 export function runAuto(rest: readonly string[]): number | Promise<number> {
   const args = parseAuto(rest);
   if (typeof args === "string") {

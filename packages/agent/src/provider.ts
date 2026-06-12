@@ -4,7 +4,11 @@
  * testable and nothing above this layer names a provider (the seam the #107 gate guards).
  */
 
-import type { Auth, ModelPolicy, Provider } from "./types.ts";
+import type { Auth, Command, ModelPolicy, Provider } from "./types.ts";
+
+/** The read-only tools a headless audit is allowed — it inspects the codebase and reports findings, never
+ *  edits (the audit -> plan step files issues, not changes). Passed to `claude --allowedTools`. */
+const AUDIT_TOOLS = "Read,Grep,Glob";
 
 /** A `<flag> <model>` pair when the task pins a model, else nothing — each provider passes its OWN flag
  *  name, so the model axis stays provider-neutral (the provider says WHICH CLI, the model WHICH BRAIN). */
@@ -62,6 +66,22 @@ export const claudeCode: Provider = {
   models: CLAUDE_MODELS,
   name: "claude-code",
 };
+
+/** The audit model — the brain a headless audit pass runs under (Fable, the most capable). Resolved from
+ *  vow's native per-role setting, so it tracks the policy the loop already uses for the audit role. */
+export const AUDIT_MODEL: string = CLAUDE_MODELS.audit;
+
+/** The claude CLI command for a headless, read-only audit of one dimension: print mode at `model` with the
+ *  audit prompt, restricted to read-only tools, and the API key stripped (subscription auth) unless `--auth
+ *  api` is explicit. Built, never run here — the args array is the tested product (the LIVE shell-out is
+ *  integration the CLI runs). Pure. */
+export function auditCommand(model: string, prompt: string, auth?: Auth): Command {
+  return {
+    args: ["--model", model, "--print", "--allowedTools", AUDIT_TOOLS, prompt],
+    bin: "claude",
+    unsetEnv: authUnset(auth, "ANTHROPIC_API_KEY"),
+  };
+}
 
 /** Codex CLI — `codex exec` non-interactive, `--full-auto` so edits apply without a prompt. */
 export const codex: Provider = {
