@@ -303,25 +303,43 @@ export async function runAll(rest: readonly string[]): Promise<number> {
 }
 
 /** Reconcile the GitHub Project's Status to the studio's derived status right after a merge (the moment an
- *  issue closes), so the board never drifts. The Project node id comes from `VOW_PROJECT_ID` or, when that
- *  is unset, the studio config's `project:` URL — so the sync runs without a shell env var instead of
- *  silently skipping. A genuine no-op only when neither is configured; local gh auth, no PAT. */
-function syncBoard(cwd: string): void {
+ *  issue closes), so the board never drifts — and return the line to print. The Project node id comes from
+ *  `VOW_PROJECT_ID` or, when that is unset, the studio config's `project:` URL — so the sync runs without a
+ *  shell env var instead of silently skipping. Empty (no line) only when neither is configured; local gh
+ *  auth, no PAT. May throw if `gh project` hiccups — the caller treats that best-effort
+ *  (`reconcileAfterMerge`), since the merge, not the reconcile, is load-bearing. */
+function boardLine(cwd: string): string {
   // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = fall back to config
   const pid = resolveProjectId(cwd, process.env["VOW_PROJECT_ID"]);
   if (typeof pid !== "string") {
-    return;
+    return "";
   }
   const { changed, matched } = syncProjectStatus(cwd, pid);
-  process.stdout.write(`board: ${changed.length} reconciled, ${matched} matched\n`);
+  return `board: ${changed.length} reconciled, ${matched} matched`;
+}
+
+/** Run the post-merge board reconcile BEST-EFFORT: the merge is the load-bearing effect, the reconcile is
+ *  advisory (`vow sync-project` / the MCP can re-run it), so a `gh project` hiccup must NEVER report a
+ *  succeeded merge as failed. Returns the board line on success, or a `merged — board sync skipped: <why>`
+ *  warning when `sync` throws — either way a string the caller prints, never a propagated throw. */
+export function reconcileAfterMerge(pr: number, sync: () => string): string {
+  try {
+    return sync();
+  } catch (error) {
+    return `pr #${pr}: merged — board sync skipped: ${errorReason(error)}`;
+  }
 }
 
 /** Squash-merge a green PR via gh — the agent closing the loop on a passing run — then reconcile the board
- *  (the merge closed the issue, so its derived status just became Done; the built-ins don't catch this). */
+ *  best-effort (the merge closed the issue, so its derived status just became Done; the built-ins don't
+ *  catch this). A board-sync hiccup is swallowed + warned, never reported as a failed merge (#466). */
 export function mergePr(pr: number, cwd: string): number {
   execFileSync("gh", [...mergeArgs(pr)], { cwd, stdio: "inherit" });
   process.stdout.write(`pr #${pr}: merged (green CI)\n`);
-  syncBoard(cwd);
+  const line = reconcileAfterMerge(pr, () => boardLine(cwd));
+  if (line !== "") {
+    process.stdout.write(`${line}\n`);
+  }
   return 0;
 }
 
