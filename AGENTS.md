@@ -11,7 +11,9 @@ on one red line, every step gated. Read this before changing anything.
 4. **Verify** — `vp check` = 0 AND `pnpm -r test` = 0 (a gate in another package may scan yours).
 5. **Document** — every package has a row in `docs/guide/packages.md`; every element a doc page.
 6. **PR** — `Closes #N` (every PR links an issue).
-7. **Merge** — the agent merges when CI's `gate` is green; a red run becomes a draft.
+7. **Merge** — `gh pr merge <n> --auto --squash` queues the PR to GitHub's merge queue. The queue
+   orders PRs, tests each against the queue head in a temporary merge group, and merges automatically
+   when the group passes. No manual update-branch, no per-PR re-gate cascade.
 
 ## The gates (mechanical, not pleas)
 
