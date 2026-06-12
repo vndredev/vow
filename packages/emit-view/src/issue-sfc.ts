@@ -20,7 +20,7 @@ const ISSUE_VARIANT_LINES = [
 ];
 
 /** The shared setup line every issue SFC opens with — the live plan, its fetch state, and the actions. */
-const ISSUE_SETUP_LINE = `const { items, state, closeIssue, reopenIssue } = useIssues();`;
+const ISSUE_SETUP_LINE = `const { items, state, closeIssue, reopenIssue, startWork } = useIssues();`;
 
 /** A `.vow-empty` status message shown in place of the layout when the plan is empty — guarded by `cond`
  *  (a `v-if`) so only the matching one renders. The three states are mutually exclusive (no `v-else` in the
@@ -86,6 +86,25 @@ function issueActionButton(): UiNode {
         kind: "event",
         name: "click",
       },
+    ],
+    [],
+  );
+}
+
+/**
+ * The start-work button the three issue layouts share — the human's one signal to begin an issue. It calls
+ * `startWork` from `useIssues`, which POSTs the start-work signal to `/__vow/agent`; the dev server then
+ * dispatches an agent session (`vow agent run <n>`). Shown only on an issue not yet `done` (an issue already
+ * `doing` can still be re-signalled, e.g. a stalled run) and rendered with the default (primary) variant so
+ * it reads as the lead action. Status stays derived — the resulting PR is what makes the issue read `doing`.
+ */
+function startWorkButton(): UiNode {
+  return comp(
+    "Button",
+    [
+      { expr: "it.status !== 'done'", kind: "cond", type: "if" },
+      { kind: "static", name: "label", value: "Start work" },
+      { expr: "startWork(it.issue.number)", kind: "event", name: "click" },
     ],
     [],
   );
@@ -170,7 +189,11 @@ function tableRow(): UiNode {
       classed("td", "vow-table__cell", [statusBadge("it.status")]),
       labelsCell(),
       classed("td", "vow-table__cell", [{ expr: `it.issue.assignees.join(", ")`, kind: "interp" }]),
-      classed("td", "vow-table__cell", [issueActionButton(), issueSessionLink()]),
+      classed("td", "vow-table__cell", [
+        startWorkButton(),
+        issueActionButton(),
+        issueSessionLink(),
+      ]),
     ],
     for: { as: "it", each: "items", key: "it.issue.number" },
     kind: "element",
@@ -267,6 +290,7 @@ function boardCard(): UiNode {
       },
       boardCardLabels(),
       boardCardAssignees(),
+      startWorkButton(),
       issueActionButton(),
       issueSessionLink(),
     ],
@@ -361,6 +385,7 @@ function roadmapItem(): UiNode {
             tag: "span",
           },
           statusBadge("it.status"),
+          startWorkButton(),
           issueActionButton(),
           issueSessionLink(),
         ],

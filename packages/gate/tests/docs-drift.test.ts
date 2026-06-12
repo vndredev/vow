@@ -2,6 +2,7 @@
 import {
   adapterKinds,
   checkVowExample,
+  coreFieldTypes,
   germanMarkers,
   germanWords,
   safeReaddir,
@@ -148,7 +149,19 @@ test("every node/attr kind the Vue adapter handles is documented in components.m
 test("every core field type is documented in emit.md", () => {
   const core = readFileSync(path.join(root, "packages/core/src/vow.ts"), "utf8");
   const doc = readFileSync(path.join(root, "docs/guide/emit.md"), "utf8");
+  // Guard against a silent pass: the extraction must actually find field types, or the gate is vacuous.
+  expect(coreFieldTypes(core).length).toBeGreaterThan(0);
   expect(undocumentedFieldTypes(core, doc)).toEqual([]);
+});
+
+test("undocumentedFieldTypes catches a field type the doc omits (so the gate still bites)", () => {
+  expect(undocumentedFieldTypes('FieldType = z.enum(["text"])', "doc with no mention")).toEqual([
+    "text",
+  ]);
+});
+
+test("undocumentedKinds catches a kind the doc omits (so the gate still bites)", () => {
+  expect(undocumentedKinds(['case "text":'], "doc with no mention")).toEqual(["text"]);
 });
 
 test("the codebase and docs are English-only (no German umlauts or words)", () => {

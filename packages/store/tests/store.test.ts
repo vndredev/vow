@@ -23,6 +23,9 @@ const mockFetch: typeof fetch = async (): Promise<Response> => {
 };
 globalThis.fetch = mockFetch;
 
+/** An arbitrary issue number for the start-work signal test (a named constant, not a magic literal). */
+const SOME_ISSUE = 42;
+
 test("useCollection shares one reactive array per slug; different slugs are separate", () => {
   const first = useCollection<{ id: string }>("widget");
   const second = useCollection<{ id: string }>("widget");
@@ -92,11 +95,46 @@ test("subscribe fires a listener on each mutation; the returned unsubscribe stop
   expect(calls).toEqual(["fired", "fired"]);
 });
 
-test("version rises on each mutation — the snapshot token a binding compares", () => {
+test("subscribe fires on every mutation KIND — push, reconcile, update, removeById, removeAt", () => {
+  // The framework-neutral seam (useSyncExternalStore subscribe / a Solid signal) must wake on each path.
+  const expectedFires = 6;
   const list = createList();
-  const before = list.version;
+  let fires = 0;
+  list.subscribe(() => {
+    fires += 1;
+  });
+  // One mutation of each kind: append, freshness pull, patch by id, append, delete by id, delete by index.
+  const mutate = (): void => {
+    list.push({ id: "1", title: "a" });
+    list.reconcile([{ id: "1", title: "b" }]);
+    list.update("1", { title: "c" });
+    list.push({ id: "2", title: "d" });
+    list.removeById("2");
+    list.removeAt(0);
+  };
+  mutate();
+  expect(fires).toBe(expectedFires);
+});
+
+test("getSnapshot is referentially stable BETWEEN mutations — the useSyncExternalStore invariant", () => {
+  // UseSyncExternalStore loops forever if getSnapshot returns a fresh value with no mutation in between.
+  const list = createList();
+  const before = list.getSnapshot();
+  expect(list.getSnapshot()).toBe(before);
+  // A mutation moves the snapshot; a fresh read after it is stable again.
   list.push({ id: "1", title: "a" });
-  expect(list.version).toBeGreaterThan(before);
+  const after = list.getSnapshot();
+  expect(after).not.toBe(before);
+  expect(list.getSnapshot()).toBe(after);
+});
+
+test("getSnapshot rises on each mutation and equals version — the snapshot token a binding compares", () => {
+  const list = createList();
+  const before = list.getSnapshot();
+  list.push({ id: "1", title: "a" });
+  expect(list.getSnapshot()).toBeGreaterThan(before);
+  // GetSnapshot and version are the same token, named for the framework contract.
+  expect(list.getSnapshot()).toBe(list.version);
 });
 
 test("parseIssuePlan carries a doing item's agent session (the open PR + url); omits a malformed one", () => {
@@ -132,6 +170,16 @@ test("useIssues exposes a reactive state with loading + error flags the views br
   const { state } = useIssues();
   expect(typeof state.loading).toBe("boolean");
   expect(typeof state.error).toBe("boolean");
+});
+
+test("useIssues exposes startWork — the board action's signal to the agent — a safe no-op without a server", () => {
+  const { startWork } = useIssues();
+  expect(typeof startWork).toBe("function");
+  // No DOM / dev server here, so the POST is skipped and the call must not throw. The dev-API test drives
+  // The live POST end to end (signal -> /__vow/agent -> dispatch the run).
+  expect(() => {
+    startWork(SOME_ISSUE);
+  }).not.toThrow();
 });
 
 test("the store builds its data URLs under the server's mount prefix — the shared contract holds", () => {

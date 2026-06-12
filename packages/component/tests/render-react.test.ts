@@ -210,31 +210,87 @@ test("renderReactSfc renders a stateless component to a .tsx shell byte-for-byte
   expect(renderReactSfc(card)).toBe(EXPECTED_CARD);
 });
 
-test("renderReactSfc throws when setup is present (a #101 follow-up, not a half-feature)", () => {
+// A simple-stateful Component whose setup is STRUCTURED (a SetupStep list, not raw Vue strings).
+// State, a derived value, and a handler, plus a prop and an event. The React adapter renders the
+// SAME model the Vue adapter does, only into hooks (state -> useState, computed -> useMemo) with the
+// Handler an arrow, the prop a destructured param, the event an on<Pascal> callback. Byte-exact oracle.
+const counter: Component = {
+  events: [{ name: "update:modelValue", payload: "number" }],
+  imports: [{ from: "react", names: ["useMemo", "useState"] }],
+  name: "Counter",
+  props: [{ default: "0", name: "step", optional: true, tsType: "number" }],
+  setup: [
+    { init: "0", kind: "state", name: "count" },
+    { deps: ["count"], expr: "count * 2", kind: "computed", name: "doubled" },
+    {
+      body: ["setCount(count + step);", "onUpdateModelValue(count + step);"],
+      kind: "handler",
+      name: "bump",
+      params: "",
+    },
+  ],
+  view: {
+    attrs: [{ expr: "bump", kind: "event", name: "click" }],
+    children: [{ expr: "doubled", kind: "interp" }],
+    kind: "element",
+    tag: "button",
+  },
+};
+
+const EXPECTED_COUNTER = [
+  `import { useMemo, useState } from "react";`,
+  `export default function Counter({ step = 0, onUpdateModelValue }: { step?: number; onUpdateModelValue: (payload: number) => void }) {`,
+  `  const [count, setCount] = useState(0);`,
+  `  const doubled = useMemo(() => count * 2, [count]);`,
+  `  const bump = () => {`,
+  `    setCount(count + step);`,
+  `    onUpdateModelValue(count + step);`,
+  `  };`,
+  ``,
+  `  return (`,
+  `    <button onClick={() => bump}>{doubled}</button>`,
+  `  );`,
+  `}`,
+  ``,
+].join("\n");
+
+test("renderReactSfc renders a structured-setup component into React hooks byte-for-byte", () => {
+  expect(renderReactSfc(counter)).toBe(EXPECTED_COUNTER);
+});
+
+test("a const step renders identically in both adapters (the framework-neutral base case)", () => {
+  const greeting: Component = {
+    name: "Greeting",
+    props: [{ name: "label", tsType: "string" }],
+    setup: [{ expr: "'Hi, ' + label", kind: "const", name: "greeting" }],
+    view: {
+      attrs: [],
+      children: [{ expr: "greeting", kind: "interp" }],
+      kind: "element",
+      tag: "p",
+    },
+  };
+  const expected = [
+    `export default function Greeting({ label }: { label: string }) {`,
+    `  const greeting = 'Hi, ' + label;`,
+    ``,
+    `  return (`,
+    `    <p>{greeting}</p>`,
+    `  );`,
+    `}`,
+    ``,
+  ].join("\n");
+  expect(renderReactSfc(greeting)).toBe(expected);
+});
+
+test("renderReactSfc narrows its throw to a RAW setup string (the #101 follow-up), not the feature", () => {
+  // A structured setup renders; only the verbatim-Vue escape hatch (a raw string) stays untranslatable.
   const stateful: Component = {
-    name: "Counter",
-    setup: ["const count = 0;"],
+    name: "Legacy",
+    setup: ["const api = computed(() => something);"],
     view: { attrs: [], children: [], kind: "element", tag: "div" },
   };
   expect(() => renderReactSfc(stateful)).toThrow("#101 follow-up");
-});
-
-test("renderReactSfc throws when props are present", () => {
-  const withProps: Component = {
-    name: "Greeting",
-    props: [{ name: "label", tsType: "string" }],
-    view: { attrs: [], children: [], kind: "element", tag: "div" },
-  };
-  expect(() => renderReactSfc(withProps)).toThrow("#101 follow-up");
-});
-
-test("renderReactSfc throws when events are present", () => {
-  const withEvents: Component = {
-    events: [{ name: "click", payload: "void" }],
-    name: "Pressable",
-    view: { attrs: [], children: [], kind: "element", tag: "div" },
-  };
-  expect(() => renderReactSfc(withEvents)).toThrow("#101 follow-up");
 });
 
 test("a bound attr name that would forge a directive is rejected in the React adapter (#305)", () => {

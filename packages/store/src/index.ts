@@ -114,12 +114,25 @@ export class ReactiveRows {
     return this.revision;
   }
 
-  /** Subscribe to mutations; returns the unsubscribe. The neutral observer seam for the #101 adapters. */
+  /** Subscribe to mutations; returns the unsubscribe. The neutral observer seam for the #101 adapters.
+   *  This is the `subscribe` half of React's `useSyncExternalStore(subscribe, getSnapshot)` and what a Solid
+   *  signal re-reads from — framework-free (a plain listener `Set`), so no framework is imported here. */
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /** The current snapshot — the `getSnapshot` half of `useSyncExternalStore(subscribe, getSnapshot)`. It is
+   *  the rising revision token (a number), so it is **referentially stable between mutations**: repeated calls
+   *  with no mutation in between return the identical primitive, which is the invariant `useSyncExternalStore`
+   *  requires (an unstable snapshot loops React forever). The store mutates its `rows` in place to keep array +
+   *  row identity (the `reference` dropdowns rely on it), so this token — not the array — is what changes on a
+   *  mutation; a binding reads the token to know to re-pull `rows`. Pairs with `subscribe` above; same value as
+   *  `version`, named for the framework contract. */
+  public getSnapshot(): number {
+    return this.revision;
   }
 
   /** Mark `id` as having an optimistic write in flight, so the freshness poll skips it until the write
@@ -351,6 +364,24 @@ async function writeIssue(action: "close" | "reopen", issue: number): Promise<vo
   }
 }
 
+/** Signal the agent to begin an issue via `POST /__vow/agent` (the dev server dispatches `vow agent run`).
+ *  Status stays derived — the signal only kicks off the run; the resulting PR is what makes the issue read
+ *  `doing` on the next poll, so nothing is spliced here. A failed signal is swallowed. */
+async function signalStartWork(issue: number): Promise<void> {
+  if (!hasApi) {
+    return;
+  }
+  try {
+    await fetch(VOW_API.agent, {
+      body: JSON.stringify({ action: "start", number: issue }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+  } catch {
+    // The agent run is fire-and-forget; the human watches it via the session link once the PR opens.
+  }
+}
+
 let freshness = false;
 /** Refetch every loaded collection on focus + a light visible-tab interval, so an MCP write shows up. */
 function startFreshness(): void {
@@ -469,12 +500,14 @@ export interface IssuesState {
 /** The shared reactive issue plan, read live from `/__vow/issues` (gh-direct) + polled on focus + the
  *  interval. `state` carries the loading / error flags so a view can show "Loading the plan…" or "Couldn't
  *  reach GitHub" instead of a bare header. `closeIssue`/`reopenIssue` POST back through the same dev seam
- *  the MCP uses — so the studio's action buttons and the agent share one path to GitHub. GitHub stays the
- *  source; the reply re-syncs. */
+ *  the MCP uses — so the studio's action buttons and the agent share one path to GitHub. `startWork` POSTs
+ *  the start-work signal to `/__vow/agent`, dispatching an agent session for the issue — the human's one
+ *  trigger to begin. GitHub stays the source; the reply re-syncs. */
 export function useIssues(): {
   closeIssue: (issue: number) => void;
   items: IssueItem[];
   reopenIssue: (issue: number) => void;
+  startWork: (issue: number) => void;
   state: IssuesState;
 } {
   if (!issuesLoaded) {
@@ -492,6 +525,11 @@ export function useIssues(): {
     reopenIssue: (issue): void => {
       detach(async () => {
         await writeIssue("reopen", issue);
+      });
+    },
+    startWork: (issue): void => {
+      detach(async () => {
+        await signalStartWork(issue);
       });
     },
     state: issuesState,

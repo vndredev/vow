@@ -119,6 +119,23 @@ export function protectionDrift(state: ProtectionState, spec: ProtectionSpec): s
   return out;
 }
 
+/** A CI-readable verdict on the live protection — `ok` is the gate (false fails the run), `report` is the
+ *  one-line summary the workflow prints. */
+export interface DriftReport {
+  readonly ok: boolean;
+  readonly report: string;
+}
+
+/** Turn a drift list into a CI verdict: empty -> a green "holds" line, else a red multi-line list every
+ *  drift gets its own line in. Pure — this is what the CI workflow + `vow guard --check` both render. */
+export function driftReport(drift: readonly string[]): DriftReport {
+  if (drift.length === 0) {
+    return { ok: true, report: "main protection holds - PR-only - gate - no bypass - 0 reviews" };
+  }
+  const lines = drift.map((line) => `  drift: ${line}`);
+  return { ok: false, report: ["main protection has drifted:", ...lines].join("\n") };
+}
+
 /** The `gh api ... -X PUT` body that enforces `spec`. Built as a string so `restrictions: null` (which the
  *  API requires to clear restrictions) needs no null literal. Pure. */
 export function protectionPayload(spec: ProtectionSpec): string {
@@ -158,4 +175,14 @@ export function protectMain(cwd: string): void {
 /** Where `main`'s live protection drifts from vow's invariant — empty means it holds. */
 export function mainDrift(cwd: string): string[] {
   return protectionDrift(readProtection(cwd, "main"), MAIN_PROTECTION);
+}
+
+/**
+ * Read `main`'s live protection and report whether it matches vow's invariant — the CI entry. `gh` reads
+ * branch protection only with an admin-scope token, so the `protection-drift` workflow must run this with
+ * an admin PAT (`VOW_ADMIN_TOKEN`) in `GH_TOKEN`; the default `GITHUB_TOKEN` can't and the workflow gates
+ * the step on the secret being present. `ok=false` is the failing verdict the CI step exits on.
+ */
+export function checkMainDrift(cwd: string): DriftReport {
+  return driftReport(mainDrift(cwd));
 }

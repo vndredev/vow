@@ -21,6 +21,7 @@ import { tmpdir } from "node:os";
 /** A live client wired to a freshly composed server — `call` returns a tool result's text body. */
 interface Harness {
   readonly call: (name: string, args: Readonly<Record<string, unknown>>) => Promise<string>;
+  readonly describe: (name: string) => Promise<string>;
 }
 
 /** A type guard yielding `readonly unknown[]` (not `any[]`) — keeps element reads off the array safe. */
@@ -65,7 +66,18 @@ async function connect(studio: ReturnType<typeof openStudio>): Promise<Harness> 
   const client = new Client({ name: "agent", version: "0.0.0" });
   await server.connect(serverSide);
   await client.connect(clientSide);
-  return { call: async (name, args) => bodyOf(await client.callTool({ arguments: args, name })) };
+  return {
+    call: async (name, args) => bodyOf(await client.callTool({ arguments: args, name })),
+    describe: async (name) => {
+      const { tools } = await client.listTools();
+      for (const tool of tools) {
+        if (tool.name === name) {
+          return tool.description ?? "";
+        }
+      }
+      return "";
+    },
+  };
 }
 
 /** Build the harness over a temp app dir with a single `task` entity, run `body`, then clean up. */
@@ -147,6 +159,31 @@ test("add_view rejects an unknown node type synchronously — the build error, n
       view: [{ type: "nope", value: {} }],
     });
     expect(bad).toContain('unknown view component "nope"');
+    // The allowed vocabulary is listed, not a dead-end (#391) — `list` is in the set.
+    expect(bad).toContain("allowed:");
+    expect(bad).toContain("list");
+  });
+});
+
+test("set_view rejects an unknown node type with the allowed set listed (#391)", async () => {
+  await withHarness(async ({ call }) => {
+    await call("add_view", {
+      intent: "A page",
+      slug: "home",
+      view: [{ type: "hero", value: { title: "Hi" } }],
+    });
+    const bad = await call("set_view", { slug: "home", view: [{ type: "lists", value: {} }] });
+    expect(bad).toContain('unknown view component "lists"');
+    expect(bad).toContain("allowed:");
+  });
+});
+
+test("set_view's description lists the node vocabulary, at parity with add_view (#391)", async () => {
+  await withHarness(async ({ describe }) => {
+    const setView = await describe("set_view");
+    const addView = await describe("add_view");
+    expect(setView).toContain("A node's `type` is one of:");
+    expect(addView).toContain("A node's `type` is one of:");
   });
 });
 
