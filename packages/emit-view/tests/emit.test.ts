@@ -318,7 +318,7 @@ test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not dra
   expectContains(sfc, [
     'tabindex="0"',
     'role="group"',
-    `:aria-label="\`status: ${interp("item.status")}. Use the left and right arrows to move.\`"`,
+    `:aria-label="\`${interp("item.title")}. Status: ${interp("item.status")}. Use the left and right arrows to move.\`"`,
     '@keydown.left="moveCard(item, -1)"',
     '@keydown.right="moveCard(item, 1)"',
     "function move(card: Ticket, delta: number): void {",
@@ -329,6 +329,24 @@ test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not dra
   ]);
   // The move is announced to assistive tech through a polite live region.
   expectContains(sfc, ['role="status"', 'aria-live="polite"', "{{ announce }}"]);
+});
+
+test("emitEntityBoard names the card by its title field, not just the column value", () => {
+  const ticket: VowNode = {
+    ...entity,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "planStatus", options: ["todo", "done"], required: false, type: "select" },
+    ],
+    id: "vow_ticket",
+    slug: "ticket",
+  };
+  const sfc = emitEntityBoard(ticket, "planStatus");
+  // The label leads with the record's title (so each card in a column is distinguishable to AT) and
+  // Humanizes the grouped field name — not the raw camelCase identifier.
+  expect(sfc).toContain(
+    `:aria-label="\`${interp("item.title")}. Plan status: ${interp("item.planStatus")}. Use the left and right arrows to move.\`"`,
+  );
 });
 
 test("emitEntityBoard restores focus after a keyboard move so it is not single-use (WCAG 2.4.3)", () => {
