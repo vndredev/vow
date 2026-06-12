@@ -1,3 +1,4 @@
+import { VOW_API, dbPath } from "@vow/db/routes";
 import { createList, useCollection, useIssues } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import { parseIssuePlan } from "../src/issues.ts";
@@ -84,6 +85,14 @@ test("useIssues exposes a reactive state with loading + error flags the views br
   const { state } = useIssues();
   expect(typeof state.loading).toBe("boolean");
   expect(typeof state.error).toBe("boolean");
+});
+
+test("the store builds its data URLs under the server's mount prefix — the shared contract holds", () => {
+  // The store fetches `dbPath(slug)` / `dbPath(slug, id)`; the dev server mounts the data API on `VOW_API.db`.
+  // Both ends read the one shared constant from `@vow/db/routes` — a rename cannot 404 the client.
+  // Pinned here at the client end (this env has no DOM, so no live fetch fires); the round-trip lives in db.
+  expect(dbPath("widget").startsWith(VOW_API.db)).toBe(true);
+  expect(dbPath("widget", "1").startsWith(VOW_API.db)).toBe(true);
 });
 
 test("reconcile patches in place (keeps identity), adds new + drops missing", () => {

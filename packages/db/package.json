@@ -5,7 +5,8 @@
   "description": "vow's data layer — a local SQLite DB (node:sqlite) behind the useCollection seam; D1 in prod.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./routes": "./src/routes.ts"
   },
   "scripts": {
     "test": "vp test",
