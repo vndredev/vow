@@ -237,6 +237,29 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
   expect(() => emitEntityBoard(ticket, "title")).toThrow();
 });
 
+// The SFC carries exactly one legitimate `</script` — its own closing tag (a breakout would add a second).
+const SOLE_SCRIPT_CLOSE = 1;
+
+test("a select option can never break out of the generated <script setup> (stored XSS)", () => {
+  // A `</script>` in an option (reachable via MCP add_field / hand-authored vow.md) must not close the
+  // SFC's script block early. The emitter neutralizes every `</` to `<\/` (an inert JS string).
+  const breakout = "done</script><svg onload=alert(1)>";
+  const ticket: VowNode = {
+    ...entity,
+    fields: [{ name: "status", options: ["todo", breakout], required: false, type: "select" }],
+    id: "vow_ticket",
+    slug: "ticket",
+  };
+  const board = emitEntityBoard(ticket, "status");
+  const stats = emitEntityStats(ticket, "status");
+  for (const sfc of [board, stats]) {
+    // The raw breakout is escaped in the embed; the setup line carries the inert `<\/script>` form.
+    expect(sfc).toContain(String.raw`done<\/script><svg onload=alert(1)>`);
+    // Only the SFC's own close tag survives — no premature one from the option.
+    expect((sfc.match(/<\/script/gu) ?? []).length).toBe(SOLE_SCRIPT_CLOSE);
+  }
+});
+
 test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not drag-only", () => {
   const ticket: VowNode = {
     ...entity,
