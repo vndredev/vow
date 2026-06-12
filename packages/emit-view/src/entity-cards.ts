@@ -7,7 +7,7 @@ import { cardsComponentName } from "./naming.ts";
 import { recordCard } from "./record-card.ts";
 
 /** The grouped grid of cards — a section per group, each a Grid of one Card per record. */
-function cardsView(cardChildren: readonly UiNode[]): UiNode {
+function cardsGrid(cardChildren: readonly UiNode[]): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-cards-group" }],
     children: [
@@ -41,6 +41,27 @@ function cardsView(cardChildren: readonly UiNode[]): UiNode {
   };
 }
 
+/** The whole cards view — the grouped grid, plus a friendly empty state when no records are displayed. */
+function cardsView(entity: ReadonlyVow, cardChildren: readonly UiNode[]): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${entity.slug}` }],
+    children: [
+      cardsGrid(cardChildren),
+      {
+        attrs: [
+          { kind: "static", name: "class", value: "vow-empty" },
+          { expr: "displayed.length === 0", kind: "cond", type: "if" },
+        ],
+        children: [{ kind: "text", text: "Nothing here yet." }],
+        kind: "element",
+        tag: "p",
+      },
+    ],
+    kind: "element",
+    tag: "section",
+  };
+}
+
 /**
  * A cards composition over an entity — one `<Card>` per record (live from the shared store): its first
  * text field titles the card, the rest fill the body. A composition, not a primitive: it knows the
@@ -69,7 +90,7 @@ export function emitEntityCards(entity: ReadonlyVow): string {
       ...sliceComputed(type, "displayed"),
       ...groupedLines(type, "displayed"),
     ],
-    view: cardsView(cardChildren),
+    view: cardsView(entity, cardChildren),
   };
   return renderVueSfc(component);
 }
