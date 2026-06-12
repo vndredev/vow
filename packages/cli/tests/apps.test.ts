@@ -1,6 +1,8 @@
 // @vitest-environment node
-import { APPS, DEFAULT_DEV, appBySlug, resolveApps } from "../src/apps.ts";
+import { APPS, DEFAULT_DEV, appBySlug, repoRoot, resolveApps } from "../src/apps.ts";
 import { expect, test } from "vite-plus/test";
+import { existsSync } from "node:fs";
+import path from "node:path";
 
 test("resolveApps: empty → the default dev set (studio + docs)", () => {
   expect(resolveApps([]).map((app) => app.slug)).toEqual(["studio", "docs"]);
@@ -30,4 +32,14 @@ test("appBySlug: an unknown slug throws a clear error naming the valid apps", ()
 test("every app has a unique, fixed port", () => {
   const ports = APPS.map((app) => app.port);
   expect(new Set(ports).size).toBe(ports.length);
+});
+
+test("repoRoot: resolves to the directory holding pnpm-workspace.yaml", () => {
+  const root = repoRoot();
+  expect(existsSync(path.join(root, "pnpm-workspace.yaml"))).toBe(true);
+});
+
+test("in-CLI throw messages are prefix-free (the top-level handler adds the single vow: prefix)", () => {
+  // A throw that already carries the prefix would render doubled; throw sites here stay prefix-free.
+  expect(() => appBySlug("nope")).not.toThrow(/^vow:/u);
 });

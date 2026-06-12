@@ -3,6 +3,7 @@ import { assertEmitEntity, selectField } from "./entity-guard.ts";
 import { pascalCase, renderVueSfc } from "@vow/component";
 import { boardComponentName } from "./naming.ts";
 import { recordCard } from "./record-card.ts";
+import { scriptJson } from "./helpers.ts";
 import { sliceComputed } from "./slice.ts";
 
 /** The board setup — the store, the option list, the per-column computed, drag + keyboard handlers. */
@@ -11,7 +12,7 @@ function boardSetup(entity: ReadonlyVow, by: string, field: ReadonlyField): stri
   const key = JSON.stringify(by);
   return [
     `const { items: rows, update } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
-    `const options = ${JSON.stringify(field.options ?? [])};`,
+    `const options = ${scriptJson(field.options ?? [])};`,
     ...sliceComputed(type, "visible"),
     `const columns = computed(() =>`,
     `  options.map((o) => ({ option: o, cards: visible.value.filter((r) => r.${by} === o) })),`,

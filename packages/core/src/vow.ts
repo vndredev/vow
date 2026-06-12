@@ -61,11 +61,18 @@ export type FieldType = z.infer<typeof FieldType>;
 const FieldName = z
   .string()
   .regex(/^[a-z][a-zA-Z0-9]*$/u, "field name must be a camelCase identifier");
+/**
+ * A `select` option's value. Unlike slug/FieldName it is free text (it is shown to the user verbatim),
+ * but it must never carry the `</` tag-open sequence: an option lands in a generated `<script setup>`
+ * body, where a `</script>` would close the block early and run as markup (a stored-XSS sink). The
+ * emitter neutralizes it too (`scriptJson`); forbidding it here is the boundary's defense-in-depth.
+ */
+const SelectOption = z.string().regex(/^[^<]*$/u, "a select option must not contain '<'");
 /** The bare field shape, before the per-type rules below tighten it. */
 const FieldShape = z.object({
   name: FieldName,
   /** Allowed values for a `select` field — absent for other types. */
-  options: z.array(z.string()).optional(),
+  options: z.array(SelectOption).optional(),
   /** The target entity slug for a `reference` field (it points at that entity's id) — absent otherwise. */
   ref: z.string().optional(),
   required: z.boolean().default(false),
@@ -117,15 +124,18 @@ export const ViewNode = z.object({ type: z.string(), value: z.unknown() });
 
 /**
  * An `emit form` spec (a `## form`): a form bound to an entity (`of: <slug>`), with a submit label.
- * Optional members carry `| undefined` so the zod-inferred output (always `key?: T | undefined`)
- * is assignable under `exactOptionalPropertyTypes` — `Vow.parse(...)` returns exactly this shape.
+ * `edit: true` makes it a singleton editor — it pre-loads the entity's latest row and updates it in
+ * place (instead of appending a new record). Optional members carry `| undefined` so the zod-inferred
+ * output (always `key?: T | undefined`) is assignable under `exactOptionalPropertyTypes`.
  */
 export interface FormSpec {
+  readonly edit?: boolean | undefined;
   readonly of?: string | undefined;
   readonly submit: string;
 }
 
 export const FormSpec = z.object({
+  edit: z.boolean().optional(),
   of: z.string().optional(),
   submit: z.string().default("Submit"),
 });

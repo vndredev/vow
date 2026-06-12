@@ -209,7 +209,7 @@ function parseView(body: string): ViewNode[] | undefined {
 function parseForm(body: string): FormSpecType | undefined {
   return mapDefined(sectionYaml(body, "form"), (yaml) => {
     const spec = asRecord(parseYaml(yaml));
-    return FormSpec.parse({ of: spec["of"], submit: spec["submit"] });
+    return FormSpec.parse({ edit: spec["edit"], of: spec["of"], submit: spec["submit"] });
   });
 }
 

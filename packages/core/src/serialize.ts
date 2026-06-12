@@ -59,12 +59,17 @@ function viewEntry(node: DeepReadonly<ViewNode>): Record<string, unknown> {
   return { [node.type]: node.value };
 }
 
-/** The form block (`of` is included only when the form is bound to an entity). */
+/** The form block (`of`/`edit` included only when set — a singleton editor carries `edit: true`). */
 function formBlock(form: NonNullable<ReadonlyVow["form"]>): string {
+  const fields: Record<string, unknown> = {};
   if (defined(form.of)) {
-    return yamlBlock("form", { of: form.of, submit: form.submit });
+    fields["of"] = form.of;
   }
-  return yamlBlock("form", { submit: form.submit });
+  fields["submit"] = form.submit;
+  if (form.edit === true) {
+    fields["edit"] = true;
+  }
+  return yamlBlock("form", fields);
 }
 
 /** A section spread into the line list only when `include` holds — `[text()]` or `[]`, no ternary/undefined. */
