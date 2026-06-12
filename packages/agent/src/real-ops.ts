@@ -15,8 +15,8 @@ function exitStatus(error: unknown): number {
   return 1;
 }
 
-/** The text a failed run produced — its captured stdout, the error message, or a fallback. */
-function failOutput(error: unknown): string {
+/** The captured stdout of a failed `execFileSync`, or "" when there's none. */
+function failStdout(error: unknown): string {
   if (
     typeof error === "object" &&
     error !== null &&
@@ -24,6 +24,30 @@ function failOutput(error: unknown): string {
     typeof error.stdout === "string"
   ) {
     return error.stdout;
+  }
+  return "";
+}
+
+/** The captured stderr of a failed `execFileSync` — where git/gh/tsgo write their actionable diagnostics. */
+function failStderr(error: unknown): string {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "stderr" in error &&
+    typeof error.stderr === "string"
+  ) {
+    return error.stderr;
+  }
+  return "";
+}
+
+/** The text a failed run produced — its captured stdout + stderr (the reason often sits in stderr), the
+ *  error message, or a fallback. stderr matters: an empty-but-string stdout would otherwise short-circuit
+ *  before the message, so the most common failures surfaced an uninformative string. */
+function failOutput(error: unknown): string {
+  const combined = [failStdout(error), failStderr(error)].filter(Boolean).join("\n");
+  if (combined) {
+    return combined;
   }
   if (error instanceof Error) {
     return error.message;
@@ -84,7 +108,14 @@ export function realOps(): AgentOps {
     },
     worktreeRemove: async (path) => {
       await Promise.resolve();
-      execFileSync("git", [...worktreeRemoveArgs(path)], { cwd: process.cwd() });
+      // Tolerant of an absent path. The teardown runs in a finally, so worktreeAdd may have thrown before
+      // Registering the worktree — a `git worktree remove` throw there would then mask the original error.
+      // Force already drops a dirty worktree; pruning the not-a-worktree case makes the remove idempotent.
+      try {
+        execFileSync("git", [...worktreeRemoveArgs(path)], { cwd: process.cwd() });
+      } catch {
+        execFileSync("git", ["worktree", "prune"], { cwd: process.cwd() });
+      }
     },
   };
 }

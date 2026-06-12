@@ -197,16 +197,35 @@ export function migrate(db: Db, entities: readonly ReadonlyVow[]): void {
 }
 
 /**
+ * Throw when a rename target column already exists on `slug` (an orphan a prior `remove_field` left
+ * behind — `migrate` never drops a column) — so a caller can guard the collision BEFORE rewriting the
+ * vow `.md`, keeping the vow and the DB in step. A no-op when `from`/`to` are equal or the target is free.
+ */
+// eslint-disable-next-line max-params
+export function assertColumnFree(db: Db, slug: string, from: string, to: string): void {
+  if (from === to) {
+    return;
+  }
+  if (columnNames(db, slug).has(to)) {
+    throw new Error(
+      `cannot rename field to "${to}": an orphaned column "${to}" still exists — remove it first`,
+    );
+  }
+}
+
+/**
  * Rename a field's column so the stored data follows the rename — `migrate` is strictly additive (it
  * only adds the new name as a fresh empty column and orphans the old one), so a field rename must issue
  * `ALTER TABLE … RENAME COLUMN` here. A no-op when `from`/`to` are equal or the source column is absent.
- * The 4-arg shape (db, slug, from, to) mirrors `update`'s — the seam the studio binds to.
+ * Throws (via `assertColumnFree`) when the target name already exists, so a collision never produces a
+ * raw SQLite error. The 4-arg shape (db, slug, from, to) mirrors `update`'s — the seam the studio binds to.
  */
 // eslint-disable-next-line max-params
 export function renameColumn(db: Db, slug: string, from: string, to: string): void {
   if (from === to || !columnNames(db, slug).has(from)) {
     return;
   }
+  assertColumnFree(db, slug, from, to);
   db.exec(`ALTER TABLE "${slug}" RENAME COLUMN "${from}" TO "${to}";`);
 }
 

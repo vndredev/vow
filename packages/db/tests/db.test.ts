@@ -1,6 +1,7 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type ReadonlyField, type ReadonlyVow, isRecord } from "@vow/core";
 import {
+  assertColumnFree,
   bootstrap,
   insert,
   list,
@@ -86,6 +87,34 @@ test("renameColumn carries the stored data to the new column name (so a rename i
   // The stored value followed the rename — read it back under the new column name.
   const renamed = entity("task", [{ name: "name", required: true, type: "text" }]);
   expect(list(db, renamed)[0]?.["name"]).toBe("Carry me");
+});
+
+test("renameColumn throws on a collision with an existing (orphaned) target column", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  // `status` is a live column; renaming `title` onto it must throw an actionable error, never a raw
+  // SQLite "duplicate column name" — so the studio can guard the vow `.md` rewrite.
+  expect(() => {
+    renameColumn(db, "task", "title", "status");
+  }).toThrow(
+    /cannot rename field to "status": an orphaned column "status" still exists — remove it first/u,
+  );
+  // The rename did not happen — the columns are unchanged.
+  expect(columnNames(db, "task")).toEqual(["id", "title", "done", "rank", "status"]);
+});
+
+test("assertColumnFree is a no-op when the target column is free or equals the source", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  expect(() => {
+    assertColumnFree(db, "task", "title", "label");
+  }).not.toThrow();
+  expect(() => {
+    assertColumnFree(db, "task", "title", "title");
+  }).not.toThrow();
+  expect(() => {
+    assertColumnFree(db, "task", "title", "status");
+  }).toThrow(/orphaned column "status"/u);
 });
 
 test("update patches only known fields (a stray key is dropped); remove deletes", () => {

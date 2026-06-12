@@ -77,10 +77,12 @@ export interface AgentOps {
   readonly worktreeRemove: (path: string) => Promise<void>;
 }
 
-/** One gate's outcome — the command and whether it passed. */
+/** One gate's outcome — the command, whether it passed, and (for a failed gate) its captured output, so the
+ *  PR/report carries the actual reason instead of a bare ✗. */
 export interface GateResult {
   readonly command: string;
   readonly ok: boolean;
+  readonly output?: string;
 }
 
 /** The verdict of re-running a plan's gates: the per-gate results + their conjunction. */

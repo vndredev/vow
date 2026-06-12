@@ -8,17 +8,19 @@ import {
   verify,
 } from "../src/verify.ts";
 import { expect, test } from "vite-plus/test";
+import type { RunResult } from "../src/types.ts";
 
 const TITLE_MAX = 72;
 const OVERLONG = 100;
 
-/** A fake exec: any command containing "fail" exits non-zero, the rest pass. No process is spawned. */
-const run = async (command: string): Promise<number> => {
+/** A fake exec: any command containing "fail" exits non-zero with a stderr-style reason, the rest pass. No
+ *  process is spawned. */
+const run = async (command: string): Promise<RunResult> => {
   await Promise.resolve();
   if (command.includes("fail")) {
-    return 1;
+    return { code: 1, output: `${command}: boom` };
   }
-  return 0;
+  return { code: 0, output: "" };
 };
 
 test("verify runs every gate; the verdict is the conjunction", async () => {
@@ -27,6 +29,20 @@ test("verify runs every gate; the verdict is the conjunction", async () => {
   const red = await verify(["vp check", "fail this"], "/wt", run);
   expect(red.ok).toBe(false);
   expect(red.results.find((result) => !result.ok)?.command).toBe("fail this");
+});
+
+test("verify keeps a failed gate's captured output (the reason), not just its command", async () => {
+  const red = await verify(["fail this"], "/wt", run);
+  expect(red.results[0]?.output).toBe("fail this: boom");
+});
+
+test("prBody renders a failed gate's captured output under its ✗ — the reason reaches the PR", () => {
+  const body = prBody("THE PLAN", {
+    ok: false,
+    results: [{ command: "vp check", ok: false, output: "src/x.ts(3,1): TS2304" }],
+  });
+  expect(body).toContain("- ✗ `vp check`");
+  expect(body).toContain("src/x.ts(3,1): TS2304");
 });
 
 test("a failing run opens a DRAFT pr, never a mergeable one", () => {
