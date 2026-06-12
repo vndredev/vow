@@ -64,5 +64,5 @@ fulfills: bind …#export → points at hand-written code, verified by tsgo
 An `entity` vow yields **only the model** — it never renders by itself. A view puts it on the page by listing it (`list: task`), which emits its CRUD list (`Task.vue`). One rule: views render, entities are data. Every non-root view and every form becomes a **routed page** (`/<slug>`), wrapped in the `@vow/shell` chrome.
 
 ::: warning Roadmap
-The entry page (`root: true`), multi-page **routing** (non-root views + forms → `/<slug>`), and the in-memory **data adapter** (`@vow/store`) all exist. Still to come: auth and Cloudflare D1 (real persistence) behind the same `useCollection` seam.
+The entry page (`root: true`), multi-page **routing** (non-root views + forms → `/<slug>`), and the **data adapter** (`@vow/store`) all exist — now backed by **local SQLite** (`@vow/db`, `node:sqlite`), so records persist across reloads in `.vow/data.db`. Still to come: auth and Cloudflare D1 (prod) behind the same `useCollection` seam.
 :::

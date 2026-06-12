@@ -49,6 +49,13 @@ test("trigger carries the combobox contract", () => {
   expect(api.selectedLabel).toBe("Vue");
 });
 
+test("an explicit triggerId overrides the trigger id so a form's label can point at it", () => {
+  const api = makeHarness(base({ open: true, triggerId: "statusId" }), select).api();
+  expect(api.triggerProps["id"]).toBe("statusId");
+  // The listbox still names the trigger, so the override stays internally consistent.
+  expect(api.listboxProps["aria-labelledby"]).toBe("statusId");
+});
+
 test("arrows move the active highlight (wrapping); Enter commits it", () => {
   const sel = makeHarness(base({ active: "solid", open: true }), select);
   // Wraps solid -> vue.

@@ -212,6 +212,24 @@ function fleetHeader(issues: readonly number[], json: boolean): string {
   return `fleet: ${issues.length} issues [${tags}], up to ${DEFAULT_CONCURRENCY} at once\n`;
 }
 
+/** The message of a thrown value — an `Error`'s `.message`, else its string form. */
+function errorReason(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+/** A failed `DevResult` for an issue whose worktree setup (or any develop step) threw — so one bad lane
+ *  only fails its own issue, never the whole fleet. The report mirrors `develop`: compact `{issue, ok}` in
+ *  `--json` mode, a human line naming the error otherwise. */
+export function failedResult(issue: number, error: unknown, json: boolean): DevResult {
+  if (json) {
+    return { ok: false, report: JSON.stringify({ issue, ok: false }) };
+  }
+  return { ok: false, report: `issue #${issue}: failed to develop — ${errorReason(error)}` };
+}
+
 /** Print the fleet's results — NDJSON (one per line) in `--json` mode, the spaced text reports otherwise. */
 function printResults(done: readonly DevResult[], json: boolean): void {
   if (json) {
@@ -232,14 +250,19 @@ export async function runAll(rest: readonly string[]): Promise<number> {
   const cwd = process.cwd();
   process.stdout.write(fleetHeader(parsed.issues, parsed.json));
   const worker = async (issue: number): Promise<DevResult> => {
-    const result = await develop({
-      auth: parsed.auth,
-      cwd,
-      issue,
-      json: parsed.json,
-      provider: parsed.provider,
-    });
-    return result;
+    try {
+      return await develop({
+        auth: parsed.auth,
+        cwd,
+        issue,
+        json: parsed.json,
+        provider: parsed.provider,
+      });
+    } catch (error) {
+      // A throw here (`git worktree add` or `vp install` failing) must fail only this lane, not reject the
+      // Promise.all in mapLimit and discard the other lanes. A failed result keeps the fleet's exit non-zero.
+      return failedResult(issue, error, parsed.json);
+    }
   };
   const done = await mapLimit(parsed.issues, DEFAULT_CONCURRENCY, worker);
   printResults(done, parsed.json);
