@@ -104,6 +104,15 @@ interface SurvivorResult {
   readonly consumed: ReadonlySet<string>;
 }
 
+/** The reactive fetch state a collection exposes — `loading` while its first/refresh fetch is in flight,
+ *  `error` when the last fetch failed (non-ok / transport). The generated entity list reads it to tell a
+ *  still-loading collection apart from a genuinely empty one (else "Nothing here yet." shows mid-fetch).
+ *  Mirrors `IssuesState`; its reactive identity is preserved (the same instance every reader gets). */
+export interface CollectionState {
+  readonly error: boolean;
+  readonly loading: boolean;
+}
+
 export interface Collection<T> {
   /** Append an item (optimistic; written through to the DB). */
   append(item: T): void;
@@ -115,6 +124,9 @@ export interface Collection<T> {
    *  list uses — it loops over filtered/sorted/grouped items, so the displayed index is not the store
    *  index; deleting by id removes the right row regardless of slice/order. */
   removeById(id: string): void;
+  /** The reactive loading / error state of this collection's fetch — the list branches on it to keep
+   *  "Nothing here yet." off the screen while the first load is still in flight. */
+  readonly state: CollectionState;
   /** Patch an item by id (optimistic; written through). */
   update(id: string, patch: Partial<T>): void;
 }
@@ -125,6 +137,11 @@ export interface Collection<T> {
 export class ReactiveRows {
   /** The live reactive array — the same instance for every reader, so identity is shared. */
   public readonly rows: Row[] = reactive<Row[]>([]) as Row[];
+
+  /** The collection's reactive fetch state — `loading` while `load` is in flight, `error` latched when the
+   *  last fetch failed. Identity is shared (the same instance every reader gets), so a view destructuring it
+   *  from `useCollection` keeps tracking it (like `rows`). Driven by `load`, mirroring `issuesState`. */
+  public readonly state = reactive({ error: false, loading: false });
 
   /** Listeners notified after every mutation — the framework-neutral seam non-Vue bindings (React's
    *  useSyncExternalStore, a Solid signal) subscribe to. Vue tracks `rows` directly and ignores this. */
@@ -301,31 +318,51 @@ export class ReactiveRows {
 }
 
 const collections = new Map<string, ReactiveRows>();
-// Slugs whose first fetch has been kicked off.
-const loaded = new Set<string>();
 
-/** Read a slug's rows from the dev API, returning `[]` on any non-ok response or transport failure. */
-async function fetchRows(slug: string): Promise<Row[]> {
+/** The outcome of one dev-API fetch — `ok` is false on a non-ok response or transport failure, so the
+ *  caller latches a reactive `error` flag rather than swallow it (the old `[]` hid a failure as empty, so a
+ *  failed fetch read as "Nothing here yet."). One shape for both the rows fetch and the issue-plan fetch. */
+interface FetchResult<T> {
+  readonly items: readonly T[];
+  readonly ok: boolean;
+}
+
+/** GET `url` and parse its JSON, THROWING on a non-ok response so the caller's `catch` latches the failure
+ *  (instead of a non-ok body being read as data) — the one place the `ok` check lives for both fetches. */
+async function okJson(url: string): Promise<unknown> {
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`fetch ${url} failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+/** Read a slug's rows from the dev API, reporting `ok: false` (with no items) on any non-ok response or
+ *  transport failure — so a failed fetch latches the error flag instead of reading as empty. */
+async function fetchRows(slug: string): Promise<FetchResult<Row>> {
   try {
-    const res = await fetch(dbPath(slug));
-    if (!res.ok) {
-      return [];
-    }
-    return toRows(await res.json());
+    return { items: toRows(await okJson(dbPath(slug))), ok: true };
   } catch {
-    return [];
+    return { items: [], ok: false };
   }
 }
 
-/** Pull a slug's rows from the dev API into its collection (a no-op outside a browser / with no server,
- *  or when the slug has no live collection yet). Resolves the list from `collections` so no instance is
- *  passed in — the rule wall forbids a mutable class-instance parameter. */
+/** Pull a slug's rows from the dev API into its collection (a no-op outside a browser / with no server, or
+ *  when the slug has no live collection yet). Drives the collection's loading / error `state` around the
+ *  fetch so the list can branch on it. Resolves the list from `collections` so no instance is passed in —
+ *  the rule wall forbids a mutable class-instance parameter. */
 async function load(slug: string): Promise<void> {
-  if (!hasApi) {
+  const list = collections.get(slug);
+  if (!hasApi || !list) {
     return;
   }
-  const rows = await fetchRows(slug);
-  collections.get(slug)?.reconcile(rows);
+  list.state.loading = true;
+  const result = await fetchRows(slug);
+  list.state.error = !result.ok;
+  list.state.loading = false;
+  if (result.ok) {
+    list.reconcile(result.items);
+  }
 }
 
 type WriteMethod = "POST" | "PATCH" | "DELETE";
@@ -357,25 +394,14 @@ let issuesLoaded = false;
  *  transport) and clears on the next success. */
 const issuesState = reactive({ error: false, loading: false });
 
-/** The outcome of one issue-plan fetch — `ok` is false on a non-ok response or transport failure, so the
- *  caller can latch the error flag rather than swallow it (the old `[]` hid a failure as an empty plan). */
-interface IssuesResult {
-  readonly ok: boolean;
-  readonly plan: readonly IssueItem[];
-}
-
 /** Read + parse the issue plan from `/__vow/issues`, reporting `ok: false` (with an empty plan) on any
  *  non-ok response or transport failure. Entries are validated by `parseIssuePlan` (see `./issues.ts`),
- *  not blindly trusted. */
-async function fetchIssues(): Promise<IssuesResult> {
+ *  not blindly trusted. The same `{ ok, items }` shape the rows fetch uses. */
+async function fetchIssues(): Promise<FetchResult<IssueItem>> {
   try {
-    const res = await fetch(VOW_API.issues);
-    if (!res.ok) {
-      return { ok: false, plan: [] };
-    }
-    return { ok: true, plan: parseIssuePlan(await res.json()) };
+    return { items: parseIssuePlan(await okJson(VOW_API.issues)), ok: true };
   } catch {
-    return { ok: false, plan: [] };
+    return { items: [], ok: false };
   }
 }
 
@@ -390,7 +416,7 @@ async function loadIssues(): Promise<void> {
   issuesState.error = !result.ok;
   issuesState.loading = false;
   if (result.ok) {
-    issues.splice(0, issues.length, ...result.plan);
+    issues.splice(0, issues.length, ...result.items);
   }
 }
 
@@ -457,7 +483,9 @@ function startFreshness(): void {
   setInterval(refresh, REFRESH_INTERVAL_MS);
 }
 
-/** Resolve (creating on first use) the live reactive row list for a slug, kicking off its first load. */
+/** Resolve (creating on first use) the live reactive row list for a slug. On first creation it kicks off
+ *  the slug's first load (which drives the collection's loading / error `state`) and starts the freshness
+ *  poll — so registration in `collections` IS the "first fetch kicked off" mark (no parallel `loaded` set). */
 function listFor(slug: string): ReactiveRows {
   const existing = collections.get(slug);
   if (existing) {
@@ -465,6 +493,10 @@ function listFor(slug: string): ReactiveRows {
   }
   const created = new ReactiveRows();
   collections.set(slug, created);
+  detach(async () => {
+    await load(slug);
+  });
+  startFreshness();
   return created;
 }
 
@@ -494,16 +526,10 @@ function writeThrough(slug: string, id: string, send: () => Promise<void>): void
   });
 }
 
-/** The shared reactive collection for an entity slug — same array for every caller; DB-backed. */
+/** The shared reactive collection for an entity slug — same array for every caller; DB-backed. The first
+ *  call creates the list (kicking off its load + the freshness poll via `listFor`); later calls reuse it. */
 export function useCollection<T>(slug: string): Collection<T> {
   const list = listFor(slug);
-  if (!loaded.has(slug)) {
-    loaded.add(slug);
-    detach(async () => {
-      await load(slug);
-    });
-    startFreshness();
-  }
   return {
     append: (item): void => {
       for (const row of toRowList(item)) {
@@ -530,6 +556,7 @@ export function useCollection<T>(slug: string): Collection<T> {
         });
       }
     },
+    state: list.state,
     update: (id, patch): void => {
       list.update(id, patch);
       writeThrough(slug, id, async () => {
@@ -539,26 +566,18 @@ export function useCollection<T>(slug: string): Collection<T> {
   };
 }
 
-/** The reactive fetch state the issue views read — `loading` while a fetch is in flight, `error` when the
- *  last fetch failed. Its reactive identity is preserved (the same instance every reader gets), so a view
- *  destructuring it from `useIssues` keeps tracking it (like `items`). */
-export interface IssuesState {
-  readonly error: boolean;
-  readonly loading: boolean;
-}
-
 /** The shared reactive issue plan, read live from `/__vow/issues` (gh-direct) + polled on focus + the
- *  interval. `state` carries the loading / error flags so a view can show "Loading the plan…" or "Couldn't
- *  reach GitHub" instead of a bare header. `closeIssue`/`reopenIssue` POST back through the same dev seam
- *  the MCP uses — so the studio's action buttons and the agent share one path to GitHub. `startWork` POSTs
- *  the start-work signal to `/__vow/agent`, dispatching an agent session for the issue — the human's one
- *  trigger to begin. GitHub stays the source; the reply re-syncs. */
+ *  interval. `state` is the same `CollectionState` shape a collection exposes — its loading / error flags
+ *  let a view show "Loading the plan…" or "Couldn't reach GitHub" instead of a bare header. `closeIssue`/
+ *  `reopenIssue` POST back through the same dev seam the MCP uses — so the studio's action buttons and the
+ *  agent share one path to GitHub. `startWork` POSTs the start-work signal to `/__vow/agent`, dispatching an
+ *  agent session for the issue — the human's one trigger to begin. GitHub stays the source; the reply re-syncs. */
 export function useIssues(): {
   closeIssue: (issue: number) => void;
   items: IssueItem[];
   reopenIssue: (issue: number) => void;
   startWork: (issue: number) => void;
-  state: IssuesState;
+  state: CollectionState;
 } {
   if (!issuesLoaded) {
     issuesLoaded = true;

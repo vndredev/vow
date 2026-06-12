@@ -172,6 +172,15 @@ test("useIssues exposes a reactive state with loading + error flags the views br
   expect(typeof state.error).toBe("boolean");
 });
 
+test("useCollection exposes a reactive state — the list tells loading apart from genuinely empty", () => {
+  // The generated entity list reads this to gate "Nothing here yet." behind !loading && !error, so the
+  // First /__vow/db fetch no longer reads as empty. Two readers of one slug share the same state instance.
+  const { state } = useCollection<{ id: string }>("project");
+  expect(typeof state.loading).toBe("boolean");
+  expect(typeof state.error).toBe("boolean");
+  expect(useCollection<{ id: string }>("project").state).toBe(state);
+});
+
 test("useIssues exposes startWork — the board action's signal to the agent — a safe no-op without a server", () => {
   const { startWork } = useIssues();
   expect(typeof startWork).toBe("function");

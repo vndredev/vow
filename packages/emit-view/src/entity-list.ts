@@ -46,12 +46,13 @@ function listImports(entity: ReadonlyVow, type: string, actions: ListActions): I
   return imports;
 }
 
-/** What the list destructures off `useCollection` — `removeById` joins only when the delete action is on. */
+/** What the list destructures off `useCollection` — always the rows + the reactive fetch `state` (so the
+ *  view can tell loading from genuinely empty); `removeById` joins only when the delete action is on. */
 function storeBinding(actions: ListActions): string {
   if (actions.delete) {
-    return "{ items: rows, removeById }";
+    return "{ items: rows, removeById, state }";
   }
-  return "{ items: rows }";
+  return "{ items: rows, state }";
 }
 
 /** A name-resolver pair per `reference` field — its option list, a memoized id → label index (O(N+M), not the
@@ -254,7 +255,34 @@ function tableBody(entity: ReadonlyVow, actions: ListActions): UiNode {
   };
 }
 
-/** The whole list view — the Table when there are rows, else a friendly empty state. */
+/** A `.vow-empty` status message shown in place of the table, guarded by `cond` (a `v-if`) so only the one
+ *  matching state renders. The three are mutually exclusive (no `v-else` in the component model). */
+function statusMessage(cond: string, message: string): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-empty" },
+      { expr: cond, kind: "cond", type: "if" },
+    ],
+    children: [{ kind: "text", text: message }],
+    kind: "element",
+    tag: "p",
+  };
+}
+
+/** The three mutually-exclusive empty-state messages over an empty collection — "Loading…" while the first
+ *  fetch is in flight, "Couldn't load this data" when it failed, and "Nothing here yet." only when the fetch
+ *  succeeded and the collection is genuinely empty (guarded by `!state.loading && !state.error`, so the
+ *  studio's first screen no longer reads as empty mid-load). Mirrors the issue views' three status lines. */
+function listEmptyStates(): readonly UiNode[] {
+  return [
+    statusMessage("state.loading && rows.length === 0", "Loading…"),
+    statusMessage("state.error && rows.length === 0", "Couldn't load this data"),
+    statusMessage("!state.loading && !state.error && rows.length === 0", "Nothing here yet."),
+  ];
+}
+
+/** The whole list view — the Table when there are rows, else one of the three status messages (loading /
+ *  failed / genuinely empty) so the first screen never reads "Nothing here yet." while the load is in flight. */
 function listView(entity: ReadonlyVow, actions: ListActions): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${entity.slug}` }],
@@ -265,15 +293,7 @@ function listView(entity: ReadonlyVow, actions: ListActions): UiNode {
         kind: "component",
         name: "Table",
       },
-      {
-        attrs: [
-          { kind: "static", name: "class", value: "vow-empty" },
-          { expr: "rows.length === 0", kind: "cond", type: "if" },
-        ],
-        children: [{ kind: "text", text: "Nothing here yet." }],
-        kind: "element",
-        tag: "p",
-      },
+      ...listEmptyStates(),
     ],
     kind: "element",
     tag: "section",

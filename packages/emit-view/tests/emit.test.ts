@@ -62,7 +62,7 @@ test("emitEntityList renders an unstyled, read-only table over the entity", () =
   expectContains(sfc, [
     'import { type Task } from "./task.ts";',
     'import { useCollection } from "@vow/store";',
-    'const { items: rows } = useCollection<Task>("task");',
+    'const { items: rows, state } = useCollection<Task>("task");',
     'import Table from "./Table.vue";',
     '<TableHead scope="col">Title</TableHead>',
     'v-for="grp in grouped"',
@@ -95,7 +95,7 @@ test("the opt-in delete action adds a per-row delete button wired to the store b
   const sfc = emitEntityList(entity, new Map(), { delete: true });
   expectContains(sfc, [
     // The store binding now also pulls removeById; the trailing Actions column + a per-row delete Button.
-    'const { items: rows, removeById } = useCollection<Task>("task");',
+    'const { items: rows, removeById, state } = useCollection<Task>("task");',
     'import Button from "./Button.vue";',
     "vow-view__delete",
     'icon="trash"',
@@ -114,7 +114,18 @@ test("a delete list spans the extra Actions column in its group header (colspan 
 test("the default list stays read-only — no delete button, no removeById, no Button import", () => {
   const sfc = emitEntityList(entity);
   expectMissing(sfc, ["removeById", 'import Button from "./Button.vue";', 'icon="trash"']);
-  expect(sfc).toContain('const { items: rows } = useCollection<Task>("task");');
+  expect(sfc).toContain('const { items: rows, state } = useCollection<Task>("task");');
+});
+
+test("the empty state distinguishes loading / failed / genuinely empty — not always 'Nothing here yet.'", () => {
+  // The first /__vow/db fetch must not read as empty: while it is in flight the list shows "Loading…".
+  // A failed fetch shows "Couldn't load this data"; "Nothing here yet." is gated on not-loading-not-error.
+  const sfc = emitEntityList(entity);
+  expectContains(sfc, [
+    '<p class="vow-empty" v-if="state.loading && rows.length === 0">Loading…</p>',
+    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
+    '<p class="vow-empty" v-if="!state.loading && !state.error && rows.length === 0">Nothing here yet.</p>',
+  ]);
 });
 
 test("a select field renders read-only as a Badge cell", () => {
