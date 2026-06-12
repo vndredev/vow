@@ -32,7 +32,7 @@ interface Provider {
 }
 ```
 
-The `plan` is a self-contained, verification-gated spec (the [shadcn/improve](https://github.com/shadcn/improve) discipline: STOP conditions, an out-of-scope list, a commit stamp) — written for the weakest plausible executor, so a cheaper model can run it without drifting.
+The `plan` is a self-contained, verification-gated spec (vow's gated-plan discipline: STOP conditions, an out-of-scope list, a commit stamp) — written for the weakest plausible executor, so a cheaper model can run it without drifting.
 
 ## Claude Code today
 

@@ -1,6 +1,6 @@
 // oxlint-disable prefer-readonly-parameter-types -- this module bridges the mutable Node http + db objects
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type Db, get, insert, list, remove, update } from "@vow/db";
+import { type Db, assertNoReferrers, get, insert, list, remove, update } from "@vow/db";
 import type { IncomingMessage, ServerResponse } from "node:http";
 /* oxlint-disable consistent-type-specifier-style -- one mixed import per module; separate trips no-duplicate-imports */
 import {
@@ -14,7 +14,9 @@ import {
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
 import { NONE } from "./none.ts";
+import { existsSync } from "node:fs";
 import { mutable } from "./mutable.ts";
+import path from "node:path";
 import { spawn } from "node:child_process";
 
 /**
@@ -33,6 +35,7 @@ export { VOW_API } from "@vow/db/routes";
 const STATUS = {
   accepted: 202,
   badRequest: 400,
+  conflict: 409,
   created: 201,
   noContent: 204,
   notAllowed: 405,
@@ -50,9 +53,11 @@ interface Reply {
   readonly body?: unknown;
 }
 
-/** A parsed data request — the resolved entity, the method, the raw JSON body, and the optional record id. */
+/** A parsed data request — the resolved entity, the live entity set (for the referrer-scan delete guard),
+ *  the method, the raw JSON body, and the optional record id. */
 interface DataRequest {
   readonly db: Db;
+  readonly entities: readonly ReadonlyVow[];
   readonly entity: ReadonlyVow;
   readonly method: string;
   readonly body: string;
@@ -143,6 +148,19 @@ function collectionReply(request: DataRequest): Reply {
   return { status: STATUS.notAllowed };
 }
 
+/** Route a DELETE to a reply — refuse (409) when the row is still referenced (the shared referrer-scan
+ *  guard the MCP `removeRecord` also runs), else 204 on a removal / 404 when nothing matched. */
+function deleteReply(request: DataRequest, id: string): Reply {
+  const { db, entities, entity } = request;
+  const target = mutable(entity);
+  try {
+    assertNoReferrers(db, entities, entity, id);
+  } catch (error) {
+    return { body: { error: errorMessage(error) }, status: STATUS.conflict };
+  }
+  return { status: deleteStatus(remove(db, target, id)) };
+}
+
 /** Route a write to a single record (`PATCH`/`DELETE`) to a reply. */
 function itemWriteReply(request: DataRequest, id: string): Reply {
   const { db, entity, method, body } = request;
@@ -152,7 +170,7 @@ function itemWriteReply(request: DataRequest, id: string): Reply {
     return { body: record, status: recordStatus(record) };
   }
   if (method === "DELETE") {
-    return { status: deleteStatus(remove(db, target, id)) };
+    return deleteReply(request, id);
   }
   return { status: STATUS.notAllowed };
 }
@@ -180,19 +198,21 @@ function parsePath(url: Maybe<string>): { slug: Maybe<string>; id: Maybe<string>
   return { id: segments?.[1], slug: segments?.[0] };
 }
 
-/** The resolved route of a data request — the DB handle, the target entity, and the optional record id. */
+/** The resolved route of a data request — the DB handle, the live entity set (for the delete guard), the
+ *  target entity, and the optional record id. */
 interface Route {
   readonly db: Db;
+  readonly entities: readonly ReadonlyVow[];
   readonly entity: ReadonlyVow;
   readonly id: Maybe<string>;
 }
 
 /** Read the body, route the request, and write the reply — answers a 500 on any read/route failure. */
 async function serveData(req: IncomingMessage, res: ServerResponse, route: Route): Promise<void> {
-  const { db, entity, id } = route;
+  const { db, entities, entity, id } = route;
   try {
     const body = await readBody(req);
-    writeReply(res, dataReply({ body, db, entity, method: req.method ?? "GET" }, id));
+    writeReply(res, dataReply({ body, db, entities, entity, method: req.method ?? "GET" }, id));
   } catch (error) {
     writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.serverError });
   }
@@ -209,12 +229,13 @@ export function dataApi(
   return (req, res, next) => {
     const db = getDb();
     const { slug, id } = parsePath(req.url);
-    const entity = getEntities().find((candidate) => candidate.slug === slug);
+    const entities = getEntities();
+    const entity = entities.find((candidate) => candidate.slug === slug);
     if (!defined(db) || !defined(entity)) {
       next();
       return;
     }
-    ignore(serveData(req, res, { db, entity, id }));
+    ignore(serveData(req, res, { db, entities, entity, id }));
   };
 }
 
@@ -338,20 +359,54 @@ function parseStartWork(body: string): Maybe<StartWork> {
 type Dispatch = (cwd: string, issue: number) => IssueDetail;
 
 /**
- * Resolve an issue + fire the agent's live run for it — the channel from the studio signal to an agent
- * session. The issue's number/title/body is read via `gh` (the spec injected into the session, per the
- * channel), then `vow agent run <n>` is spawned detached + unref'd so the dev server returns at once and
- * the long-running session outlives the request. stdio is ignored: the run logs to its own worktree, not
- * the dev console. The resolved detail is returned so the reply echoes exactly what was dispatched.
+ * Resolve the workspace-root `vow` binary from a starting directory — walk up to the directory holding
+ * `pnpm-workspace.yaml` (the repo root) and point at its `node_modules/.bin/vow`. The dev server's `cwd` is
+ * the Vite app root (e.g. `apps/studio`), whose own `node_modules/.bin` has NO `vow`; resolving the
+ * workspace bin is why the documented direct-bin start recipe can dispatch a run at all. The bare name
+ * `"vow"` is the fallback when no workspace root is found above (a launch where it IS on PATH).
  */
-function dispatchAgent(cwd: string, issue: number): IssueDetail {
-  const detail = issueDetail(cwd, issue);
-  const child = spawn("vow", ["agent", "run", String(issue)], {
+export function vowBin(cwd: string): string {
+  let dir = path.resolve(cwd);
+  while (dir !== path.dirname(dir)) {
+    if (existsSync(path.join(dir, "pnpm-workspace.yaml"))) {
+      return path.join(dir, "node_modules", ".bin", "vow");
+    }
+    dir = path.dirname(dir);
+  }
+  return "vow";
+}
+
+/**
+ * Spawn the agent run detached + unref'd so the dev server returns at once and the long-running session
+ * outlives the request. stdio is ignored: the run logs to its own worktree, not the dev console. A spawn
+ * failure (the bin is missing / not executable) is emitted asynchronously as an `error` event AFTER the
+ * `202` already replied — so we MUST attach a listener: it LOGS and never throws, mirroring the CLI's
+ * `spawnApp`. Without it the failure is an uncaught exception that takes the whole dev process down. The
+ * spawned child is returned so a test can await its real `error` event.
+ */
+export function runAgentRun(command: string, cwd: string, issue: number): ReturnType<typeof spawn> {
+  const child = spawn(command, ["agent", "run", String(issue)], {
     cwd,
     detached: true,
     stdio: "ignore",
   });
+  child.on("error", (error: Readonly<Error>) => {
+    process.stderr.write(`[vow] failed to start agent run for #${issue}: ${error.message}\n`);
+  });
   child.unref();
+  return child;
+}
+
+/**
+ * Resolve an issue + fire the agent's live run for it — the channel from the studio signal to an agent
+ * session. The issue's number/title/body is read via `gh` (the spec injected into the session, per the
+ * channel), then the workspace-root `vow agent run <n>` is spawned (`runAgentRun`, detached + unref'd, with
+ * an `error` listener so a spawn failure logs rather than crashing the dev server). The resolved detail is
+ * returned so the reply echoes exactly what was dispatched.
+ */
+function dispatchAgent(cwd: string, issue: number): IssueDetail {
+  const detail = issueDetail(cwd, issue);
+  runAgentRun(vowBin(cwd), cwd, issue);
   return detail;
 }
 

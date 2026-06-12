@@ -110,7 +110,9 @@ function timelineGroup(): UiNode {
       { kind: "static", name: "class", value: "vow-timeline__group" },
       { expr: "open[gi]", kind: "model" },
       {
-        expr: `g.version + ' · ' + g.date + ' · ' + g.items.length + ' changes'`,
+        expr:
+          `g.version + ' · ' + g.date + ' · ' + g.items.length + ` +
+          `(g.items.length === 1 ? ' change' : ' changes')`,
         kind: "bound",
         name: "label",
       },

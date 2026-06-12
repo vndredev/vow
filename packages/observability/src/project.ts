@@ -2,6 +2,8 @@ import type { IssueStatus, Maybe, PlanItem, StatusChange, SyncResult } from "./t
 import { NONE } from "./none.ts";
 import { execFileSync } from "node:child_process";
 import { issuePlan } from "./github.ts";
+import path from "node:path";
+import { readFileSync } from "node:fs";
 
 /**
  * The Project sync side of @vow/observability: the studio's derived status is the truth; write it onto
@@ -81,25 +83,36 @@ interface StatusField {
   readonly options: readonly { readonly id: string; readonly name: string }[];
 }
 
-/** One Project item: its node id, optional linked issue number, optional current Status name. */
+/** One Project item: its node id, optional linked issue number, the issue's repo (`owner/name`, absent
+ *  for a non-Issue or a malformed payload), optional current Status name. */
 interface ProjectItem {
   readonly id: string;
+  readonly nameWithOwner: Maybe<string>;
   readonly number: Maybe<number>;
   readonly status: Maybe<string>;
 }
 
-/** A graphql variable bound by `gh api graphql -f name=value` — never interpolated into the query text. */
+/** A graphql variable bound by `gh api graphql` — never interpolated into the query text. `typed` rides
+ *  via `-F` (gh's typed field flag — a bare digit string becomes a real JSON number/bool), so an `Int!`
+ *  variable is accepted; a plain string rides via `-f` (gh always sends it as a JSON string). */
 interface GqlVar {
   readonly name: string;
+  readonly typed?: boolean;
   readonly value: string;
 }
 
-/** The `gh api graphql` args for a query + its bound variables — each value passed via `-f`, so a caller-
- *  supplied id is bound by the API, never embedded in (and thus able to inject) the query text. */
+/** The `gh api graphql` args for a query + its bound variables — each value passed via `-f` (string) or
+ *  `-F` (typed), so a caller-supplied id is bound by the API, never embedded in (and thus able to inject)
+ *  the query text. An `Int!`/`Boolean!` variable MUST be `typed`, else gh coerces it to a string and the
+ *  API rejects it. */
 export function graphqlArgs(query: string, vars: readonly GqlVar[]): string[] {
   const args = ["api", "graphql", "-f", `query=${query}`];
   for (const variable of vars) {
-    args.push("-f", `${variable.name}=${variable.value}`);
+    let flag = "-f";
+    if (variable.typed === true) {
+      flag = "-F";
+    }
+    args.push(flag, `${variable.name}=${variable.value}`);
   }
   return args;
 }
@@ -147,7 +160,12 @@ function readItem(raw: unknown): Maybe<ProjectItem> {
   }
   const content = readObject(raw, "content");
   const fieldValue = readObject(raw, "fieldValueByName");
-  return { id, number: readNumber(content, "number"), status: readString(fieldValue, "name") };
+  return {
+    id,
+    nameWithOwner: readString(readObject(content, "repository"), "nameWithOwner"),
+    number: readNumber(content, "number"),
+    status: readString(fieldValue, "name"),
+  };
 }
 
 /** Narrow a graphql `node.items.nodes` payload into `ProjectItem`s (skipping any malformed node). */
@@ -163,9 +181,42 @@ export function readProjectItems(data: Readonly<Json>): ProjectItem[] {
   return out;
 }
 
+/** One page of the items connection: whether more pages follow + the cursor to resume after. */
+interface PageInfo {
+  readonly endCursor: Maybe<string>;
+  readonly hasNextPage: boolean;
+}
+
+/** Narrow a graphql `node.items.pageInfo` payload — `hasNextPage` defaults false (stop) when malformed. */
+export function readPageInfo(data: Readonly<Json>): PageInfo {
+  const pageInfo = readObject(readObject(data, "node")?.["items"], "pageInfo");
+  const hasNextPage = isJson(pageInfo) && pageInfo["hasNextPage"] === true;
+  return { endCursor: readString(pageInfo, "endCursor"), hasNextPage };
+}
+
+/**
+ * Walk the whole items connection page by page, accumulating EVERY item. `fetchPage(cursor)` returns one
+ * page's `data` (cursor `NONE` = the first page); the loop follows `pageInfo.hasNextPage`/`endCursor`
+ * until exhausted. Injecting the fetcher keeps the cursor loop testable without touching GitHub — and
+ * fixes the blind-past-100 bug: a single `first:100` page hid every item beyond the first hundred.
+ */
+export function readAllProjectItems(fetchPage: (cursor: Maybe<string>) => Json): ProjectItem[] {
+  const out: ProjectItem[] = [];
+  let cursor: Maybe<string> = NONE;
+  for (;;) {
+    const data = fetchPage(cursor);
+    out.push(...readProjectItems(data));
+    const page = readPageInfo(data);
+    if (!page.hasNextPage || typeof page.endCursor !== "string") {
+      return out;
+    }
+    cursor = page.endCursor;
+  }
+}
+
 const fieldQuery = `query($pid:ID!){node(id:$pid){... on ProjectV2{field(name:"Status"){... on ProjectV2SingleSelectField{id options{id name}}}}}}`;
 
-const itemsQuery = `query($pid:ID!){node(id:$pid){... on ProjectV2{items(first:100){nodes{id content{... on Issue{number}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`;
+const itemsQuery = `query($pid:ID!,$cursor:String){node(id:$pid){... on ProjectV2{items(first:100,after:$cursor){pageInfo{hasNextPage endCursor}nodes{id content{... on Issue{number repository{nameWithOwner}}} fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}}}}}}`;
 
 const setStatusMutation = `mutation($pid:ID!,$item:ID!,$field:ID!,$opt:String!){updateProjectV2ItemFieldValue(input:{projectId:$pid,itemId:$item,fieldId:$field,value:{singleSelectOptionId:$opt}}){projectV2Item{id}}}`;
 
@@ -178,15 +229,41 @@ function resolveOption(field: Readonly<StatusField>, name: string): string {
   throw new RangeError(`the Project has no Status option "${name}"`);
 }
 
-/** Index the Project items by their linked issue number (items without a number are skipped). */
-function itemsByNumber(items: readonly ProjectItem[]): Map<number, ProjectItem> {
+/** Index the Project items by their linked issue number, keeping ONLY items from `repo` (the current
+ *  repository). A Project board can hold issues from other repositories whose numbers collide with this
+ *  repo's; an item with a differing — or missing/unreadable — `nameWithOwner` is skipped, so the studio's
+ *  status can never be written onto a foreign board item. Items without a number are also skipped. */
+export function itemsByNumber(
+  items: readonly ProjectItem[],
+  repo: Maybe<string>,
+): Map<number, ProjectItem> {
   const byNumber = new Map<number, ProjectItem>();
   for (const item of items) {
-    if (typeof item.number === "number") {
+    if (
+      typeof item.number === "number" &&
+      item.nameWithOwner === repo &&
+      typeof repo === "string"
+    ) {
       byNumber.set(item.number, item);
     }
   }
   return byNumber;
+}
+
+/** The current repository as `owner/name` via `gh repo view`, or absent when `gh`/auth/network is absent.
+ *  Failure-safe by design: this package's reads degrade rather than throw mid-sync — an unreadable repo
+ *  yields `NONE`, which `itemsByNumber` treats as "match nothing" (skip every item) over a wrong write. */
+export function currentRepo(cwd: string): Maybe<string> {
+  try {
+    const out = execFileSync("gh", ["repo", "view", "--json", "nameWithOwner"], {
+      cwd,
+      encoding: "utf8",
+    });
+    const parsed: unknown = JSON.parse(out);
+    return readString(parsed, "nameWithOwner");
+  } catch {
+    return NONE;
+  }
 }
 
 /** The fixed context of one sync run — the connection target and the Project's resolved Status field. */
@@ -245,7 +322,13 @@ export function syncProjectStatus(cwd: string, projectId: string): SyncResult {
   const pid = [{ name: "pid", value: projectId }];
   const field = readStatusField(ghJsonData(cwd, fieldQuery, pid));
   const context: SyncContext = { cwd, field, projectId };
-  const byNumber = itemsByNumber(readProjectItems(ghJsonData(cwd, itemsQuery, pid)));
+  const fetchPage = (cursor: Maybe<string>): Json => {
+    if (typeof cursor === "string") {
+      return ghJsonData(cwd, itemsQuery, [...pid, { name: "cursor", value: cursor }]);
+    }
+    return ghJsonData(cwd, itemsQuery, pid);
+  };
+  const byNumber = itemsByNumber(readAllProjectItems(fetchPage), currentRepo(cwd));
   const wanted = (plan: PlanItem): Maybe<Wanted> => {
     const item = byNumber.get(plan.issue.number);
     if (typeof item === "object") {
@@ -279,4 +362,86 @@ export function addToProject(cwd: string, projectId: string, url: string): void 
     cwd,
     encoding: "utf8",
   });
+}
+
+/** The studio config (`apps/studio/app/config.vow.md`) holds the sync target as a setting, not in code. */
+const CONFIG_PATH = ["apps", "studio", "app", "config.vow.md"];
+
+/** Decimal radix — parsing the Project number out of its URL. */
+const DECIMAL = 10;
+
+/** A Project's owner login + number, lifted from its `github.com/.../projects/<n>` URL. */
+interface ProjectRef {
+  readonly login: string;
+  readonly number: number;
+}
+
+/**
+ * Parse a GitHub Project URL into its owner login + number, or absent when it isn't one. Both
+ * `github.com/users/<login>/projects/<n>` and `.../orgs/<login>/projects/<n>` resolve — the same
+ * `repositoryOwner` lookup covers a user or an organisation. Pure.
+ */
+export function parseProjectUrl(url: string): Maybe<ProjectRef> {
+  const match = /github\.com\/(?:users|orgs)\/([^/]+)\/projects\/(\d+)/u.exec(url);
+  if (match === null) {
+    return NONE;
+  }
+  const [, login, number] = match;
+  if (typeof login !== "string" || typeof number !== "string") {
+    return NONE;
+  }
+  return { login, number: Number.parseInt(number, DECIMAL) };
+}
+
+/** The studio config file's text, or absent when it isn't there (an app without the studio config). */
+function readConfigFile(cwd: string): Maybe<string> {
+  try {
+    return readFileSync(path.join(cwd, ...CONFIG_PATH), "utf8");
+  } catch {
+    return NONE;
+  }
+}
+
+/** The `project:` URL configured in the studio's `config.vow.md` seed, or absent (no file / no field). */
+export function readConfigProjectUrl(cwd: string): Maybe<string> {
+  const text = readConfigFile(cwd);
+  if (typeof text !== "string") {
+    return NONE;
+  }
+  const match = /project:\s*(https:\/\/\S+?)[\s,}]/u.exec(text);
+  if (match === null || typeof match[1] !== "string") {
+    return NONE;
+  }
+  return match[1];
+}
+
+const projectByOwnerQuery = `query($login:String!,$number:Int!){repositoryOwner(login:$login){... on ProjectV2Owner{projectV2(number:$number){id}}}}`;
+
+/** Resolve a Project URL to its node id via `gh` (a user or org owner lookup), or absent when not found. */
+export function resolveProjectNodeId(cwd: string, url: string): Maybe<string> {
+  const ref = parseProjectUrl(url);
+  if (typeof ref !== "object") {
+    return NONE;
+  }
+  const data = ghJsonData(cwd, projectByOwnerQuery, [
+    { name: "login", value: ref.login },
+    { name: "number", typed: true, value: String(ref.number) },
+  ]);
+  return readString(readObject(readObject(data, "repositoryOwner"), "projectV2"), "id");
+}
+
+/**
+ * The Project node id for the merge-time sync: the explicit `fromEnv` (`VOW_PROJECT_ID`) when set, else
+ * resolved from the studio config's `project:` URL — so the board syncs without a shell env var, instead
+ * of silently skipping. Absent only when neither is configured (the genuine opt-out).
+ */
+export function resolveProjectId(cwd: string, fromEnv: Maybe<string>): Maybe<string> {
+  if (typeof fromEnv === "string" && fromEnv !== "") {
+    return fromEnv;
+  }
+  const url = readConfigProjectUrl(cwd);
+  if (typeof url !== "string") {
+    return NONE;
+  }
+  return resolveProjectNodeId(cwd, url);
 }

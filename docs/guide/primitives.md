@@ -7,11 +7,11 @@ order: 3
 
 A primitive is one control — a checkbox, a dialog, a select. vow builds a headless core for one **only where the browser can't do it natively**: a native `<input type=checkbox>` can't be consistently styled, so a custom checkbox earns ARIA + keyboard logic atop a stylable `<button>`. A `<button>` already _is_ accessible, so [Button](/guide/primitives/button) is the one exception — a **structural** primitive with no headless core, there for the variant/theme surface.
 
-**Variants.** Styled primitives take `variant` / `size` props, rendered as `data-variant` / `data-size` hooks the theme styles — token-driven, never Tailwind. See [Button](/guide/primitives/button#variants-the-vow-way).
+**Variants.** Styled primitives take `variant` / `size` props, rendered as `data-variant` / `data-size` hooks the theme styles — token-driven, never concatenated class strings. See [Button](/guide/primitives/button#variants-the-vow-way).
 
 ## Headless core + generated adapter
 
-A primitive is split in two — the model is Reka UI:
+A primitive is split in two:
 
 - **`@vow/headless`** — the logic, framework-free. `checkbox(state, set)` returns the DOM props (`role`, `aria-checked`, key handlers) and `data-*` state hooks for each part. No Vue, no React.
 - **the generated adapter** — `@vow/emit-primitive` describes the checkbox as a [`Component`](/guide/components) and renders it via the Vue adapter (`renderVueSfc`): it binds reactivity and spreads those props. A React adapter is just a different adapter over the same model.

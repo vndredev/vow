@@ -248,8 +248,14 @@ export function linkedIssues(body: string): number[] {
   return out;
 }
 
-/** An issue's status: closed -> `done`; open with an open PR that closes it -> `doing`; else `planned`. The
-    `inProgress` numbers are the issues an open PR closes. Pure. */
+/** The label an agent applies to an issue while it is actively developing it — so the board shows the issue
+    as `doing` from the moment the agent claims it (opens its worktree), not only once its PR exists. The
+    agent removes it when the run ends; an open PR's `Closes #N` then carries the `doing` signal onward. */
+export const IN_PROGRESS_LABEL = "in-progress";
+
+/** An issue's status: closed -> `done`; open with an open PR that closes it OR the `in-progress` label (an
+    agent is developing it right now) -> `doing`; else `planned`. The `inProgress` numbers are the issues an
+    open PR closes — so the board shows `doing` across the whole develop -> PR -> merge arc. Pure. */
 export function deriveIssueStatus(
   issue: Readonly<GitHubIssue>,
   inProgress: readonly number[],
@@ -257,7 +263,7 @@ export function deriveIssueStatus(
   if (issue.state === "closed") {
     return "done";
   }
-  if (inProgress.includes(issue.number)) {
+  if (inProgress.includes(issue.number) || issue.labels.includes(IN_PROGRESS_LABEL)) {
     return "doing";
   }
   return "planned";
@@ -473,4 +479,34 @@ export function assignIssue(cwd: string, issue: number, login: string): void {
     cwd,
     encoding: "utf8",
   });
+}
+
+/** Claim an issue for the agent by applying the `in-progress` label (-> the board reads `doing` from the
+    moment develop starts). BEST-EFFORT: a gh/label hiccup must never fail the develop — the signal is
+    advisory — so it returns whether it applied rather than throwing. */
+export function claimIssue(cwd: string, issue: number): boolean {
+  try {
+    execFileSync("gh", ["issue", "edit", String(issue), "--add-label", IN_PROGRESS_LABEL], {
+      cwd,
+      encoding: "utf8",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Release an issue's `in-progress` label when the run ends — a merged PR (issue closed -> `done`) or an
+    open PR (`Closes #N` -> `doing`) carries the status onward; a failed run drops back to `planned` instead
+    of falsely lingering as `doing`. BEST-EFFORT, same as `claimIssue` — returns whether it removed it. */
+export function releaseIssue(cwd: string, issue: number): boolean {
+  try {
+    execFileSync("gh", ["issue", "edit", String(issue), "--remove-label", IN_PROGRESS_LABEL], {
+      cwd,
+      encoding: "utf8",
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }

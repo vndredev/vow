@@ -136,3 +136,40 @@ export function prHeadOid(cwd: string, pr: number): string {
     return "";
   }
 }
+
+/** The `state` (`OPEN` / `CLOSED` / `MERGED`) from a `gh pr view` payload, or `""` when absent / malformed. */
+function stateOf(json: string): string {
+  try {
+    const data: unknown = JSON.parse(json);
+    if (isObject(data) && typeof data["state"] === "string") {
+      return data["state"];
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+/** Whether a `gh pr view --json state` payload reports the PR as MERGED. Pure — the post-merge guard reads
+    this to tell a real merge failure from a mere post-merge cleanup hiccup (e.g. `--delete-branch` blocked
+    by a leftover worktree holding the local branch): a MERGED pr is a success despite a non-zero gh exit. */
+export function mergedFrom(json: string): boolean {
+  return stateOf(json) === "MERGED";
+}
+
+/** Whether PR `pr` is MERGED via `gh pr view --json state`; `false` when gh can't be read. The merge path
+    consults this when `gh pr merge` exits non-zero, to judge success by the PR's actual state not the exit
+    code — so a post-merge cleanup failure reports a merge that landed as failed only when the state itself
+    is unreadable (gh returns `false`, the caller fail-closes + re-raises; the auto loop then drops the
+    merged PR from the next round). */
+export function prMerged(cwd: string, pr: number): boolean {
+  try {
+    const out = execFileSync("gh", ["pr", "view", String(pr), "--json", "state"], {
+      cwd,
+      encoding: "utf8",
+    });
+    return mergedFrom(out);
+  } catch {
+    return false;
+  }
+}

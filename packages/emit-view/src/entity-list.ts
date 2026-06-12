@@ -7,10 +7,11 @@ import type {
   UiNode,
 } from "./types.ts";
 import { groupedLines, sliceComputed } from "./slice.ts";
-import { pascalCase, renderVueSfc } from "@vow/component";
+import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
 import { FIELD_KINDS } from "@vow/core";
 import { assertEmitEntity } from "./entity-guard.ts";
+import { emptyStates } from "./status-message.ts";
 
 /** A reference cell labels its target by the target entity's first text field (else its id). */
 function labelFieldOf(byId?: EntityLookup): (ref?: string) => string {
@@ -46,12 +47,13 @@ function listImports(entity: ReadonlyVow, type: string, actions: ListActions): I
   return imports;
 }
 
-/** What the list destructures off `useCollection` — `removeById` joins only when the delete action is on. */
+/** What the list destructures off `useCollection` — always the rows + the reactive fetch `state` (so the
+ *  view can tell loading from genuinely empty); `removeById` joins only when the delete action is on. */
 function storeBinding(actions: ListActions): string {
   if (actions.delete) {
-    return "{ items: rows, removeById }";
+    return "{ items: rows, removeById, state }";
   }
-  return "{ items: rows }";
+  return "{ items: rows, state }";
 }
 
 /** A name-resolver pair per `reference` field — its option list, a memoized id → label index (O(N+M), not the
@@ -127,7 +129,7 @@ function cellContent(field: ReadonlyField): UiNode {
   return CELLS[FIELD_KINDS[field.type].cell](field);
 }
 
-/** A `<TableHead>` labelled `field.name`, scoped to its column. */
+/** A `<TableHead>` labelled by the humanized field name, scoped to its column. */
 function headCell(name: string): UiNode {
   return {
     attrs: [{ kind: "static", name: "scope", value: "col" }],
@@ -139,7 +141,7 @@ function headCell(name: string): UiNode {
 
 /** The header cells — one per field, plus a trailing empty cell over the delete column when enabled. */
 function headCells(entity: ReadonlyVow, actions: ListActions): UiNode[] {
-  const cells = entity.fields.map((field) => headCell(field.name));
+  const cells = entity.fields.map((field) => headCell(humanizeFieldName(field.name)));
   if (actions.delete) {
     cells.push({
       attrs: [{ kind: "static", name: "scope", value: "col" }],
@@ -254,7 +256,8 @@ function tableBody(entity: ReadonlyVow, actions: ListActions): UiNode {
   };
 }
 
-/** The whole list view — the Table when there are rows, else a friendly empty state. */
+/** The whole list view — the Table when there are rows, else one of the three status messages (loading /
+ *  failed / genuinely empty) so the first screen never reads "Nothing here yet." while the load is in flight. */
 function listView(entity: ReadonlyVow, actions: ListActions): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${entity.slug}` }],
@@ -265,15 +268,11 @@ function listView(entity: ReadonlyVow, actions: ListActions): UiNode {
         kind: "component",
         name: "Table",
       },
-      {
-        attrs: [
-          { kind: "static", name: "class", value: "vow-empty" },
-          { expr: "rows.length === 0", kind: "cond", type: "if" },
-        ],
-        children: [{ kind: "text", text: "Nothing here yet." }],
-        kind: "element",
-        tag: "p",
-      },
+      ...emptyStates("rows.length", {
+        empty: "Nothing here yet.",
+        failed: "Couldn't load this data",
+        loading: "Loading…",
+      }),
     ],
     kind: "element",
     tag: "section",

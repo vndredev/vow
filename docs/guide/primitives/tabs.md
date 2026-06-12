@@ -5,7 +5,7 @@ order: 3.5
 
 # Tabs
 
-A tablist: a row of tabs over panels, where one panel shows at a time — how a settings screen splits into sections, or a wizard steps through panels. Modelled on Reka UI and the WAI-ARIA APG: `role="tablist"` of `role="tab"` buttons over `role="tabpanel"` regions, with **roving focus** (arrow keys move selection _and_ focus).
+A tablist: a row of tabs over panels, where one panel shows at a time — how a settings screen splits into sections, or a wizard steps through panels. Modelled on the WAI-ARIA APG: `role="tablist"` of `role="tab"` buttons over `role="tabpanel"` regions, with **roving focus** (arrow keys move selection _and_ focus).
 
 ## See it run
 

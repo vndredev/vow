@@ -70,7 +70,7 @@ function registerPatch(server: Registrar, names: Names, studio: Studio): void {
       readonly id: string;
       readonly value: unknown;
     }): TextResult => {
-      const row = studio.updateRecord({
+      const row = studio.setRecordField({
         entity: input.entity,
         field: input.field,
         id: input.id,

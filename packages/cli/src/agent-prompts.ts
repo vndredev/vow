@@ -19,13 +19,19 @@ export function promptPath(cwd: string, role: PromptRole): string {
   return path.join(cwd, promptRelPath(role));
 }
 
-/** The operative prompt for `role` — the scaffolded `.claude/prompts/<role>.md` when present, else the
- *  built-in default (`defaultPrompt`). The returned text still carries its `{…}` placeholders; the caller
- *  fills the live facts (the dimension / the issue) via the agent's render functions. */
+/** The operative prompt for `role` — the scaffolded `.claude/prompts/<role>.md` when present AND non-empty,
+ *  else the built-in default (`defaultPrompt`). An empty / whitespace-only scaffold (a truncated edit, an
+ *  interrupted `init`) falls back to the default too: an instruction-less audit prompt would make claude emit
+ *  prose -> zero findings -> a FALSE findings-free reading, so a blank file must never be used as the prompt.
+ *  The returned text still carries its `{…}` placeholders; the caller fills the live facts via the render
+ *  functions. */
 export function readPrompt(cwd: string, role: PromptRole): string {
   const file = promptPath(cwd, role);
   if (existsSync(file)) {
-    return readFileSync(file, "utf8");
+    const content = readFileSync(file, "utf8");
+    if (content.trim() !== "") {
+      return content;
+    }
   }
   return defaultPrompt(role);
 }

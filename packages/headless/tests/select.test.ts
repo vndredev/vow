@@ -49,6 +49,14 @@ test("trigger carries the combobox contract", () => {
   expect(api.selectedLabel).toBe("Vue");
 });
 
+test("an unselected trigger carries data-placeholder; a selected one drops it", () => {
+  const blank = makeHarness(base({ value: "" }), select).api();
+  expect(blank.triggerProps["data-placeholder"]).toBe("");
+  expect(blank.selectedLabel).toBe("");
+  const chosen = makeHarness(base({ value: "vue" }), select).api();
+  expect("data-placeholder" in chosen.triggerProps).toBe(false);
+});
+
 test("an explicit triggerId overrides the trigger id so a form's label can point at it", () => {
   const api = makeHarness(base({ open: true, triggerId: "statusId" }), select).api();
   expect(api.triggerProps["id"]).toBe("statusId");

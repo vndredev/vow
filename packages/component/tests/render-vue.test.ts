@@ -102,9 +102,10 @@ test("renderVueSfc reproduces the checkbox SFC byte-for-byte (the migration orac
   expect(renderVueSfc(checkbox)).toBe(EXPECTED_CHECKBOX);
 });
 
-test("a structured SetupStep list renders into the Vue idiom (the same model React consumes)", () => {
+test("a structured SetupStep list renders into the Vue idiom (ref/computed/function/const)", () => {
   // The Vue adapter renders state -> ref, computed -> computed, a handler -> a function declaration,
-  // A const verbatim — the SAME SetupStep list the React adapter renders into hooks. One model, two idioms.
+  // A const verbatim. The expr/body here read `count.value` — the Vue reactivity idiom.
+  // This exact fixture is Vue-only: feeding it to renderReactSfc throws a declared-state `.value`.
   const comp: Component = {
     imports: [{ from: "vue", names: ["computed", "ref"] }],
     name: "Counter",

@@ -40,7 +40,7 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     group: "structure",
     name: "set_field",
     summary:
-      "Edit a field in place (rename, retype, required, options); a rename carries the data.",
+      "Edit a field in place (rename, retype, required, options); a rename or retype carries the stored data.",
   },
   {
     group: "structure",

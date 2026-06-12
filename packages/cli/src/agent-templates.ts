@@ -37,8 +37,10 @@ for a side-file or an ad-hoc parallel IS the drift vow exists to prevent.
 }
 
 /** The \`/vow-develop\` skill — a POINTER, not a copy: the operative develop instruction is the scaffolded
- *  \`.claude/prompts/develop.md\` (what the native agent reads too), so editing that one file changes every
- *  surface. The path comes from \`promptRelPath\` so the skill can never drift from where \`init\` writes it. */
+ *  \`.claude/prompts/develop.md\`, which THIS in-session skill reads + follows (the native \`vow agent run\`
+ *  executor does NOT read develop.md — it mechanizes branch/PR/merge in \`loop.ts\` and consumes only the
+ *  gated PLAN). So editing develop.md retunes the in-session develop flow. The path comes from
+ *  \`promptRelPath\` so the skill can never drift from where \`init\` writes it. */
 export function vowDevelopSkill(): string {
   const developPrompt = promptRelPath("develop");
   return `---
@@ -48,7 +50,7 @@ description: Develop an issue through vow's red line — branch, verify, PR, age
 
 # Develop through vow
 
-Read \`AGENTS.md\` first — it is the contract. The OPERATIVE develop instruction lives in **\`${developPrompt}\`** — read that file and follow it; it is the single source of truth (the native agent reads it too, so editing it changes every surface). If it is absent (a fresh repo, no \`vow agent init\`), the built-in default applies.
+Read \`AGENTS.md\` first — it is the contract. The OPERATIVE develop instruction lives in **\`${developPrompt}\`** — read that file and follow it; editing it retunes this in-session develop flow. If it is absent (a fresh repo, no \`vow agent init\`), the built-in default applies.
 
 The plan is the GitHub issues (run \`vow reconcile\` to check the board is honest). Never a side-file.
 `;

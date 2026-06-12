@@ -50,7 +50,11 @@ test("runTask tears the worktree down even when a gate fails", async () => {
   expect(calls.at(-1)).toBe(`remove ${WORKTREE}`);
 });
 
-test("runTask tears the worktree down even when worktreeAdd throws (a flaky vp install)", async () => {
+test("runTask does NOT tear down a worktree its own add never created (a failed add owns the path)", async () => {
+  // A failed `worktreeAdd` means THIS task did not establish the worktree — the path may belong to a SIBLING
+  // Lane (a duplicate run-all arg / a collision). Tearing it down here would force-remove the owner's live
+  // Worktree and fail both. So a failed add MUST skip `worktreeRemove`; `realOps.worktreeAdd` itself cleans
+  // Up any partial materialization it owns (git-add succeeded, install failed) before it re-throws.
   const calls: string[] = [];
   const ops: AgentOps = {
     run: async () => {
@@ -60,7 +64,7 @@ test("runTask tears the worktree down even when worktreeAdd throws (a flaky vp i
     worktreeAdd: async (path) => {
       await Promise.resolve();
       calls.push(`add ${path}`);
-      throw new Error("vp install failed");
+      throw new Error("git worktree add failed (path exists)");
     },
     worktreeRemove: async (path) => {
       await Promise.resolve();
@@ -69,10 +73,10 @@ test("runTask tears the worktree down even when worktreeAdd throws (a flaky vp i
   };
   await expect(
     runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode }),
-  ).rejects.toThrow("vp install failed");
-  // The add ran (the dir may be on disk), so the teardown MUST run too — else the path strands the re-run.
+  ).rejects.toThrow("git worktree add failed (path exists)");
   expect(calls).toContain(`add ${WORKTREE}`);
-  expect(calls.at(-1)).toBe(`remove ${WORKTREE}`);
+  // The add threw -> no teardown: never remove a path this task didn't create (it may be a sibling's).
+  expect(calls).not.toContain(`remove ${WORKTREE}`);
 });
 
 test("a failed provider run yields run.ok=false — the draft-PR trigger", async () => {

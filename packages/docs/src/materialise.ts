@@ -106,7 +106,7 @@ function assertAllKnown(used: readonly string[]): void {
       .map((name) => name.replace(/^VowDemo/u, "").toLowerCase())
       .join(", ");
     throw new Error(
-      `@vow/docs: no component to generate for ${unknown.join(", ")}. ` +
+      `docs: no component to generate for ${unknown.join(", ")}. ` +
         `For "::: demo <primitive>", the known primitives are: ${demos}.`,
     );
   }

@@ -7,8 +7,8 @@
    token block (e.g. the vndre.dev design tokens) for a different look over the same hooks. */
 
 :root {
-  /* Color — semantic roles, not raw swatches. Values learned from the VitePress default palette so the
-     whole vow UI reads that way; the names stay vow's. Dark is the `.dark` class block below. */
+  /* Color — semantic roles, not raw swatches. vow's default palette, tuned for the whole UI to read as
+     one; the names stay vow's. Dark is the `.dark` class block below. */
   --vow-color-bg: #ffffff; /* page background */
   --vow-color-surface: #f6f6f7; /* raised surfaces: cards, boxes, code */
   --vow-color-text: #3c3c43; /* primary text */
@@ -75,8 +75,8 @@
   --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.12);
 }
 
-/* Dark theme — re-declare only the colors, on the `.dark` class (toggled on <html>). Values learned
-   from the VitePress dark palette. A host can map `.dark` to a media query if it wants OS-driven dark. */
+/* Dark theme — re-declare only the colors, on the `.dark` class (toggled on <html>). vow's default
+   dark palette. A host can map `.dark` to a media query if it wants OS-driven dark. */
 .dark {
   --vow-color-bg: #1b1b1f;
   --vow-color-surface: #202127;
@@ -742,7 +742,7 @@ body {
   font-size: var(--vow-text-sm);
 }
 
-/* The accessible checkbox primitive (a boolean field), Reka-style: a `<button role="checkbox">`
+/* The accessible checkbox primitive (a boolean field): a `<button role="checkbox">`
    control wrapping an indicator part. State is the `data-state` / `data-disabled` hooks the headless
    core emits on each part — nothing is stored here, the theme only reacts to the hooks. The control
    sizes in `em` off the row's text so it scales with context; `--vow-radius-1` then reads as a rounded
@@ -1006,6 +1006,9 @@ body {
   border: var(--vow-border) solid var(--vow-color-border);
   border-radius: var(--vow-radius-1);
   cursor: pointer;
+}
+.vow-select__trigger[data-placeholder] {
+  color: var(--vow-color-muted); /* dim the placeholder copy until a value is chosen */
 }
 .vow-select__trigger::after {
   content: "";

@@ -48,35 +48,52 @@ async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutco
   return { run, verdict };
 }
 
-/**
- * One full loop over an issue: set up an isolated worktree (a path distinct from the repo, under
- * `.vow-worktrees/`), build the gated plan + dispatch the provider in it, re-run the gates there, and
- * ALWAYS tear the worktree down. The whole agent loop as a single call — provider-neutral, every effect
- * injected via `request.ops`, tested end-to-end without claude or git. The worktree spans dispatch +
- * verify (verify must see the agent's changes), so its lifecycle lives here.
- */
-export async function runTask(request: TaskRequest): Promise<TaskOutcome> {
-  const { auth = "subscription", context, cwd, issue, ops, provider } = request;
-  const branch = branchFor(issue);
-  // A path distinct from the repo root — so `git worktree add` succeeds and the run is isolated; `cwd`
-  // (the repo) only seeds that path.
-  const worktree = worktreePath(cwd, branch);
-  const task = {
+/** The task for `request` in its isolated worktree — the per-issue branch, the worktree path (distinct from
+ *  the repo root so `git worktree add` succeeds + the run is isolated), the execute-role model, and the gated
+ *  plan. The plan is built from the scaffolded TEMPLATE when the caller resolved one (`context.planTemplate`),
+ *  so a user-edited `.claude/prompts/plan.md` drives the LIVE run, not only the `vow agent plan` preview;
+ *  absent => the built-in default. */
+function taskFor(request: TaskRequest, worktree: string): AgentTask {
+  const { auth = "subscription", context, issue, provider } = request;
+  return {
     auth,
-    branch,
+    branch: branchFor(issue),
     cwd: worktree,
     // The runner develops the gated plan — the EXECUTE role, so a cheaper model suffices (drift-proof).
     model: modelFor(provider.models, "execute"),
-    plan: buildPlan(issue, context),
+    plan: buildPlan(issue, context, context.planTemplate),
     title: issue.title,
   };
-  request.onPhase?.("worktree");
-  // The add is INSIDE the try: a throw AFTER the dir materializes (e.g. a flaky `vp install`) still runs the
-  // Teardown. Otherwise the stranded path fails the next attempt at this issue.
+}
+
+/** Add `task`'s worktree (at `task.cwd`), develop in it, then tear it down — but ONLY one THIS call's
+ *  `worktreeAdd` actually created. A FAILED add (the path already exists — a duplicate run-all arg, a
+ *  collision) must NOT run `worktreeRemove`, which would force-remove a SIBLING lane's live worktree at the
+ *  same path and fail both; the `added` flag (set only past a resolved add) guards the teardown. */
+async function developInWorktree(request: TaskRequest, task: AgentTask): Promise<TaskOutcome> {
+  const { ops } = request;
+  let added = false;
   try {
-    await ops.worktreeAdd(worktree, branch);
+    await ops.worktreeAdd(task.cwd, task.branch);
+    added = true;
     return await develop(request, task);
   } finally {
-    await ops.worktreeRemove(worktree);
+    if (added) {
+      await ops.worktreeRemove(task.cwd);
+    }
   }
+}
+
+/**
+ * One full loop over an issue: set up an isolated worktree (a path distinct from the repo, under
+ * `.vow-worktrees/`), build the gated plan + dispatch the provider in it, re-run the gates there, and tear
+ * the worktree down (only one this task created — see `developInWorktree`). The whole agent loop as a single
+ * call — provider-neutral, every effect injected via `request.ops`, tested end-to-end without claude or git.
+ */
+export async function runTask(request: TaskRequest): Promise<TaskOutcome> {
+  const worktree = worktreePath(request.cwd, branchFor(request.issue));
+  const task = taskFor(request, worktree);
+  request.onPhase?.("worktree");
+  const outcome = await developInWorktree(request, task);
+  return outcome;
 }

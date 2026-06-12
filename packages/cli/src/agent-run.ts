@@ -15,11 +15,15 @@ import {
   runTask,
 } from "@vow/agent";
 import {
+  claimIssue,
   headCommit,
   issueDetail,
   issueLabels,
   prCiState,
   prCiStateForHead,
+  prMerged,
+  releaseIssue,
+  resolveProjectId,
   syncProjectStatus,
 } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/observability value import above; PrCi needs a top-level type import
@@ -27,6 +31,7 @@ import type { PrCi } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/agent value import above; Provider needs a top-level type import
 import type { Provider } from "@vow/agent";
 import { execFileSync } from "node:child_process";
+import { readPrompt } from "./agent-prompts.ts";
 
 /**
  * The shared run/merge primitives behind `vow agent` — develop an issue in a worktree, run a fleet, and act
@@ -151,14 +156,21 @@ export function phaseLine(issue: number, phase: string, json: boolean): string {
 
 /** Develop one issue via the live loop — worktree → dispatch the provider → re-run the gates — emitting
  *  each phase live; the report is the text run-report or, in `--json` mode, a compact `{issue, ok}`. */
-export async function develop(input: DevInput): Promise<DevResult> {
+async function developClaimed(input: DevInput): Promise<DevResult> {
   const { auth, cwd, issue, json, provider } = input;
   const spec = issueDetail(cwd, issue);
   // Route to the area's specialist (the roster) — its focus narrows the executor to the issue's concern.
   const { focus } = agentFor(DEFAULT_ROSTER, areaOf(issueLabels(cwd, issue)));
   const outcome = await runTask({
     auth,
-    context: { commit: headCommit(cwd), focus, verify: RUN_GATES },
+    // Thread the scaffolded plan TEMPLATE into the LIVE run, so a user-edited `.claude/prompts/plan.md`
+    // Drives the agent's actual plan — not only the `vow agent plan` preview (else preview/run diverge).
+    context: {
+      commit: headCommit(cwd),
+      focus,
+      planTemplate: readPrompt(cwd, "plan"),
+      verify: RUN_GATES,
+    },
     cwd,
     issue: spec,
     onPhase: (phase) => {
@@ -172,6 +184,19 @@ export async function develop(input: DevInput): Promise<DevResult> {
     return { ok, report: JSON.stringify({ issue, ok }) };
   }
   return { ok, report: runReport(spec, outcome) };
+}
+
+/** Develop one issue, bracketing the live run with the board claim: apply `in-progress` so the board reads
+ *  `doing` from the moment the agent starts (not only once a PR exists, #479), and release it when the run
+ *  ends — a merged/open PR then carries the status, a failed run drops back to `planned`. Both halves are
+ *  best-effort (they never throw), so a board hiccup can't fail the develop. */
+export async function develop(input: DevInput): Promise<DevResult> {
+  claimIssue(input.cwd, input.issue);
+  try {
+    return await developClaimed(input);
+  } finally {
+    releaseIssue(input.cwd, input.issue);
+  }
 }
 
 /** `vow agent run <n> [--provider <name>]` (live) — develop the issue, print its report, exit on the
@@ -208,9 +233,11 @@ export interface RunAllArgs {
   readonly provider: Provider;
 }
 
-/** Parse + validate `run-all` args (issues + provider + auth + `--json`), or a usage/error string. */
+/** Parse + validate `run-all` args (issues + provider + auth + `--json`), or a usage/error string. The issue
+ *  numbers are DEDUPED (`run-all 5 5` -> one lane for #5): two lanes for one issue derive the same branch +
+ *  worktree path, and the loser's teardown would force-remove the winner's live worktree. */
 export function parseRunAll(rest: readonly string[]): RunAllArgs | string {
-  const issues = issueNumbers(rest);
+  const issues = [...new Set(issueNumbers(rest))];
   if (issues.length === 0) {
     return "usage: vow agent run-all <n>... [--provider <name>] [--auth subscription|api] [--json]";
   }
@@ -292,23 +319,75 @@ export async function runAll(rest: readonly string[]): Promise<number> {
 }
 
 /** Reconcile the GitHub Project's Status to the studio's derived status right after a merge (the moment an
- *  issue closes), so the board never drifts. No-op when `VOW_PROJECT_ID` is unset; local gh auth, no PAT. */
-function syncBoard(cwd: string): void {
-  // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = no board to sync
-  const pid = process.env["VOW_PROJECT_ID"] ?? "";
-  if (pid === "") {
-    return;
+ *  issue closes), so the board never drifts — and return the line to print. The Project node id comes from
+ *  `VOW_PROJECT_ID` or, when that is unset, the studio config's `project:` URL — so the sync runs without a
+ *  shell env var instead of silently skipping. Empty (no line) only when neither is configured; local gh
+ *  auth, no PAT. May throw if `gh project` hiccups — the caller treats that best-effort
+ *  (`reconcileAfterMerge`), since the merge, not the reconcile, is load-bearing. */
+function boardLine(cwd: string): string {
+  // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = fall back to config
+  const pid = resolveProjectId(cwd, process.env["VOW_PROJECT_ID"]);
+  if (typeof pid !== "string") {
+    return "";
   }
   const { changed, matched } = syncProjectStatus(cwd, pid);
-  process.stdout.write(`board: ${changed.length} reconciled, ${matched} matched\n`);
+  return `board: ${changed.length} reconciled, ${matched} matched`;
+}
+
+/** Run the post-merge board reconcile BEST-EFFORT: the merge is the load-bearing effect, the reconcile is
+ *  advisory (`vow sync-project` / the MCP can re-run it), so a `gh project` hiccup must NEVER report a
+ *  succeeded merge as failed. Returns the board line on success, or a `merged — board sync skipped: <why>`
+ *  warning when `sync` throws — either way a string the caller prints, never a propagated throw. */
+export function reconcileAfterMerge(pr: number, sync: () => string): string {
+  try {
+    return sync();
+  } catch (error) {
+    return `pr #${pr}: merged — board sync skipped: ${errorReason(error)}`;
+  }
+}
+
+/** Decide a merge's outcome when `gh pr merge` exited non-zero: the merge may still have landed (gh also
+ *  fails for post-merge cleanup — e.g. `--delete-branch` blocked by a leftover worktree holding the local
+ *  branch), so judge by the PR's actual state, not the exit code. Returns a `merged — gh cleanup warning`
+ *  line when the pr is MERGED (a success despite the hiccup), or "" to re-raise a genuine failure (#468). */
+export function mergeFallback(pr: number, merged: boolean, error: unknown): string {
+  if (merged) {
+    return `pr #${pr}: merged — gh cleanup warning: ${errorReason(error)}`;
+  }
+  return "";
+}
+
+/** Run `gh pr merge` for PR `pr`, tolerating a post-merge cleanup hiccup: a non-zero exit whose merge
+ *  actually landed (the PR reads MERGED) is warned + continued, only a genuinely-unmerged PR re-raises. A
+ *  non-empty `expectedHead` pins the merge to that SHA server-side (`--match-head-commit`), so a push between
+ *  the green read and this call exits non-zero with the PR still OPEN -> `prMerged` false -> re-raise. */
+function execMerge(pr: number, cwd: string, expectedHead: string): void {
+  try {
+    execFileSync("gh", [...mergeArgs(pr, expectedHead)], { cwd, stdio: "inherit" });
+  } catch (error) {
+    const warning = mergeFallback(pr, prMerged(cwd, pr), error);
+    if (warning === "") {
+      throw error;
+    }
+    process.stdout.write(`${warning}\n`);
+  }
 }
 
 /** Squash-merge a green PR via gh — the agent closing the loop on a passing run — then reconcile the board
- *  (the merge closed the issue, so its derived status just became Done; the built-ins don't catch this). */
-export function mergePr(pr: number, cwd: string): number {
-  execFileSync("gh", [...mergeArgs(pr)], { cwd, stdio: "inherit" });
+ *  best-effort (the merge closed the issue, so its derived status just became Done; the built-ins don't
+ *  catch this). A non-empty `expectedHead` pins the merge to that SHA (`--match-head-commit`), closing the
+ *  TOCTOU window between the pinned-green CI read and this call (#471); empty = the unpinned front door. Two
+ *  post-merge false-negatives are guarded: a `gh pr merge` non-zero exit whose merge actually landed is
+ *  judged by the PR's MERGED state, not the exit code (#468); a board-sync hiccup is swallowed + warned
+ *  (#466). Neither reports a merge that happened as failed WHEN THE PR STATE IS READABLE; an unreadable state
+ *  fail-closes and re-raises (safe — the auto loop drops a merged PR from the next round). */
+export function mergePr(pr: number, cwd: string, expectedHead: string): number {
+  execMerge(pr, cwd, expectedHead);
   process.stdout.write(`pr #${pr}: merged (green CI)\n`);
-  syncBoard(cwd);
+  const line = reconcileAfterMerge(pr, () => boardLine(cwd));
+  if (line !== "") {
+    process.stdout.write(`${line}\n`);
+  }
   return 0;
 }
 
@@ -319,11 +398,20 @@ export function draftPr(pr: number, cwd: string): number {
   return 0;
 }
 
-/** Act on a CI verdict for PR `pr` — merge a green run, draft a red one, or report pending. */
-function actOnCi(pr: number, cwd: string, ci: PrCi): number {
-  const decision = mergeDecision(ci);
+/** A CI verdict + the head it was read against — the merge pins to `expectedHead` (`--match-head-commit`)
+ *  when non-empty, leaving the unpinned front door to pass `""`. Bundled so `actOnCi` stays within the
+ *  max-params gate. */
+interface Verdict {
+  readonly ci: PrCi;
+  readonly expectedHead: string;
+}
+
+/** Act on a CI verdict for PR `pr` — merge a green run, draft a red one, or report pending. A non-empty
+ *  `verdict.expectedHead` pins the merge to that SHA (`--match-head-commit`); empty leaves it unpinned. */
+function actOnCi(pr: number, cwd: string, verdict: Verdict): number {
+  const decision = mergeDecision(verdict.ci);
   if (decision === "merge") {
-    return mergePr(pr, cwd);
+    return mergePr(pr, cwd, verdict.expectedHead);
   }
   if (decision === "draft") {
     return draftPr(pr, cwd);
@@ -332,18 +420,22 @@ function actOnCi(pr: number, cwd: string, ci: PrCi): number {
   return 1;
 }
 
-/** Read PR `pr`'s CI and act on the decision — merge a green run, draft a red one, or report pending. */
+/** Read PR `pr`'s CI and act on the decision — merge a green run, draft a red one, or report pending. The
+ *  explicit `vow agent merge <pr>` front door: an UNPINNED merge (empty `expectedHead`), its documented
+ *  semantics — no `--match-head-commit`. */
 export function actOnPr(pr: number, cwd: string): number {
-  return actOnCi(pr, cwd, prCiState(cwd, pr));
+  return actOnCi(pr, cwd, { ci: prCiState(cwd, pr), expectedHead: "" });
 }
 
 /** Like `actOnPr`, but the verdict is PINNED to `expectedHead` — a green rollup only merges when it belongs
  *  to that exact head SHA. After an `update-branch` rebase, gh can still report the prior (green) run until
  *  the fresh one registers; pinning treats that stale read as pending so the loop waits, never merging a
- *  branch whose post-rebase CI never ran. An empty `expectedHead` falls back to the unpinned read. */
+ *  branch whose post-rebase CI never ran. The empty-pin semantics live in ONE place — the pure layer's
+ *  `ciStateForHead` maps `""` -> pending — so a transient `prHeadOid` failure (head `""`) reads as pending
+ *  (skip this round, re-read next) rather than un-pinning to the stale-green unpinned read. The same
+ *  `expectedHead` is threaded to the merge as `--match-head-commit`, so a push between the pinned-green read
+ *  and the merge call is rejected server-side (#471). The explicit `vow agent merge <pr>` front door keeps
+ *  `actOnPr` for an unpinned read. */
 export function actOnPrForHead(pr: number, cwd: string, expectedHead: string): number {
-  if (expectedHead === "") {
-    return actOnPr(pr, cwd);
-  }
-  return actOnCi(pr, cwd, prCiStateForHead(cwd, pr, expectedHead));
+  return actOnCi(pr, cwd, { ci: prCiStateForHead(cwd, pr, expectedHead), expectedHead });
 }

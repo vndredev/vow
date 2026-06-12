@@ -7,9 +7,16 @@
  */
 
 export type { Db, Row } from "./db.ts";
+export type { SqlColumn } from "./types.ts";
 export {
+  archiveTable,
+  assertColumnAbsent,
   assertColumnFree,
+  assertNoReferrers,
+  assertTableFree,
+  assertValuesCovered,
   bootstrap,
+  convertColumn,
   get,
   insert,
   list,
@@ -17,6 +24,7 @@ export {
   openDb,
   remove,
   renameColumn,
+  seedEntity,
   update,
 } from "./db.ts";
 export { resolveDbPath } from "./location.ts";

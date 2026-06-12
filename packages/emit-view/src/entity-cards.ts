@@ -4,10 +4,11 @@ import { pascalCase, renderVueSfc } from "@vow/component";
 import { assertEmitEntity } from "./entity-guard.ts";
 import { bound } from "./helpers.ts";
 import { cardsComponentName } from "./naming.ts";
+import { emptyStates } from "./status-message.ts";
 import { recordCard } from "./record-card.ts";
 
 /** The grouped grid of cards — a section per group, each a Grid of one Card per record. */
-function cardsView(cardChildren: readonly UiNode[]): UiNode {
+function cardsGrid(cardChildren: readonly UiNode[]): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-cards-group" }],
     children: [
@@ -41,6 +42,37 @@ function cardsView(cardChildren: readonly UiNode[]): UiNode {
   };
 }
 
+/** The grouped grid wrapped in a `v-if="rows.length > 0"` host — the grid itself carries the group `v-for`,
+ *  so the guard rides a wrapper (v-if and v-for never share one element) and the grid shows only when the
+ *  store holds rows. A cold or failed load falls through to the shared status trio instead of a bare grid. */
+function guardedGrid(cardChildren: readonly UiNode[]): UiNode {
+  return {
+    attrs: [{ expr: "rows.length > 0", kind: "cond", type: "if" }],
+    children: [cardsGrid(cardChildren)],
+    kind: "element",
+    tag: "div",
+  };
+}
+
+/** The whole cards view — the grouped grid when the store holds rows, else one of the three status messages
+ *  (loading / failed / genuinely empty) so a cold load never flashes "Nothing here yet." and a failed fetch
+ *  never reads as zero records. The shared trio mirrors the list view's. */
+function cardsView(entity: ReadonlyVow, cardChildren: readonly UiNode[]): UiNode {
+  return {
+    attrs: [{ kind: "static", name: "class", value: `vow-view vow-view--${entity.slug}` }],
+    children: [
+      guardedGrid(cardChildren),
+      ...emptyStates("rows.length", {
+        empty: "Nothing here yet.",
+        failed: "Couldn't load this data",
+        loading: "Loading…",
+      }),
+    ],
+    kind: "element",
+    tag: "section",
+  };
+}
+
 /**
  * A cards composition over an entity — one `<Card>` per record (live from the shared store): its first
  * text field titles the card, the rest fill the body. A composition, not a primitive: it knows the
@@ -65,11 +97,11 @@ export function emitEntityCards(entity: ReadonlyVow): string {
     ],
     name: cardsComponentName(entity.slug),
     setup: [
-      `const { items: rows } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
+      `const { items: rows, state } = useCollection<${type}>(${JSON.stringify(entity.slug)});`,
       ...sliceComputed(type, "displayed"),
       ...groupedLines(type, "displayed"),
     ],
-    view: cardsView(cardChildren),
+    view: cardsView(entity, cardChildren),
   };
   return renderVueSfc(component);
 }

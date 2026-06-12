@@ -7,13 +7,17 @@ import {
   flagValueless,
   issueArg,
   issueNumbers,
+  mergeFallback,
   parseRun,
   parseRunAll,
   phaseLine,
+  reconcileAfterMerge,
 } from "../src/agent-run.ts";
 import { providerFor } from "@vow/agent";
 
 const ISSUE = 42;
+const FIVE = 5;
+const SEVEN = 7;
 
 test("issueArg reads a positive issue number, else 0 for a missing/non-numeric/non-positive arg", () => {
   expect(issueArg(["plan", String(ISSUE)])).toBe(ISSUE);
@@ -80,6 +84,16 @@ test("issueNumbers collects positive numeric args, dropping flags + non-numbers"
   expect(issueNumbers(["run-all"])).toEqual([]);
 });
 
+test("parseRunAll DEDUPES issue numbers — `run-all 5 5` spawns ONE lane (no shared-worktree collision)", () => {
+  // Two lanes for one issue derive the same branch + worktree path; the loser's teardown would force-remove
+  // The winner's live worktree. Deduping at parse time means a duplicated arg can never spawn the collision.
+  const parsed = parseRunAll(["run-all", "5", "5", "7", "5"]);
+  expect(typeof parsed).not.toBe("string");
+  if (typeof parsed !== "string") {
+    expect([...parsed.issues]).toEqual([FIVE, SEVEN]);
+  }
+});
+
 test("phaseLine is JSON for an LLM/studio, human text for the terminal", () => {
   expect(phaseLine(ISSUE, "develop", true)).toBe(`{"issue":${ISSUE},"phase":"develop"}`);
   expect(phaseLine(ISSUE, "develop", false)).toBe(`  [#${ISSUE}] develop`);
@@ -95,6 +109,30 @@ test("failedResult turns a thrown develop into a failed lane (so one bad worktre
   expect(failedResult(ISSUE, "not an error", false).report).toBe(
     `issue #${ISSUE}: failed to develop — not an error`,
   );
+});
+
+test("mergeFallback judges a non-zero gh merge by the PR's MERGED state, not the exit code (#468)", () => {
+  // A leftover worktree can block `--delete-branch`, so gh exits non-zero AFTER the merge landed; a MERGED
+  // PR is a success despite that — surfaced as a cleanup warning, never a re-raised failure.
+  const err = new Error("failed to delete local branch fix/x: used by worktree");
+  expect(mergeFallback(ISSUE, true, err)).toBe(
+    `pr #${ISSUE}: merged — gh cleanup warning: failed to delete local branch fix/x: used by worktree`,
+  );
+  // A genuinely-unmerged pr (gh failed BEFORE the merge) returns "" — the caller re-raises the real error.
+  expect(mergeFallback(ISSUE, false, err)).toBe("");
+});
+
+test("reconcileAfterMerge is best-effort — a board-sync throw never reports a succeeded merge as failed (#466)", () => {
+  // The merge is load-bearing; the board reconcile is advisory. A `gh project` hiccup must surface as a
+  // Warning the caller prints, NOT a propagated throw that reddens a merge that already landed.
+  expect(reconcileAfterMerge(ISSUE, () => "board: 1 reconciled, 63 matched")).toBe(
+    "board: 1 reconciled, 63 matched",
+  );
+  expect(
+    reconcileAfterMerge(ISSUE, () => {
+      throw new Error("gh project: HTTP 502");
+    }),
+  ).toBe(`pr #${ISSUE}: merged — board sync skipped: gh project: HTTP 502`);
 });
 
 const ROUNDS = 4;

@@ -93,7 +93,7 @@ function trapTab(event: KeyboardEvent): void {
 }
 
 /**
- * The dialog (modal) primitive — Reka-style. A `role="dialog" aria-modal` content over a dismiss
+ * The dialog (modal) primitive. A `role="dialog" aria-modal` content over a dismiss
  * overlay; **Escape** closes and **Tab** is trapped within the content (both in the keydown handler,
  * against the event's own subtree — proven against the platform). Opening is controlled by the host
  * (a v-model), so there's no owned trigger. The non-event glue — moving focus in on open, restoring it
