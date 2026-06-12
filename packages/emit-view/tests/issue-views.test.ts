@@ -100,6 +100,16 @@ test("each issue SFC links the agent session (the open PR) when a doing item car
   }
 });
 
+test("the board card carries an issue's labels and assignee, each guarded so an empty card stays clean", () => {
+  const sfc = emitIssueBoardSfc();
+  // The shared per-label Badge loop, the same the table cell uses.
+  expect(sfc).toContain('v-for="l in it.issue.labels"');
+  expect(sfc).toContain('v-if="it.issue.labels.length > 0"');
+  // The assignee chip mirrors the table's comma-joined cell.
+  expect(sfc).toContain('it.issue.assignees.join(", ")');
+  expect(sfc).toContain('v-if="it.issue.assignees.length > 0"');
+});
+
 test("the changelog timeline groups entries under their version", () => {
   const sfc = emitTimelineSfc([{ date: "2026-06-09", title: "the cli", version: "v0.0.1" }], "");
   expect(sfc).toContain("v0.0.1");
