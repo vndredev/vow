@@ -47,6 +47,20 @@ test("readPrompt returns the scaffolded file's content when present (a user edit
   }
 });
 
+test("readPrompt falls back to the default for an EMPTY / whitespace scaffold (never an instruction-less prompt)", () => {
+  // A truncated edit / an interrupted init leaves a blank file; using it as the audit prompt would make
+  // Claude emit prose -> zero findings -> a FALSE findings-free reading. So a blank scaffold must fall back.
+  const cwd = tempRepo();
+  try {
+    scaffoldPrompt(cwd, "audit", "");
+    expect(readPrompt(cwd, "audit")).toBe(defaultPrompt("audit"));
+    scaffoldPrompt(cwd, "plan", "   \n\t  \n");
+    expect(readPrompt(cwd, "plan")).toBe(defaultPrompt("plan"));
+  } finally {
+    rmSync(cwd, { force: true, recursive: true });
+  }
+});
+
 test("the seam can't lie: init writes EXACTLY what the reader falls back to (one source of truth)", () => {
   for (const template of promptTemplates()) {
     // What `vow agent init` writes for the role == the reader's built-in fallback for that role.

@@ -1,10 +1,12 @@
 /* oxlint-disable consistent-type-specifier-style -- one import; separate type imports trip no-duplicate-imports */
 import {
   type AttemptCount,
+  type AutoOutcome,
   DEFAULT_ATTEMPT_CAP,
   DEFAULT_PROVIDER,
   type Provider,
   autoDecision,
+  backlogOverCap,
   backlogWithinCap,
   mapLimit,
   providerFor,
@@ -22,8 +24,10 @@ import { execFileSync } from "node:child_process";
 import { prHeadOid } from "@vow/observability";
 import { runAuditPass } from "./agent-audit.ts";
 
-/** A terminal outcome — the loop stops on either; the rest (`develop`, `audit`) run another round. */
-type TerminalOutcome = "done" | "exhausted";
+/** A terminal outcome — the loop stops on any of these; the rest (`develop`, `audit`) run another round.
+ *  `audit-broken` is NOT an `autoDecision` outcome: it is raised by running the audit (a dimension's
+ *  shell-out threw or returned a non-array) — a broken pass must stop the loop loudly, never read as clean. */
+type TerminalOutcome = "audit-broken" | "done" | "exhausted" | "stalled";
 
 /** One round's inputs that carry across iterations — the round counter and the per-issue attempt counts (so
  *  a repeatedly-failing issue is dropped from the backlog while healthy issues keep progressing). The counts
@@ -92,11 +96,23 @@ function openIssues(cwd: string): number[] {
   return numbersOf(out);
 }
 
-/** The open PR numbers via `gh pr list --json number --jq .[].number`. */
-function openPrs(cwd: string): number[] {
+/** The open, NON-DRAFT PR numbers via `gh pr list` — `--json number,isDraft` then a `--jq` filter that drops
+ *  drafts (`select(.isDraft|not)`). A draft is a PR the loop drafted off a red run (or a local-gate failure),
+ *  i.e. "surfaced for a human" by design — the settle sweep skips it (never re-deciding merge off CI alone),
+ *  and the decision counts only settleable PRs (a lone stuck draft must not read as progress). */
+function settleablePrs(cwd: string): number[] {
   const out = execFileSync(
     "gh",
-    ["pr", "list", "--state", "open", "--json", "number", "--jq", ".[].number"],
+    [
+      "pr",
+      "list",
+      "--state",
+      "open",
+      "--json",
+      "number,isDraft",
+      "--jq",
+      ".[] | select(.isDraft|not) | .number",
+    ],
     { cwd, encoding: "utf8" },
   );
   return numbersOf(out);
@@ -143,6 +159,14 @@ function watchChecks(pr: number, cwd: string): void {
   }
 }
 
+/** The message of a thrown value — an `Error`'s `.message`, else its string form. */
+function reasonOf(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 /** Settle one open PR — update its branch, wait on CI, then merge green / draft red / report pending. The
  *  merge verdict is PINNED to the post-`updateBranch` head SHA: a rebase makes a new head commit + a fresh CI
  *  run, but `gh pr checks --watch` can return against the prior (green) run before the new one registers.
@@ -155,36 +179,60 @@ function settlePr(pr: number, cwd: string): number {
   return actOnPrForHead(pr, cwd, head);
 }
 
-/** Settle every open PR in the round — each is merged green, drafted red, or left pending. */
+/** Settle every settleable (open, non-draft) PR in the round — each is merged green, drafted red, or left
+ *  pending. Each `settlePr` is wrapped in try/catch (mirroring the develop-lane isolation #412 gave the
+ *  develop half): a `gh pr merge` that refuses an unmergeable PR — a fleet-overlap conflict, or `gh pr ready
+ *  --undo` on an already-draft PR — exits 1 and THROWS; isolating it per-PR logs + continues, so one
+ *  un-settleable PR never aborts the whole spiral (which would deterministically re-abort on restart). */
 function settleRound(cwd: string): void {
-  for (const pr of openPrs(cwd)) {
-    settlePr(pr, cwd);
+  for (const pr of settleablePrs(cwd)) {
+    try {
+      settlePr(pr, cwd);
+    } catch (error) {
+      // A gh-exit-1 throw (not mergeable / already a draft / a permission hiccup) must fail only this PR.
+      // The next round re-reads + re-settles it; a persistently-stuck PR stays surfaced, never crashing.
+      process.stdout.write(`auto: pr #${pr} settle threw — continuing (${reasonOf(error)})\n`);
+    }
   }
 }
 
-/** The message of a thrown value — an `Error`'s `.message`, else its string form. */
-function reasonOf(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
+/** The round's EFFECTIVE workload, computed once per iteration so the decision and the develop step agree:
+ *  `within` is the PR-less, within-cap backlog the round will actually develop, `dropped` the still-open
+ *  issues the attempt cap excluded (stuck, surfaced for a human), and `settleable` the open non-draft PRs the
+ *  settle sweep can still merge. Feeding the decision THESE (not the raw open count) is what stops a
+ *  cap-dropped issue from making every remaining round a guaranteed no-op. */
+interface Effective {
+  readonly dropped: readonly number[];
+  readonly settleable: readonly number[];
+  readonly within: readonly number[];
 }
 
-/** Develop the open issues that are not already in flight (no open PR) AND still within their per-issue
- *  attempt budget, each in its own worktree — capped at `DEFAULT_CONCURRENCY` lanes (the fan-out `run-all`
- *  uses). An issue dropped by `backlogWithinCap` has failed to produce a mergeable PR too many times; leaving
- *  it out keeps the rest of the loop progressing rather than re-attempting a permanently-stuck issue forever.
- *  Returns the issues it attempted (the caller folds them into the running attempt counts). Each worker is
- *  wrapped in try/catch (like `runAll`): a transient throw — a flaky `vp install`, a worktree collision —
- *  logs and CONTINUES, so one bad lane never rejects the `Promise.all` and tears down the whole spiral. */
-async function developBacklog(
-  args: AutoArgs,
-  cwd: string,
-  attempts: readonly AttemptCount[],
-): Promise<readonly number[]> {
+/** The round's effective workload (within-cap backlog · cap-dropped issues · settleable PRs) from the live
+ *  gh state + the running attempt counts. The backlog excludes issues already in flight (an open PR exists),
+ *  so a round never double-develops; the cap split is over the not-in-flight open set. */
+function effectiveBacklog(cwd: string, attempts: readonly AttemptCount[]): Effective {
   const flight = inFlight(cwd);
   const open = openIssues(cwd).filter((issue) => !flight.has(issue));
-  const backlog = backlogWithinCap(open, attempts, DEFAULT_ATTEMPT_CAP);
+  return {
+    dropped: backlogOverCap(open, attempts, DEFAULT_ATTEMPT_CAP),
+    settleable: settleablePrs(cwd),
+    within: backlogWithinCap(open, attempts, DEFAULT_ATTEMPT_CAP),
+  };
+}
+
+/** The spiral's invariants across every round — the validated args + the repo cwd. Bundled so the round /
+ *  decision helpers take ONE context (the strict wall caps params at 3). */
+interface Spiral {
+  readonly args: AutoArgs;
+  readonly cwd: string;
+}
+
+/** Develop the `backlog` issues (already filtered to PR-less + within-cap), each in its own worktree — capped
+ *  at `DEFAULT_CONCURRENCY` lanes (the fan-out `run-all` uses). Each worker is wrapped in try/catch (like
+ *  `runAll`): a transient throw — a flaky `vp install`, a worktree collision — logs and CONTINUES, so one bad
+ *  lane never rejects the `Promise.all` and tears down the whole spiral. */
+async function developBacklog(spiral: Spiral, backlog: readonly number[]): Promise<void> {
+  const { args, cwd } = spiral;
   await mapLimit(backlog, DEFAULT_CONCURRENCY, async (issue) => {
     try {
       await develop({ auth: args.auth, cwd, issue, json: false, provider: args.provider });
@@ -196,7 +244,6 @@ async function developBacklog(
       );
     }
   });
-  return backlog;
 }
 
 /** Fold the issues attempted this round into the running per-issue attempt counts — a fresh `[issue, count]`
@@ -213,57 +260,141 @@ function bumpAttempts(
   return [...counts];
 }
 
-/** Run one round — develop the PR-less backlog (within the attempt cap), then settle every open PR; returns
- *  the next per-issue attempt counts (this round's attempts folded into the prior). */
+/** Run one round — develop the precomputed within-cap backlog, then settle every settleable PR; returns the
+ *  next per-issue attempt counts (this round's attempts folded into the prior). */
 async function autoRound(
-  args: AutoArgs,
-  cwd: string,
+  spiral: Spiral,
   state: Readonly<RoundState>,
+  backlog: readonly number[],
 ): Promise<AttemptCount[]> {
-  process.stdout.write(`auto: round ${state.round}/${args.maxRounds}\n`);
-  const attempted = await developBacklog(args, cwd, state.attempts);
-  settleRound(cwd);
-  return bumpAttempts(state.attempts, attempted);
+  process.stdout.write(`auto: round ${state.round}/${spiral.args.maxRounds}\n`);
+  await developBacklog(spiral, backlog);
+  settleRound(spiral.cwd);
+  return bumpAttempts(state.attempts, backlog);
 }
 
-/** The exit + banner for a terminal outcome — 0 when the codebase is findings-free (`done`), 1 when the cap
- *  was hit. */
-function reportOutcome(outcome: TerminalOutcome): number {
+/** The `#231, #232` tag list of the cap-dropped issue numbers, for the stalled banner. */
+function tagList(issues: readonly number[]): string {
+  return issues.map((issue) => `#${issue}`).join(", ");
+}
+
+/** The banner for each terminal outcome — `stalled` names the cap-dropped issues a human must unstick (the
+ *  effective backlog is empty only because they hit the attempt cap, and no PR remains to settle), and
+ *  `audit-broken` stops loudly (a dimension's shell-out failed — the pass checked nothing, never read it
+ *  clean). The map keeps `reportOutcome` a single write + exit. */
+function outcomeBanner(outcome: TerminalOutcome, dropped: readonly number[]): string {
+  const banners: Readonly<Record<TerminalOutcome, string>> = {
+    "audit-broken":
+      "auto: audit broke (a dimension failed to run) — stopping; checked nothing, NOT findings-free",
+    done: "auto: findings-free — powering down (done)",
+    exhausted: "auto: round cap hit — stopping (exhausted)",
+    stalled: `auto: stalled — every remaining issue hit the attempt cap (${tagList(dropped)}); a human must unstick them`,
+  };
+  return banners[outcome];
+}
+
+/** The exit + banner for a terminal outcome — 0 when the codebase is findings-free (`done`), else 1 (the
+ *  round cap `exhausted`, a cap-stuck `stalled`, or a broken `audit-broken`). */
+function reportOutcome(outcome: TerminalOutcome, dropped: readonly number[]): number {
+  process.stdout.write(`${outcomeBanner(outcome, dropped)}\n`);
   if (outcome === "done") {
-    process.stdout.write("auto: findings-free — powering down (done)\n");
     return 0;
   }
-  process.stdout.write("auto: round cap hit — stopping (exhausted)\n");
   return 1;
 }
 
-/** The auto-heal SPIRAL — until `autoDecision` says stop, either develop a round or, on an empty backlog,
- *  audit for new work; exit 0 when a full audit pass is clean (`done`), else 1 (the safety cap was hit). The
- *  decision is the pure `autoDecision`; this shells gh + runs the round or the audit pass. `auditedClean`
- *  carries a clean (zero-finding) audit into the next decision, so the loop powers down once findings-free. */
-async function loop(args: AutoArgs, cwd: string): Promise<number> {
-  let auditedClean = false;
-  // Per-issue develop attempts across rounds — an issue at `DEFAULT_ATTEMPT_CAP` is dropped from the backlog.
-  let state: RoundState = { attempts: [], round: 0 };
-  for (;;) {
-    const outcome = autoDecision({
-      auditedClean,
-      maxRounds: args.maxRounds,
-      openIssues: openIssues(cwd).length,
-      round: state.round,
-    });
-    if (outcome === "develop") {
+/** One iteration's mutable carry — the attempt/round counter `state` and the EFFECTIVE workload `effective`
+ *  computed for it (so the decision + the develop step read the SAME backlog). Bundled so `runDecision` stays
+ *  within the param cap. */
+interface Round {
+  readonly effective: Effective;
+  readonly state: RoundState;
+}
+
+/** What running the chosen action yields — either ADVANCE to the next round (the new state + whether the
+ *  codebase is now audited-clean), or a TERMINAL outcome the audit raised (`audit-broken`). Modelled as a
+ *  discriminated result so a broken audit can stop the loop without an in-band sentinel. */
+type Advance =
+  | { readonly auditedClean: boolean; readonly kind: "advance"; readonly state: RoundState }
+  | { readonly kind: "terminal"; readonly outcome: TerminalOutcome };
+
+/** Run the action `autoDecision` chose — `develop` advances a round (the precomputed backlog), `audit` runs a
+ *  full pass. A clean pass (zero filed, nothing broke) marks the codebase findings-free for the next decision
+ *  -> `done`; a BROKEN pass (a dimension's shell-out failed) raises the `audit-broken` terminal so the loop
+ *  stops loudly rather than spinning forever or declaring success having audited nothing. */
+async function runDecision(
+  spiral: Spiral,
+  outcome: "audit" | "develop",
+  round: Readonly<Round>,
+): Promise<Advance> {
+  const { effective, state } = round;
+  if (outcome === "develop") {
+    const next = { attempts: state.attempts, round: state.round + 1 };
+    return {
       // A develop round changes the code — any prior clean audit is stale, so re-audit when it drains.
-      auditedClean = false;
-      const next = { attempts: state.attempts, round: state.round + 1 };
-      // oxlint-disable-next-line no-await-in-loop -- a round depends on the prior's merges; rounds ARE sequential
-      state = { attempts: await autoRound(args, cwd, next), round: next.round };
-    } else if (outcome === "audit") {
-      // A clean pass (zero filed) marks the codebase findings-free for the next decision -> `done`.
-      auditedClean = runAuditPass(args.auth, cwd) === 0;
-    } else {
-      return reportOutcome(outcome);
+      auditedClean: false,
+      kind: "advance",
+      state: { attempts: await autoRound(spiral, next, effective.within), round: next.round },
+    };
+  }
+  const pass = runAuditPass(spiral.args.auth, spiral.cwd);
+  if (pass.broke) {
+    return { kind: "terminal", outcome: "audit-broken" };
+  }
+  return { auditedClean: pass.filed === 0, kind: "advance", state };
+}
+
+/** Whether `outcome` is a non-terminal action (`develop` / `audit`) the loop runs another round for. */
+function isAction(outcome: AutoOutcome): outcome is "audit" | "develop" {
+  return outcome === "audit" || outcome === "develop";
+}
+
+/** The loop's carry between iterations — whether the last audit pass came back clean, and the running
+ *  attempt/round counter. */
+interface Carry {
+  readonly auditedClean: boolean;
+  readonly state: RoundState;
+}
+
+/** One spiral iteration — read the live effective workload, ask `autoDecision`, and either return the next
+ *  `Carry` (an action ran) or a terminal EXIT CODE (the loop stops). Keeps `loop` a thin driver. */
+async function step(spiral: Spiral, carry: Readonly<Carry>): Promise<Carry | number> {
+  const { auditedClean, state } = carry;
+  const effective = effectiveBacklog(spiral.cwd, state.attempts);
+  const outcome = autoDecision({
+    auditedClean,
+    backlog: effective.within.length,
+    capDropped: effective.dropped.length,
+    maxRounds: spiral.args.maxRounds,
+    openPrs: effective.settleable.length,
+    round: state.round,
+  });
+  if (!isAction(outcome)) {
+    return reportOutcome(outcome, effective.dropped);
+  }
+  const advanced = await runDecision(spiral, outcome, { effective, state });
+  if (advanced.kind === "terminal") {
+    return reportOutcome(advanced.outcome, effective.dropped);
+  }
+  return { auditedClean: advanced.auditedClean, state: advanced.state };
+}
+
+/** The auto-heal SPIRAL — until `autoDecision` says stop, either develop a round or, on an empty backlog,
+ *  audit for new work; exit 0 when a full audit pass is clean (`done`), else 1 (the round cap `exhausted`, a
+ *  cap-stuck `stalled`, or a broken `audit-broken`). The decision is the pure `autoDecision`, fed the
+ *  EFFECTIVE workload (within-cap backlog + settleable PRs + cap-dropped count); this shells gh + runs the
+ *  round or the audit pass. `auditedClean` carries a clean audit into the next decision -> findings-free. */
+async function loop(args: AutoArgs, cwd: string): Promise<number> {
+  const spiral: Spiral = { args, cwd };
+  // Per-issue develop attempts across rounds — an issue at `DEFAULT_ATTEMPT_CAP` is dropped from the backlog.
+  let carry: Carry = { auditedClean: false, state: { attempts: [], round: 0 } };
+  for (;;) {
+    // oxlint-disable-next-line no-await-in-loop -- a round depends on the prior's merges; rounds ARE sequential
+    const next = await step(spiral, carry);
+    if (typeof next === "number") {
+      return next;
     }
+    carry = next;
   }
 }
 

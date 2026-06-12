@@ -2,8 +2,11 @@
  * The operative agent PROMPTS as editable, provider-neutral templates — vow's agent behaviour is the prompt,
  * so the prompt is a versioned repo artifact, not a string baked into the binary. ONE source of truth per
  * role lives here as the canonical DEFAULT; `vow agent init` scaffolds each into the provider folder
- * (`.claude/prompts/<role>.md` for the Claude-Code layout) and the agent READS the scaffolded file, falling
- * back to this default when it is absent. So editing `.claude/prompts/audit.md` changes the agent's behaviour
+ * (`.claude/prompts/<role>.md` for the Claude-Code layout) and the run READS the scaffolded file, falling
+ * back to this default when it is absent. The reach differs per role: `audit.md` + `plan.md` drive the NATIVE
+ * run (the auto-loop's audit pass reads `audit.md`; the live run builds its gated plan from `plan.md`), while
+ * `develop.md` drives the in-session `/vow-develop` skill (the native executor mechanizes the develop steps,
+ * so it consumes the plan, not develop.md). So editing `.claude/prompts/audit.md` changes the audit pass
  * without touching vow's source — and a test pins that init writes exactly what the reader returns (a seam
  * that can't lie). The placeholders (`{dimension}`, `{title}`, …) are filled at read time, so the template
  * stays editable while the run still substitutes the live facts.
@@ -26,10 +29,11 @@ Output ONLY a JSON array (no prose). Each element is a finding with these string
 
 An empty array [] when nothing is found. Do NOT edit any file — this audit is read-only.`;
 
-/** The default DEVELOP prompt — the operative develop instruction an autonomous run follows: branch, keep it
- *  one coherent element, verify both gates, open a PR that closes the issue, merge green / draft red. The
- *  plan template below carries the issue-specific facts; this is the steady guidance. Edit
- *  `.claude/prompts/develop.md` to tune it. */
+/** The default DEVELOP prompt — the operative develop instruction the IN-SESSION `/vow-develop` skill follows
+ *  (read AGENTS.md, branch, keep it one coherent element, verify both gates, open a PR, merge green / draft
+ *  red). The NATIVE `vow agent run` executor does NOT read this — it mechanizes branch/PR/merge in `loop.ts`
+ *  and runs the gated PLAN (built from `plan.md`); develop.md is the in-session flow's steady guidance. Edit
+ *  `.claude/prompts/develop.md` to tune that flow. */
 export const DEFAULT_DEVELOP_PROMPT = `Develop the issue through vow's red line — read AGENTS.md first; it is the contract.
 
 1. Branch \`<type>/<slug>\` off main (feat/fix/docs/…), never main.

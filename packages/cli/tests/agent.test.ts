@@ -14,6 +14,8 @@ import {
 import { providerFor } from "@vow/agent";
 
 const ISSUE = 42;
+const FIVE = 5;
+const SEVEN = 7;
 
 test("issueArg reads a positive issue number, else 0 for a missing/non-numeric/non-positive arg", () => {
   expect(issueArg(["plan", String(ISSUE)])).toBe(ISSUE);
@@ -78,6 +80,16 @@ test("issueNumbers collects positive numeric args, dropping flags + non-numbers"
     "1,2,3",
   );
   expect(issueNumbers(["run-all"])).toEqual([]);
+});
+
+test("parseRunAll DEDUPES issue numbers — `run-all 5 5` spawns ONE lane (no shared-worktree collision)", () => {
+  // Two lanes for one issue derive the same branch + worktree path; the loser's teardown would force-remove
+  // The winner's live worktree. Deduping at parse time means a duplicated arg can never spawn the collision.
+  const parsed = parseRunAll(["run-all", "5", "5", "7", "5"]);
+  expect(typeof parsed).not.toBe("string");
+  if (typeof parsed !== "string") {
+    expect([...parsed.issues]).toEqual([FIVE, SEVEN]);
+  }
 });
 
 test("phaseLine is JSON for an LLM/studio, human text for the terminal", () => {
