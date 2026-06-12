@@ -94,6 +94,16 @@ export class ReactiveRows {
    *  useSyncExternalStore, a Solid signal) subscribe to. Vue tracks `rows` directly and ignores this. */
   private readonly listeners = new Set<() => void>();
 
+  /** A monotonically-rising snapshot token, bumped on every mutation. A binding reads it to know the store
+   *  changed — an in-place array mutation keeps the same reference, so the snapshot is this primitive, not
+   *  the array (what React's useSyncExternalStore compares, what a Solid signal tracks). */
+  private revision = 0;
+
+  /** The current snapshot token — rises on every mutation. The stable getSnapshot value for a binding. */
+  public get version(): number {
+    return this.revision;
+  }
+
   /** Subscribe to mutations; returns the unsubscribe. The neutral observer seam for the #101 adapters. */
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -102,8 +112,9 @@ export class ReactiveRows {
     };
   }
 
-  /** Fire every subscribed listener — called after each mutation below. */
+  /** Bump the snapshot token, then fire every subscribed listener — called after each mutation below. */
   private notify(): void {
+    this.revision += 1;
     for (const listener of this.listeners) {
       listener();
     }
