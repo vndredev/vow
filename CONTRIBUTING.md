@@ -1,6 +1,6 @@
 # Contributing to vow
 
-vow is built **slowly** — element by element, function by function. Every change ships green and with its own doc page. Two audiences contribute: humans (this file) and LLMs/agents (see `CLAUDE.md`, and the planned `llms.txt`).
+vow is built **slowly** — element by element, function by function. Every change ships green and with its own doc page. Two audiences contribute: humans (this file) and LLMs/agents (see `AGENTS.md` — the single, provider-neutral contract — and the docs' `llms.txt`).
 
 ## Setup
 
