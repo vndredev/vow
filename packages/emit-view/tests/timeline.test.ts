@@ -1,5 +1,5 @@
+import { emitTimelineSfc, toGroups } from "../src/timeline.ts";
 import { expect, test } from "vite-plus/test";
-import { toGroups } from "../src/timeline.ts";
 
 const V2_COUNT = 2;
 
@@ -15,4 +15,10 @@ test("toGroups accumulates a version's entries even when the log interleaves ver
   expect(first?.items).toHaveLength(V2_COUNT);
   expect(second?.version).toBe("v1");
   expect(second?.items).toHaveLength(1);
+});
+
+test("the group label pluralizes the change count (1 change, not 1 changes)", () => {
+  const sfc = emitTimelineSfc([{ date: "2026-06-01", title: "a", version: "v2" }]);
+  // The Collapsible label binds a length===1 conditional so a single-change group reads "1 change".
+  expect(sfc).toContain("g.items.length === 1 ? ' change' : ' changes'");
 });
