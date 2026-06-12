@@ -1,8 +1,7 @@
 #!/usr/bin/env -S node --experimental-strip-types
 import { openStudio, resolveAppDir } from "./studio.ts";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { composeTools } from "./compose.ts";
+import { buildVowMcp } from "./build.ts";
 import { defined } from "@vow/core";
 import process from "node:process";
 
@@ -23,8 +22,6 @@ if (!defined(appDir)) {
   process.exit(1);
 }
 
-const studio = openStudio(appDir);
-const server = new McpServer({ name: "vow", version: "0.0.0" });
-composeTools(server, studio);
+const server = buildVowMcp(openStudio(appDir));
 
 await server.connect(new StdioServerTransport());

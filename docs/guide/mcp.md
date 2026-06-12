@@ -35,6 +35,11 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 > Edited `.mcp.json` by hand? Restart the Claude Code session to load it. Manage: `/mcp` (in-session), `claude mcp get vow`, `claude mcp remove vow --scope project`.
 
+## Two ways to reach it
+
+- **Per-session over stdio** — `.mcp.json` spawns the server for one editor session (above). It dies with the session; one client.
+- **The persistent channel over HTTP** — [`vow serve`](/guide/serve) mounts the same tool set on an always-on local endpoint (`http://localhost:5176/mcp`), so any number of agents/clients POST to one running server. Stateless: one request = one exchange, the studio (the SQLite data layer) shared across requests. Same `@vow/mcp` tools, the [build factory](/guide/packages) shared by both transports — the set can't drift between them.
+
 ## The tools
 
 Twenty-five tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
