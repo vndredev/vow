@@ -3,6 +3,7 @@ import { type App, repoRoot, resolveApps } from "./apps.ts";
 /* oxlint-enable consistent-type-specifier-style */
 import { autoConfirmed, runAuto } from "./agent-auto.ts";
 import type { Server } from "node:http";
+import { boardLine } from "./agent-run.ts";
 import { setTimeout as delay } from "node:timers/promises";
 import { eventsSseServer } from "@vow/observability";
 import { mcpHttpServer } from "@vow/mcp/http";
@@ -150,9 +151,40 @@ async function watchLoop(stop: Readonly<AbortSignal>): Promise<void> {
 }
 /* oxlint-enable no-await-in-loop */
 
-/** Start the watch loop in the background when opted in — kept out of `runServe` so it stays under the
-    statement cap; a no-op for `off`/`refuse`. */
-function startWatch(watch: Watch, stop: Readonly<AbortSignal>): void {
+/** Reconcile the Project board once, best-effort — a `gh` hiccup logs and is swallowed, never tearing the
+    hub down. A no-op (empty line) when no Project is configured. */
+function reconcileOnce(cwd: string): void {
+  try {
+    const line = boardLine(cwd);
+    if (line !== "") {
+      process.stdout.write(`vow serve: ${line}\n`);
+    }
+  } catch (error) {
+    process.stderr.write(`vow serve: board reconcile skipped: ${String(error)}\n`);
+  }
+}
+
+/** The board-status invariant: reconcile the GitHub Project's Status to the studio's derived truth every
+    interval — independent of the agent loop, so ANY drift (a raw merge, a manual close, a flaky GitHub
+    workflow) is auto-corrected within a tick, never needing a manual `sync_project`. No-op without a
+    configured Project; the wait is abortable so shutdown is prompt. */
+/* oxlint-disable no-await-in-loop -- a serial reconcile, wait, repeat loop */
+async function reconcileLoop(cwd: string, stop: Readonly<AbortSignal>): Promise<void> {
+  while (!stop.aborted) {
+    reconcileOnce(cwd);
+    try {
+      await delay(WATCH_INTERVAL_MS, true, { signal: stop });
+    } catch {
+      return;
+    }
+  }
+}
+/* oxlint-enable no-await-in-loop */
+
+/** Start the hub's background loops: the board-status reconcile (ALWAYS — the board invariant), and the
+    agent watch-loop when opted in. Kept out of `runServe` so it stays under the statement cap. */
+function startLoops(watch: Watch, cwd: string, stop: Readonly<AbortSignal>): void {
+  ignore(reconcileLoop(cwd, stop));
   if (watch === "run") {
     ignore(watchLoop(stop));
   }
@@ -168,7 +200,7 @@ export async function runServe(rest: readonly string[]): Promise<number> {
   const servers = startServers();
   const stop = new AbortController();
   process.stdout.write(serveBanner(apps, { events: EVENTS_PORT, mcp: MCP_PORT }, watch));
-  startWatch(watch, stop.signal);
+  startLoops(watch, repoRoot(), stop.signal);
   const code = await runDev(apps);
   stop.abort();
   await closeServers(servers);

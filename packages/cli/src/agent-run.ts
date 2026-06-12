@@ -337,7 +337,7 @@ export async function runAll(rest: readonly string[]): Promise<number> {
  *  shell env var instead of silently skipping. Empty (no line) only when neither is configured; local gh
  *  auth, no PAT. May throw if `gh project` hiccups — the caller treats that best-effort
  *  (`reconcileAfterMerge`), since the merge, not the reconcile, is load-bearing. */
-function boardLine(cwd: string): string {
+export function boardLine(cwd: string): string {
   // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = fall back to config
   const pid = resolveProjectId(cwd, process.env["VOW_PROJECT_ID"]);
   if (typeof pid !== "string") {
