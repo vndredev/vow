@@ -30,7 +30,8 @@ function testBlock(label: string, scenario: RenderScenario): readonly string[] {
     ``,
     `test(${JSON.stringify(scenario.claim)}, () => {`,
     `  const wrapper = mount(${label});`,
-    `  expect(wrapper.exists()).toBe(true);`,
+    `  // nodeType 1 is ELEMENT_NODE — a non-render yields a comment node (nodeType 8).`,
+    `  expect(wrapper.element.nodeType).toBe(1);`,
     `  wrapper.unmount();`,
     `});`,
   ];
