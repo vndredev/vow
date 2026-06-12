@@ -1,12 +1,12 @@
 import type { Attr, UiNode } from "./types.ts";
 import { ISSUE_LAYOUTS, issueLayout } from "./issue-layout.ts";
 import { asRecord, defined } from "@vow/core";
+import { assertAttrName, assertObjectKey, pascalCase } from "@vow/component";
 import { boardComponentName, cardsComponentName, statsComponentName } from "./naming.ts";
 import { bound, comp, el, str, txt } from "./helpers.ts";
 import { childrenOf, propsToAttrs, sliceAttrs } from "./slice.ts";
 import { LAYOUT_PRIMITIVES } from "@vow/layout";
 import { PRIMITIVE_ADAPTERS } from "@vow/emit-primitive";
-import { pascalCase } from "@vow/component";
 
 /** The primitive names a `## view` may reference directly (the closed registry, from @vow/emit-primitive). */
 export const PRIMITIVES: readonly string[] = Object.keys(PRIMITIVE_ADAPTERS);
@@ -218,6 +218,70 @@ export function mapNode(type: string, value: unknown, entities: readonly string[
     return comp(pascalCase(type), attrs, kids);
   }
   return textNode(type, value);
+}
+
+/** The slice-bearing handlers — they emit a `:filter="{ ... }"` whose keys land in expression position. */
+const SLICE_TYPES: ReadonlySet<string> = new Set(["board", "cards", "list"]);
+
+/** A single `## view` node — the `{ type, value }` shape both the emitter and the MCP seam validate. */
+interface RawNode {
+  readonly type: string;
+  readonly value: unknown;
+}
+
+/** Validate one node's filter keys (object-literal keys) — the slice sink (`:filter="{ key: ... }"`). */
+function requireSafeFilterKeys(value: unknown): void {
+  const { filter } = asRecord(value);
+  if (defined(filter)) {
+    for (const key of Object.keys(asRecord(filter))) {
+      assertObjectKey(key);
+    }
+  }
+}
+
+/** The `{ type, value }` of one raw child of a primitive node (its single key + that key's value). */
+function childNode(raw: unknown): RawNode {
+  const child = asRecord(raw);
+  const [type = ""] = Object.keys(child);
+  return { type, value: child[type] };
+}
+
+/** Validate one primitive node's prop names (attribute names), then recurse into its `children`. */
+function requireSafePrimitiveNames(value: unknown, recurse: (node: RawNode) => void): void {
+  const obj = asRecord(value);
+  for (const name of Object.keys(obj)) {
+    if (name !== "children" && name !== "model") {
+      assertAttrName(name);
+    }
+  }
+  const kids = obj["children"];
+  if (Array.isArray(kids)) {
+    for (const kid of kids) {
+      recurse(childNode(kid));
+    }
+  }
+}
+
+/** Validate one view node's emitted identifiers — the slice filter keys (object keys) and the primitive
+ *  prop names (attribute names), recursing into a primitive's children through `requireSafeNode`. */
+function requireSafeNode(node: RawNode): void {
+  if (SLICE_TYPES.has(node.type)) {
+    requireSafeFilterKeys(node.value);
+  }
+  if (isPrimitive(node.type)) {
+    requireSafePrimitiveNames(node.value, requireSafeNode);
+  }
+}
+
+/**
+ * Validate every emitted identifier in a `## view` against the safe shapes BEFORE it is written — the
+ * same guards the emitter applies (`assertObjectKey` on filter keys, `assertAttrName` on prop names), so
+ * the `add_view` MCP seam rejects a breakout key synchronously rather than at the next `vp dev`/build.
+ */
+export function requireSafeNames(view: readonly RawNode[]): void {
+  for (const node of view) {
+    requireSafeNode(node);
+  }
 }
 
 /** The direct children of a node that can themselves hold components (element/component/slot). */

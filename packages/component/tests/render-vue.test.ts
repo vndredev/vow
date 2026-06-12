@@ -371,3 +371,31 @@ test("props without defaults still render as plain defineProps (byte-stable, no 
   expect(sfc).toContain("const props = defineProps<{ label: string }>();");
   expect(sfc).not.toContain("withDefaults");
 });
+
+test("a bound attr name that would forge a directive is rejected (#305 injection)", () => {
+  // The confirmed breakout: a `## view` prop key `class="x" @click` would render a real `@click` attr.
+  // The renderer is the universal choke point — it rejects the name before any markup is produced.
+  const comp: Component = {
+    name: "Card",
+    view: {
+      attrs: [{ expr: "'doEvil()'", kind: "bound", name: 'class="x" @click' }],
+      children: [],
+      kind: "component",
+      name: "Card",
+    },
+  };
+  expect(() => renderVueSfc(comp)).toThrow(/not a safe attribute name/u);
+});
+
+test("a legitimate bound attr name still renders byte-stable (the guard is inert for valid input)", () => {
+  const comp: Component = {
+    name: "Field",
+    view: {
+      attrs: [{ expr: "label", kind: "bound", name: "aria-label" }],
+      children: [],
+      kind: "component",
+      name: "Field",
+    },
+  };
+  expect(renderVueSfc(comp)).toContain(`<Field :aria-label="label" />`);
+});

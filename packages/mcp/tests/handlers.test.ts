@@ -150,6 +150,19 @@ test("add_view rejects an unknown node type synchronously — the build error, n
   });
 });
 
+test("add_view rejects a breakout filter key synchronously — the #305 name-injection defense", async () => {
+  await withHarness(async ({ call }) => {
+    // A hostile filter key would close the emitted `:filter="{ ... }"` literal and run on render.
+    // The seam rejects it before the vow is written (defense-in-depth with the emitter, mirroring #283).
+    const bad = await call("add_view", {
+      intent: "A bad page",
+      slug: "evil",
+      view: [{ type: "list", value: { filter: { "a }; alert(1); ({": "x" }, of: "task" } }],
+    });
+    expect(bad).toContain("not a safe identifier");
+  });
+});
+
 test("studio_info publishes the view-node vocabulary so the LLM sees the valid types", async () => {
   await withHarness(async ({ call }) => {
     const types = arrayOf(await call("studio_info", {}), "viewNodeTypes");

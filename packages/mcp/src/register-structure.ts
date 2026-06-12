@@ -1,6 +1,6 @@
 import { Field, ViewNode } from "@vow/core";
 import type { Maybe, Names, ReadonlyField, Registrar, Studio, TextResult } from "./types.ts";
-import { VIEW_NODE_TYPES, knownViewType } from "@vow/emit-view";
+import { VIEW_NODE_TYPES, knownViewType, requireSafeNames } from "@vow/emit-view";
 import { text } from "./studio.ts";
 import { z } from "zod";
 
@@ -74,6 +74,7 @@ function registerAddView(server: Registrar, names: Names, studio: Studio): void 
       readonly view: readonly ViewInput[];
     }): TextResult => {
       requireKnownTypes(input.view);
+      requireSafeNames(input.view);
       const slug = studio.createView({
         intent: input.intent,
         nav: input.nav,

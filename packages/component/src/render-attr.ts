@@ -1,4 +1,5 @@
 import type { Attr, Loop } from "./model.ts";
+import { assertAttrName } from "./validate-name.ts";
 import { defined } from "./defined.ts";
 import { escapeAttr } from "./escape.ts";
 
@@ -14,6 +15,7 @@ export function renderAttr(attr: Attr): string {
       return `${attr.name}="${escapeAttr(attr.value)}"`;
     }
     case "bound": {
+      assertAttrName(attr.name);
       return `:${attr.name}="${attr.expr}"`;
     }
     case "spread": {
