@@ -4,7 +4,7 @@
 
 You describe your app as a tree of **vows** (promises) in `app/<slug>.vow.md`; vow generates a type-safe Vue app that you own — and proves it kept the promise. Operable by a human _and_ an LLM.
 
-> **Foundation phase.** The core mechanism works end-to-end (entity · view · bind · primitives · scenario-coverage · local-state CRUD · layout). The surface — more field types, the primitive ladder, patterns, routing, persistence, and an MCP server — grows slowly, element by element. See the [roadmap](./docs/guide/roadmap.md).
+> **Foundation phase.** The core mechanism works end-to-end (entity · view · bind · primitives · scenario-coverage · local-state CRUD · layout). The surface — more field types, the primitive ladder, patterns, routing, persistence, and an MCP server — grows slowly, element by element. See the [roadmap](./docs/guide/changelog.md).
 
 ## What it looks like
 
