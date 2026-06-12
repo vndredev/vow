@@ -27,7 +27,7 @@ export function issueLayout(value: unknown): IssueLayout {
   const as = str(asRecord(value)["as"]) || "table";
   if (!isIssueLayout(as)) {
     throw new Error(
-      `vow: unknown issues layout "${as}" — use ${Object.keys(ISSUE_LAYOUTS).join(", ")}`,
+      `emit-view: unknown issues layout "${as}" — use ${Object.keys(ISSUE_LAYOUTS).join(", ")}`,
     );
   }
   return as;
