@@ -1,6 +1,6 @@
 import { DEFAULT_MAX_ROUNDS, maxRoundsOf } from "../src/agent-auto.ts";
 import { expect, test } from "vite-plus/test";
-import { flagValue, issueArg, issueNumbers, phaseLine } from "../src/agent-run.ts";
+import { failedResult, flagValue, issueArg, issueNumbers, phaseLine } from "../src/agent-run.ts";
 
 const ISSUE = 42;
 
@@ -28,6 +28,18 @@ test("issueNumbers collects positive numeric args, dropping flags + non-numbers"
 test("phaseLine is JSON for an LLM/studio, human text for the terminal", () => {
   expect(phaseLine(ISSUE, "develop", true)).toBe(`{"issue":${ISSUE},"phase":"develop"}`);
   expect(phaseLine(ISSUE, "develop", false)).toBe(`  [#${ISSUE}] develop`);
+});
+
+test("failedResult turns a thrown develop into a failed lane (so one bad worktree never aborts the fleet)", () => {
+  const human = failedResult(ISSUE, new Error("git worktree add failed"), false);
+  expect(human.ok).toBe(false);
+  expect(human.report).toBe(`issue #${ISSUE}: failed to develop — git worktree add failed`);
+  const json = failedResult(ISSUE, new Error("boom"), true);
+  expect(json.ok).toBe(false);
+  expect(json.report).toBe(`{"issue":${ISSUE},"ok":false}`);
+  expect(failedResult(ISSUE, "not an error", false).report).toBe(
+    `issue #${ISSUE}: failed to develop — not an error`,
+  );
 });
 
 const ROUNDS = 4;
