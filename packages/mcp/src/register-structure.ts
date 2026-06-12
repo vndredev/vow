@@ -8,17 +8,16 @@ import type {
   Studio,
   TextResult,
 } from "./types.ts";
-import { VIEW_NODE_TYPES, knownViewType, requireSafeNames } from "@vow/emit-view";
+import { VIEW_NODE_TYPES, assertKnownViewType, requireSafeNames } from "@vow/emit-view";
 import { text } from "./studio.ts";
 import { z } from "zod";
 
-/** Reject a view whose node carries an unknown `type` BEFORE it reaches disk — the same check (and the
- *  same message) the emitter runs at build, so `add_view` fails synchronously instead of at `vp dev`. */
+/** Reject a view whose node carries an unknown `type` BEFORE it reaches disk — the shared
+ *  `assertKnownViewType` (same check, same message, the allowed set listed) the emitter runs at build, so
+ *  `add_view`/`set_view` fail synchronously instead of at `vp dev`. */
 function requireKnownTypes(view: readonly ViewInput[]): void {
   for (const node of view) {
-    if (!knownViewType(node.type)) {
-      throw new Error(`emit-view: unknown view component "${node.type}"`);
-    }
+    assertKnownViewType(node.type);
   }
 }
 
@@ -181,10 +180,12 @@ function registerSetForm(server: Registrar, names: Names, studio: Studio): void 
 function registerSetView(server: Registrar, names: Names, studio: Studio): void {
   const setView = names.at("set_view");
 
+  const description = `${setView.description} A node's \`type\` is one of: ${VIEW_NODE_TYPES.join(", ")}.`;
+
   server.registerTool(
     setView.name,
     {
-      description: setView.description,
+      description,
       inputSchema: { slug: z.string(), view: z.array(ViewNode) },
     },
     (input: { readonly slug: string; readonly view: readonly ViewInput[] }): TextResult => {

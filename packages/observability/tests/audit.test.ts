@@ -19,6 +19,13 @@ test("auditIssue omits labels when the finding has no area", () => {
   expect(auditIssue({ area: "", evidence: "e", fix: "f", title: "t" }).labels).toBeUndefined();
 });
 
+test("auditIssue omits the area label for an area with no repo label, but still files the finding", () => {
+  const issue = auditIssue({ area: "cli", evidence: "e", fix: "f", title: "t" });
+  expect(issue.labels).toBeUndefined();
+  expect(issue.title).toBe("t");
+  expect(issue.milestone).toBe("Phase G — hardening (audit fixes)");
+});
+
 test("parseFindings reads the confirmed array, skipping items lacking a title or fix", () => {
   const json =
     '[{"title":"A","fix":"do A","evidence":"because","area":"dx"},{"title":"no fix"},{"fix":"orphan"}]';

@@ -31,6 +31,64 @@ export interface ImportDecl {
   readonly default?: string;
 }
 
+/**
+ * A piece of reactive local state — Vue `const x = ref(init)`, React `const [x, setX] = useState(init)`.
+ *
+ * `name` is the binding; `init` is an adapter-neutral initial-value expression (e.g. "false", "''",
+ * "[]"). The Vue adapter reads/writes `x.value`; the React adapter reads `x` and writes via the paired
+ * setter. The agnostic seam: the model names the state, each adapter supplies its own reactivity idiom.
+ */
+export interface StateStep {
+  readonly kind: "state";
+  readonly name: string;
+  readonly init: string;
+}
+
+/**
+ * A derived value — Vue `const x = computed(() => expr)`, React `const x = useMemo(() => expr, deps)`.
+ *
+ * `expr` is the adapter-neutral body expression; `deps` (React only) is the dependency list, defaulting
+ * to the empty array. Vue ignores `deps` — its reactivity tracks automatically.
+ */
+export interface ComputedStep {
+  readonly kind: "computed";
+  readonly name: string;
+  readonly expr: string;
+  readonly deps?: readonly string[];
+}
+
+/**
+ * A named event handler — Vue `function name(params) { ...body }`, React `const name = (params) => {
+ * ...body }`. `params` is the parameter list inner (e.g. "next: boolean"); `body` is the statement
+ * lines, each rendered verbatim. The body is the escape hatch within a structured step — kept neutral
+ * by convention (no framework keyword), so both adapters can host it unchanged.
+ */
+export interface HandlerStep {
+  readonly kind: "handler";
+  readonly name: string;
+  readonly params: string;
+  readonly body: readonly string[];
+}
+
+/**
+ * A plain constant binding — `const name = expr`, identical in every adapter (no reactivity, no idiom).
+ * The framework-neutral base case: a pure value or helper shared by the steps above.
+ */
+export interface ConstStep {
+  readonly kind: "const";
+  readonly name: string;
+  readonly expr: string;
+}
+
+/**
+ * One structured, framework-neutral setup primitive. The typed alternative to a raw setup string: where
+ * a raw line is verbatim Vue (the escape hatch only the Vue adapter can render), a `SetupStep` carries
+ * intent (state/computed/handler/const) each adapter renders into its own idiom — the seam that lets a
+ * React adapter consume the SAME setup the Vue adapter does. The union grows step-by-step as a step
+ * earns a second-adapter rendering.
+ */
+export type SetupStep = ComputedStep | ConstStep | HandlerStep | StateStep;
+
 /** A static attribute — a literal value written verbatim into the markup. */
 export interface StaticAttr {
   readonly kind: "static";
@@ -155,7 +213,12 @@ export interface Component {
   readonly imports?: readonly ImportDecl[];
   readonly props?: readonly PropDef[];
   readonly events?: readonly EventDef[];
-  /** Raw setup-script lines — the framework-glue escape hatch (e.g. the headless `computed(...)`). */
-  readonly setup?: readonly string[];
+  /**
+   * The setup script, item by item: a `SetupStep` (a typed, framework-neutral primitive every adapter
+   * renders into its own idiom) OR a raw `string` line (verbatim Vue — the escape hatch only the Vue
+   * adapter renders; the React adapter narrows its throw to exactly these). Structured steps are how a
+   * setup becomes consumable by a second adapter; a raw line stays the framework-glue escape hatch.
+   */
+  readonly setup?: readonly (SetupStep | string)[];
   readonly view: UiNode;
 }
