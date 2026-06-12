@@ -51,9 +51,10 @@ test("the CLI help string names every skill init scaffolds (no undercount)", () 
   expect(agentHelp()).toContain(`${INIT_SKILLS.join("/")} skills`);
 });
 
-test("the init doc comment names every skill it scaffolds (develop, orchestrate, audit)", () => {
+test("the init doc comment names the skills + the operative prompts it scaffolds", () => {
   const comment = source("../src/agent.ts");
-  expect(comment).toContain("develop, orchestrate & audit skills");
+  expect(comment).toContain("develop/orchestrate/audit skills");
+  expect(comment).toContain("develop/audit/plan PROMPTS");
 });
 
 test("cli.md documents init scaffolding every skill, not just develop", () => {

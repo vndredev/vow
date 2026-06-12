@@ -14,6 +14,7 @@ export * from "./merge.ts";
 export * from "./model.ts";
 export * from "./orchestrate.ts";
 export * from "./plan.ts";
+export * from "./prompts.ts";
 export * from "./provider.ts";
 export * from "./real-ops.ts";
 export * from "./report.ts";

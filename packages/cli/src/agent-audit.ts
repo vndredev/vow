@@ -1,8 +1,9 @@
-import { AUDIT_MODEL, auditCommand, childEnv } from "@vow/agent";
-import { auditIssue, auditPrompt, createIssue, parseFindings } from "@vow/observability";
+import { AUDIT_MODEL, auditCommand, childEnv, renderAuditPrompt } from "@vow/agent";
+import { auditIssue, createIssue, parseFindings } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the agent-run value import elsewhere; Auth is a type
 import type { Auth } from "./agent-run.ts";
 import { execFileSync } from "node:child_process";
+import { readPrompt } from "./agent-prompts.ts";
 
 /**
  * The audit half of `vow agent auto` — when the backlog empties, run a full read-only audit pass so the
@@ -26,7 +27,8 @@ export const AUDIT_DIMENSIONS: readonly string[] = [
  *  for subscription auth (unless `--auth api`). Returns the raw stdout (a JSON findings array), or `[]` when
  *  the shell-out fails — a transient audit error must not crash the loop. */
 function runDimensionAudit(dimension: string, auth: Auth, cwd: string): string {
-  const command = auditCommand(AUDIT_MODEL, auditPrompt(dimension), auth);
+  const prompt = renderAuditPrompt(readPrompt(cwd, "audit"), dimension);
+  const command = auditCommand(AUDIT_MODEL, prompt, auth);
   try {
     return execFileSync(command.bin, [...command.args], {
       cwd,

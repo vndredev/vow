@@ -7,15 +7,15 @@ import {
 } from "./agent-templates.ts";
 import {
   auditIssue,
-  auditPrompt,
   createIssue,
   headCommit,
   issueDetail,
   parseFindings,
 } from "@vow/observability";
+import { buildPlan, promptTemplates, renderAuditPrompt } from "@vow/agent";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { buildPlan } from "@vow/agent";
 import path from "node:path";
+import { readPrompt } from "./agent-prompts.ts";
 import { runAuto } from "./agent-auto.ts";
 
 /** Write `content` to `file` only when absent — `init` is idempotent, never clobbering edits. Returns the
@@ -30,7 +30,9 @@ function scaffold(file: string, content: string): string {
 }
 
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
- *  AGENTS.md contract + the develop, orchestrate & audit skills. Idempotent — re-running keeps every file. */
+ *  AGENTS.md contract + the develop/orchestrate/audit skills + the operative develop/audit/plan PROMPTS as
+ *  editable provider templates (`.claude/prompts/<role>.md`, what the agent reads). Idempotent — re-running
+ *  keeps every file, so a user-edited prompt is never clobbered. */
 function init(cwd: string): number {
   const actions = [
     scaffold(path.join(cwd, "AGENTS.md"), agentsMd()),
@@ -40,6 +42,9 @@ function init(cwd: string): number {
       vowOrchestrateSkill(),
     ),
     scaffold(path.join(cwd, ".claude", "skills", "vow-audit", "SKILL.md"), vowAuditSkill()),
+    ...promptTemplates().map((template) =>
+      scaffold(path.join(cwd, template.path), template.content),
+    ),
   ];
   for (const action of actions) {
     process.stdout.write(`  ${action}\n`);
@@ -48,10 +53,12 @@ function init(cwd: string): number {
 }
 
 /** `vow agent plan <n>` — print the self-contained, verification-gated plan an autonomous run develops for
- *  issue `n` (the executor's product). Reads the issue + HEAD; emits no side effects. */
+ *  issue `n` (the executor's product), built from the scaffolded `plan.md` template (or its built-in default
+ *  when absent). Reads the issue + HEAD; emits no side effects. */
 function plan(cwd: string, issue: number): number {
   const spec = issueDetail(cwd, issue);
-  process.stdout.write(`${buildPlan(spec, { commit: headCommit(cwd), verify: [] })}\n`);
+  const template = readPrompt(cwd, "plan");
+  process.stdout.write(`${buildPlan(spec, { commit: headCommit(cwd), verify: [] }, template)}\n`);
   return 0;
 }
 
@@ -107,7 +114,7 @@ function runAuditFile(file: string): number {
 function runAudit(rest: readonly string[]): number {
   const dimension = flagValue(rest, "--prompt");
   if (dimension !== "") {
-    process.stdout.write(`${auditPrompt(dimension)}\n`);
+    process.stdout.write(`${renderAuditPrompt(readPrompt(process.cwd(), "audit"), dimension)}\n`);
     return 0;
   }
   const file = flagValue(rest, "--file");
@@ -136,7 +143,8 @@ export const AGENT_SUBCOMMANDS: readonly AgentSubcommand[] = [
   {
     args: "",
     name: "init",
-    summary: "scaffold the agent integration (AGENTS.md + develop/orchestrate/audit skills)",
+    summary:
+      "scaffold the agent integration (AGENTS.md + develop/orchestrate/audit skills + prompts)",
   },
   { args: "<n>", name: "plan", summary: "print the verification-gated plan for issue <n>" },
   {
