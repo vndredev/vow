@@ -18,6 +18,7 @@
     "@vow/emit-entity": "workspace:*",
     "@vow/emit-primitive": "workspace:*",
     "@vow/emit-view": "workspace:*",
+    "@vow/icons": "workspace:*",
     "@vow/layout": "workspace:*",
     "@vow/observability": "workspace:*"
   },

@@ -559,6 +559,9 @@ importers:
       '@vow/emit-view':
         specifier: workspace:*
         version: link:../emit-view
+      '@vow/icons':
+        specifier: workspace:*
+        version: link:../icons
       '@vow/layout':
         specifier: workspace:*
         version: link:../layout

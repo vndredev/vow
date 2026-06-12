@@ -10,3 +10,8 @@ export const sets = { lucide } as const;
 
 /** The active icon set — hardcoded to Lucide for now (config selection is not yet wired). */
 export const activeSet: Record<IconName, string> = lucide;
+
+/** The valid semantic icon names — the list a generator checks an authored `icon:` against, so a typo is
+ *  rejected loudly at generate time instead of rendering an empty SVG. Pure data (no Vue), read off the
+ *  active set's own keys so it can never drift from the rendered glyphs. */
+export const iconNames: readonly string[] = Object.keys(activeSet);
