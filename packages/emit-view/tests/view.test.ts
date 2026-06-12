@@ -1,5 +1,6 @@
 import {
   VIEW_NODE_TYPES,
+  assertKnownViewType,
   emitAppLayout,
   emitAppRoutes,
   emitForm,
@@ -150,6 +151,19 @@ test("referencedPrimitives lists the primitives a view places directly (the clos
 
 test("an unknown component throws (the closed primitive/view vocabulary)", () => {
   expect(() => emitView(view([{ type: "nope", value: {} }]))).toThrow(/unknown view component/u);
+});
+
+test("the unknown-type error lists the whole allowed vocabulary (no dead-end)", () => {
+  const expected = `unknown view component "lists" — allowed: ${VIEW_NODE_TYPES.join(", ")}`;
+  expect(() => {
+    assertKnownViewType("lists");
+  }).toThrow(expected);
+});
+
+test("assertKnownViewType passes silently for a known type", () => {
+  expect(() => {
+    assertKnownViewType("list");
+  }).not.toThrow();
 });
 
 test("knownViewType accepts a handler, a primitive, a text tag, and the bare text escape", () => {
