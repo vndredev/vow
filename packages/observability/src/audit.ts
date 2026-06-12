@@ -4,6 +4,21 @@ import { type CreateIssueInput, featureIssueBody } from "./github.ts";
 /** The milestone an audit finding is filed under — vow's hardening phase. */
 const AUDIT_MILESTONE = "Phase G — hardening (audit fixes)";
 
+/** The `area:` labels the repo actually carries. `gh issue create` does NOT auto-create a label, so an
+ *  area outside this set (cli, store, agent, ...) would make the create exit non-zero and drop the
+ *  finding — `auditIssue` attaches the `area:` label only when the area is one of these. */
+const KNOWN_AREAS: ReadonlySet<string> = new Set([
+  "core",
+  "docs",
+  "dx",
+  "emit",
+  "gate",
+  "github",
+  "mcp",
+  "primitives",
+  "studio",
+]);
+
 /** A confirmed audit finding — what the multi-agent audit emits, ready to become a vow issue: the title,
  *  the evidence (the why), the fix (the element to build), and an optional `area` (the `area:` label). */
 export interface Finding {
@@ -14,10 +29,12 @@ export interface Finding {
 }
 
 /** Map a confirmed finding to a `gh issue create` input — the audit → plan step, so a finding lands in
- *  vow's plan as a labelled, milestoned issue and never a side file. Pure. */
+ *  vow's plan as a labelled, milestoned issue and never a side file. The `area:` label is attached only
+ *  for a known area (see `KNOWN_AREAS`); an unknown / empty area files without it (`gh` would otherwise
+ *  reject the unknown label and drop the whole finding) — the title + milestone still land. Pure. */
 export function auditIssue(finding: Readonly<Finding>): CreateIssueInput {
   const body = featureIssueBody({ element: finding.fix, why: finding.evidence });
-  if (finding.area === "") {
+  if (!KNOWN_AREAS.has(finding.area)) {
     return { body, milestone: AUDIT_MILESTONE, title: finding.title };
   }
   return {
