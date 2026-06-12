@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/server.ts",
+    "./channel": "./src/channel.ts",
     "./http": "./src/http.ts"
   },
   "scripts": {

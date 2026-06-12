@@ -39,4 +39,16 @@ The hub is built in three elements, each its own gated change:
 2. ✅ **The persistent MCP channel** — the MCP server over a local HTTP transport (`/mcp` on :5176) mounted on the hub: stateless (one request = one exchange, the studio shared across requests), so any number of agents/clients POST into one always-on server instead of the stdio-per-editor-session launch.
 3. ✅ **The agent watch-loop** — `vow serve --watch` runs the self-heal loop in the hub daemon, **opt-in only** via `--yes` / `VOW_AGENT_AUTO=1` (the [#486](/guide/agent) gate): a spiral runs, then re-runs every 60s, developing new issues as they appear and merging green; the daemon stays up between spirals, the inter-spiral wait abortable for a prompt shutdown. Default (no `--watch`) is off.
 
-**The realtime-observability arc** (#497). The hub records a live event feed — `run.started` / `run.phase` / `run.finished` / `pr.merged` today — to `.vow/events.jsonl`, exposed two **provider-neutral** ways: the tailable file + [`vow events`](/guide/cli#realtime-observability), and the **SSE event channel** (`/events` on :5177) any client subscribes to. Consumers: an **orchestrator** that acts on observed state without being told (over SSE, or — one thin per-provider adapter — pushed into a Claude Code session via [Channels](https://code.claude.com/docs/en/channels.md)), and the **studio panel** (the control + 100%-trace, on/off — coming). The channel is observability: you watch, you don't narrate. Provider-neutral by construction — no agent is special.
+**The realtime-observability arc** (#497). The hub records a live event feed — `run.started` / `run.phase` / `run.finished` / `pr.merged` today — to `.vow/events.jsonl`, exposed two **provider-neutral** ways: the tailable file + [`vow events`](/guide/cli#realtime-observability), and the **SSE event channel** (`/events` on :5177) any client subscribes to. The channel is observability: you watch, you don't narrate. Provider-neutral by construction — no agent is special.
+
+### The Claude Code Channels adapter
+
+One thin per-provider adapter sits on the neutral feed: **`vow channel`** bridges it into a connected [Claude Code session via Channels](https://code.claude.com/docs/en/channels.md) — it pushes each new event in as a `<channel source="vow" …>` event, so the orchestrator reacts to observed state without being told (one-way: it acts through vow's tools). The vow CLI installs it:
+
+```bash
+vow agent init   # adds the vow-channel server to .mcp.json (idempotent)
+# then launch Claude Code with the channel (research preview):
+claude --dangerously-load-development-channels server:vow-channel
+```
+
+A Codex/Gemini channel would be its own adapter on the same feed — the core stays neutral. (The **studio panel** — the control + 100%-trace, on/off — needs a generic live-data view block first; [#502](https://github.com/vndredev/vow/issues/502).)
