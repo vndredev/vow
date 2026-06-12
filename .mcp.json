@@ -8,6 +8,11 @@
         "VOW_APP_DIR": "apps/studio/app",
         "VOW_PROJECT_ID": "PVT_kwHOBZX2o84BaHiO"
       }
+    },
+    "vow-channel": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["--experimental-strip-types", "packages/cli/src/cli.ts", "channel"]
     }
   }
 }

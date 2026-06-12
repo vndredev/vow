@@ -6,8 +6,11 @@ import { providerViolations } from "../src/providers.ts";
 /** One agent source, as `providerViolations` takes them. */
 type AgentSource = Parameters<typeof providerViolations>[0][number];
 
-/* The only agent module allowed to name a provider CLI — the provider seam, where an adapter lives. */
-const ALLOW = ["provider.ts"];
+/* The agent modules allowed to name a provider — the provider-SPECIFIC seams, where an adapter lives:
+ * `provider.ts` (the CLI-spawn seam), and `channel.ts` (the Claude Code Channels adapter, whose protocol
+ * literals `notifications/claude/channel` + the `claude/channel` capability are inherently Claude's). A
+ * Codex/Gemini channel would be its own adapter module — the neutral core stays the event feed. */
+const ALLOW = ["provider.ts", "channel.ts"];
 
 /** The packages the gate scans: @vow/agent owns the seam; @vow/cli and @vow/mcp actually SPAWN the bin, so a
  *  future hardcode there must not slip past. Sibling packages, named relative to this gate package. */

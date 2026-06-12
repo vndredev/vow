@@ -29,6 +29,49 @@ function scaffold(file: string, content: string): string {
   return `wrote ${file}`;
 }
 
+// The JSON indent for a written `.mcp.json`.
+const JSON_INDENT = 2;
+
+/** The `.mcp.json` entry that launches the channel — `vow channel`, path-independent (resolves the vow bin)
+ *  so the install works in any repo, not a monorepo file path. */
+const CHANNEL_ENTRY = { args: ["channel"], command: "vow" } as const;
+
+/** Whether a value is a non-null object — the entry to safely read a parsed `.mcp.json`. */
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/** The existing `mcpServers` map of `.mcp.json`, or `{}` when the file is absent/malformed. */
+function existingServers(file: string): Record<string, unknown> {
+  if (!existsSync(file)) {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+    if (isObject(parsed) && isObject(parsed["mcpServers"])) {
+      return parsed["mcpServers"];
+    }
+  } catch {
+    return {};
+  }
+  return {};
+}
+
+/** Install the channel into `.mcp.json` (merge, idempotent) — the `vow-channel` server Claude Code spawns
+ *  as the channel, beside whatever else is configured. Keeps a hand-edited entry; the CLI installs the
+ *  Channels wiring so a user need not hand-edit `.mcp.json` (then `claude --dangerously-load-development-channels
+ *  server:vow-channel`). */
+function installChannel(cwd: string): string {
+  const file = path.join(cwd, ".mcp.json");
+  const servers = existingServers(file);
+  if ("vow-channel" in servers) {
+    return "kept  .mcp.json (vow-channel)";
+  }
+  const merged = { mcpServers: { ...servers, "vow-channel": CHANNEL_ENTRY } };
+  writeFileSync(file, `${JSON.stringify(merged, (_key, value: unknown) => value, JSON_INDENT)}\n`);
+  return "wrote .mcp.json (vow-channel)";
+}
+
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
  *  AGENTS.md contract + the develop/orchestrate/audit skills + the operative develop/audit/plan PROMPTS as
  *  editable provider templates (`.claude/prompts/<role>.md`, what the agent reads). Idempotent — re-running
@@ -45,6 +88,7 @@ function init(cwd: string): number {
     ...promptTemplates().map((template) =>
       scaffold(path.join(cwd, template.path), template.content),
     ),
+    installChannel(cwd),
   ];
   for (const action of actions) {
     process.stdout.write(`  ${action}\n`);
