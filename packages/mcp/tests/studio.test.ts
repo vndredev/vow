@@ -53,6 +53,7 @@ function withStudio(body: (studio: ReturnType<typeof openStudio>) => void): void
       fields: [
         { name: "title", required: true, type: "text" },
         { name: "owner", ref: "user", required: false, type: "reference" },
+        { name: "status", options: ["todo", "done"], required: false, type: "select" },
       ],
       intent: "A task",
       slug: "task",
@@ -91,17 +92,19 @@ test("addRecord and set_record_field resolve a reference name identically", () =
 
 test("addRecord throws on an unknown field rather than silently dropping the typo", () => {
   withStudio((studio) => {
-    // A typo of `title` — the db layer copies only known fields, so it would drop the key and return a
-    //  Row with an empty title as if the write succeeded; the seam must reject the unknown key instead.
-    expect(() => studio.addRecord("task", { titel: "Ship it" })).toThrow(
-      /unknown field "titel" on task/u,
+    // A stray key alongside the valid title must be rejected, not silently dropped.
+    // The db layer copies only known fields, so the write would otherwise look like a success.
+    expect(() => studio.addRecord("task", { extra: "oops", title: "Ship it" })).toThrow(
+      /unknown field "extra" on task/u,
     );
   });
 });
 
 test("addRecord's unknown-field error lists the entity's known fields", () => {
   withStudio((studio) => {
-    expect(() => studio.addRecord("task", { titel: "x" })).toThrow(/known: id, title, owner/u);
+    expect(() => studio.addRecord("task", { extra: "x", title: "Ship it" })).toThrow(
+      /known: id, title, owner, status/u,
+    );
   });
 });
 
@@ -125,5 +128,52 @@ test("addRecord still accepts an explicit id plus declared fields", () => {
     const stored = studio.addRecord("task", { id: "t1", title: "Ship it" });
     expect(stored["id"]).toBe("t1");
     expect(stored["title"]).toBe("Ship it");
+  });
+});
+
+test("addRecord rejects a record missing a required field rather than defaulting it", () => {
+  withStudio((studio) => {
+    // `title` is required — omitting it must throw, not store a silently defaulted empty title.
+    expect(() => studio.addRecord("task", { status: "todo" })).toThrow(
+      /required field "title" is missing on task/u,
+    );
+  });
+});
+
+test("addRecord rejects a required field set to the empty string", () => {
+  withStudio((studio) => {
+    // An explicit empty string is as absent as omission — the running app's zod factory rejects it.
+    expect(() => studio.addRecord("task", { title: "" })).toThrow(
+      /required field "title" is missing on task/u,
+    );
+  });
+});
+
+test("addRecord rejects a select value outside the field's options, listing the allowed set", () => {
+  withStudio((studio) => {
+    expect(() => studio.addRecord("task", { status: "blocked", title: "Ship it" })).toThrow(
+      /"blocked" is not an option of task.status — allowed: todo, done/u,
+    );
+  });
+});
+
+test("addRecord accepts a select value that is one of the field's options", () => {
+  withStudio((studio) => {
+    const stored = studio.addRecord("task", { status: "done", title: "Ship it" });
+    expect(stored["status"]).toBe("done");
+  });
+});
+
+test("set_record_field rejects a select value outside the field's options", () => {
+  withStudio((studio) => {
+    const created = studio.addRecord("task", { title: "Plan" });
+    expect(() =>
+      studio.updateRecord({
+        entity: "task",
+        field: "status",
+        id: String(created["id"]),
+        value: "blocked",
+      }),
+    ).toThrow(/"blocked" is not an option of task.status — allowed: todo, done/u);
   });
 });

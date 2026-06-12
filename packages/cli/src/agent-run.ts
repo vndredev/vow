@@ -45,14 +45,16 @@ export const DEFAULT_CONCURRENCY = 3;
  *  same union as @vow/agent's `Auth`, kept local so the cli needs no second @vow/agent type import. */
 export type Auth = "api" | "subscription";
 
-/** The issue number from `vow agent plan <n>` — a positive integer, or 0 when missing/non-numeric. */
+/** The issue number from `vow agent <cmd> <n>` — the first positive integer among the args after the
+ *  sub-command (so a flag-first `run --provider codex 42` still finds 42), or 0 when none is present. */
 export function issueArg(rest: readonly string[]): number {
-  const raw = rest[1] ?? "";
-  const num = Number(raw);
-  if (!Number.isInteger(num) || num <= 0) {
-    return 0;
+  for (const arg of rest.slice(1)) {
+    const num = Number(arg);
+    if (Number.isInteger(num) && num > 0) {
+      return num;
+    }
   }
-  return num;
+  return 0;
 }
 
 /** The value after `flag` in `rest` (`--provider codex` → `codex`), or "" when the flag/value is absent. */
@@ -62,6 +64,17 @@ export function flagValue(rest: readonly string[], flag: string): string {
     return "";
   }
   return rest[at + 1] ?? "";
+}
+
+/** True when `flag` is present but its value is missing — the flag is the last token, or the next token is
+ *  itself a flag (`--provider --json`). Lets the parser blame the missing value, not the absent provider. */
+export function flagValueless(rest: readonly string[], flag: string): boolean {
+  const at = rest.indexOf(flag);
+  if (at === -1) {
+    return false;
+  }
+  const next = rest[at + 1] ?? "";
+  return next === "" || next.startsWith("--");
 }
 
 /** The auth choice from `--auth` — `api` (a pay-per-use key) only when explicit; subscription otherwise. */
@@ -85,6 +98,9 @@ export function parseRun(rest: readonly string[]): RunArgs | string {
   const issue = issueArg(rest);
   if (issue === 0) {
     return "usage: vow agent run <n> [--provider <name>] [--auth subscription|api] [--json]";
+  }
+  if (flagValueless(rest, "--provider")) {
+    return "vow agent run: --provider needs a value";
   }
   const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
   if (!provider) {
@@ -194,6 +210,9 @@ export function parseRunAll(rest: readonly string[]): RunAllArgs | string {
   const issues = issueNumbers(rest);
   if (issues.length === 0) {
     return "usage: vow agent run-all <n>... [--provider <name>] [--auth subscription|api] [--json]";
+  }
+  if (flagValueless(rest, "--provider")) {
+    return "vow agent run-all: --provider needs a value";
   }
   const provider = providerFor(flagValue(rest, "--provider") || DEFAULT_PROVIDER);
   if (!provider) {
