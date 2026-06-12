@@ -129,8 +129,8 @@ the model expresses structure ("this is the actions cell"), and the language sup
 
 1. **DSL** — a `## view`/`## form` node names an intent (`button: { intent: primary }`), or inherits
    the context default; the LLM writes intent, never tokens.
-2. **Resolution** — one committed module in `@vow/theme` holds the token vocabulary + the
-   intent→token map + the context-default table. Pure, total, testable.
+2. **Resolution** — one committed module in `@vow/theme` (`src/design.ts`) holds the token vocabulary +
+   the intent→token map + the context-default table. Pure, total, testable (pinned by `design.test.ts`).
 3. **Emitter** — `@vow/emit-primitive` / `@vow/emit-view` resolve intent→tokens and emit `data-variant`
    / `data-tone` / `data-size` / `data-density` on the adapter — only `class` + `data-*`, no styling,
    byte-stable.
