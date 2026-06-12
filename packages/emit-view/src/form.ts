@@ -114,15 +114,23 @@ function controlImports(entity: ReadonlyVow): ImportDecl[] {
   return imports;
 }
 
-/** The form's imports — vue, zod, the entity factory + type, the store, and the used controls. */
-function formImports(entity: ReadonlyVow): ImportDecl[] {
-  const name = pascalCase(entity.slug);
-  const vueNames = ["ref", "useId"];
-  if (entity.fields.some((field) => field.type === "reference")) {
-    vueNames.push("computed");
+/** The vue named imports a form needs — `computed`/`watch` come in only for the edit/singleton mode. */
+function vueImportNames(entity: ReadonlyVow, edit: boolean): string[] {
+  const names = ["ref", "useId"];
+  if (edit || entity.fields.some((field) => field.type === "reference")) {
+    names.push("computed");
   }
+  if (edit) {
+    names.push("watch");
+  }
+  return names;
+}
+
+/** The form's imports — vue, zod, the entity factory + type, the store, and the used controls. */
+function formImports(entity: ReadonlyVow, edit: boolean): ImportDecl[] {
+  const name = pascalCase(entity.slug);
   return [
-    { from: "vue", names: vueNames },
+    { from: "vue", names: vueImportNames(entity, edit) },
     { from: "zod", names: ["ZodError"] },
     { from: `./${entity.slug}.ts`, names: [`create${name}`, `type ${name}`] },
     { from: "@vow/store", names: ["useCollection"] },
@@ -132,8 +140,8 @@ function formImports(entity: ReadonlyVow): ImportDecl[] {
   ];
 }
 
-/** The submit handler lines — validate via the zod factory, surface per-field errors. */
-function submitLines(name: string): string[] {
+/** A create-form submit — validate via the zod factory, append a new record, clear the draft. */
+function appendSubmit(name: string): string[] {
   return [
     ``,
     `function submit(): void {`,
@@ -150,14 +158,79 @@ function submitLines(name: string): string[] {
   ];
 }
 
-/** The form's setup — draft/errors refs, a useId per native field, reference choice computeds, submit. */
-function formSetup(entity: ReadonlyVow, label: (ref?: string) => string): string[] {
-  const name = pascalCase(entity.slug);
-  const setup: string[] = [
-    `const { append } = useCollection<${name}>(${JSON.stringify(entity.slug)});`,
+/** An edit-form submit — validate, update the loaded row in place (id kept), flash a transient "Saved". */
+function updateSubmit(name: string): string[] {
+  return [
+    ``,
+    `function submit(): void {`,
+    `  const row = current.value;`,
+    `  if (row === undefined) {`,
+    `    return;`,
+    `  }`,
+    `  try {`,
+    `    update(row.id, create${name}({ ...draft.value, id: row.id }));`,
+    `    errors.value = {};`,
+    `    saved.value = true;`,
+    `    setTimeout(() => {`,
+    `      saved.value = false;`,
+    `    }, 2000);`,
+    `  } catch (err) {`,
+    `    if (err instanceof ZodError) {`,
+    `      errors.value = Object.fromEntries(err.issues.map((i) => [String(i.path[0]), i.message]));`,
+    `    }`,
+    `  }`,
+    `}`,
+  ];
+}
+
+/** The store binding + extra refs the edit mode adds — the loaded row, a `saved` flag, a refill watch. */
+function editSetup(name: string, slug: string): string[] {
+  return [
+    `const { items, update } = useCollection<${name}>(${JSON.stringify(slug)});`,
+    `const draft = ref<Partial<${name}>>({});`,
+    `const errors = ref<Record<string, string>>({});`,
+    `const saved = ref(false);`,
+    `const current = computed<${name} | undefined>(() => items[0]);`,
+    `watch(`,
+    `  current,`,
+    `  (row) => {`,
+    `    if (row !== undefined) {`,
+    `      draft.value = { ...row };`,
+    `    }`,
+    `  },`,
+    `  { immediate: true },`,
+    `);`,
+  ];
+}
+
+/** The store binding + base refs the create mode adds. */
+function createSetup(name: string, slug: string): string[] {
+  return [
+    `const { append } = useCollection<${name}>(${JSON.stringify(slug)});`,
     `const draft = ref<Partial<${name}>>({});`,
     `const errors = ref<Record<string, string>>({});`,
   ];
+}
+
+/** The store binding + refs for the mode — an edit form loads + tracks its singleton; a create form appends. */
+function storeSetup(name: string, slug: string, edit: boolean): string[] {
+  if (edit) {
+    return editSetup(name, slug);
+  }
+  return createSetup(name, slug);
+}
+
+/** The submit handler for the mode — `update` in edit mode, `append` in create mode. */
+function submitLines(name: string, edit: boolean): string[] {
+  if (edit) {
+    return updateSubmit(name);
+  }
+  return appendSubmit(name);
+}
+
+/** A `useId` per native (non-boolean) field, plus the choice computeds each reference field needs. */
+function fieldSetup(entity: ReadonlyVow, label: (ref?: string) => string): string[] {
+  const setup: string[] = [];
   for (const field of entity.fields.filter((candidate) => candidate.type !== "boolean")) {
     setup.push(`const ${field.name}Id = useId();`);
   }
@@ -167,8 +240,17 @@ function formSetup(entity: ReadonlyVow, label: (ref?: string) => string): string
       `const ${field.name}Choices = computed(() => ${field.name}Options.map((t) => ({ value: t.id, label: String(t.${label(field.ref)}) })));`,
     );
   }
-  setup.push(...submitLines(name));
   return setup;
+}
+
+/** The form's setup — store binding + refs, a useId per native field, reference computeds, the submit. */
+function formSetup(entity: ReadonlyVow, edit: boolean, label: (ref?: string) => string): string[] {
+  const name = pascalCase(entity.slug);
+  return [
+    ...storeSetup(name, entity.slug, edit),
+    ...fieldSetup(entity, label),
+    ...submitLines(name, edit),
+  ];
 }
 
 /** The submit button — labelled by the `## form`'s `submit:`. */
@@ -184,6 +266,28 @@ function submitButton(form: ReadonlyVow): UiNode {
   };
 }
 
+/** A live `role="status"` confirmation, shown for a moment after an edit-mode save (the `saved` flag). */
+function savedNode(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-form__saved" },
+      { kind: "static", name: "role", value: "status" },
+      { expr: "saved", kind: "cond", type: "if" },
+    ],
+    children: [{ kind: "text", text: "Saved" }],
+    kind: "element",
+    tag: "p",
+  };
+}
+
+/** The trailing controls — the submit button, plus a transient "Saved" status in edit mode. */
+function formControls(form: ReadonlyVow, edit: boolean): UiNode[] {
+  if (edit) {
+    return [submitButton(form), savedNode()];
+  }
+  return [submitButton(form)];
+}
+
 /**
  * A form from a `## form` (an `emit form` vow), bound to an entity via `of:`. Each entity field renders
  * as a labelled `<Field>` (a boolean self-labels as `<Checkbox>`); on submit it validates with the
@@ -192,20 +296,21 @@ function submitButton(form: ReadonlyVow): UiNode {
  */
 export function emitForm(form: ReadonlyVow, byId: EntityLookup): string {
   const entity = formEntity(form, byId);
+  const edit = form.form?.edit === true;
   const fields: UiNode[] = entity.fields.map((field) => formField(field));
   const component: Component = {
     doc: [
       `Generated from vow "${form.slug}" (a form over the "${entity.slug}" entity). Do not edit.`,
     ],
-    imports: formImports(entity),
+    imports: formImports(entity, edit),
     name: pascalCase(form.slug),
-    setup: formSetup(entity, referenceLabel(byId)),
+    setup: formSetup(entity, edit, referenceLabel(byId)),
     view: {
       attrs: [
         { kind: "static", name: "class", value: "vow-form" },
         { expr: "submit", kind: "event", modifiers: ["prevent"], name: "submit" },
       ],
-      children: [...fields, submitButton(form)],
+      children: [...fields, ...formControls(form, edit)],
       kind: "element",
       tag: "form",
     },

@@ -179,6 +179,45 @@ test("a Select field forwards the field id as control-id so the label points at 
   ]);
 });
 
+const configEntity: Vow = {
+  children: [],
+  fields: [{ name: "repo", required: true, type: "text" }],
+  fulfills: { as: "entity", kind: "emit" },
+  id: "vow_config",
+  intent: "Connection settings",
+  proof: [],
+  slug: "config",
+};
+
+const settingsForm: Vow = {
+  children: [],
+  fields: [],
+  form: { edit: true, of: "config", submit: "Save settings" },
+  fulfills: { as: "form", kind: "emit" },
+  id: "vow_settings",
+  intent: "Edit the settings",
+  proof: [],
+  slug: "settings",
+};
+
+test("emitForm in edit mode pre-loads the singleton row and updates it in place", () => {
+  const sfc = emitForm(settingsForm, new Map([["config", configEntity]]));
+  // It loads the current row into the draft, updates (never appends) by id, keeps values, flashes "Saved".
+  expectContains(sfc, [
+    'import { ref, useId, computed, watch } from "vue";',
+    'const { items, update } = useCollection<Config>("config");',
+    "const saved = ref(false);",
+    "const current = computed<Config | undefined>(() => items[0]);",
+    "draft.value = { ...row };",
+    "update(row.id, createConfig({ ...draft.value, id: row.id }));",
+    "saved.value = true;",
+    '<p class="vow-form__saved" role="status" v-if="saved">Saved</p>',
+  ]);
+  // The edit form does not append or blank the draft.
+  expect(sfc).not.toContain("append(");
+  expect(sfc).not.toContain("draft.value = {};");
+});
+
 test("emitForm fails fast when its `of` is not a known entity", () => {
   expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/u);
 });

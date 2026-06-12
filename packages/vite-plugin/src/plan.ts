@@ -150,8 +150,10 @@ function planForm(
 ): Contribution {
   const ofSlug = vow.form?.of ?? "";
   const entity = entities.find((candidate) => candidate.slug === ofSlug);
-  // Prove "rejects an incomplete submit" only when the entity has a required field (else no error).
-  const hasRequired = entity?.fields.some((field) => field.required) ?? false;
+  // Prove "rejects an incomplete submit" only for a create form (a required field, else no error).
+  // An edit/singleton form guards on a loaded row, so an empty submit no-ops rather than validating.
+  const provesSubmit =
+    (entity?.fields.some((field) => field.required) ?? false) && vow.form?.edit !== true;
   const files = [
     {
       path: path.join(outDir, `${vow.slug}.vue`),
@@ -159,10 +161,10 @@ function planForm(
     },
     { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },
   ];
-  if (hasRequired) {
+  if (provesSubmit) {
     files.push({
       path: path.join(outDir, `${vow.slug}.form.test.ts`),
-      source: emitFormTest(mutable(vow), hasRequired),
+      source: emitFormTest(mutable(vow), provesSubmit),
     });
   }
   return contribution({

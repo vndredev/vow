@@ -79,4 +79,16 @@ submit: Add task
 
 → a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. The form becomes its **own routed page** at `/<slug>`. (Standalone forms with inline `fields:` are on the [roadmap](/guide/changelog).)
 
+### Edit a singleton (`edit: true`)
+
+For an entity that holds **one row** (a settings/config record), add `edit: true` to the `## form`:
+
+```yaml
+of: config
+submit: Save settings
+edit: true
+```
+
+The form turns into a **singleton editor**: it pre-loads the entity's current row into `draft` (a `watch` refills it when the row loads), and `submit()` **`update`s that row in place** — keeping its id — instead of appending a duplicate. The fields stay filled after saving, and a transient `role="status"` "Saved" confirmation appears. A create form (no `edit:`) stays append-and-clear.
+
 Next: [bind →](/guide/bind)
