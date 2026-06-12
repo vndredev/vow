@@ -5,14 +5,14 @@ order: 1
 
 # Theming
 
-`@vow/theme` is vow's base look — one **token system** over the `class` + `data-*` hooks the emitters produce. The adapters carry no colour or size of their own; the theme dresses them. So re-skinning the whole generated UI is editing the tokens — no rule or component changes.
+`@vow/theme` is vow's look — **"The Specification"**: terminal-grade and mono-forward, Vermilion for intent and green for proof (every prove → a green test). It's one **token system** over the `class` + `data-*` hooks the emitters produce — the adapters carry no colour or size of their own, the theme dresses them. It ships two surfaces of the same design: a warm light and the deep terminal **Nacht** ([dark](#dark-mode)). Re-skinning the whole generated UI is editing the tokens — no rule or component changes.
 
 ## The tokens
 
 Every visual decision is a CSS custom property under `:root` (in `vow.css`); the `.vow-*` rules only **consume** them, never hardcode a value:
 
 - **Colour** — semantic roles, not raw swatches: `--vow-color-{bg · surface · text · muted · accent · accent-hover · ink · border · border-hover · danger · warning · success · scrim}`.
-- **Type** — `--vow-font-{sans · mono}`, a size scale `--vow-text-{xs…3xl}`, `--vow-weight-*`, `--vow-leading-*`, `--vow-tracking-*`.
+- **Type** — `--vow-font-{display · sans · mono}` (Archivo Expanded · IBM Plex Sans · IBM Plex Mono, self-hosted), a size scale `--vow-text-{xs…3xl}`, `--vow-weight-*`, `--vow-leading-*`, `--vow-tracking-*`.
 - **Spacing** — `--vow-space-0…9` (the steps Flex/Grid/Box `gap` / `p` map onto).
 - **Containers** — `--vow-container-1…4` (the `size` of the [Container](/guide/views) primitive).
 - **Radius · border · elevation** — `--vow-radius-1…3`, `--vow-border`, `--vow-shadow-{1 · popover}`.
@@ -21,7 +21,7 @@ A numeric layout prop indexes a scale: a `gap` of `n` resolves to `var(--vow-spa
 
 ## Dark mode
 
-Dark is the `.dark` class on `<html>` (toggled by the [shell](/guide/shell#dark-mode)): it re-declares only the colours, so every hook re-skins at once. A host can map `.dark` to a media query for OS-driven dark.
+Dark is vow's signature — the deep terminal **Nacht**, on the `.dark` class on `<html>` (toggled by the [shell](/guide/shell#dark-mode)): it re-declares only the colours, so every hook re-skins at once. The light surface is the same design in daylight — the same warm-graphite family, the same Vermilion intent and green proof. A host can map `.dark` to a media query for OS-driven dark.
 
 ## Swap it
 
@@ -41,10 +41,8 @@ The generated boot imports one theme stylesheet; the `theme` plugin option choos
 import { vow } from "@vow/vite-plugin";
 
 export default defineConfig({
-  plugins: [vow({ theme: "@vow/theme/nacht.css" })],
+  plugins: [vow({ theme: "@acme/brand.css" })],
 });
 ```
 
-### Nacht — the vndre.dev theme
-
-`@vow/theme/nacht.css` is a packaged, **additive** opt-in: it `@import`s the base `vow.css` (untouched) then redefines the tokens with the [vndre.dev](https://vndre.dev) "Papier & Nacht" palette — Stone neutrals, the Signal/Vermilion accent, Wald + Amber — and the vndre fonts (Archivo Expanded for display, IBM Plex Sans/Mono, self-hosted). Its light surface is "Papier"; the [shell](/guide/shell#dark-mode)'s `.dark` toggle drops it into "Nacht". The vow studio runs on it; the [starter](/guide/getting-started) and any new app stay on the base `vow.css` until they opt in.
+A custom theme can `@import "@vow/theme/vow.css"` and redefine only the tokens it changes (additive over the base), or stand alone. The self-hosted fonts are exposed at `@vow/theme/fonts/*` for a theme that reuses them.
