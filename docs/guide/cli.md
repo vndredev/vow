@@ -54,7 +54,7 @@ vow smoke            # boot the dev app + assert its client bundle is browser-sa
 `vow agent` scaffolds and drives the **agent-native layer** — autonomous agents developing issues through vow's verification gates, opening PRs, and merging when green. One per vow; the executor is an LLM (Claude, Codex, etc.), not the user.
 
 ```bash
-vow agent init                                          # scaffold AGENTS.md + vow-develop skill
+vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit skills
 vow agent plan <n>                                      # print the verification-gated plan for issue <n>
 vow agent run <n>                                       # develop issue <n>, open a PR
 vow agent run <n> --dry-run                             # preview the run (branch, commands, gates)

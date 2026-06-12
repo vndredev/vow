@@ -30,7 +30,7 @@ function scaffold(file: string, content: string): string {
 }
 
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
- *  AGENTS.md contract + the develop & orchestrate skills. Idempotent — re-running keeps every file. */
+ *  AGENTS.md contract + the develop, orchestrate & audit skills. Idempotent — re-running keeps every file. */
 function init(cwd: string): number {
   const actions = [
     scaffold(path.join(cwd, "AGENTS.md"), agentsMd()),
