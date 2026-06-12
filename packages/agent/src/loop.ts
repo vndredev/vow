@@ -2,6 +2,7 @@ import type { AgentOps, AgentTask, TaskOutcome, TaskRequest, VerifyResult } from
 import { branchFor, buildPlan } from "./plan.ts";
 import {
   commitArgs,
+  fixPrompt,
   prBody,
   prCreateArgs,
   prTitle,
@@ -51,20 +52,54 @@ async function publishOutcome(
   await publish(task, outcome.verdict, request);
 }
 
-/** Develop the task inside its worktree — dispatch the provider, auto-format, re-run the gates, and publish
- *  a successful run as a PR. Each step emits a `Phase` via `onPhase`, so a fleet's progress is live. The
- *  worktree's setup + teardown stay in `runTask`. */
-async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutcome> {
-  request.onPhase?.("develop");
-  const run = await dispatch(task, request.provider, request.ops);
+/** Format the worktree, then re-run the gates — the verdict for one attempt. Shared by the first develop
+ *  pass and each fix round, so both format-then-gate identically. */
+async function gateOnce(request: TaskRequest, task: AgentTask): Promise<VerifyResult> {
   request.onPhase?.("format");
   await format(task, request.ops);
   request.onPhase?.("gates");
-  const verdict = await verify(request.context.verify, task.cwd, async (command, dir) => {
+  return verify(request.context.verify, task.cwd, async (command, dir) => {
     const result = await request.ops.run(gateCommand(command), dir);
     return result;
   });
-  const outcome = { run, verdict };
+}
+
+/** How many times the executor may re-attempt the gates after a red verdict (re-dispatched with the
+ *  errors). After this many fix rounds a still-red run opens a draft for a human; bounded so a stuck run
+ *  can't loop forever (cost + time). */
+const MAX_FIX_ROUNDS = 2;
+
+/** Re-attempt the gates with the executor fixing its OWN failures — up to MAX_FIX_ROUNDS re-dispatches,
+ *  each fed the prior verdict's errors (`fixPrompt`) then re-formatted + re-gated. Returns the final outcome
+ *  (green, or still-red after the rounds → a draft). A failed provider run is returned as-is (nothing to
+ *  fix). */
+async function iterate(
+  request: TaskRequest,
+  task: AgentTask,
+  initial: TaskOutcome,
+): Promise<TaskOutcome> {
+  let { run, verdict } = initial;
+  let round = 0;
+  while (run.ok && !verdict.ok && round < MAX_FIX_ROUNDS) {
+    round += 1;
+    request.onPhase?.("fix");
+    // oxlint-disable-next-line no-await-in-loop -- the fix rounds are inherently sequential
+    run = await dispatch({ ...task, plan: fixPrompt(verdict) }, request.provider, request.ops);
+    // oxlint-disable-next-line no-await-in-loop -- gate after each fix, in order
+    verdict = await gateOnce(request, task);
+  }
+  return { run, verdict };
+}
+
+/** Develop the task inside its worktree — dispatch the provider, auto-format + gate, then let the executor
+ *  fix its OWN gate failures (up to MAX_FIX_ROUNDS) before publishing, so a strict-wall lint/type slip
+ *  self-corrects instead of drafting. Still red after the fix rounds → a DRAFT. Each step emits a `Phase`
+ *  via `onPhase`; the worktree setup + teardown stay in `runTask`. */
+async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutcome> {
+  request.onPhase?.("develop");
+  const run = await dispatch(task, request.provider, request.ops);
+  const verdict = await gateOnce(request, task);
+  const outcome = await iterate(request, task, { run, verdict });
   await publishOutcome(request, task, outcome);
   request.onPhase?.("done");
   return outcome;

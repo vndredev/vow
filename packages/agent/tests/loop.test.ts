@@ -153,6 +153,45 @@ test("the worktree is auto-formatted before the gate — a format deviation can 
   expect(fmtAt).toBeLessThan(gateAt);
 });
 
+test("the executor gets fix rounds — a gate red then green after a fix publishes a non-draft", async () => {
+  let firstGate = true;
+  const calls: string[] = [];
+  const ops: AgentOps = {
+    run: async (command) => {
+      await Promise.resolve();
+      calls.push(`run ${command.bin}`);
+      if (command.bin === "vp" && command.args[0] === "check") {
+        if (firstGate) {
+          firstGate = false;
+          return { code: 1, output: "lint error" };
+        }
+        return { code: 0, output: "" };
+      }
+      return { code: 0, output: "" };
+    },
+    worktreeAdd: async () => {
+      await Promise.resolve();
+    },
+    worktreeRemove: async () => {
+      await Promise.resolve();
+    },
+  };
+  const phases: string[] = [];
+  const outcome = await runTask({
+    context,
+    cwd: "/repo",
+    issue,
+    onPhase: (phase) => {
+      phases.push(phase);
+    },
+    ops,
+    provider: claudeCode,
+  });
+  expect(phases).toContain("fix");
+  expect(outcome.verdict.ok).toBe(true);
+  expect(calls).toContain("run gh");
+});
+
 test("a failed run skips the publish phase (nothing developed)", async () => {
   const { ops } = fakeOps(0, 1);
   const phases: string[] = [];

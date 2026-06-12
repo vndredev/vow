@@ -43,6 +43,25 @@ export function prCreateArgs(title: string, body: string, verified: boolean): re
   return [...base, "--draft"];
 }
 
+/** The fix-round prompt — the executor re-enters its worktree to make the still-failing gates pass. It gets
+ *  the failures verbatim (the lint/type/test output) plus an instruction to fix IN PLACE, not re-approach,
+ *  so a strict-wall slip self-corrects instead of drafting. */
+export function fixPrompt(verdict: VerifyResult): string {
+  const failures = verdict.results
+    .filter((result) => !result.ok)
+    .map((result) => `### ${result.command}\n\n${(result.output ?? "").trim()}`)
+    .join("\n\n");
+  return [
+    "Your last changes do not pass the gates yet. Fix EVERY error below by editing the files in this",
+    "worktree — keep the approach, just make it pass. When you are done, `vp check` (format + lint +",
+    "typecheck) and `pnpm -r test` must BOTH exit 0; run them to confirm before you finish.",
+    "",
+    "## Failing gates",
+    "",
+    failures,
+  ].join("\n");
+}
+
 /** One `## Proof` checkbox per gate — `[x]` when it passed, `[ ]` when it failed, so a draft shows which
  *  gate is red right in the proof list. */
 function proofLine(result: GateResult): string {
