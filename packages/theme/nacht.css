@@ -1,0 +1,108 @@
+/* @vow/theme/nacht.css — the vndre.dev "Papier & Nacht" theme, an ADDITIVE opt-in over the base.
+   It imports the default vow.css (UNTOUCHED) then redefines the --vow-* tokens with the vndre palette
+   (Stone neutrals · Signal/Vermilion accent · Wald · Amber · Paper light + Nacht dark) and the vndre fonts
+   (Archivo Expanded display · IBM Plex Sans/Mono). An app opts in via vow({ theme: "@vow/theme/nacht.css" });
+   the default apps keep vow.css. The vndre.dev design system, designed in Claude Design (#454). */
+@import "./vow.css";
+
+/* The vndre webfonts — self-hosted (OFL), latin subset (covers äöüß). */
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 125%;
+  font-display: swap;
+  src: url("./fonts/archivo-expanded.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-600.woff2") format("woff2");
+}
+
+/* "Papier" — the light surface, redefining vow's tokens with the vndre palette. */
+:root {
+  --vow-color-bg: #fbf8f1; /* paper */
+  --vow-color-surface: #ffffff; /* paper-raised: cards */
+  --vow-color-text: #181410; /* fg1 */
+  --vow-color-muted: #8c7c60; /* fg3 */
+  --vow-color-accent: #ee4b22; /* signal-500 (Vermilion) */
+  --vow-color-accent-hover: #ce3a14; /* signal-600 */
+  --vow-color-ink: #1b1712; /* line-strong — solid dark fills */
+  --vow-color-on-accent: #fff7f2; /* fg-on-accent */
+  --vow-color-border: #e2d9c7; /* line */
+  --vow-color-border-hover: #cdbfa4; /* stone-300 */
+  --vow-color-danger: #a52e10; /* signal-700, a deep destructive vermilion */
+  --vow-color-warning: #e08a1e; /* amber-500 */
+  --vow-color-success: #1c7a4e; /* wald-500 */
+  --vow-color-scrim: rgb(24 20 16 / 0.55);
+  --vow-font-sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --vow-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", menlo, monospace;
+}
+
+/* "Nacht" — the dark surface (vow's `.dark` class). */
+.dark {
+  --vow-color-bg: #16130f; /* nacht */
+  --vow-color-surface: #211c16; /* nacht-raised */
+  --vow-color-text: #f4eee2; /* nacht fg1 */
+  --vow-color-muted: #c6bba6; /* nacht fg2 */
+  --vow-color-accent: #ee4b22; /* signal-500 */
+  --vow-color-accent-hover: #f2724e; /* signal-400, lighter on dark */
+  --vow-color-ink: #f4eee2; /* light ink on dark */
+  --vow-color-on-accent: #fff7f2;
+  --vow-color-border: #322b22; /* line-dark */
+  --vow-color-border-hover: #4e4334; /* stone-700 */
+  --vow-color-danger: #f2724e;
+  --vow-color-warning: #e9a445;
+  --vow-color-success: #2e9d6a;
+  --vow-color-scrim: rgb(0 0 0 / 0.7);
+}
+
+/* Archivo Expanded for display headings — the bold, industrial voice of the system. */
+:where(h1, h2, h3, h4) {
+  font-family: "Archivo", "Arial Narrow", sans-serif;
+}

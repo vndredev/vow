@@ -28,6 +28,23 @@ Dark is the `.dark` class on `<html>` (toggled by the [shell](/guide/shell#dark-
 The look travels with vow but isn't locked in:
 
 - **Edit the tokens** to re-skin everything (brand colours, radius, density) — no rule changes.
-- **Replace the stylesheet** entirely (e.g. with the vndre.dev design tokens) for a different system over the same `class` / `data-*` hooks.
+- **Replace the stylesheet** entirely for a different system over the same `class` / `data-*` hooks.
 
 Each consumer ships its own CSS on the shared tokens — `@vow/shell` (the app chrome), `@vow/docs` (the docs chrome) — so there are **no `<style>` blocks** in any component.
+
+## Pick a theme — `theme`
+
+The generated boot imports one theme stylesheet; the `theme` plugin option chooses which. It defaults to `@vow/theme/vow.css`, so a plain `vow()` ships the base look. Point it at any stylesheet that re-declares the `--vow-*` tokens to re-skin the whole app from the config — no rule, component, or `vow.md` changes:
+
+```ts
+// vite.config.ts
+import { vow } from "@vow/vite-plugin";
+
+export default defineConfig({
+  plugins: [vow({ theme: "@vow/theme/nacht.css" })],
+});
+```
+
+### Nacht — the vndre.dev theme
+
+`@vow/theme/nacht.css` is a packaged, **additive** opt-in: it `@import`s the base `vow.css` (untouched) then redefines the tokens with the [vndre.dev](https://vndre.dev) "Papier & Nacht" palette — Stone neutrals, the Signal/Vermilion accent, Wald + Amber — and the vndre fonts (Archivo Expanded for display, IBM Plex Sans/Mono, self-hosted). Its light surface is "Papier"; the [shell](/guide/shell#dark-mode)'s `.dark` toggle drops it into "Nacht". The vow studio runs on it; the [starter](/guide/getting-started) and any new app stay on the base `vow.css` until they opt in.
