@@ -246,16 +246,26 @@ export function emitContainerSfc(): string {
   return renderVueSfc(container);
 }
 
+/**
+ * The closed layout registry — PascalCase name → its Vue SFC emitter. The single source of vow's
+ * layout vocabulary (mirroring `PRIMITIVE_ADAPTERS`): `layoutSfcs()` materialises each pair for the
+ * plugin, and `LAYOUT_PRIMITIVES` derives the `## view` names from its keys — adding one is one edit.
+ */
+export const LAYOUT_ADAPTERS: Record<string, () => string> = {
+  Box: emitBoxSfc,
+  Container: emitContainerSfc,
+  Flex: emitFlexSfc,
+  Grid: emitGridSfc,
+  Stack: emitStackSfc,
+};
+
 /** Every layout primitive as a `{ name, sfc }` pair — the plugin writes these into `.generated/`. */
 export function layoutSfcs(): { readonly name: string; readonly sfc: string }[] {
-  return [
-    { name: "Flex", sfc: emitFlexSfc() },
-    { name: "Stack", sfc: emitStackSfc() },
-    { name: "Grid", sfc: emitGridSfc() },
-    { name: "Box", sfc: emitBoxSfc() },
-    { name: "Container", sfc: emitContainerSfc() },
-  ];
+  return Object.entries(LAYOUT_ADAPTERS).map(([name, emit]: readonly [string, () => string]) => ({
+    name,
+    sfc: emit(),
+  }));
 }
 
 /** The component names vow provides as layout primitives — the `## view` vocabulary. */
-export const LAYOUT_PRIMITIVES: readonly string[] = ["Flex", "Stack", "Grid", "Box", "Container"];
+export const LAYOUT_PRIMITIVES: readonly string[] = Object.keys(LAYOUT_ADAPTERS);

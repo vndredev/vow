@@ -191,6 +191,20 @@ export function migrate(db: Db, entities: readonly ReadonlyVow[]): void {
   }
 }
 
+/**
+ * Rename a field's column so the stored data follows the rename — `migrate` is strictly additive (it
+ * only adds the new name as a fresh empty column and orphans the old one), so a field rename must issue
+ * `ALTER TABLE … RENAME COLUMN` here. A no-op when `from`/`to` are equal or the source column is absent.
+ * The 4-arg shape (db, slug, from, to) mirrors `update`'s — the seam the studio binds to.
+ */
+// eslint-disable-next-line max-params
+export function renameColumn(db: Db, slug: string, from: string, to: string): void {
+  if (from === to || !columnNames(db, slug).has(from)) {
+    return;
+  }
+  db.exec(`ALTER TABLE "${slug}" RENAME COLUMN "${from}" TO "${to}";`);
+}
+
 export function insert(db: Db, entity: ReadonlyVow, record: ReadRow): Row {
   const full = complete(entity, record);
   const cols = ["id", ...entity.fields.map((field) => field.name)];
@@ -201,14 +215,27 @@ export function insert(db: Db, entity: ReadonlyVow, record: ReadRow): Row {
   return full;
 }
 
+/** Seed every record of one entity inside a transaction — all rows land or none do. */
+function seedEntity(db: Db, entity: ReadonlyVow, seed: readonly ReadRow[]): void {
+  db.exec("BEGIN");
+  try {
+    for (const record of seed) {
+      insert(db, entity, record);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    // A mid-loop failure rolls the table back to empty, so the next bootstrap retries the whole seed.
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
 /** Seed-if-empty from each entity's `## seed` — idempotent (mirrors the old in-memory `seed()`). */
 export function bootstrap(db: Db, entities: readonly ReadonlyVow[]): void {
   for (const entity of entities) {
     const { seed } = entity;
     if (defined(seed) && seed.length > 0 && isEmpty(db, entity.slug)) {
-      for (const record of seed) {
-        insert(db, entity, record);
-      }
+      seedEntity(db, entity, seed);
     }
   }
 }

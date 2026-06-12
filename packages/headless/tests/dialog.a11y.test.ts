@@ -57,3 +57,13 @@ test("Tab traps focus within the content (wraps at both ends)", () => {
   expect(document.activeElement).toBe(lastBtn);
   content.remove();
 });
+
+test("Shift+Tab from the content container (focus right after open) stays trapped", () => {
+  const { content, lastBtn } = mountTrap();
+
+  // The adapter focuses the tabindex=-1 content on open; Shift+Tab must not escape the dialog.
+  content.focus();
+  content.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", shiftKey: true }));
+  expect(document.activeElement).toBe(lastBtn);
+  content.remove();
+});

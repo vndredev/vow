@@ -36,6 +36,27 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     name: "add_form",
     summary: "Add a form (a bound, validated `## form` over an entity): `of` + `submit`.",
   },
+  {
+    group: "structure",
+    name: "set_field",
+    summary:
+      "Edit a field in place (rename, retype, required, options); a rename carries the data.",
+  },
+  {
+    group: "structure",
+    name: "set_form",
+    summary: "Edit a form's `of`/`submit`/`edit` (the singleton-editor flag) in place.",
+  },
+  {
+    group: "structure",
+    name: "set_seed",
+    summary: "Replace an entity's `## seed` records (the sample data that travels with the spec).",
+  },
+  {
+    group: "structure",
+    name: "set_view",
+    summary: "Replace a vow's `## view` (the page tree) in place.",
+  },
   { group: "structure", name: "set_intent", summary: "Set a vow's intent (the `# …` promise)." },
   {
     group: "structure",

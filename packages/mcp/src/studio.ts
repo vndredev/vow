@@ -19,8 +19,12 @@ import {
   loadVows,
   removeField,
   removeVow,
+  setField,
+  setForm,
   setIntent,
   setNav,
+  setSeed,
+  setView,
 } from "@vow/core/node";
 import {
   bootstrap,
@@ -30,6 +34,7 @@ import {
   migrate,
   openDb,
   remove,
+  renameColumn,
   resolveDbPath,
   update,
 } from "@vow/db";
@@ -85,12 +90,35 @@ type StructureSeam = Pick<
   | "createView"
   | "dropField"
   | "dropVow"
+  | "editField"
+  | "editForm"
+  | "editSeed"
+  | "editView"
   | "setIntent"
   | "setNav"
 >;
 
-/** Build the structure methods over the app dir + a schema-resync thunk (run after an entity change). */
-function structureSeam(appDir: string, syncDb: () => void): StructureSeam {
+/** The seams the structure mutations bind to: a schema-resync thunk + a column-rename (run after a
+ *  field rename, so the stored data follows the new column name before the schema is re-derived). */
+interface StructureDeps {
+  readonly renameField: (entity: string, from: string, to: string) => void;
+  readonly syncDb: () => void;
+}
+
+/** The create / drop half of the structure seam — adds a vow + re-derives the DB (for an entity). */
+type CreateSeam = Pick<
+  StructureSeam,
+  "createEntity" | "createField" | "createForm" | "createView" | "dropField" | "dropVow"
+>;
+
+/** The edit half of the structure seam — patches an existing vow (intent · nav · view · form · seed · field). */
+type EditSeam = Pick<
+  StructureSeam,
+  "editField" | "editForm" | "editSeed" | "editView" | "setIntent" | "setNav"
+>;
+
+/** Build the create / drop methods over the app dir + the schema-resync thunk. */
+function createSeam(appDir: string, syncDb: () => void): CreateSeam {
   return {
     createEntity: (spec) => {
       const fields = spec.fields.map((field: ReadonlyField) => toField(field));
@@ -104,6 +132,7 @@ function structureSeam(appDir: string, syncDb: () => void): StructureSeam {
     },
     createForm: (spec) =>
       addForm(appDir, {
+        edit: spec.edit,
         intent: spec.intent,
         nav: spec.nav,
         of: spec.of,
@@ -111,13 +140,44 @@ function structureSeam(appDir: string, syncDb: () => void): StructureSeam {
         submit: spec.submit,
       }).slug,
     createView: (spec) =>
-      addView(appDir, { intent: spec.intent, nav: spec.nav, slug: spec.slug, view: spec.view })
-        .slug,
+      addView(appDir, {
+        intent: spec.intent,
+        nav: spec.nav,
+        root: spec.root,
+        shell: spec.shell,
+        slug: spec.slug,
+        title: spec.title,
+        view: spec.view,
+      }).slug,
     dropField: (entity, field) => {
       removeField(appDir, entity, field);
     },
     dropVow: (slug) => {
       removeVow(appDir, slug);
+    },
+  };
+}
+
+/** Build the edit methods over the app dir + the schema-resync + column-rename seams. */
+function editSeam(appDir: string, deps: StructureDeps): EditSeam {
+  const { renameField, syncDb } = deps;
+  return {
+    editField: (entity, name, patch) => {
+      // Validate + rewrite the vow first (it throws on a bad patch, leaving the DB untouched).
+      setField(appDir, entity, name, patch);
+      // Carry the column data across a rename — `migrate` is additive and would orphan the old column.
+      renameField(entity, name, patch.name ?? name);
+      syncDb();
+    },
+    editForm: (slug, patch) => {
+      setForm(appDir, slug, patch);
+    },
+    editSeed: (entity, seed) => {
+      setSeed(appDir, entity, seed);
+      syncDb();
+    },
+    editView: (slug, view) => {
+      setView(appDir, slug, view);
     },
     setIntent: (slug, intent) => {
       setIntent(appDir, slug, intent);
@@ -126,6 +186,11 @@ function structureSeam(appDir: string, syncDb: () => void): StructureSeam {
       setNav(appDir, slug, nav);
     },
   };
+}
+
+/** Build the full structure seam — the create / drop half + the edit half, over the same app dir. */
+function structureSeam(appDir: string, deps: StructureDeps): StructureSeam {
+  return { ...createSeam(appDir, deps.syncDb), ...editSeam(appDir, deps) };
 }
 
 /** The display-name field of an entity — its first text field, else `id` (mirrors how a reference cell
@@ -234,6 +299,57 @@ function resolveRecord(
   return resolved;
 }
 
+/** The read + record-data half of the studio — every method that doesn't write a vow. */
+type DataSeam = Pick<
+  Studio,
+  | "addRecord"
+  | "entitySlugs"
+  | "getRecord"
+  | "getVow"
+  | "listRecords"
+  | "listVows"
+  | "removeRecord"
+  | "updateRecord"
+  | "viewSlugs"
+>;
+
+/** The closures the data seam binds to — the entity resolver + the reference-name resolver. */
+interface DataDeps {
+  readonly entityOf: (slug: string) => Vow;
+  readonly resolveRef: ResolveField;
+}
+
+/** Build the read + record-data methods over the app dir + the shared DB + the entity / reference seams. */
+// eslint-disable-next-line max-params
+function dataSeam(appDir: string, db: Db, deps: DataDeps): DataSeam {
+  const { entityOf, resolveRef } = deps;
+  return {
+    addRecord: (entity, record) => {
+      const target = entityOf(entity);
+      rejectMissingRequired(target, record);
+      return insert(db, target, resolveRecord(resolveRef, target, record));
+    },
+    entitySlugs: () =>
+      loadVows(appDir)
+        .filter((vow: ReadonlyVow) => isEmit(vow, "entity"))
+        .map((vow: ReadonlyVow) => vow.slug),
+    getRecord: (entity, id) => get(db, entityOf(entity), id),
+    getVow: (slug) => loadVows(appDir).find((vow: ReadonlyVow) => vow.slug === slug),
+    listRecords: (entity) => list(db, entityOf(entity)),
+    listVows: () => loadVows(appDir),
+    removeRecord: (entity, id) => remove(db, entityOf(entity), id),
+    updateRecord: (patch) => {
+      const entity = entityOf(patch.entity);
+      const resolved = resolveRecord(resolveRef, entity, { [patch.field]: patch.value });
+      return update(db, entity, patch.id, resolved);
+    },
+    viewSlugs: () =>
+      loadVows(appDir)
+        .filter((vow: ReadonlyVow) => isEmit(vow, "view"))
+        .map((vow: ReadonlyVow) => vow.slug),
+  };
+}
+
 /** Resolve the app dir from `VOW_APP_DIR` or the first CLI argument — absent when neither is set. */
 export function resolveAppDir(): Maybe<string> {
   const raw = process.env["VOW_APP_DIR"] ?? process.argv[ARGV_OFFSET];
@@ -267,31 +383,16 @@ export function openStudio(appDir: string): Studio {
     migrate(db, live);
     bootstrap(db, live);
   };
+  // Carry a field's stored data across a rename — `entityOf` asserts the target exists (the table = slug).
+  const renameField = (entity: string, from: string, to: string): void => {
+    renameColumn(db, entityOf(entity).slug, from, to);
+  };
   syncDb();
   return {
-    addRecord: (entity, record) => {
-      const target = entityOf(entity);
-      rejectMissingRequired(target, record);
-      return insert(db, target, resolveRecord(resolveRef, target, record));
-    },
     appDir,
-    entitySlugs: () => entities().map((vow: ReadonlyVow) => vow.slug),
-    getRecord: (entity, id) => get(db, entityOf(entity), id),
-    getVow: (slug) => loadVows(appDir).find((vow: ReadonlyVow) => vow.slug === slug),
-    listRecords: (entity) => list(db, entityOf(entity)),
-    listVows: () => loadVows(appDir),
-    removeRecord: (entity, id) => remove(db, entityOf(entity), id),
     syncDb,
-    updateRecord: (patch) => {
-      const entity = entityOf(patch.entity);
-      const resolved = resolveRecord(resolveRef, entity, { [patch.field]: patch.value });
-      return update(db, entity, patch.id, resolved);
-    },
-    viewSlugs: () =>
-      loadVows(appDir)
-        .filter((vow: ReadonlyVow) => isEmit(vow, "view"))
-        .map((vow: ReadonlyVow) => vow.slug),
-    ...structureSeam(appDir, syncDb),
+    ...dataSeam(appDir, db, { entityOf, resolveRef }),
+    ...structureSeam(appDir, { renameField, syncDb }),
   };
 }
 

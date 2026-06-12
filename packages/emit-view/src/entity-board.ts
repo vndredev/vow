@@ -30,6 +30,13 @@ function boardSetup(entity: ReadonlyVow, by: string, field: ReadonlyField): stri
     `  update(card.id, { [${key}]: option });`,
     `  announce.value = \`Moved to \${option}\`;`,
     `}`,
+    // The move unmounts the focused card (it re-renders into another column's v-for), dropping focus to the
+    // Body — refocus it via its stable id once the DOM settles, else the keyboard move is single-use (2.4.3).
+    `async function moveCard(card: ${type}, delta: number): Promise<void> {`,
+    `  move(card, delta);`,
+    `  await nextTick();`,
+    `  document.querySelector<HTMLElement>(\`[data-card-id="\${card.id}"]\`)?.focus();`,
+    `}`,
   ];
 }
 
@@ -88,9 +95,10 @@ function boardCard(entity: ReadonlyVow, by: string): UiNode {
         kind: "bound",
         name: "aria-label",
       },
+      { expr: "item.id", kind: "bound", name: "data-card-id" },
       { expr: "dragged = item", kind: "event", name: "dragstart" },
-      { expr: "move(item, -1)", kind: "event", modifiers: ["left"], name: "keydown" },
-      { expr: "move(item, 1)", kind: "event", modifiers: ["right"], name: "keydown" },
+      { expr: "moveCard(item, -1)", kind: "event", modifiers: ["left"], name: "keydown" },
+      { expr: "moveCard(item, 1)", kind: "event", modifiers: ["right"], name: "keydown" },
     ],
     children: recordCard(entity, [by]),
     for: { as: "item", each: "col.cards", key: "item.id" },
@@ -136,7 +144,7 @@ export function emitEntityBoard(entity: ReadonlyVow, by: string): string {
       `Generated from vow "${entity.slug}" — a kanban of records by ${by}. The vow is the source — do not edit.`,
     ],
     imports: [
-      { from: "vue", names: ["computed", "ref"] },
+      { from: "vue", names: ["computed", "nextTick", "ref"] },
       { from: "@vow/store", names: ["useCollection"] },
       { from: `./${entity.slug}.ts`, names: [`type ${pascalCase(entity.slug)}`] },
       { default: "Card", from: "./Card.vue" },

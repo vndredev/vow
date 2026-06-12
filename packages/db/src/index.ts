@@ -7,6 +7,16 @@
  */
 
 export type { Db, Row } from "./db.ts";
-export { bootstrap, get, insert, list, migrate, openDb, remove, update } from "./db.ts";
+export {
+  bootstrap,
+  get,
+  insert,
+  list,
+  migrate,
+  openDb,
+  remove,
+  renameColumn,
+  update,
+} from "./db.ts";
 export { resolveDbPath } from "./location.ts";
 export { columnType, createTableSql, defaultValue } from "./schema.ts";
