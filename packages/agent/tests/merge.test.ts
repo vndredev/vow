@@ -13,3 +13,10 @@ test("the merge + draft args target the PR (squash + delete on merge, undo on dr
   expect(mergeArgs(PR)).toEqual(["pr", "merge", "42", "--squash", "--delete-branch"]);
   expect(draftArgs(PR)).toContain("--undo");
 });
+
+test("a non-empty matchHead pins the merge to that SHA, empty leaves it unpinned", () => {
+  const pinned = mergeArgs(PR, "abc");
+  expect(pinned).toContain("--match-head-commit");
+  expect(pinned).toContain("abc");
+  expect(mergeArgs(PR)).not.toContain("--match-head-commit");
+});

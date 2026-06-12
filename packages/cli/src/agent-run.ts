@@ -343,10 +343,12 @@ export function mergeFallback(pr: number, merged: boolean, error: unknown): stri
 }
 
 /** Run `gh pr merge` for PR `pr`, tolerating a post-merge cleanup hiccup: a non-zero exit whose merge
- *  actually landed (the PR reads MERGED) is warned + continued, only a genuinely-unmerged PR re-raises. */
-function execMerge(pr: number, cwd: string): void {
+ *  actually landed (the PR reads MERGED) is warned + continued, only a genuinely-unmerged PR re-raises. A
+ *  non-empty `expectedHead` pins the merge to that SHA server-side (`--match-head-commit`), so a push between
+ *  the green read and this call exits non-zero with the PR still OPEN -> `prMerged` false -> re-raise. */
+function execMerge(pr: number, cwd: string, expectedHead: string): void {
   try {
-    execFileSync("gh", [...mergeArgs(pr)], { cwd, stdio: "inherit" });
+    execFileSync("gh", [...mergeArgs(pr, expectedHead)], { cwd, stdio: "inherit" });
   } catch (error) {
     const warning = mergeFallback(pr, prMerged(cwd, pr), error);
     if (warning === "") {
@@ -358,11 +360,14 @@ function execMerge(pr: number, cwd: string): void {
 
 /** Squash-merge a green PR via gh — the agent closing the loop on a passing run — then reconcile the board
  *  best-effort (the merge closed the issue, so its derived status just became Done; the built-ins don't
- *  catch this). Two post-merge false-negatives are guarded: a `gh pr merge` non-zero exit whose merge
- *  actually landed is judged by the PR's MERGED state, not the exit code (#468); a board-sync hiccup is
- *  swallowed + warned (#466). Neither ever reports a merge that happened as failed. */
-export function mergePr(pr: number, cwd: string): number {
-  execMerge(pr, cwd);
+ *  catch this). A non-empty `expectedHead` pins the merge to that SHA (`--match-head-commit`), closing the
+ *  TOCTOU window between the pinned-green CI read and this call (#471); empty = the unpinned front door. Two
+ *  post-merge false-negatives are guarded: a `gh pr merge` non-zero exit whose merge actually landed is
+ *  judged by the PR's MERGED state, not the exit code (#468); a board-sync hiccup is swallowed + warned
+ *  (#466). Neither reports a merge that happened as failed WHEN THE PR STATE IS READABLE; an unreadable state
+ *  fail-closes and re-raises (safe — the auto loop drops a merged PR from the next round). */
+export function mergePr(pr: number, cwd: string, expectedHead: string): number {
+  execMerge(pr, cwd, expectedHead);
   process.stdout.write(`pr #${pr}: merged (green CI)\n`);
   const line = reconcileAfterMerge(pr, () => boardLine(cwd));
   if (line !== "") {
@@ -378,11 +383,20 @@ export function draftPr(pr: number, cwd: string): number {
   return 0;
 }
 
-/** Act on a CI verdict for PR `pr` — merge a green run, draft a red one, or report pending. */
-function actOnCi(pr: number, cwd: string, ci: PrCi): number {
-  const decision = mergeDecision(ci);
+/** A CI verdict + the head it was read against — the merge pins to `expectedHead` (`--match-head-commit`)
+ *  when non-empty, leaving the unpinned front door to pass `""`. Bundled so `actOnCi` stays within the
+ *  max-params gate. */
+interface Verdict {
+  readonly ci: PrCi;
+  readonly expectedHead: string;
+}
+
+/** Act on a CI verdict for PR `pr` — merge a green run, draft a red one, or report pending. A non-empty
+ *  `verdict.expectedHead` pins the merge to that SHA (`--match-head-commit`); empty leaves it unpinned. */
+function actOnCi(pr: number, cwd: string, verdict: Verdict): number {
+  const decision = mergeDecision(verdict.ci);
   if (decision === "merge") {
-    return mergePr(pr, cwd);
+    return mergePr(pr, cwd, verdict.expectedHead);
   }
   if (decision === "draft") {
     return draftPr(pr, cwd);
@@ -391,9 +405,11 @@ function actOnCi(pr: number, cwd: string, ci: PrCi): number {
   return 1;
 }
 
-/** Read PR `pr`'s CI and act on the decision — merge a green run, draft a red one, or report pending. */
+/** Read PR `pr`'s CI and act on the decision — merge a green run, draft a red one, or report pending. The
+ *  explicit `vow agent merge <pr>` front door: an UNPINNED merge (empty `expectedHead`), its documented
+ *  semantics — no `--match-head-commit`. */
 export function actOnPr(pr: number, cwd: string): number {
-  return actOnCi(pr, cwd, prCiState(cwd, pr));
+  return actOnCi(pr, cwd, { ci: prCiState(cwd, pr), expectedHead: "" });
 }
 
 /** Like `actOnPr`, but the verdict is PINNED to `expectedHead` — a green rollup only merges when it belongs
@@ -401,8 +417,10 @@ export function actOnPr(pr: number, cwd: string): number {
  *  the fresh one registers; pinning treats that stale read as pending so the loop waits, never merging a
  *  branch whose post-rebase CI never ran. The empty-pin semantics live in ONE place — the pure layer's
  *  `ciStateForHead` maps `""` -> pending — so a transient `prHeadOid` failure (head `""`) reads as pending
- *  (skip this round, re-read next) rather than un-pinning to the stale-green unpinned read. The explicit
- *  `vow agent merge <pr>` front door keeps `actOnPr` for an unpinned read. */
+ *  (skip this round, re-read next) rather than un-pinning to the stale-green unpinned read. The same
+ *  `expectedHead` is threaded to the merge as `--match-head-commit`, so a push between the pinned-green read
+ *  and the merge call is rejected server-side (#471). The explicit `vow agent merge <pr>` front door keeps
+ *  `actOnPr` for an unpinned read. */
 export function actOnPrForHead(pr: number, cwd: string, expectedHead: string): number {
-  return actOnCi(pr, cwd, prCiStateForHead(cwd, pr, expectedHead));
+  return actOnCi(pr, cwd, { ci: prCiStateForHead(cwd, pr, expectedHead), expectedHead });
 }
