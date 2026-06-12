@@ -77,6 +77,7 @@
   --vow-color-muted: #6b5e47; /* secondary text */
   --vow-color-accent: #ee4b22; /* Signal/Vermilion — intent: links, eyebrow, primary fill, focus ring */
   --vow-color-accent-hover: #ce3a14; /* signal-600 — accent fill on hover (darker on light) */
+  --vow-color-accent-tint: #fce7de; /* a pale Vermilion wash — focus ring, signal badge */
   --vow-color-ink: #1b1712; /* solid dark fills: checked box */
   --vow-color-on-accent: #fff7f2; /* text/icon on an accent or ink fill */
   --vow-color-border: #dcd2bf; /* hairlines, input + card borders */
@@ -130,15 +131,17 @@
   --vow-container-3: 55rem;
   --vow-container-4: 71rem;
 
-  /* Radius scale + the one border width every hairline uses. */
-  --vow-radius-1: 0.4rem; /* controls: inputs, buttons */
-  --vow-radius-2: 0.5rem; /* list rows */
-  --vow-radius-3: 0.75rem; /* cards, boxes */
-  --vow-border: 1px;
+  /* Radius scale + the border width — the vow kit's restrained, technical values (r-xs 3 · sm 5 · md 8). */
+  --vow-radius-1: 0.3125rem; /* 5px — controls: inputs, buttons (r-sm) */
+  --vow-radius-2: 0.4375rem; /* 7px — list rows */
+  --vow-radius-3: 0.5rem; /* 8px — cards, boxes (r-md) */
+  --vow-radius-badge: 3px; /* r-xs — the mono pill */
+  --vow-border: 1.5px; /* the kit's signature crisp hairline */
 
-  /* Elevation — a subtle card lift, and the deeper shadow floating popovers use (the select listbox). */
-  --vow-shadow-1: 0 1px 2px rgb(0 0 0 / 0.04), 0 2px 8px rgb(0 0 0 / 0.04);
-  --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.12);
+  /* Elevation — a flat, dry lift, and the signature hard ink offset (the "Werkstatt" stamp). */
+  --vow-shadow-1: 0 1px 0 rgb(24 20 16 / 0.05), 0 1px 2px rgb(24 20 16 / 0.06);
+  --vow-shadow-popover: 0 12px 32px -10px rgb(24 20 16 / 0.22);
+  --vow-shadow-hard: 4px 4px 0 var(--vow-color-ink);
 }
 
 /* The terminal "Nacht" — vow's signature dark, on the `.dark` class (toggled on <html>): a deep warm-black
@@ -151,6 +154,7 @@
   --vow-color-muted: #b6ab97;
   --vow-color-accent: #ee4b22; /* Vermilion holds across both surfaces */
   --vow-color-accent-hover: #f2724e; /* signal-400, brighter on dark */
+  --vow-color-accent-tint: #2a1a12; /* a deep Vermilion wash on the terminal */
   --vow-color-ink: #eae3d5; /* light ink — solid fills read light on the terminal */
   --vow-color-on-accent: #fff7f2;
   --vow-color-border: #2c2620;
@@ -160,6 +164,7 @@
   --vow-color-success: #5fbf8a; /* the proof green — the green-test signal */
   --vow-color-scrim: rgb(0 0 0 / 0.72);
   --vow-shadow-popover: 0 12px 32px -10px rgb(0 0 0 / 0.55);
+  --vow-shadow-hard: 4px 4px 0 #000000;
 }
 
 /* Base reset — applies once, app-wide (browser defaults gone: margin, box model, baseline). */
@@ -194,9 +199,10 @@ body {
 /* the hero eyebrow — a subtle section label, not a marketing shout (muted, not accent) */
 .vow-eyebrow {
   color: var(--vow-color-muted);
+  font-family: var(--vow-font-mono);
   font-weight: var(--vow-weight-semibold);
-  font-size: var(--vow-text-xs);
-  letter-spacing: var(--vow-tracking-wide);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 .vow-app h1 {
@@ -435,9 +441,6 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--vow-space-3);
-  padding: var(--vow-space-3);
-  border-radius: var(--vow-radius-3);
-  background: var(--vow-color-surface);
 }
 .vow-board__col-head {
   display: flex;
@@ -452,6 +455,13 @@ body {
   font-weight: var(--vow-weight-medium);
 }
 .vow-board__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-2);
+  padding: var(--vow-space-4);
+  background: var(--vow-color-surface);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-3);
   cursor: grab;
 }
 .vow-board__card:active {
@@ -553,8 +563,9 @@ body {
   font: inherit;
 }
 .vow-input:focus-visible {
-  outline: 2px solid var(--vow-color-accent);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--vow-color-accent);
+  box-shadow: 0 0 0 3px var(--vow-color-accent-tint);
 }
 /* a `longtext` field — the input look plus a resizable, multi-line box */
 .vow-textarea {
@@ -621,19 +632,25 @@ body {
   align-items: center;
   justify-content: center;
   gap: var(--vow-space-2);
-  padding: var(--vow-space-2) var(--vow-space-5);
+  padding: 0.75rem 1.25rem; /* 12px 20px — the kit's .btn */
   border: var(--vow-border) solid transparent;
   border-radius: var(--vow-radius-1);
   background: var(--vow-color-accent);
   color: var(--vow-color-on-accent);
   cursor: pointer;
-  font: inherit;
+  font-family: inherit;
+  font-size: 0.95rem;
   font-weight: var(--vow-weight-semibold);
-  line-height: 1.2;
+  line-height: 1;
+  white-space: nowrap;
   transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
+    background 0.12s,
+    border-color 0.12s,
+    transform 0.1s,
+    color 0.12s;
+}
+.vow-button[data-variant="default"]:active {
+  transform: translateY(1px);
 }
 .vow-button:focus-visible {
   outline: 2px solid var(--vow-color-accent);
@@ -670,39 +687,41 @@ body {
   background: var(--vow-color-surface);
 }
 .vow-button[data-size="sm"] {
-  padding: var(--vow-space-1) var(--vow-space-3);
-  font-size: var(--vow-text-sm);
+  padding: 0.5rem 0.875rem; /* 8px 14px — the kit's .btn--sm */
+  font-size: 0.85rem;
 }
 .vow-button[data-size="lg"] {
-  padding: var(--vow-space-3) var(--vow-space-5);
-  font-size: var(--vow-text-lg);
+  padding: 0.9375rem 1.625rem; /* 15px 26px — the kit's .btn--lg */
+  font-size: 1.05rem;
 }
 
-/* The badge primitive — a structural status/label chip. `data-variant` is the status colour, a soft
-   tint of a semantic token (so it re-skins with the theme). */
+/* The badge primitive — the kit's status/label chip: a small mono, UPPERCASE pill (the technical voice).
+   `data-variant` is the semantic tint, so it re-skins with the theme. */
 .vow-badge {
   display: inline-flex;
   align-items: center;
-  gap: var(--vow-space-1);
-  padding: 0.1rem var(--vow-space-2);
+  gap: 6px;
+  padding: 5px 9px;
   border: var(--vow-border) solid transparent;
-  border-radius: var(--vow-radius-3);
-  font-size: var(--vow-text-xs);
-  font-weight: var(--vow-weight-semibold);
-  line-height: 1.5;
+  border-radius: var(--vow-radius-badge);
+  font-family: var(--vow-font-mono);
+  font-size: 0.72rem;
+  font-weight: var(--vow-weight-medium);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   white-space: nowrap;
 }
 .vow-badge[data-variant="neutral"] {
-  background: var(--vow-color-surface);
   border-color: var(--vow-color-border);
   color: var(--vow-color-muted);
 }
 .vow-badge[data-variant="accent"] {
-  background: color-mix(in srgb, var(--vow-color-accent) 12%, transparent);
+  background: var(--vow-color-accent-tint);
   color: var(--vow-color-accent);
 }
 .vow-badge[data-variant="success"] {
-  background: color-mix(in srgb, var(--vow-color-success) 14%, transparent);
+  background: color-mix(in srgb, var(--vow-color-success) 16%, transparent);
   color: var(--vow-color-success);
 }
 .vow-badge[data-variant="warning"] {
@@ -710,7 +729,7 @@ body {
   color: var(--vow-color-warning);
 }
 .vow-badge[data-variant="danger"] {
-  background: color-mix(in srgb, var(--vow-color-danger) 12%, transparent);
+  background: color-mix(in srgb, var(--vow-color-danger) 14%, transparent);
   color: var(--vow-color-danger);
 }
 

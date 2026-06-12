@@ -67,6 +67,8 @@ function issueActionButton(): UiNode {
     "Button",
     [
       bound("label", `it.status === 'done' ? 'Reopen' : 'Close'`),
+      { kind: "static", name: "size", value: "sm" },
+      { kind: "static", name: "variant", value: "ghost" },
       {
         expr: `it.status === 'done' ? reopenIssue(it.issue.number) : closeIssue(it.issue.number)`,
         kind: "event",
@@ -81,8 +83,9 @@ function issueActionButton(): UiNode {
  * The start-work button the three issue layouts share — the human's one signal to begin an issue. It calls
  * `startWork` from `useIssues`, which POSTs the start-work signal to `/__vow/agent`; the dev server then
  * dispatches an agent session (`vow agent run <n>`). Shown only on an issue not yet `done` (an issue already
- * `doing` can still be re-signalled, e.g. a stalled run) and rendered with the default (primary) variant so
- * it reads as the lead action. Status stays derived — the resulting PR is what makes the issue read `doing`.
+ * `doing` can still be re-signalled, e.g. a stalled run). A compact `default · sm` — the Vermilion accent
+ * IS the intent (start an agent), so it shows as the one orange action per row, but SMALL (not the huge
+ * default size); the quiet `Close`/`Reopen` sit beside it. Status stays derived — the PR makes it `doing`.
  */
 function startWorkButton(): UiNode {
   return comp(
@@ -90,6 +93,8 @@ function startWorkButton(): UiNode {
     [
       { expr: "it.status !== 'done'", kind: "cond", type: "if" },
       { kind: "static", name: "label", value: "Start work" },
+      { kind: "static", name: "size", value: "sm" },
+      { kind: "static", name: "variant", value: "default" },
       { expr: "startWork(it.issue.number)", kind: "event", name: "click" },
     ],
     [],
@@ -158,9 +163,13 @@ function labelBadges(): UiNode {
   };
 }
 
-/** The labels cell — a neutral `<Badge>` per label, looped over `it.issue.labels`. */
+/** The labels cell — a neutral `<Badge>` per label. The flex wrap lives on an inner `<div>`, NOT the
+ *  `<td>`: a `display:flex` table-cell doesn't stretch to the row height, so its bottom border sits high
+ *  and the row separators slip. The `<td>` stays a real table-cell; the div owns the wrapping. */
 function labelsCell(): UiNode {
-  return classed("td", "vow-table__cell vow-issue-table__labels", [labelBadges()]);
+  return classed("td", "vow-table__cell", [
+    classed("div", "vow-issue-table__labels", [labelBadges()]),
+  ]);
 }
 
 /** A single data row of the issue table. */
