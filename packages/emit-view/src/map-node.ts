@@ -1,4 +1,5 @@
 import type { Attr, UiNode } from "./types.ts";
+import { EVENT_LAYOUTS, eventLayout } from "./events-layout.ts";
 import { ISSUE_LAYOUTS, issueLayout } from "./issue-layout.ts";
 import { asRecord, defined } from "@vow/core";
 import { assertAttrName, assertObjectKey, pascalCase } from "@vow/component";
@@ -116,6 +117,8 @@ const timeline: Handler = (): UiNode => comp("VowTimeline", [], []);
 
 const issues: Handler = (value): UiNode => comp(ISSUE_LAYOUTS[issueLayout(value)], [], []);
 
+const events: Handler = (value): UiNode => comp(EVENT_LAYOUTS[eventLayout(value)], [], []);
+
 const icon: Handler = (value): UiNode => {
   const obj = asRecord(value);
   return comp("Icon", [{ kind: "static", name: "name", value: str(obj["name"]) }], []);
@@ -143,6 +146,7 @@ const link: Handler = (value): UiNode => {
 const HANDLERS: Readonly<Record<string, Handler>> = {
   board,
   cards,
+  events,
   features,
   hero,
   icon,

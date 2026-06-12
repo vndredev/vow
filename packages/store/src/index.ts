@@ -1,4 +1,5 @@
 import { VOW_API, dbPath } from "@vow/db/routes";
+import type { VowEvent } from "@vow/observability";
 import { isObject } from "./guards.ts";
 import { parseIssuePlan } from "./issues.ts";
 import { reactive } from "vue";
@@ -23,6 +24,8 @@ type Maybe<T> = T | undefined;
 /** The validated issue-plan item (the public `@vow/store` type generated views bind to), derived from the
  *  parser in `./issues.ts` so the type tracks the runtime shape exactly. */
 export type IssueItem = ReturnType<typeof parseIssuePlan>[number];
+
+export type EventItem = VowEvent;
 
 type Row = Record<string, unknown> & { id: string };
 
@@ -477,6 +480,9 @@ function startFreshness(): void {
     if (issuesLoaded) {
       detach(loadIssues);
     }
+    if (eventsLoaded) {
+      detach(loadEvents);
+    }
   };
   globalThis.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", refresh);
@@ -602,6 +608,125 @@ export function useIssues(): {
       });
     },
     state: issuesState,
+  };
+}
+
+/** A string field of a raw event object, or "" when absent. */
+function eventStr(raw: Readonly<Record<string, unknown>>, key: string): string {
+  const value = raw[key];
+  if (typeof value === "string") {
+    return value;
+  }
+  return "";
+}
+
+/** The optional `issue` field of a raw event, present only when the raw object carried a number. */
+function eventIssue(raw: Readonly<Record<string, unknown>>): { issue?: number } {
+  const value = raw["issue"];
+  if (typeof value === "number") {
+    return { issue: value };
+  }
+  return {};
+}
+
+/** The optional `pr` field of a raw event, present only when the raw object carried a number. */
+function eventPr(raw: Readonly<Record<string, unknown>>): { pr?: number } {
+  const value = raw["pr"];
+  if (typeof value === "number") {
+    return { pr: value };
+  }
+  return {};
+}
+
+/** The optional `phase` field of a raw event, present only when the raw object carried a string. */
+function eventPhase(raw: Readonly<Record<string, unknown>>): { phase?: string } {
+  const value = raw["phase"];
+  if (typeof value === "string") {
+    return { phase: value };
+  }
+  return {};
+}
+
+/** The optional `detail` field of a raw event, present only when the raw object carried a string. */
+function eventDetail(raw: Readonly<Record<string, unknown>>): { detail?: string } {
+  const value = raw["detail"];
+  if (typeof value === "string") {
+    return { detail: value };
+  }
+  return {};
+}
+
+/** Lift one parsed JSON object into a VowEvent, omitting absent optionals — no cast, strict-wall way. */
+function liftEvent(raw: Readonly<Record<string, unknown>>): VowEvent {
+  return {
+    kind: eventStr(raw, "kind"),
+    ts: eventStr(raw, "ts"),
+    ...eventIssue(raw),
+    ...eventPr(raw),
+    ...eventPhase(raw),
+    ...eventDetail(raw),
+  };
+}
+
+/** Parse a /__vow/events JSON value into a validated VowEvent[], keeping only well-formed entries
+ *  (a non-null object with kind+ts strings). A malformed feed degrades to a clean, typed array. */
+export function parseEventFeed(value: unknown): VowEvent[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const list: readonly unknown[] = value;
+  const out: VowEvent[] = [];
+  for (const entry of list) {
+    if (isObject(entry) && typeof entry["kind"] === "string" && typeof entry["ts"] === "string") {
+      out.push(liftEvent(entry));
+    }
+  }
+  return out;
+}
+
+const events = reactive<EventItem[]>([]) as EventItem[];
+let eventsLoaded = false;
+
+/** The fetch state the event views read to tell apart loading / failed / genuinely-empty. */
+const eventsState = reactive({ error: false, loading: false });
+
+/** Read + parse the event feed from /__vow/events, reporting ok: false on any non-ok response. */
+async function fetchEvents(): Promise<FetchResult<EventItem>> {
+  try {
+    return { items: parseEventFeed(await okJson(VOW_API.events)), ok: true };
+  } catch {
+    return { items: [], ok: false };
+  }
+}
+
+/** Pull the event feed from /__vow/events and replace the shared array, driving eventsState. */
+async function loadEvents(): Promise<void> {
+  if (!hasApi) {
+    return;
+  }
+  eventsState.loading = true;
+  const result = await fetchEvents();
+  eventsState.error = !result.ok;
+  eventsState.loading = false;
+  if (result.ok) {
+    events.splice(0, events.length, ...result.items);
+  }
+}
+
+/** The shared reactive event feed, read live from /__vow/events + polled on focus + the interval.
+ *  `state` mirrors CollectionState — loading/error flags let a view show status instead of empty content. */
+export function useEvents(): {
+  items: EventItem[];
+  state: CollectionState;
+} {
+  if (!eventsLoaded) {
+    eventsLoaded = true;
+    detach(loadEvents);
+    startFreshness();
+  }
+  return {
+    items: events,
+    state: eventsState,
   };
 }
 

@@ -23,6 +23,7 @@ import { type Page, allVows, isEmitEntity } from "./vows.ts";
 import {
   composeBoards,
   composeCards,
+  composeEventViews,
   composeIssueViews,
   composeLayout,
   composeLists,
@@ -80,6 +81,7 @@ interface Plan {
   readonly boards: readonly GroupRef[];
   readonly primitives: readonly string[];
   readonly issueViews: readonly string[];
+  readonly eventViews: readonly string[];
   readonly pages: readonly Page[];
   readonly needsLayout: boolean;
   readonly needsTimeline: boolean;
@@ -110,6 +112,7 @@ function foldPlan(contributions: readonly Contribution[]): Plan {
   return {
     boards: dedupeGroups(contributions.flatMap((part) => part.boards)),
     cards: [...new Set(contributions.flatMap((part) => part.cards))],
+    eventViews: [...new Set(contributions.flatMap((part) => part.eventViews))],
     files: contributions.flatMap((part) => part.files),
     issueViews: [...new Set(contributions.flatMap((part) => part.issueViews))],
     listed: dedupeLists(contributions.flatMap((part) => part.listed)),
@@ -196,6 +199,7 @@ function composeAll(plan: Plan, entities: readonly ReadonlyVow[], dirs: Dirs): r
     composeBoards(plan.boards, entities, outDir),
     composeTimeline(plan.needsTimeline, srcDir, outDir),
     composeIssueViews(plan.issueViews, outDir),
+    composeEventViews(plan.eventViews, outDir),
   ];
   const primitives = [...plan.primitives, ...composed.flatMap((piece) => piece.primitives)];
   return [

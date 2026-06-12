@@ -8,6 +8,7 @@ import {
   emitEntityCards,
   emitEntityList,
   emitEntityStats,
+  emitEventTraceSfc,
   emitIssueBoardSfc,
   emitIssueRoadmapSfc,
   emitIssueTableSfc,
@@ -213,6 +214,17 @@ export function composeIssueViews(issueViews: readonly string[], outDir: string)
   }
   // Each issue view composes Badge (status + labels) + Button (the close/reopen action).
   return { files, primitives: primitivesFor(files, ["Badge", "Button"]) };
+}
+
+/** The live event-feed views (`events: { as }`) — fixed components reading `/__vow/events`. */
+export function composeEventViews(eventViews: readonly string[], outDir: string): Composed {
+  const wanted = new Set(eventViews);
+  const files: Artifact[] = [];
+  if (wanted.has("trace")) {
+    files.push({ path: path.join(outDir, "VowEventTrace.vue"), source: emitEventTraceSfc() });
+  }
+  // Each event view composes Badge (event kind chip).
+  return { files, primitives: primitivesFor(files, ["Badge"]) };
 }
 
 /** Materialise every needed primitive adapter once, from the closed registry (on demand → lean output). */

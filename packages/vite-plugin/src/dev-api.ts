@@ -9,6 +9,7 @@ import {
   closeIssue,
   issueDetail,
   issuePlan,
+  readEvents,
   reopenIssue,
 } from "@vow/observability";
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
@@ -456,5 +457,19 @@ export function agentApi(cwd: string, dispatch: Dispatch = dispatchAgent): Middl
       return;
     }
     ignore(serveStartWork(req, res, state));
+  };
+}
+
+/**
+ * The dev events API — `/__vow/events`. GET serves the recorded event feed (read from `.vow/events.jsonl`).
+ * The studio's trace view reads GET; it polls on the freshness interval. The file is the single source.
+ */
+export function eventsApi(cwd: string): Middleware {
+  return (req, res, next) => {
+    if ((req.method ?? "GET") !== "GET") {
+      next();
+      return;
+    }
+    writeReply(res, { body: readEvents(cwd), status: STATUS.ok });
   };
 }

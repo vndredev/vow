@@ -4,7 +4,7 @@
 import { type Db, insert, migrate, openDb } from "@vow/db";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Server, createServer } from "node:http";
-import { agentApi, dataApi, issuesApi, runAgentRun, vowBin } from "../src/dev-api.ts";
+import { agentApi, dataApi, eventsApi, issuesApi, runAgentRun, vowBin } from "../src/dev-api.ts";
 import { expect, test } from "vite-plus/test";
 import type { AddressInfo } from "node:net";
 import type { IssueDetail } from "@vow/observability";
@@ -198,4 +198,26 @@ test("a spawn failure on the real spawn line LOGS and never crashes the dev proc
     process.stderr.write = original;
   }
   expect(logged.some((line) => line.includes(`#${ISSUE}`))).toBe(true);
+});
+
+/** GET `url` on the loopback `server` and return the response + its parsed JSON. */
+async function get(server: Server, route = ""): Promise<{ status: number; body: unknown }> {
+  const response = await fetch(`http://127.0.0.1:${portOf(server.address())}${route}`);
+  return { body: await response.json(), status: response.status };
+}
+
+const OK = 200;
+
+test("eventsApi GET returns an empty array when no .vow/events.jsonl exists", async () => {
+  // Use a temp dir that definitely has no .vow/events.jsonl.
+  const server = await listening(eventsApi(process.cwd()));
+  try {
+    const { status, body } = await get(server);
+    expect(status).toBe(OK);
+    // readEvents returns [] when the log is absent; the API returns it as a JSON array.
+    expect(Array.isArray(body)).toBe(true);
+  } finally {
+    server.close();
+    await once(server, "close");
+  }
 });

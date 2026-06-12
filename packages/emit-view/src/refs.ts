@@ -1,5 +1,6 @@
-import type { IssueLayout, ReadonlyVow } from "./types.ts";
+import type { EventLayout, IssueLayout, ReadonlyVow } from "./types.ts";
 import { asRecord, defined } from "@vow/core";
+import { eventLayout } from "./events-layout.ts";
 import { issueLayout } from "./issue-layout.ts";
 import { str } from "./helpers.ts";
 
@@ -139,6 +140,20 @@ export function issueLayouts(view: ReadonlyVow): Set<IssueLayout> {
   walkNodes(view, (type, value) => {
     if (type === "issues") {
       found.add(issueLayout(value));
+    }
+  });
+  return found;
+}
+
+/**
+ * The event-feed layouts a `## view` renders — so the plugin materialises the matching VowEvent*
+ * components. Validated, so the set only ever holds real layouts.
+ */
+export function eventLayouts(view: ReadonlyVow): Set<EventLayout> {
+  const found = new Set<EventLayout>();
+  walkNodes(view, (type, value) => {
+    if (type === "events") {
+      found.add(eventLayout(value));
     }
   });
   return found;
