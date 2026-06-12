@@ -102,6 +102,27 @@ test("renderVueSfc reproduces the checkbox SFC byte-for-byte (the migration orac
   expect(renderVueSfc(checkbox)).toBe(EXPECTED_CHECKBOX);
 });
 
+test("a structured SetupStep list renders into the Vue idiom (the same model React consumes)", () => {
+  // The Vue adapter renders state -> ref, computed -> computed, a handler -> a function declaration,
+  // A const verbatim — the SAME SetupStep list the React adapter renders into hooks. One model, two idioms.
+  const comp: Component = {
+    imports: [{ from: "vue", names: ["computed", "ref"] }],
+    name: "Counter",
+    setup: [
+      { init: "0", kind: "state", name: "count" },
+      { expr: "count.value * 2", kind: "computed", name: "doubled" },
+      { body: ["count.value += 1;"], kind: "handler", name: "bump", params: "" },
+      { expr: "'idle'", kind: "const", name: "label" },
+    ],
+    view: { attrs: [], children: [{ expr: "doubled", kind: "interp" }], kind: "element", tag: "p" },
+  };
+  const sfc = renderVueSfc(comp);
+  expect(sfc).toContain("const count = ref(0);");
+  expect(sfc).toContain("const doubled = computed(() => count.value * 2);");
+  expect(sfc).toContain(["function bump() {", "  count.value += 1;", "}"].join("\n"));
+  expect(sfc).toContain("const label = 'idle';");
+});
+
 test("a literal text node is HTML-escaped (& < > in order)", () => {
   const comp: Component = {
     name: "Heading",

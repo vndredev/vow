@@ -1,5 +1,6 @@
-import type { Component, ImportDecl, PropDef } from "./model.ts";
+import type { Component, ImportDecl, PropDef, SetupStep } from "./model.ts";
 import { defined } from "./defined.ts";
+import { vueSetupStep } from "./render-setup.ts";
 
 /** Render one import: a default binding, named bindings, or both. Shared by every adapter's shell. */
 export function renderImport(decl: ImportDecl): string {
@@ -43,6 +44,19 @@ function renderEmits(component: Component): string {
   return `const emit = defineEmits<{ ${fields} }>();`;
 }
 
+/** One setup item as Vue lines: a raw `string` verbatim (the escape hatch), a `SetupStep` per its kind. */
+function vueSetupItem(item: SetupStep | string): readonly string[] {
+  if (typeof item === "string") {
+    return [item];
+  }
+  return vueSetupStep(item);
+}
+
+/** The setup section as flat Vue lines, in author order — strings verbatim, steps in the Vue idiom. */
+function renderSetup(setup: readonly (SetupStep | string)[]): string[] {
+  return setup.flatMap((item) => [...vueSetupItem(item)]);
+}
+
 /** Join non-empty sections with a single blank line between them. */
 function joinSections(sections: readonly (readonly string[])[]): string[] {
   const present = sections.filter((section) => section.length > 0);
@@ -72,5 +86,5 @@ export function renderScript(component: Component): string[] {
   if (defined(component.events) && component.events.length > 0) {
     decls.push(renderEmits(component));
   }
-  return joinSections([head, decls, [...(component.setup ?? [])]]);
+  return joinSections([head, decls, renderSetup(component.setup ?? [])]);
 }
