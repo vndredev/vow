@@ -3,7 +3,7 @@ import { type Db, openDevDb, syncEntities } from "./dev-db.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, type ReadonlyVow, defined, loadVows } from "@vow/core/node";
 import type { Plugin, ViteDevServer } from "vite-plus";
-import { VOW_API, agentApi, dataApi, issuesApi } from "./dev-api.ts";
+import { VOW_API, agentApi, dataApi, eventsApi, issuesApi } from "./dev-api.ts";
 import { loadVowModule, resolveVowId } from "./virtual.ts";
 import { NONE } from "./none.ts";
 import type { VowOptions } from "./vows.ts";
@@ -124,6 +124,8 @@ function setupServer(server: ViteDevServer, state: State, options: VowOptions): 
   );
   // The GitHub issue plan, gh-direct.
   server.middlewares.use(VOW_API.issues, issuesApi(state.root));
+  // The append-only event feed — the trace panel reads it live.
+  server.middlewares.use(VOW_API.events, eventsApi(state.root));
   // The start-work signal — a board action POSTs an issue number; the dev server dispatches its agent run.
   server.middlewares.use(VOW_API.agent, agentApi(state.root));
 

@@ -8,4 +8,5 @@
 export type { Attr, Component, ImportDecl, UiNode } from "@vow/component";
 export type { FieldCell, FieldControl, Maybe, ReadonlyField, ReadonlyVow } from "@vow/core";
 export type { BadgeVariant, TimelineEntry } from "@vow/observability";
+export type { EventLayout } from "./event-layout.ts";
 export type { IssueLayout } from "./issue-layout.ts";
