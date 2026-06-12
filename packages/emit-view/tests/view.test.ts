@@ -222,6 +222,14 @@ test("emitForm fails fast when its `of` is not a known entity", () => {
   expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/u);
 });
 
+test("every @vow/emit-view throw carries the single `emit-view:` source prefix", () => {
+  // The prefix names the source package; emit-view publishes one prefix, never `emit-form:` or `vow:`.
+  expect(() => emitForm(addTaskForm, new Map())).toThrow(/^emit-view:/u);
+  expect(() => emitView(view([{ type: "issues", value: { as: "cards" } }]))).toThrow(
+    /^emit-view:/u,
+  );
+});
+
 test("a link: node renders an internal anchor the router intercepts", () => {
   const sfc = emitView(view([{ type: "link", value: { label: "Add a task", to: "/add-task" } }]));
   expect(sfc).toContain('<a class="vow-link" href="/add-task">Add a task</a>');
