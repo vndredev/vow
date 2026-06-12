@@ -1,8 +1,10 @@
 import {
+  VIEW_NODE_TYPES,
   emitAppLayout,
   emitAppRoutes,
   emitForm,
   emitView,
+  knownViewType,
   referencedPrimitives,
 } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
@@ -127,6 +129,21 @@ test("referencedPrimitives lists the primitives a view places directly (the clos
 
 test("an unknown component throws (the closed primitive/view vocabulary)", () => {
   expect(() => emitView(view([{ type: "nope", value: {} }]))).toThrow(/unknown view component/u);
+});
+
+test("knownViewType accepts a handler, a primitive, a text tag, and the bare text escape", () => {
+  expect(knownViewType("hero")).toBe(true);
+  expect(knownViewType("button")).toBe(true);
+  expect(knownViewType("flex")).toBe(true);
+  expect(knownViewType("h1")).toBe(true);
+  expect(knownViewType("text")).toBe(true);
+  expect(knownViewType("nope")).toBe(false);
+});
+
+test("every enumerated VIEW_NODE_TYPES entry is one knownViewType accepts — the list can't oversell", () => {
+  for (const type of VIEW_NODE_TYPES) {
+    expect(knownViewType(type), `${type} is enumerated but rejected`).toBe(true);
+  }
 });
 
 test("the view is wrapped in a vow-app root", () => {

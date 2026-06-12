@@ -1,7 +1,18 @@
 import { Field, ViewNode } from "@vow/core";
 import type { Maybe, Names, ReadonlyField, Registrar, Studio, TextResult } from "./types.ts";
+import { VIEW_NODE_TYPES, knownViewType } from "@vow/emit-view";
 import { text } from "./studio.ts";
 import { z } from "zod";
+
+/** Reject a view whose node carries an unknown `type` BEFORE it reaches disk — the same check (and the
+ *  same message) the emitter runs at build, so `add_view` fails synchronously instead of at `vp dev`. */
+function requireKnownTypes(view: readonly ViewInput[]): void {
+  for (const node of view) {
+    if (!knownViewType(node.type)) {
+      throw new Error(`emit-view: unknown view component "${node.type}"`);
+    }
+  }
+}
 
 /** The nav-entry shape (frontmatter: label · icon · order · group) — parsed, so no cast is needed. */
 const Nav = z.object({
@@ -43,10 +54,12 @@ function registerAddEntity(server: Registrar, names: Names, studio: Studio): voi
 function registerAddView(server: Registrar, names: Names, studio: Studio): void {
   const addView = names.at("add_view");
 
+  const description = `${addView.description} A node's \`type\` is one of: ${VIEW_NODE_TYPES.join(", ")}.`;
+
   server.registerTool(
     addView.name,
     {
-      description: addView.description,
+      description,
       inputSchema: {
         intent: z.string(),
         nav: Nav.optional(),
@@ -60,6 +73,7 @@ function registerAddView(server: Registrar, names: Names, studio: Studio): void 
       readonly slug: string;
       readonly view: readonly ViewInput[];
     }): TextResult => {
+      requireKnownTypes(input.view);
       const slug = studio.createView({
         intent: input.intent,
         nav: input.nav,

@@ -465,6 +465,9 @@ importers:
       '@vow/db':
         specifier: workspace:*
         version: link:../db
+      '@vow/emit-view':
+        specifier: workspace:*
+        version: link:../emit-view
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability
