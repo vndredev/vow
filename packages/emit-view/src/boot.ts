@@ -1,3 +1,4 @@
+import { LAYOUT_EXPORT, LAYOUT_SUFFIX, ROUTES_EXPORT, ROUTES_SUFFIX } from "./boot-convention.ts";
 import { defined, mapDefined } from "@vow/core";
 import type { Maybe } from "./types.ts";
 import { pascalCase } from "@vow/component";
@@ -28,7 +29,7 @@ export function emitAppRoutes(pages: readonly RoutedPage[]): string {
     `// Generated routes for the app's pages (views + forms). The vow tree is the source — do not edit.`,
     `import type { Route } from "@vow/router";`,
     ``,
-    `export const routes: Route[] = [`,
+    `export const ${ROUTES_EXPORT}: Route[] = [`,
     ...pages.map(
       (page) =>
         `  { path: "/${page.slug}", load: () => import("./${page.slug}.vue"), title: ${JSON.stringify(page.title)} },`,
@@ -128,10 +129,10 @@ export function emitBoot(rootSlug: string, theme: string | false = "@vow/theme/v
     ``,
     `// Optional routes + chrome an extension (e.g. @vow/docs) may contribute, by the *.routes.ts /`,
     `// *.layout.vue convention — empty maps when there are none. The boot names no specific extension.`,
-    `const fragments = import.meta.glob<{ routes?: Route[] }>("./*.routes.ts", { eager: true });`,
-    `const docRoutes = Object.values(fragments).flatMap((m) => m.routes ?? []);`,
-    `const layouts = import.meta.glob<{ default: Component }>("./*.layout.vue", { eager: true });`,
-    `const layout = Object.values(layouts)[0]?.default;`,
+    `const fragments = import.meta.glob<{ ${ROUTES_EXPORT}?: Route[] }>("./*${ROUTES_SUFFIX}", { eager: true });`,
+    `const docRoutes = Object.values(fragments).flatMap((m) => m.${ROUTES_EXPORT} ?? []);`,
+    `const layouts = import.meta.glob<{ ${LAYOUT_EXPORT}: Component }>("./*${LAYOUT_SUFFIX}", { eager: true });`,
+    `const layout = Object.values(layouts)[0]?.${LAYOUT_EXPORT};`,
     ``,
     `const routes: Route[] = [`,
     `  { path: "/", load: async () => ({ default: ${name} }) },`,

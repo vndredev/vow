@@ -1,4 +1,5 @@
 import type { DocsConfig, PageMeta, SearchItem, SidebarGroup, TocEntry } from "./types.ts";
+import { ROUTES_EXPORT } from "@vow/emit-view";
 
 /** The two-space indent for the pretty-printed JSON literals embedded in the manifest. */
 const INDENT = 2;
@@ -31,7 +32,7 @@ export function manifestModule(input: Readonly<ManifestInput>): string {
     `import type { Route } from "@vow/router";`,
     `import type { DocsConfig, SearchItem, SidebarGroup, TocEntry } from "@vow/docs";`,
     ``,
-    `export const routes: Route[] = [`,
+    `export const ${ROUTES_EXPORT}: Route[] = [`,
     ...pages.map((page) => routeLine(page, config.title)),
     `];`,
     ``,

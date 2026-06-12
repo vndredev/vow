@@ -1,4 +1,11 @@
-import { VOW_ENV_DTS, emitBoot } from "../src/index.ts";
+import {
+  LAYOUT_SUFFIX,
+  ROUTES_EXPORT,
+  ROUTES_SUFFIX,
+  VOW_ENV_DTS,
+  emitAppRoutes,
+  emitBoot,
+} from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
 test("emitBoot generates a router boot — root route + the theme, mounted on #app", () => {
@@ -15,6 +22,18 @@ test("the router boot folds in optional routes + chrome via the *.routes / *.lay
   expect(boot).toContain('import.meta.glob<{ routes?: Route[] }>("./*.routes.ts"');
   expect(boot).toContain("m.routes ?? []");
   expect(boot).toContain('import.meta.glob<{ default: Component }>("./*.layout.vue"');
+});
+
+test("the boot reads the same glob convention the producers write — one shared source", () => {
+  const boot = emitBoot("home");
+  // The boot globs by the shared suffix and reads each fragment by the shared export name.
+  expect(boot).toContain(`"./*${ROUTES_SUFFIX}"`);
+  expect(boot).toContain(`"./*${LAYOUT_SUFFIX}"`);
+  expect(boot).toContain(`m.${ROUTES_EXPORT} ?? []`);
+  // The app's own routes producer exports that same shared key.
+  expect(emitAppRoutes([{ slug: "about", title: "About" }])).toContain(
+    `export const ${ROUTES_EXPORT}: Route[] =`,
+  );
 });
 
 test("emitBoot can omit the theme", () => {

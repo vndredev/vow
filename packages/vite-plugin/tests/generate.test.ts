@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { ROUTES_EXPORT, ROUTES_SUFFIX } from "@vow/emit-view";
 import { caseCollision, generateFiles } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
@@ -123,6 +124,29 @@ test("a re-generate with identical sources skips the write (unchanged artifacts 
     // Generate again with the exact same vows — the content is identical, so nothing is rewritten.
     generateFiles([shell], { outDir: dir, srcDir: dir });
     expect(statSync(target).mtimeMs).toBe(before);
+  });
+});
+
+test("the routes producer honors the boot glob convention — shared suffix + export name", () => {
+  const page: VowNode = {
+    children: [],
+    fields: [],
+    fulfills: { as: "view", kind: "emit" },
+    id: "vow_about",
+    intent: "About",
+    proof: [],
+    slug: "about",
+    view: [{ type: "flex", value: { children: [{ text: "about" }], direction: "column", gap: 4 } }],
+  };
+  inTempDir((dir) => {
+    // A root view + a non-root page -> the app routes/layout fragments the boot globs.
+    generateFiles([{ ...shell, root: true }, page], { outDir: dir, srcDir: dir });
+    // The boot globs `*.routes.ts`; the producer's filename must end with the shared suffix.
+    const routesFile = readdirSync(dir).find((file) => file.endsWith(ROUTES_SUFFIX));
+    expect(routesFile).toBeDefined();
+    // And the file must export the shared key the boot reads each fragment by.
+    const routes = readFileSync(path.join(dir, routesFile ?? ""), "utf8");
+    expect(routes).toContain(`export const ${ROUTES_EXPORT}: Route[] =`);
   });
 });
 
