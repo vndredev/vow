@@ -129,7 +129,12 @@ test("a ## view item with more than one key fails fast", () => {
     "  list: task",
     "```",
   ].join("\n");
-  expect(() => parseVowMd("bad", md)).toThrow();
+  expect(() => parseVowMd("bad", md)).toThrow(/exactly one component key/u);
+});
+
+test("an unknown `fulfills` verb throws a clear error naming the expected forms", () => {
+  const md = `---\nid: vow_x\nfulfills: render entity\n---\n# X\n`;
+  expect(() => parseVowMd("x", md)).toThrow(/unknown fulfilment/u);
 });
 
 test("frontmatter title + nav round-trip into the Vow (the app shell, declared)", () => {
