@@ -1,4 +1,4 @@
-import { ciStateForHead, ciStateFrom } from "../src/ci.ts";
+import { ciStateForHead, ciStateFrom, mergedFrom } from "../src/ci.ts";
 import { expect, test } from "vite-plus/test";
 
 test("ciStateFrom folds a check rollup into one verdict (fail beats pending beats pass)", () => {
@@ -54,4 +54,15 @@ test("ciStateForHead: a matching head still reports fail / pending honestly", ()
     '{"headRefOid":"new123","statusCheckRollup":[{"status":"IN_PROGRESS","conclusion":""}]}';
   expect(ciStateForHead(failForNew, "new123")).toBe("fail");
   expect(ciStateForHead(runningForNew, "new123")).toBe("pending");
+});
+
+test("mergedFrom reads a PR's MERGED state — the post-merge guard tells a real failure from a cleanup hiccup", () => {
+  // A MERGED pr is a success even if `gh pr merge` exited non-zero on a post-merge cleanup step.
+  expect(mergedFrom('{"state":"MERGED"}')).toBe(true);
+  // An OPEN / CLOSED pr (the merge genuinely didn't land) is not a success.
+  expect(mergedFrom('{"state":"OPEN"}')).toBe(false);
+  expect(mergedFrom('{"state":"CLOSED"}')).toBe(false);
+  // A malformed / empty payload is never read as merged (fail closed).
+  expect(mergedFrom("not json")).toBe(false);
+  expect(mergedFrom("{}")).toBe(false);
 });

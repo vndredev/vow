@@ -7,6 +7,7 @@ import {
   flagValueless,
   issueArg,
   issueNumbers,
+  mergeFallback,
   parseRun,
   parseRunAll,
   phaseLine,
@@ -108,6 +109,17 @@ test("failedResult turns a thrown develop into a failed lane (so one bad worktre
   expect(failedResult(ISSUE, "not an error", false).report).toBe(
     `issue #${ISSUE}: failed to develop — not an error`,
   );
+});
+
+test("mergeFallback judges a non-zero gh merge by the PR's MERGED state, not the exit code (#468)", () => {
+  // A leftover worktree can block `--delete-branch`, so gh exits non-zero AFTER the merge landed; a MERGED
+  // PR is a success despite that — surfaced as a cleanup warning, never a re-raised failure.
+  const err = new Error("failed to delete local branch fix/x: used by worktree");
+  expect(mergeFallback(ISSUE, true, err)).toBe(
+    `pr #${ISSUE}: merged — gh cleanup warning: failed to delete local branch fix/x: used by worktree`,
+  );
+  // A genuinely-unmerged pr (gh failed BEFORE the merge) returns "" — the caller re-raises the real error.
+  expect(mergeFallback(ISSUE, false, err)).toBe("");
 });
 
 test("reconcileAfterMerge is best-effort — a board-sync throw never reports a succeeded merge as failed (#466)", () => {

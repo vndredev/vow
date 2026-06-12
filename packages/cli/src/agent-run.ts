@@ -20,6 +20,7 @@ import {
   issueLabels,
   prCiState,
   prCiStateForHead,
+  prMerged,
   resolveProjectId,
   syncProjectStatus,
 } from "@vow/observability";
@@ -330,11 +331,38 @@ export function reconcileAfterMerge(pr: number, sync: () => string): string {
   }
 }
 
+/** Decide a merge's outcome when `gh pr merge` exited non-zero: the merge may still have landed (gh also
+ *  fails for post-merge cleanup — e.g. `--delete-branch` blocked by a leftover worktree holding the local
+ *  branch), so judge by the PR's actual state, not the exit code. Returns a `merged — gh cleanup warning`
+ *  line when the pr is MERGED (a success despite the hiccup), or "" to re-raise a genuine failure (#468). */
+export function mergeFallback(pr: number, merged: boolean, error: unknown): string {
+  if (merged) {
+    return `pr #${pr}: merged — gh cleanup warning: ${errorReason(error)}`;
+  }
+  return "";
+}
+
+/** Run `gh pr merge` for PR `pr`, tolerating a post-merge cleanup hiccup: a non-zero exit whose merge
+ *  actually landed (the PR reads MERGED) is warned + continued, only a genuinely-unmerged PR re-raises. */
+function execMerge(pr: number, cwd: string): void {
+  try {
+    execFileSync("gh", [...mergeArgs(pr)], { cwd, stdio: "inherit" });
+  } catch (error) {
+    const warning = mergeFallback(pr, prMerged(cwd, pr), error);
+    if (warning === "") {
+      throw error;
+    }
+    process.stdout.write(`${warning}\n`);
+  }
+}
+
 /** Squash-merge a green PR via gh — the agent closing the loop on a passing run — then reconcile the board
  *  best-effort (the merge closed the issue, so its derived status just became Done; the built-ins don't
- *  catch this). A board-sync hiccup is swallowed + warned, never reported as a failed merge (#466). */
+ *  catch this). Two post-merge false-negatives are guarded: a `gh pr merge` non-zero exit whose merge
+ *  actually landed is judged by the PR's MERGED state, not the exit code (#468); a board-sync hiccup is
+ *  swallowed + warned (#466). Neither ever reports a merge that happened as failed. */
 export function mergePr(pr: number, cwd: string): number {
-  execFileSync("gh", [...mergeArgs(pr)], { cwd, stdio: "inherit" });
+  execMerge(pr, cwd);
   process.stdout.write(`pr #${pr}: merged (green CI)\n`);
   const line = reconcileAfterMerge(pr, () => boardLine(cwd));
   if (line !== "") {
