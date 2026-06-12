@@ -230,6 +230,80 @@ test("a pending delete is not re-added by a reconcile that still returns the row
   expect(list.rows).toHaveLength(0);
 });
 
+test("reconcile against byte-identical rows is a no-op — no snapshot churn, no listener fires", () => {
+  // The #403 getSnapshot token must change only on a real mutation; a 5s freshness poll that returns the
+  // Live rows unchanged must not bump it (else useSyncExternalStore consumers re-render every poll forever).
+  const list = createList();
+  list.push({ id: "1", note: "n", title: "a" });
+  list.push({ id: "2", note: "m", title: "b" });
+  const before = list.getSnapshot();
+  let fires = 0;
+  list.subscribe(() => {
+    fires += 1;
+  });
+  // Same ids, same key set, same values — a brand-new array each but structurally identical.
+  list.reconcile([
+    { id: "1", note: "n", title: "a" },
+    { id: "2", note: "m", title: "b" },
+  ]);
+  // The token did not move and no listener fired.
+  expect(list.getSnapshot()).toBe(before);
+  expect(fires).toBe(0);
+});
+
+test("reconcile notifies once when only one survivor's value actually changed", () => {
+  const list = createList();
+  list.push({ id: "1", title: "a" });
+  list.push({ id: "2", title: "b" });
+  const before = list.getSnapshot();
+  let fires = 0;
+  list.subscribe(() => {
+    fires += 1;
+  });
+  // Row 2 changes, row 1 is identical — a real change, so exactly one notify.
+  list.reconcile([
+    { id: "1", title: "a" },
+    { id: "2", title: "changed" },
+  ]);
+  expect(list.getSnapshot()).toBeGreaterThan(before);
+  expect(fires).toBe(1);
+  expect(list.rows.map((row: Readonly<Record<string, unknown>>) => row["title"])).toEqual([
+    "a",
+    "changed",
+  ]);
+});
+
+test("reconcile counts a dropped column as a change — the key-set diff still notifies", () => {
+  // The drop-stale-column behavior (store.test.ts:75) must keep counting as a change even though every
+  // Surviving value is equal: the key SET shrank, so getSnapshot moves and the listener fires.
+  const list = createList();
+  list.push({ id: "1", note: "old", title: "a" });
+  const before = list.getSnapshot();
+  let fires = 0;
+  list.subscribe(() => {
+    fires += 1;
+  });
+  // `note` is gone upstream; `title` is unchanged.
+  list.reconcile([{ id: "1", title: "a" }]);
+  expect(list.rows[0]).toEqual({ id: "1", title: "a" });
+  expect(list.getSnapshot()).toBeGreaterThan(before);
+  expect(fires).toBe(1);
+});
+
+test("reconcile notifies on a pure drop (a row vanished upstream) and a pure append (a brand-new row)", () => {
+  const list = createList();
+  list.push({ id: "1", title: "a" });
+  // A pure drop: id 1 is gone upstream.
+  const beforeDrop = list.getSnapshot();
+  list.reconcile([]);
+  expect(list.getSnapshot()).toBeGreaterThan(beforeDrop);
+  // A pure append: a brand-new id arrives.
+  const beforeAppend = list.getSnapshot();
+  list.reconcile([{ id: "2", title: "b" }]);
+  expect(list.getSnapshot()).toBeGreaterThan(beforeAppend);
+  expect(list.rows.map((row: Readonly<{ id: string }>) => row.id)).toEqual(["2"]);
+});
+
 test("reconcile patches in place (keeps identity), adds new + drops missing", () => {
   const newCount = 9;
   const list = createList();

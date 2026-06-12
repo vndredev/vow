@@ -72,6 +72,38 @@ function toRows(value: unknown): Row[] {
   return out;
 }
 
+/** Shallow row equality: same key set AND each key's value strictly equal. A dropped/added column changes
+ *  the key set (so `tests/store.test.ts:75` keeps counting as a change), and a `Row`'s values are flat
+ *  primitives, so `===` is exact — no deep walk needed. */
+function sameRow(left: Readonly<Row>, right: Readonly<Row>): boolean {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+  for (const key of leftKeys) {
+    if (!Object.hasOwn(right, key) || left[key] !== right[key]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** The outcome of patching/dropping ONE survivor row during a reconcile: which ids it consumed from the
+ *  fresh set (so a duplicate is not re-appended) and whether the array actually moved (so a no-op poll skips
+ *  the notify). */
+interface PatchStep {
+  readonly changed: boolean;
+  readonly consumed: readonly string[];
+}
+
+/** The outcome of the whole survivor walk: every consumed id and whether any survivor patch/drop changed the
+ *  array — reconcile ORs this with its appends to decide whether to notify. */
+interface SurvivorResult {
+  readonly changed: boolean;
+  readonly consumed: ReadonlySet<string>;
+}
+
 export interface Collection<T> {
   /** Append an item (optimistic; written through to the DB). */
   append(item: T): void;
@@ -162,16 +194,22 @@ export class ReactiveRows {
   }
 
   /** Reconcile the live array to `fresh` by id — patch each survivor in place, drop the missing, append
-   *  the brand-new — so identity is preserved and Vue diffs minimally. */
+   *  the brand-new — so identity is preserved and Vue diffs minimally. Notifies ONLY when something actually
+   *  differed (a patched value, a dropped row, an appended row): a 5s freshness poll that returns the live
+   *  rows byte-for-byte leaves `getSnapshot()` unchanged and fires no listener (no reactivity churn). */
   public reconcile(fresh: readonly Readonly<Row>[]): void {
-    const consumed = this.patchSurvivors(fresh);
+    const { changed: patched, consumed } = this.patchSurvivors(fresh);
+    let appended = false;
     for (const row of fresh) {
       // Skip a pending id: an in-flight optimistic delete is not re-added from a still-stale fetch.
       if (!consumed.has(row.id) && !this.pending.has(row.id)) {
         this.rows.push({ ...row });
+        appended = true;
       }
     }
-    this.notify();
+    if (patched || appended) {
+      this.notify();
+    }
   }
 
   /** Remove the row at `index` in place; returns its id (or `undefined` when the slot was empty). */
@@ -207,46 +245,58 @@ export class ReactiveRows {
   }
 
   /** Walk the live array high-to-low: patch each survivor in place, drop every row whose id is gone, and
-   *  return the set of ids that survived (so `reconcile` knows which `fresh` rows are brand-new). */
-  private patchSurvivors(fresh: readonly Readonly<Row>[]): ReadonlySet<string> {
+   *  return the set of ids that survived (so `reconcile` knows which `fresh` rows are brand-new) PLUS whether
+   *  any survivor's patch or drop actually changed the array — so reconcile can skip a no-op notify. */
+  private patchSurvivors(fresh: readonly Readonly<Row>[]): SurvivorResult {
     const byId = new Map(fresh.map((row) => [row.id, row]));
-    const consumed = new Set<string>();
+    const steps: PatchStep[] = [];
     for (let index = this.rows.length - 1; index >= 0; index -= 1) {
       const curId = this.rows.at(index)?.id ?? "";
-      for (const kept of this.patchOrDropAt(index, curId, byId.get(curId))) {
-        consumed.add(kept);
+      steps.push(this.patchOrDropAt(index, curId, byId.get(curId)));
+    }
+    const consumed = new Set<string>();
+    for (const step of steps) {
+      for (const id of step.consumed) {
+        consumed.add(id);
       }
     }
-    return consumed;
+    return { changed: steps.some((step) => step.changed), consumed };
   }
 
-  /** Patch the row at `index` from `next` (returning `[next.id]`), or drop it when `next` is absent
-   *  (returning `[]`). The single-element-list result keeps the caller free of an `undefined` literal.
-   *  A pending id (an in-flight optimistic write) is left untouched: when `next` is present its keys are not
-   *  overwritten (the update survives) and when `next` is absent the row is not dropped (the append survives),
-   *  but the id is still reported consumed so `reconcile` does not re-append a duplicate. */
-  private patchOrDropAt(index: number, id: string, next: Maybe<Readonly<Row>>): string[] {
+  /** Patch the row at `index` from `next` (consuming `next.id`), or drop it when `next` is absent (consuming
+   *  nothing). The consumed list keeps the caller free of an `undefined` literal; `changed` reports whether the
+   *  array actually moved (a real patch or a drop) so reconcile can skip a no-op notify. A pending id (an
+   *  in-flight optimistic write) is left untouched — when `next` is present its keys are not overwritten (the
+   *  update survives) and when `next` is absent the row is not dropped (the append survives) — and reports
+   *  `changed: false`, but the id is still consumed so `reconcile` does not re-append a duplicate. */
+  private patchOrDropAt(index: number, id: string, next: Maybe<Readonly<Row>>): PatchStep {
     if (this.pending.has(id)) {
-      return [id];
+      return { changed: false, consumed: [id] };
     }
     if (next) {
-      this.overwriteAt(index, next);
-      return [next.id];
+      return { changed: this.overwriteAt(index, next), consumed: [next.id] };
     }
     this.rows.splice(index, 1);
-    return [];
+    return { changed: true, consumed: [] };
   }
 
   /** Overwrite the row at `index` with `fresh` in place — clear its own keys first so a column dropped
-   *  upstream does not linger — keeping the row's identity. */
-  private overwriteAt(index: number, fresh: Readonly<Row>): void {
+   *  upstream does not linger — keeping the row's identity. Returns whether anything actually differed
+   *  (a value change OR a key-set change, e.g. a dropped column), so reconcile can skip a no-op notify on
+   *  a byte-identical poll. A shallow compare is exact for a `Row` (flat string-keyed primitives). */
+  private overwriteAt(index: number, fresh: Readonly<Row>): boolean {
     const target = this.rows.at(index);
-    if (target) {
+    if (!target) {
+      return false;
+    }
+    const differs = !sameRow(target, fresh);
+    if (differs) {
       for (const key of Object.keys(target)) {
         Reflect.deleteProperty(target, key);
       }
       Object.assign(target, fresh);
     }
+    return differs;
   }
 }
 

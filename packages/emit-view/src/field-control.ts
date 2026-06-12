@@ -1,5 +1,6 @@
 import type { Attr, FieldControl, ReadonlyField, UiNode } from "./types.ts";
 import { FIELD_KINDS } from "@vow/core";
+import { humanizeFieldName } from "@vow/component";
 import { quote } from "./helpers.ts";
 
 /** Vow's Select primitive over a fixed option list. */
@@ -11,7 +12,7 @@ function selectControl(field: ReadonlyField, model: string): UiNode {
     attrs: [
       { expr: model, kind: "model" },
       { expr: `[${opts}]`, kind: "bound", name: "options" },
-      { kind: "static", name: "label", value: field.name },
+      { kind: "static", name: "label", value: humanizeFieldName(field.name) },
     ],
     children: [],
     kind: "component",
@@ -25,7 +26,7 @@ function referenceControl(field: ReadonlyField, model: string): UiNode {
     attrs: [
       { expr: model, kind: "model" },
       { expr: `${field.name}Choices`, kind: "bound", name: "options" },
-      { kind: "static", name: "label", value: field.name },
+      { kind: "static", name: "label", value: humanizeFieldName(field.name) },
     ],
     children: [],
     kind: "component",
@@ -40,7 +41,7 @@ function dateControl(field: ReadonlyField, model: string): UiNode {
       { kind: "static", name: "class", value: "vow-input" },
       { kind: "static", name: "type", value: "date" },
       { expr: model, kind: "model" },
-      { kind: "static", name: "aria-label", value: field.name },
+      { kind: "static", name: "aria-label", value: humanizeFieldName(field.name) },
     ],
     children: [],
     kind: "element",
@@ -54,8 +55,8 @@ function longtextControl(field: ReadonlyField, model: string): UiNode {
     attrs: [
       { kind: "static", name: "class", value: "vow-input vow-textarea" },
       { expr: model, kind: "model" },
-      { kind: "static", name: "placeholder", value: field.name },
-      { kind: "static", name: "aria-label", value: field.name },
+      { kind: "static", name: "placeholder", value: humanizeFieldName(field.name) },
+      { kind: "static", name: "aria-label", value: humanizeFieldName(field.name) },
     ],
     children: [],
     kind: "element",
@@ -73,8 +74,8 @@ function inputControl(field: ReadonlyField, model: string): UiNode {
     attrs: [
       { kind: "static", name: "class", value: "vow-input" },
       modelAttr,
-      { kind: "static", name: "placeholder", value: field.name },
-      { kind: "static", name: "aria-label", value: field.name },
+      { kind: "static", name: "placeholder", value: humanizeFieldName(field.name) },
+      { kind: "static", name: "aria-label", value: humanizeFieldName(field.name) },
     ],
     children: [],
     kind: "element",

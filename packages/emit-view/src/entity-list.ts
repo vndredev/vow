@@ -7,7 +7,7 @@ import type {
   UiNode,
 } from "./types.ts";
 import { groupedLines, sliceComputed } from "./slice.ts";
-import { pascalCase, renderVueSfc } from "@vow/component";
+import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
 import { FIELD_KINDS } from "@vow/core";
 import { assertEmitEntity } from "./entity-guard.ts";
@@ -127,7 +127,7 @@ function cellContent(field: ReadonlyField): UiNode {
   return CELLS[FIELD_KINDS[field.type].cell](field);
 }
 
-/** A `<TableHead>` labelled `field.name`, scoped to its column. */
+/** A `<TableHead>` labelled by the humanized field name, scoped to its column. */
 function headCell(name: string): UiNode {
   return {
     attrs: [{ kind: "static", name: "scope", value: "col" }],
@@ -139,7 +139,7 @@ function headCell(name: string): UiNode {
 
 /** The header cells — one per field, plus a trailing empty cell over the delete column when enabled. */
 function headCells(entity: ReadonlyVow, actions: ListActions): UiNode[] {
-  const cells = entity.fields.map((field) => headCell(field.name));
+  const cells = entity.fields.map((field) => headCell(humanizeFieldName(field.name)));
   if (actions.delete) {
     cells.push({
       attrs: [{ kind: "static", name: "scope", value: "col" }],
