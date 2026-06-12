@@ -18,9 +18,9 @@ const SLUG_PAD = 8;
 
 const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is for people.)
 
-  vow serve [app...]   the central LOCAL hub — studio + docs + the /__vow control API under one
-                       supervised process (default: studio docs; "all" = every app). Background it
-                       yourself. The persistent MCP channel + the agent watch-loop join here next.
+  vow serve [app...]   the central LOCAL hub — studio + docs + the /__vow control API + the MCP
+                       channel (:5176/mcp) under one supervised process (default: studio docs;
+                       "all" = every app). Add --watch --yes to run the agent self-heal loop too.
   vow dev [app...]     run app(s) in the foreground, streaming combined logs (default: studio docs;
                        "all" = every app). Background it yourself — the harness, \`&\`, a supervisor.
   vow status [app...]  which app ports are responding (default: all)

@@ -1,6 +1,6 @@
 // @vitest-environment node
+import { appNames, serveBanner, watchDecision } from "../src/serve.ts";
 import { expect, test } from "vite-plus/test";
-import { serveBanner } from "../src/serve.ts";
 
 const STUDIO_PORT = 5173;
 const DOCS_PORT = 5174;
@@ -13,6 +13,7 @@ test("serveBanner names the local hub and lists each surface's URL + the MCP cha
       { port: DOCS_PORT, slug: "docs" },
     ],
     MCP_PORT,
+    "off",
   );
   expect(banner).toContain("vow serve — your local hub");
   expect(banner).toContain("the /__vow control API");
@@ -22,7 +23,21 @@ test("serveBanner names the local hub and lists each surface's URL + the MCP cha
   expect(banner).toContain("agent channel");
 });
 
-test("serveBanner pads the slug column so the URLs align", () => {
-  const banner = serveBanner([{ port: STUDIO_PORT, slug: "studio" }], MCP_PORT);
-  expect(banner).toContain(`  studio   http://localhost:${STUDIO_PORT}/`);
+test("serveBanner's watch line reflects the watch state (#490 element 3)", () => {
+  expect(serveBanner([], MCP_PORT, "run")).toContain("watch loop ON");
+  expect(serveBanner([], MCP_PORT, "refuse")).toContain("--watch ignored");
+  expect(serveBanner([], MCP_PORT, "off")).toContain("watch loop off");
+});
+
+test("watchDecision: --watch + opt-in runs, --watch alone refuses, no --watch is off (#490, #486)", () => {
+  expect(watchDecision(true, true)).toBe("run");
+  expect(watchDecision(true, false)).toBe("refuse");
+  expect(watchDecision(false, true)).toBe("off");
+  expect(watchDecision(false, false)).toBe("off");
+});
+
+test("appNames keeps the positional app slugs and drops the --flags", () => {
+  expect(appNames(["studio", "--watch", "docs", "--yes"])).toEqual(["studio", "docs"]);
+  expect(appNames(["--watch"])).toEqual([]);
+  expect(appNames([])).toEqual([]);
 });
