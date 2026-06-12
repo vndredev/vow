@@ -41,6 +41,20 @@ test("reconcile drops a key removed upstream — no stale column lingers", () =>
   expect(list.rows[0]).toEqual({ id: "1", title: "b" });
 });
 
+test("subscribe fires a listener on each mutation; the returned unsubscribe stops it", () => {
+  const list = createList();
+  const calls: string[] = [];
+  const off = list.subscribe(() => {
+    calls.push("fired");
+  });
+  list.push({ id: "1", title: "a" });
+  list.update("1", { title: "b" });
+  off();
+  // The post-unsubscribe push must not fire.
+  list.push({ id: "2", title: "c" });
+  expect(calls).toEqual(["fired", "fired"]);
+});
+
 test("parseIssuePlan carries a doing item's agent session (the open PR + url); omits a malformed one", () => {
   const plan = parseIssuePlan([
     {
