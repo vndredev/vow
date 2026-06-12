@@ -1007,6 +1007,9 @@ body {
   border-radius: var(--vow-radius-1);
   cursor: pointer;
 }
+.vow-select__trigger[data-placeholder] {
+  color: var(--vow-color-muted); /* dim the placeholder copy until a value is chosen */
+}
 .vow-select__trigger::after {
   content: "";
   flex: none;
