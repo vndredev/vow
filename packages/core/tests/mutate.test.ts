@@ -167,7 +167,7 @@ test("addForm rejects a typo'd `of` target synchronously (not deferred to the bu
     });
     expect(() => {
       addForm(dir, { intent: "Add a task", of: "tsak", slug: "add-task", submit: "Add task" });
-    }).toThrow(/form "add-task" of: "tsak" is not a known entity — known: task/u);
+    }).toThrow(/add_form: form "add-task" of: "tsak" is not a known entity — known: task/u);
     // The malformed form is never written.
     expect(loadVows(dir).some((vow: { readonly slug: string }) => vow.slug === "add-task")).toBe(
       false,
@@ -188,7 +188,7 @@ test("addForm rejects a hostile `of` (an injection key is neutralized, never ser
     const hostile = "task\nof: evil } drop";
     expect(() => {
       addForm(dir, { intent: "Add a task", of: hostile, slug: "add-task", submit: "Add task" });
-    }).toThrow(/is not a known entity/u);
+    }).toThrow(/add_form: form "add-task" of: "task/u);
     // No file was written, so no hostile bytes reached any `.md`.
     expect(loadVows(dir)).toHaveLength(1);
     expect(loadVows(dir)[0]?.slug).toBe("task");
@@ -241,7 +241,7 @@ test("addEntity rejects duplicate names in its initial fields", () => {
         intent: "A task",
         slug: "task",
       });
-    }).toThrow(/add_field: "task" already has a field "title"/u);
+    }).toThrow(/add_entity: "task" already has a field "title"/u);
     // The entity is never written.
     expect(loadVows(dir)).toHaveLength(0);
   } finally {
