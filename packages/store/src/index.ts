@@ -114,12 +114,25 @@ export class ReactiveRows {
     return this.revision;
   }
 
-  /** Subscribe to mutations; returns the unsubscribe. The neutral observer seam for the #101 adapters. */
+  /** Subscribe to mutations; returns the unsubscribe. The neutral observer seam for the #101 adapters.
+   *  This is the `subscribe` half of React's `useSyncExternalStore(subscribe, getSnapshot)` and what a Solid
+   *  signal re-reads from — framework-free (a plain listener `Set`), so no framework is imported here. */
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  /** The current snapshot — the `getSnapshot` half of `useSyncExternalStore(subscribe, getSnapshot)`. It is
+   *  the rising revision token (a number), so it is **referentially stable between mutations**: repeated calls
+   *  with no mutation in between return the identical primitive, which is the invariant `useSyncExternalStore`
+   *  requires (an unstable snapshot loops React forever). The store mutates its `rows` in place to keep array +
+   *  row identity (the `reference` dropdowns rely on it), so this token — not the array — is what changes on a
+   *  mutation; a binding reads the token to know to re-pull `rows`. Pairs with `subscribe` above; same value as
+   *  `version`, named for the framework contract. */
+  public getSnapshot(): number {
+    return this.revision;
   }
 
   /** Mark `id` as having an optimistic write in flight, so the freshness poll skips it until the write

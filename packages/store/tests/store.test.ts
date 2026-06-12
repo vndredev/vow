@@ -92,11 +92,46 @@ test("subscribe fires a listener on each mutation; the returned unsubscribe stop
   expect(calls).toEqual(["fired", "fired"]);
 });
 
-test("version rises on each mutation — the snapshot token a binding compares", () => {
+test("subscribe fires on every mutation KIND — push, reconcile, update, removeById, removeAt", () => {
+  // The framework-neutral seam (useSyncExternalStore subscribe / a Solid signal) must wake on each path.
+  const expectedFires = 6;
   const list = createList();
-  const before = list.version;
+  let fires = 0;
+  list.subscribe(() => {
+    fires += 1;
+  });
+  // One mutation of each kind: append, freshness pull, patch by id, append, delete by id, delete by index.
+  const mutate = (): void => {
+    list.push({ id: "1", title: "a" });
+    list.reconcile([{ id: "1", title: "b" }]);
+    list.update("1", { title: "c" });
+    list.push({ id: "2", title: "d" });
+    list.removeById("2");
+    list.removeAt(0);
+  };
+  mutate();
+  expect(fires).toBe(expectedFires);
+});
+
+test("getSnapshot is referentially stable BETWEEN mutations — the useSyncExternalStore invariant", () => {
+  // UseSyncExternalStore loops forever if getSnapshot returns a fresh value with no mutation in between.
+  const list = createList();
+  const before = list.getSnapshot();
+  expect(list.getSnapshot()).toBe(before);
+  // A mutation moves the snapshot; a fresh read after it is stable again.
   list.push({ id: "1", title: "a" });
-  expect(list.version).toBeGreaterThan(before);
+  const after = list.getSnapshot();
+  expect(after).not.toBe(before);
+  expect(list.getSnapshot()).toBe(after);
+});
+
+test("getSnapshot rises on each mutation and equals version — the snapshot token a binding compares", () => {
+  const list = createList();
+  const before = list.getSnapshot();
+  list.push({ id: "1", title: "a" });
+  expect(list.getSnapshot()).toBeGreaterThan(before);
+  // GetSnapshot and version are the same token, named for the framework contract.
+  expect(list.getSnapshot()).toBe(list.version);
 });
 
 test("parseIssuePlan carries a doing item's agent session (the open PR + url); omits a malformed one", () => {
