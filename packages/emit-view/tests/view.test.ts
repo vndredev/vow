@@ -148,6 +148,20 @@ test("emitForm renders a labelled, zod-validated form bound to an entity", () =>
   ]);
 });
 
+test("a Select field forwards the field id as control-id so the label points at the trigger", () => {
+  const entity: Vow = {
+    ...taskEntity,
+    fields: [{ name: "status", options: ["todo", "done"], required: false, type: "select" }],
+  };
+  const sfc = emitForm(addTaskForm, new Map([["task", entity]]));
+  // Both the Field's `for` and the Select's `control-id` are `statusId`: the once-dangling label-for now points at the real combobox trigger (click-to-focus + a programmatic label association).
+  expectContains(sfc, [
+    '<Field label="status" :control-id="statusId" :error="errors.status">',
+    ':control-id="statusId"',
+    'import Select from "./Select.vue";',
+  ]);
+});
+
 test("emitForm fails fast when its `of` is not a known entity", () => {
   expect(() => emitForm(addTaskForm, new Map())).toThrow(/not a known entity/u);
 });

@@ -19,10 +19,17 @@ function errorNode(name: string): UiNode {
 }
 
 /**
- * Wire a native control to its field: the shared id (for the label), aria-describedby, aria-invalid. A
- * Select component keeps its own aria-label, so it's returned unchanged.
+ * Wire a control to its field. A native element takes the shared id (so the `<label for>` lines up),
+ * aria-describedby and aria-invalid. A Select component takes the same id as `control-id`, which it forwards
+ * to its trigger — so the label's `for` points at the real combobox (click-to-focus + association).
  */
 function withControlId(control: UiNode, name: string): UiNode {
+  if (control.kind === "component") {
+    return {
+      ...control,
+      attrs: [...control.attrs, { expr: `${name}Id`, kind: "bound", name: "control-id" }],
+    };
+  }
   if (control.kind !== "element") {
     return control;
   }
