@@ -74,7 +74,7 @@ test("an interp leaf becomes JSX's {expr}", () => {
   expect(renderReactView(node, 0)).toBe("{item.title}");
 });
 
-test("an event attr becomes a React handler prop: @click -> onClick={() => add}", () => {
+test("a call-expr event wraps in an arrow: @click=add(item) -> onClick={() => add(item)}", () => {
   const node: UiNode = {
     attrs: [{ expr: "add(item)", kind: "event", name: "click" }],
     children: [{ kind: "text", text: "Add" }],
@@ -92,6 +92,73 @@ test("a multi-word event capitalizes only the first letter: dragstart -> onDragS
     name: "Card",
   };
   expect(renderReactView(node, 0)).toBe(`<Card onDragStart={() => pick(item)} />`);
+});
+
+test("a bare-identifier event passes the handler straight: @click=cycle -> onClick={cycle} (#421)", () => {
+  // The arrow-wrap used to RETURN the handler without calling it (onClick={() => cycle} never fires).
+  const node: UiNode = {
+    attrs: [{ expr: "cycle", kind: "event", name: "click" }],
+    children: [{ kind: "text", text: "Toggle" }],
+    kind: "element",
+    tag: "button",
+  };
+  expect(renderReactView(node, 0)).toBe(`<button onClick={cycle}>Toggle</button>`);
+});
+
+test("a .prevent modifier becomes preventDefault + the expr as a statement (#421)", () => {
+  // The form submit (form.ts): @submit.prevent="submit" must call preventDefault, not full-page reload.
+  const node: UiNode = {
+    attrs: [{ expr: "submit", kind: "event", modifiers: ["prevent"], name: "submit" }],
+    children: [],
+    kind: "element",
+    tag: "form",
+  };
+  expect(renderReactView(node, 0)).toBe(
+    `<form onSubmit={(event) => { event.preventDefault(); submit; }} />`,
+  );
+});
+
+test("an arrow-key modifier becomes an event.key guard: @keydown.left / .right (#421)", () => {
+  // The board (entity-board.ts): each arrow key must guard so left and right do not both fire.
+  const left: UiNode = {
+    attrs: [{ expr: "moveCard(item, -1)", kind: "event", modifiers: ["left"], name: "keydown" }],
+    children: [],
+    kind: "component",
+    name: "Card",
+  };
+  expect(renderReactView(left, 0)).toBe(
+    `<Card onKeyDown={(event) => { if (event.key === "ArrowLeft") { moveCard(item, -1); } }} />`,
+  );
+  const right: UiNode = {
+    attrs: [{ expr: "moveCard(item, 1)", kind: "event", modifiers: ["right"], name: "keydown" }],
+    children: [],
+    kind: "component",
+    name: "Card",
+  };
+  expect(renderReactView(right, 0)).toBe(
+    `<Card onKeyDown={(event) => { if (event.key === "ArrowRight") { moveCard(item, 1); } }} />`,
+  );
+});
+
+test("an empty event expr throws loudly — never renders an invalid onX={() => } (#421)", () => {
+  // The board's @dragover.prevent="" (entity-board.ts:118): an empty expr is invalid JSX, so it throws.
+  const node: UiNode = {
+    attrs: [{ expr: "", kind: "event", modifiers: ["prevent"], name: "dragover" }],
+    children: [],
+    kind: "element",
+    tag: "div",
+  };
+  expect(() => renderReactView(node, 0)).toThrow("empty expr");
+});
+
+test("an untranslated event modifier throws loudly rather than dropping it (#421)", () => {
+  const node: UiNode = {
+    attrs: [{ expr: "go()", kind: "event", modifiers: ["stop"], name: "click" }],
+    children: [],
+    kind: "element",
+    tag: "button",
+  };
+  expect(() => renderReactView(node, 0)).toThrow("untranslatable to React");
 });
 
 test("a v-if conditional wraps the node as {expr && (node)}", () => {
@@ -121,6 +188,19 @@ test("a v-for loop maps the node and keys the inner element's opener", () => {
     `  <li className="row" key={row.id}>{row.title}</li>`,
     `))}`,
   ].join("\n");
+  expect(renderReactView(node, 0)).toBe(expected);
+});
+
+test("a v-for with an index binds it in the map callback: (e, i) => key={i} (#422)", () => {
+  // Mirrors timeline.ts:100 (index: "i", key: "i") — without the index, `i` was an unbound identifier.
+  const node: UiNode = {
+    attrs: [],
+    children: [{ expr: "e.label", kind: "interp" }],
+    for: { as: "e", each: "g.items", index: "i", key: "i" },
+    kind: "element",
+    tag: "li",
+  };
+  const expected = [`{g.items.map((e, i) => (`, `  <li key={i}>{e.label}</li>`, `))}`].join("\n");
   expect(renderReactView(node, 0)).toBe(expected);
 });
 
@@ -248,7 +328,7 @@ const EXPECTED_COUNTER = [
   `  };`,
   ``,
   `  return (`,
-  `    <button onClick={() => bump}>{doubled}</button>`,
+  `    <button onClick={bump}>{doubled}</button>`,
   `  );`,
   `}`,
   ``,
@@ -291,6 +371,33 @@ test("renderReactSfc narrows its throw to a RAW setup string (the #101 follow-up
     view: { attrs: [], children: [], kind: "element", tag: "div" },
   };
   expect(() => renderReactSfc(stateful)).toThrow("#101 follow-up");
+});
+
+test("renderReactSfc throws on a declared-state `.value` read — Vue idiom, untranslatable (#423)", () => {
+  // The Vue fixture (render-vue.test.ts) reads `count.value`; fed to React it would be undefined.value
+  // (NaN). The interim seam throws loudly, scoped to declared state/computed names — not silent broken React.
+  const vueIdiom: Component = {
+    name: "Counter",
+    setup: [
+      { init: "0", kind: "state", name: "count" },
+      { expr: "count.value * 2", kind: "computed", name: "doubled" },
+    ],
+    view: { attrs: [], children: [{ expr: "doubled", kind: "interp" }], kind: "element", tag: "p" },
+  };
+  expect(() => renderReactSfc(vueIdiom)).toThrow(`"count.value"`);
+});
+
+test("renderReactSfc allows a legit non-state `.value` (e.target.value is DOM code, not state) (#423)", () => {
+  // The guard is scoped to DECLARED reactive names — a handler reading `e.target.value` is legitimate.
+  const domRead: Component = {
+    name: "Field",
+    setup: [
+      { init: "''", kind: "state", name: "text" },
+      { body: ["setText(e.target.value);"], kind: "handler", name: "onInput", params: "e" },
+    ],
+    view: { attrs: [], children: [{ expr: "text", kind: "interp" }], kind: "element", tag: "p" },
+  };
+  expect(() => renderReactSfc(domRead)).not.toThrow();
 });
 
 test("a bound attr name that would forge a directive is rejected in the React adapter (#305)", () => {

@@ -10,9 +10,10 @@ import { escapeHtml } from "./escape.ts";
  *
  * Scope is structural — mirroring render-node.ts / render-attr.ts: element (tag; class -> className,
  * for -> htmlFor), component (PascalCase name), text (escaped via escapeHtml), interp ({expr}), static
- * attrs (name="value"), bound attrs (name={expr}), event attrs (@click -> onClick={() => expr}),
- * conditionals (v-if -> {expr && (node)}), loops (the for {as, each, key} -> {each.map((as) => node)}),
- * and slots ({children}). The setup/script + data-layer translation stays the strategic follow-up;
+ * attrs (name="value"), bound attrs (name={expr}), event attrs (@click="bump" -> onClick={bump}, a
+ * call expr wrapped in an arrow, .prevent / arrow-key modifiers translated), conditionals (v-if ->
+ * {expr && (node)}), loops (the for {as, index, each, key} -> {each.map((as, index) => node)}), and
+ * slots ({children}). The setup/script + data-layer translation stays the strategic follow-up;
  * model attrs, spread attrs, and raw nodes still throw loudly rather than render half a feature.
  */
 
@@ -86,9 +87,78 @@ function reactEventName(name: string): string {
   return `on${REACT_EVENT_NAMES.get(name) ?? capitalize(name)}`;
 }
 
-/** An event attr as a JSX handler prop: `@click="add"` -> `onClick={() => add}` (modifiers ignored). */
+/** A bare identifier expr (`bump`, `cycle`) — passed straight as the handler, never wrapped or called. */
+const BARE_IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
+
+/** Vue arrow-key modifiers (`@keydown.left`) -> the `event.key` they guard on in React. */
+const KEY_MODIFIERS = new Map([
+  ["left", "ArrowLeft"],
+  ["right", "ArrowRight"],
+]);
+
+/** The handler body for an expr that is a bare statement: `add(item)` -> `add(item);`. */
+function statementOf(expr: string): string {
+  return `${expr};`;
+}
+
+/** `.prevent` -> an arrow that calls `preventDefault` then runs the expr as a statement. */
+function preventBody(expr: string): string {
+  return `(event) => { event.preventDefault(); ${statementOf(expr)} }`;
+}
+
+/** `.left`/`.right` -> an arrow guarding the matching arrow key, then running the expr as a statement. */
+function keyGuardBody(key: string, expr: string): string {
+  return `(event) => { if (event.key === "${key}") { ${statementOf(expr)} } }`;
+}
+
+/**
+ * The handler value for an event attr with exactly one modifier — `.prevent` or an arrow key
+ * (`.left`/`.right`). Any other modifier is untranslated and throws loudly (never a silent drop).
+ */
+function modifiedHandler(modifier: string, expr: string): string {
+  if (modifier === "prevent") {
+    return preventBody(expr);
+  }
+  const key = KEY_MODIFIERS.get(modifier);
+  if (defined(key)) {
+    return keyGuardBody(key, expr);
+  }
+  throw new Error(
+    `component: event modifier "${modifier}" is untranslatable to React (a #101 follow-up)`,
+  );
+}
+
+/** The handler value for a modifier-free expr: a bare ref is passed straight, else wrapped in an arrow. */
+function plainHandler(expr: string): string {
+  if (BARE_IDENTIFIER.test(expr)) {
+    return expr;
+  }
+  return `() => ${expr}`;
+}
+
+/**
+ * An event attr as a JSX handler prop. A bare-identifier expr passes straight (`onClick={bump}` — the
+ * arrow-wrap used to RETURN the handler without calling it); a call expr wraps in an arrow; a `.prevent`
+ * or arrow-key modifier translates to its React equivalent. An empty expr or unknown modifier throws
+ * loudly — the adapter never renders an invalid `onX={() => }` or silently drops a modifier.
+ */
 function renderReactEvent(attr: EventAttr): string {
-  return `${reactEventName(attr.name)}={() => ${attr.expr}}`;
+  if (attr.expr === "") {
+    throw new Error(
+      `component: event "${attr.name}" has an empty expr — nothing to handle (a #101 follow-up)`,
+    );
+  }
+  const modifiers = attr.modifiers ?? [];
+  if (modifiers.length === 0) {
+    return `${reactEventName(attr.name)}={${plainHandler(attr.expr)}}`;
+  }
+  const [modifier] = modifiers;
+  if (modifiers.length === 1 && defined(modifier)) {
+    return `${reactEventName(attr.name)}={${modifiedHandler(modifier, attr.expr)}}`;
+  }
+  throw new Error(
+    `component: event "${attr.name}" has multiple modifiers — untranslatable to React (a #101 follow-up)`,
+  );
 }
 
 /** Render one in-scope attribute as JSX: static `name="value"`, bound `name={expr}`, event `onX={...}`. */
@@ -103,7 +173,7 @@ function renderReactAttr(attr: Attr): string {
   if (attr.kind === "event") {
     return renderReactEvent(attr);
   }
-  throw new Error(`render-react: attribute kind "${attr.kind}" is out of scope (a #101 follow-up)`);
+  throw new Error(`component: attribute kind "${attr.kind}" is out of scope (a #101 follow-up)`);
 }
 
 /** A node's conditional (`v-if`) attr, if present — the one attr that wraps the node, not its tag. */
@@ -216,9 +286,17 @@ function wrapConditional(cond: ConditionalAttr, inner: string, depth: number): s
   return braceWrap({ head: `${cond.expr} &&`, tail: "" }, inner, depth);
 }
 
-/** A looped host as React's `{each.map((as) => (node))}` — the `:key` rides the inner element's opener. */
+/** The map callback params for a loop: the item binding, plus the index binding when the loop names one. */
+function loopParams(loop: Loop): string {
+  if (defined(loop.index)) {
+    return `${loop.as}, ${loop.index}`;
+  }
+  return loop.as;
+}
+
+/** A looped host as React's `{each.map((as, i) => (node))}` — the `:key` rides the inner element's opener. */
 function wrapLoop(loop: Loop, inner: string, depth: number): string {
-  return braceWrap({ head: `${loop.each}.map((${loop.as}) =>`, tail: ")" }, inner, depth);
+  return braceWrap({ head: `${loop.each}.map((${loopParams(loop)}) =>`, tail: ")" }, inner, depth);
 }
 
 /** A slot outlet as React's `{children}` — the slot maps to the universal `children` prop. */
@@ -269,5 +347,5 @@ export function renderReactView(node: UiNode, depth: number): string {
   if (node.kind === "element" || node.kind === "component") {
     return renderHost(node, depth, renderReactView);
   }
-  throw new Error(`render-react: node kind "${node.kind}" is out of scope (a #101 follow-up)`);
+  throw new Error(`component: node kind "${node.kind}" is out of scope (a #101 follow-up)`);
 }
