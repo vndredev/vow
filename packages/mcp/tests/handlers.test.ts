@@ -171,3 +171,94 @@ test("studio_info publishes the view-node vocabulary so the LLM sees the valid t
     expect(types).not.toContain("nope");
   });
 });
+
+test("add_view threads root/title/shell so the LLM can create the bootable root page", async () => {
+  await withHarness(async ({ call }) => {
+    const added = await call("add_view", {
+      intent: "The home",
+      root: true,
+      shell: { nav: "sidebar-left", width: "center" },
+      slug: "home",
+      title: "My App",
+      view: [{ type: "hero", value: { title: "Hi" } }],
+    });
+    expect(added).toBe('added view "home"');
+    const vow = await call("get_vow", { slug: "home" });
+    expect(fieldOf(vow, "title")).toBe("My App");
+    expect(vow).toContain('"root": true');
+    expect(vow).toContain("sidebar-left");
+  });
+});
+
+test("set_view replaces a page's view in place, preserving its nav", async () => {
+  await withHarness(async ({ call }) => {
+    await call("add_view", {
+      intent: "The home",
+      nav: { label: "Home" },
+      slug: "home",
+      view: [{ type: "hero", value: { title: "Old" } }],
+    });
+    const set = await call("set_view", {
+      slug: "home",
+      view: [{ type: "hero", value: { title: "New" } }],
+    });
+    expect(set).toBe('set view of "home"');
+    const vow = await call("get_vow", { slug: "home" });
+    expect(vow).toContain("New");
+    expect(vow).not.toContain("Old");
+    // The nav survived the in-place edit (no delete-and-recreate).
+    expect(vow).toContain("Home");
+  });
+});
+
+test("set_form edits a form's submit/edit in place (the singleton-editor flag)", async () => {
+  await withHarness(async ({ call }) => {
+    await call("add_form", { intent: "Add a task", of: "task", slug: "add-task", submit: "Add" });
+    const set = await call("set_form", { edit: true, slug: "add-task", submit: "Save" });
+    expect(set).toBe('set form of "add-task"');
+    const vow = await call("get_vow", { slug: "add-task" });
+    expect(vow).toContain("Save");
+    expect(vow).toContain("edit");
+  });
+});
+
+test("add_form carries edit: true so the LLM can author the singleton editor", async () => {
+  await withHarness(async ({ call }) => {
+    const added = await call("add_form", {
+      edit: true,
+      intent: "Edit the task",
+      of: "task",
+      slug: "edit-task",
+      submit: "Save",
+    });
+    expect(added).toBe('added form "edit-task"');
+    expect(await call("get_vow", { slug: "edit-task" })).toContain("edit");
+  });
+});
+
+test("set_seed writes spec-traveling fixture data that bootstraps into a fresh table", async () => {
+  await withHarness(async ({ call }) => {
+    const set = await call("set_seed", {
+      entity: "task",
+      seed: [{ title: "Seeded A" }, { title: "Seeded B" }],
+    });
+    expect(set).toBe('set seed of "task"');
+    // `syncDb` re-bootstraps into the (empty) table — the seed lands as live records.
+    const rows = await call("list_records", { entity: "task" });
+    expect(rows).toContain("Seeded A");
+    expect(rows).toContain("Seeded B");
+  });
+});
+
+test("set_field renames a column and the stored record data follows the rename", async () => {
+  await withHarness(async ({ call }) => {
+    const id = await addTask(call, "Carry me");
+    const set = await call("set_field", { entity: "task", field: "title", name: "name" });
+    expect(set).toBe('set field "title" on "task"');
+    // The vow's field was renamed.
+    expect(await call("get_vow", { slug: "task" })).toContain("name");
+    // The stored row's data followed the column rename (ALTER TABLE ... RENAME COLUMN), not orphaned.
+    const row = await call("get_record", { entity: "task", id });
+    expect(fieldOf(row, "name")).toBe("Carry me");
+  });
+});

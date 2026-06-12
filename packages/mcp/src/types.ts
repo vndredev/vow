@@ -61,21 +61,43 @@ export interface EntitySpec {
   readonly slug: string;
 }
 
-/** A new view's spec — the parsed `add_view` input adapted to the core write API. */
+/** A new view's spec — the parsed `add_view` input adapted to the core write API. `root` designates the
+ *  app's entry page; `title` is the app-shell brand; `shell` is the chrome layout (both on the root). */
 export interface ViewSpec {
   readonly intent: string;
   readonly nav: Maybe<ReadonlyVow["nav"]>;
+  readonly root: Maybe<boolean>;
+  readonly shell: Maybe<ReadonlyVow["shell"]>;
   readonly slug: string;
+  readonly title: Maybe<string>;
   readonly view: readonly ViewNode[];
 }
 
-/** A new form's spec — the parsed `add_form` input adapted to the core write API. */
+/** A new form's spec — the parsed `add_form` input adapted to the core write API. `edit: true` makes it
+ *  a singleton editor (pre-loads the entity's latest row + updates it in place). */
 export interface FormSpec {
+  readonly edit: Maybe<boolean>;
   readonly intent: string;
   readonly nav: Maybe<ReadonlyVow["nav"]>;
   readonly of: string;
   readonly slug: string;
   readonly submit: string;
+}
+
+/** A form patch — the parsed `set_form` input (edit `of`/`submit`/`edit` in place). */
+export interface FormPatch {
+  readonly edit: Maybe<boolean>;
+  readonly of: Maybe<string>;
+  readonly submit: Maybe<string>;
+}
+
+/** A field patch — the parsed `set_field` input (rename · retype · toggle required · edit options/ref). */
+export interface FieldPatch {
+  readonly name: Maybe<string>;
+  readonly options: Maybe<readonly string[]>;
+  readonly ref: Maybe<string>;
+  readonly required: Maybe<boolean>;
+  readonly type: Maybe<ReadonlyField["type"]>;
 }
 
 /** A one-field record patch — the parsed `set_record_field` input. */
@@ -110,6 +132,14 @@ export interface Studio {
   readonly dropField: (entity: string, field: string) => void;
   /** Drop a vow (its `.md`). */
   readonly dropVow: (slug: string) => void;
+  /** Edit a field on an entity in place + re-derive the DB schema (a rename carries the column data). */
+  readonly editField: (entity: string, name: string, patch: FieldPatch) => void;
+  /** Edit a form's `of`/`submit`/`edit` in place. */
+  readonly editForm: (slug: string, patch: FormPatch) => void;
+  /** Replace an entity's versioned `## seed` records + re-derive the DB (re-bootstrap into an empty table). */
+  readonly editSeed: (entity: string, seed: readonly Readonly<Row>[]) => void;
+  /** Replace a vow's `## view` (the page tree) in place. */
+  readonly editView: (slug: string, view: readonly ViewNode[]) => void;
   /** Every `emit entity` vow's slug, freshly loaded. */
   readonly entitySlugs: () => readonly string[];
   /** Get one record by id — absent when none. */

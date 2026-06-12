@@ -19,6 +19,21 @@ import { writeVow } from "./serialize.ts";
 type Field = ReadonlyVow["fields"][number];
 /** A view node, read-only to its leaves (the page-building input shape). */
 type ViewNode = NonNullable<ReadonlyVow["view"]>[number];
+/** A seed record, read-only to its leaves (the `## seed` input shape). */
+type SeedRecord = NonNullable<ReadonlyVow["seed"]>[number];
+/**
+ * A field patch — every key the LLM may edit in place (rename · retype · toggle required · edit the
+ * select options / reference target). An omitted key keeps its current value; a present key overwrites.
+ * Each key carries `| undefined` so an all-optional caller (the MCP studio) is assignable under
+ * `exactOptionalPropertyTypes`.
+ */
+interface FieldPatch {
+  readonly name?: string | undefined;
+  readonly options?: readonly string[] | undefined;
+  readonly ref?: string | undefined;
+  readonly required?: boolean | undefined;
+  readonly type?: Field["type"] | undefined;
+}
 /** A draft vow — a readonly structure passed to `Vow.parse` (which validates and freezes the shape). */
 type Draft = Omit<ReadonlyVow, "children" | "id">;
 /** A vow's nav entry — label · icon · order · group (the surface `setNav` patches). */
@@ -113,8 +128,8 @@ export function addView(
     readonly intent: string;
     readonly view: readonly ViewNode[];
     readonly nav?: ReadonlyVow["nav"];
-    readonly root?: boolean;
-    readonly title?: string;
+    readonly root?: boolean | undefined;
+    readonly title?: string | undefined;
     readonly shell?: ReadonlyVow["shell"];
   },
 ): Vow {
@@ -144,7 +159,8 @@ function assertFormTarget(appDir: string, slug: string, of: string): void {
   }
 }
 
-/** Add a new `emit form` vow (a bound, validated `## form` over an entity). */
+/** Add a new `emit form` vow (a bound, validated `## form` over an entity). `edit: true` makes it a
+ *  singleton editor — it pre-loads the entity's latest row and updates it in place. */
 export function addForm(
   appDir: string,
   opts: {
@@ -152,19 +168,50 @@ export function addForm(
     readonly intent: string;
     readonly of: string;
     readonly submit: string;
+    readonly edit?: boolean | undefined;
     readonly nav?: ReadonlyVow["nav"];
   },
 ): Vow {
   assertFormTarget(appDir, opts.slug, opts.of);
   return create(appDir, {
     fields: [],
-    form: { of: opts.of, submit: opts.submit },
+    form: { edit: opts.edit, of: opts.of, submit: opts.submit },
     fulfills: { as: "form", kind: "emit" },
     intent: opts.intent,
     nav: opts.nav,
     proof: [],
     slug: opts.slug,
   });
+}
+
+/** A form's current shape (the `## form` block), read-only to its leaves. */
+type Form = NonNullable<ReadonlyVow["form"]>;
+/**
+ * A form patch — `of` (the bound entity), `submit` (the button label), `edit` (singleton-editor mode).
+ * An omitted key keeps its current value; a present key overwrites. Each key carries `| undefined` so an
+ * all-optional caller (the MCP studio) is assignable under `exactOptionalPropertyTypes`.
+ */
+interface FormPatch {
+  readonly edit?: boolean | undefined;
+  readonly of?: string | undefined;
+  readonly submit?: string | undefined;
+}
+
+/** Merge a form patch over the existing block — an omitted key keeps its value, a present one overwrites. */
+function mergeForm(form: Form | undefined, patch: FormPatch): Form {
+  return {
+    edit: patch.edit ?? form?.edit,
+    of: patch.of ?? form?.of,
+    submit: patch.submit ?? form?.submit ?? "Submit",
+  };
+}
+
+/** Edit an `emit form`'s `of`/`submit`/`edit` in place. Re-validates a changed `of` against the tree. */
+export function setForm(appDir: string, slug: string, patch: FormPatch): Vow {
+  if (defined(patch.of)) {
+    assertFormTarget(appDir, slug, patch.of);
+  }
+  return replace(appDir, slug, (vow) => ({ ...vow, form: mergeForm(vow.form, patch) }));
 }
 
 /** Add a field to an entity — rejects a non-entity target and a duplicate field name. */
@@ -183,6 +230,68 @@ export function removeField(appDir: string, slug: string, fieldName: string): Vo
     ...vow,
     fields: vow.fields.filter((field) => field.name !== fieldName),
   }));
+}
+
+/** The `options`/`ref` carried by a patched field — kept only for the type that uses them, so a retype
+ *  away from `select`/`reference` drops the now-meaningless value (the canonical shape `Field` validates). */
+function typeBound(
+  type: Field["type"],
+  field: Field,
+  patch: FieldPatch,
+): { options?: readonly string[] | undefined; ref?: string | undefined } {
+  if (type === "select") {
+    return { options: patch.options ?? field.options };
+  }
+  if (type === "reference") {
+    return { ref: patch.ref ?? field.ref };
+  }
+  return {};
+}
+
+/** Merge a field patch over an existing field — an omitted key keeps its value, a present one overwrites;
+ *  `options`/`ref` survive only when the resulting type still uses them (else a retype strands them). */
+function patchField(field: Field, patch: FieldPatch): Field {
+  const type = patch.type ?? field.type;
+  return {
+    name: patch.name ?? field.name,
+    required: patch.required ?? field.required,
+    type,
+    ...typeBound(type, field, patch),
+  };
+}
+
+/**
+ * Edit a field on an entity in place by name — rename, retype, toggle `required`, or edit the select
+ * options / reference target. Rejects a non-entity target and a rename that collides with another field.
+ * (The DB-column follow on a rename lives a layer up, in the studio — this writes only the vow.) The
+ * 4-arg shape (appDir, slug, name, patch) is the seam every caller binds to — grouping would ripple.
+ */
+// eslint-disable-next-line max-params
+export function setField(appDir: string, slug: string, name: string, patch: FieldPatch): Vow {
+  return replace(appDir, slug, (vow) => {
+    assertEmitEntity("set_field", vow);
+    const fields = vow.fields.map((field) => {
+      if (field.name === name) {
+        return patchField(field, patch);
+      }
+      return field;
+    });
+    assertFieldsUnique(slug, fields);
+    return { ...vow, fields };
+  });
+}
+
+/** Replace an entity's versioned `## seed` records (the data that travels with the spec). */
+export function setSeed(appDir: string, slug: string, seed: readonly SeedRecord[]): Vow {
+  return replace(appDir, slug, (vow) => {
+    assertEmitEntity("set_seed", vow);
+    return { ...vow, seed };
+  });
+}
+
+/** Replace a vow's `## view` (the page tree) in place — the inverse of `addView`'s `view`. */
+export function setView(appDir: string, slug: string, view: readonly ViewNode[]): Vow {
+  return replace(appDir, slug, (vow) => ({ ...vow, view }));
 }
 
 /** Set a vow's intent (the `# …` promise). */

@@ -1,6 +1,15 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type ReadonlyField, type ReadonlyVow, isRecord } from "@vow/core";
-import { bootstrap, insert, list, migrate, openDb, remove, update } from "../src/db.ts";
+import {
+  bootstrap,
+  insert,
+  list,
+  migrate,
+  openDb,
+  remove,
+  renameColumn,
+  update,
+} from "../src/db.ts";
 import { expect, test } from "vite-plus/test";
 import path from "node:path";
 import { readFileSync } from "node:fs";
@@ -61,6 +70,20 @@ test("insert + list round-trips — boolean as a real JS bool, number as a numbe
   expect(got?.["rank"]).toBe(RANK);
   // The default is the first select option.
   expect(got?.["status"]).toBe("todo");
+});
+
+test("renameColumn carries the stored data to the new column name (so a rename is non-destructive)", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  insert(db, task, { title: "Carry me" });
+  renameColumn(db, "task", "title", "name");
+  // A no-op when source/target are equal or the source column is absent.
+  renameColumn(db, "task", "name", "name");
+  renameColumn(db, "task", "ghost", "phantom");
+  expect(columnNames(db, "task")).toEqual(["id", "name", "done", "rank", "status"]);
+  // The stored value followed the rename — read it back under the new column name.
+  const renamed = entity("task", [{ name: "name", required: true, type: "text" }]);
+  expect(list(db, renamed)[0]?.["name"]).toBe("Carry me");
 });
 
 test("update patches only known fields (a stray key is dropped); remove deletes", () => {
