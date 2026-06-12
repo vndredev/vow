@@ -140,7 +140,7 @@ function assertNoDuplicate(values: readonly string[], noun: (value: string) => s
   const seen = new Set<string>();
   for (const value of values) {
     if (seen.has(value)) {
-      throw new Error(`@vow/docs: two content files map to the same ${noun(value)}.`);
+      throw new Error(`docs: two content files map to the same ${noun(value)}.`);
     }
     seen.add(value);
   }
