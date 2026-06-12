@@ -1,7 +1,7 @@
 import { LAYOUT_SUFFIX, ROUTES_EXPORT, ROUTES_SUFFIX } from "@vow/emit-view";
 import { buildLlms, buildSidebar, docSlug, generateDocs, routePath } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { cacheFresh } from "../src/scan.ts";
 import path from "node:path";
 import { tmpdir } from "node:os";
@@ -170,6 +170,44 @@ test("buildLlms builds an llms.txt index + a full single-file dump", () => {
   expect(full).toContain("> Source: /guide/primitives");
   expect(full).toContain("# Button");
   expect(full).not.toContain("::: demo");
+});
+
+/** The order of the route `path:` lines emitted in the manifest — the scanned page order. */
+function manifestRouteOrder(manifest: string): string[] {
+  return [...manifest.matchAll(/path: "([^"]+)", title: .* load: \(\) => import/gu)].map(
+    (match: readonly string[]) => match[1] ?? "",
+  );
+}
+
+/** The order of the search index's top-level page paths (its `path` entries without a `#` anchor). */
+function searchPageOrder(manifest: string): string[] {
+  const block = /export const search: SearchItem\[\] = (\[[\s\S]*?\]);/u.exec(manifest)?.[1] ?? "";
+  return [...block.matchAll(/"path": "([^"#]+)"/gu)].map(
+    (match: readonly string[]) => match[1] ?? "",
+  );
+}
+
+/** Write each `name` (relative to `content`, `/`-joined) as a stub `.md`, creating parent dirs. */
+function writeStubs(content: string, names: readonly string[]): void {
+  for (const name of names) {
+    const full = path.join(content, name);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, `# ${name}\n\nBody.\n`);
+  }
+}
+
+test("the routes + search manifest is sorted, independent of filesystem readdir order", () => {
+  // Names whose insertion order differs from sorted, plus a nested folder — pins multi-file order
+  // (the single-page scan above can't catch a readdir-order regression).
+  const content = mkdtempSync(path.join(tmpdir(), "vow-docs-order-"));
+  writeStubs(content, ["c.md", "a.md", "b.md", "sub/z.md", "sub/m.md"]);
+  const out = mkdtempSync(path.join(tmpdir(), "vow-docs-order-out-"));
+  generateDocs(content, out);
+  const manifest = readFileSync(path.join(out, "vow-docs.routes.ts"), "utf8");
+
+  const sortedRoutes = ["/a", "/b", "/c", "/sub/m", "/sub/z"];
+  expect(manifestRouteOrder(manifest)).toEqual(sortedRoutes);
+  expect(searchPageOrder(manifest)).toEqual(sortedRoutes);
 });
 
 test("cacheFresh hits only when the mtime is unchanged — so an edited .md (new mtime) re-scans", () => {

@@ -2,7 +2,7 @@ import { defined } from "@vow/core";
 import path from "node:path";
 import { readdirSync } from "node:fs";
 
-/** Recursively collect every `.md` file under a directory. */
+/** Recursively collect every `.md` file under a directory, sorted (deterministic, FS-order-independent). */
 export function mdFilesUnder(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -13,7 +13,7 @@ export function mdFilesUnder(dir: string): string[] {
       out.push(full);
     }
   }
-  return out;
+  return out.toSorted();
 }
 
 /** A leading YAML frontmatter block (flat `key: value` lines) split from the markdown body. */
