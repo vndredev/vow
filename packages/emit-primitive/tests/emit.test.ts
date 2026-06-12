@@ -165,7 +165,7 @@ const EXPECTED_SELECT = [
   `import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from "vue";`,
   `import { select } from "@vow/headless";`,
   ``,
-  `const props = withDefaults(defineProps<{ modelValue?: string; options: { value: string; label: string }[]; label: string; controlId?: string; describedBy?: string; invalid?: boolean; disabled?: boolean }>(), { modelValue: "" });`,
+  `const props = withDefaults(defineProps<{ modelValue?: string; options: { value: string; label: string }[]; label: string; placeholder?: string; controlId?: string; describedBy?: string; invalid?: boolean; disabled?: boolean }>(), { modelValue: "", placeholder: "Select…" });`,
   `const emit = defineEmits<{ "update:modelValue": [string] }>();`,
   ``,
   `const uid = useId();`,
@@ -214,7 +214,7 @@ const EXPECTED_SELECT = [
   ``,
   `<template>`,
   `  <div v-bind="api.rootProps" ref="root" class="vow-select">`,
-  `    <button v-bind="api.triggerProps" :aria-label="label" :aria-describedby="describedBy" :aria-invalid="invalid" class="vow-select__trigger">{{ api.selectedLabel }}</button>`,
+  `    <button v-bind="api.triggerProps" :aria-label="label" :aria-describedby="describedBy" :aria-invalid="invalid" class="vow-select__trigger">{{ api.selectedLabel || placeholder }}</button>`,
   `    <ul v-bind="api.listboxProps" v-if="api.open" class="vow-select__listbox">`,
   `      <li v-bind="api.optionProps(option)" class="vow-select__option" v-for="option in options" :key="option.value">{{ option.label }}</li>`,
   `    </ul>`,
@@ -225,6 +225,14 @@ const EXPECTED_SELECT = [
 
 test("emitSelectSfc renders the select adapter byte-for-byte", () => {
   expect(emitSelectSfc()).toBe(EXPECTED_SELECT);
+});
+
+test("the select trigger falls back to a placeholder when nothing is selected", () => {
+  const sfc = emitSelectSfc();
+  // An optional placeholder prop (default "Select…") renders when api.selectedLabel is empty.
+  expect(sfc).toContain("placeholder?: string");
+  expect(sfc).toContain('placeholder: "Select…"');
+  expect(sfc).toContain("{{ api.selectedLabel || placeholder }}");
 });
 
 // The byte-stable oracle for the switch adapter: a <button role=switch> track + a thumb part.
