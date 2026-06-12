@@ -166,10 +166,41 @@ function columnNames(db: Db, slug: string): ReadonlySet<string> {
   return new Set(rows.map((row) => nameOf(row)));
 }
 
-/** Whether a table holds no rows yet — the seed-once guard. */
+/** Whether a table holds no rows yet — used by `seedEntity`'s in-transaction race re-check. */
 function isEmpty(db: Db, slug: string): boolean {
   const row: ReadRow = db.prepare(`SELECT COUNT(*) AS n FROM "${slug}"`).get() ?? {};
   return countOf(row) === 0;
+}
+
+/** Whether a table exists at all (it has at least the `id` column) — the archive / re-create guard. */
+function tableExists(db: Db, slug: string): boolean {
+  return columnNames(db, slug).size > 0;
+}
+
+/** The seed ledger — one row per entity that has ever been seeded, so seed-once means once-ever (not
+ *  "empty now"): a `set_seed` on an already-seeded entity is a no-op, and a user who deletes every record
+ *  never has the seed resurrected behind their back. The slug is the primary key; `seeded` is always 1.
+ *  Created lazily (the first `seedEntity` makes it) and consulted by `bootstrap` instead of `isEmpty`. */
+const META_TABLE = "_vow_meta";
+
+/** Ensure the seed ledger exists — a slug primary key flagging each once-ever-seeded entity. */
+function ensureMeta(db: Db): void {
+  db.exec(
+    `CREATE TABLE IF NOT EXISTS "${META_TABLE}" ("slug" TEXT PRIMARY KEY, "seeded" INTEGER);`,
+  );
+}
+
+/** Whether `slug` has ever been seeded (a row in the ledger) — the once-ever seed predicate. */
+function isSeeded(db: Db, slug: string): boolean {
+  ensureMeta(db);
+  const row =
+    db.prepare(`SELECT COUNT(*) AS n FROM "${META_TABLE}" WHERE "slug" = ?`).get(slug) ?? {};
+  return countOf(row) > 0;
+}
+
+/** Record `slug` as seeded in the ledger — idempotent (`INSERT OR IGNORE`), called inside the seed txn. */
+function markSeeded(db: Db, slug: string): void {
+  db.prepare(`INSERT OR IGNORE INTO "${META_TABLE}" ("slug", "seeded") VALUES (?, 1)`).run(slug);
 }
 
 // --- public API ---
@@ -214,6 +245,119 @@ export function assertColumnFree(db: Db, slug: string, from: string, to: string)
 }
 
 /**
+ * Throw when a column named `name` already exists on `slug` — an orphan a prior `remove_field` left
+ * behind (`migrate` never drops a column). The sibling of `assertColumnFree` for the ADD path: an
+ * `add_field` of a previously-removed name would otherwise silently adopt the orphan's stored data (and
+ * mis-decode every row on a type change), since `migrate` skips a column that already exists. Called
+ * BEFORE the field is added to the vow, so the LLM gets an actionable error instead of a silent
+ * resurrection. A no-op when the table is absent or the name is free.
+ */
+export function assertColumnAbsent(db: Db, slug: string, name: string): void {
+  if (columnNames(db, slug).has(name)) {
+    throw new Error(
+      `cannot add field "${name}": an orphaned column "${name}" still exists — remove it first`,
+    );
+  }
+}
+
+/** A SQLite expression rebuilding `from` as the target column type — mirrors the value encoders so a
+ *  rebuilt column round-trips exactly as a fresh write would (a TEXT boolean "true"/"1" → INTEGER 1; a
+ *  numeric column → REAL; anything → TEXT). Used by `convertColumn` to copy data into the new type. */
+const CONVERTERS: Record<SqlColumn, (from: string) => string> = {
+  INTEGER: (from) =>
+    `CASE WHEN "${from}" IN ('true', '1') OR CAST("${from}" AS REAL) <> 0 THEN 1 ELSE 0 END`,
+  REAL: (from) => `CAST("${from}" AS REAL)`,
+  TEXT: (from) => `CAST("${from}" AS TEXT)`,
+};
+
+/**
+ * Rebuild a field's column with a new declared type, converting the stored data — `migrate` never
+ * changes a column's type, so a `set_field` retype must rebuild here or the column keeps its old
+ * affinity (a TEXT column re-typed to boolean stores a fresh `false` as "0.0", which decodes back to
+ * `true`; probe-verified) AND every existing row mis-decodes. The rebuild is the SQLite ≥ 3.35 dance:
+ * ADD a temp column of the new type, copy via a type-appropriate CAST, DROP the old, RENAME the temp
+ * into place. A no-op when the column is absent (a fresh `migrate` will add it with the right type).
+ */
+// eslint-disable-next-line max-params
+export function convertColumn(db: Db, slug: string, name: string, toType: SqlColumn): void {
+  if (!columnNames(db, slug).has(name)) {
+    return;
+  }
+  const temp = `${name}__vow_convert`;
+  db.exec(`ALTER TABLE "${slug}" ADD COLUMN "${temp}" ${toType};`);
+  db.exec(`UPDATE "${slug}" SET "${temp}" = ${CONVERTERS[toType](name)};`);
+  db.exec(`ALTER TABLE "${slug}" DROP COLUMN "${name}";`);
+  db.exec(`ALTER TABLE "${slug}" RENAME COLUMN "${temp}" TO "${name}";`);
+}
+
+/** The DISTINCT stored values of one column as strings (the column must exist) — the scan behind
+ *  `assertValuesCovered`, kept here so the raw SELECT lives in `@vow/db`, never in the studio. */
+function distinctValues(db: Db, table: string, column: string): readonly string[] {
+  const rows: readonly ReadRow[] = db
+    .prepare(`SELECT DISTINCT "${column}" AS v FROM "${table}" WHERE "${column}" IS NOT NULL`)
+    .all();
+  return rows.map((row) => toText(row["v"])).filter((value) => value !== EMPTY);
+}
+
+/**
+ * Throw when a stored value of `column` falls outside `allowed` — the guard for shrinking a `select`'s
+ * options: afterward a stranded row holds a value that can no longer be written, the edit form rejects
+ * the loaded row, and the control renders no selection. Called BEFORE the vow `.md` is rewritten, on the
+ * OLD column name, listing the stored values outside the new set (the `— allowed: …` wording). A no-op
+ * when the column is absent or every stored value is covered.
+ */
+// eslint-disable-next-line max-params
+export function assertValuesCovered(
+  db: Db,
+  table: string,
+  column: string,
+  allowed: readonly string[],
+): void {
+  if (!columnNames(db, table).has(column)) {
+    return;
+  }
+  const permitted = new Set(allowed);
+  const stranded = distinctValues(db, table, column).filter((value) => !permitted.has(value));
+  if (stranded.length > 0) {
+    throw new Error(
+      `cannot shrink options of "${column}": stored ${stranded.join(", ")} — allowed: ${allowed.join(", ")}`,
+    );
+  }
+}
+
+/**
+ * Throw when an entity slug's table already holds rows — an orphan a prior `remove_vow` archived nothing
+ * of (the parallel of `assertColumnAbsent` at the table level). A re-`create_entity` of a removed slug
+ * would otherwise hit `CREATE TABLE IF NOT EXISTS`, keep the dead table + rows, and skip the new
+ * `## seed`. Called BEFORE the vow `.md` is written. A no-op when the table is absent or empty.
+ */
+export function assertTableFree(db: Db, slug: string): void {
+  if (tableExists(db, slug) && !isEmpty(db, slug)) {
+    throw new Error(
+      `cannot create entity "${slug}": an orphaned table "${slug}" still holds rows — remove it first`,
+    );
+  }
+}
+
+/**
+ * Archive an entity's table when its vow is dropped — rename it to `_dropped_<slug>` so the data is
+ * recoverable, never hard-dropped (the layer's deliberate never-destroy-data stance: `migrate` never
+ * drops a column either). A re-`create_entity` of the same slug then starts from a fresh table and seeds.
+ * A no-op when the table is absent. Drops any prior archive of the same slug first (a second drop wins).
+ */
+export function archiveTable(db: Db, slug: string): void {
+  if (!tableExists(db, slug)) {
+    return;
+  }
+  const archive = `_dropped_${slug}`;
+  db.exec(`DROP TABLE IF EXISTS "${archive}";`);
+  db.exec(`ALTER TABLE "${slug}" RENAME TO "${archive}";`);
+  // Clear the seed ledger so a re-created slug seeds fresh (its archived rows live under the new name).
+  ensureMeta(db);
+  db.prepare(`DELETE FROM "${META_TABLE}" WHERE "slug" = ?`).run(slug);
+}
+
+/**
  * Rename a field's column so the stored data follows the rename — `migrate` is strictly additive (it
  * only adds the new name as a fresh empty column and orphans the old one), so a field rename must issue
  * `ALTER TABLE … RENAME COLUMN` here. A no-op when `from`/`to` are equal or the source column is absent.
@@ -239,37 +383,52 @@ export function insert(db: Db, entity: ReadonlyVow, record: ReadRow): Row {
   return full;
 }
 
+/** Insert every seed row, flag the entity seeded in the ledger, and commit — the write half of a seed
+ *  transaction (called only when the in-transaction ledger check said the entity is fresh). */
+function commitSeed(db: Db, entity: ReadonlyVow, seed: readonly ReadRow[]): void {
+  for (const record of seed) {
+    insert(db, entity, record);
+  }
+  markSeeded(db, entity.slug);
+  db.exec("COMMIT");
+}
+
 /**
- * Seed every record of one entity inside a transaction — all rows land or none do. `BEGIN IMMEDIATE`
- * takes the write lock up front, then `isEmpty` is re-checked INSIDE the transaction: when two processes
- * (the dev server and the MCP) race to seed a freshly empty table, the loser sees the winner's committed
- * rows and seeds nothing, so seed-once stays atomic across handles (seed rows carry no `id`, so a re-seed
- * would otherwise mint fresh UUIDs and duplicate the rows).
+ * Seed every record of one entity inside a transaction — all rows land or none do, and the entity is
+ * flagged seeded in the ledger so it never seeds again (once-ever, not "empty now"). `BEGIN IMMEDIATE`
+ * takes the write lock up front, then the ledger is re-checked INSIDE the transaction: when two processes
+ * (the dev server and the MCP) race to seed a fresh entity, the loser sees the winner's committed flag
+ * and seeds nothing, so seed-once stays atomic across handles (seed rows carry no `id`, so a re-seed
+ * would otherwise mint fresh UUIDs and duplicate the rows). Returns whether the seed rows were applied
+ * (false when the entity was already seeded), so a caller can report a no-op to the LLM.
  */
-export function seedEntity(db: Db, entity: ReadonlyVow, seed: readonly ReadRow[]): void {
+export function seedEntity(db: Db, entity: ReadonlyVow, seed: readonly ReadRow[]): boolean {
   db.exec("BEGIN IMMEDIATE");
   try {
-    if (!isEmpty(db, entity.slug)) {
-      // The race's loser: the winner already committed the seed, so seed nothing.
+    if (isSeeded(db, entity.slug)) {
+      // Already seeded once-ever (this run or a prior one / the race's winner): seed nothing.
       db.exec("ROLLBACK");
-      return;
+      return false;
     }
-    for (const record of seed) {
-      insert(db, entity, record);
-    }
-    db.exec("COMMIT");
+    commitSeed(db, entity, seed);
+    return true;
   } catch (error) {
-    // A mid-loop failure rolls the table back to empty, so the next bootstrap retries the whole seed.
+    // A mid-loop failure rolls back the rows AND the ledger flag, so the next bootstrap retries the seed.
     db.exec("ROLLBACK");
     throw error;
   }
 }
 
-/** Seed-if-empty from each entity's `## seed` — idempotent (mirrors the old in-memory `seed()`). */
+/**
+ * Seed each entity's `## seed` once-ever — idempotent via the `_vow_meta` ledger (not "empty now"), so a
+ * user who deletes every record never has the seed resurrected on the next structure change / vow.md
+ * save. Runs on every mutation; the ledger makes every call after the first a no-op. A CHANGED `## seed`
+ * never re-applies (delete `.vow/data.db` to reset).
+ */
 export function bootstrap(db: Db, entities: readonly ReadonlyVow[]): void {
   for (const entity of entities) {
     const { seed } = entity;
-    if (defined(seed) && seed.length > 0 && isEmpty(db, entity.slug)) {
+    if (defined(seed) && seed.length > 0 && !isSeeded(db, entity.slug)) {
       seedEntity(db, entity, seed);
     }
   }

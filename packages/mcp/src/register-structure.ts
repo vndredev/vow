@@ -211,8 +211,14 @@ function registerSetSeed(server: Registrar, names: Names, studio: Studio): void 
       readonly entity: string;
       readonly seed: readonly Readonly<Record<string, unknown>>[];
     }): TextResult => {
-      studio.editSeed(input.entity, input.seed);
-      return text(`set seed of "${input.entity}"`);
+      const applied = studio.editSeed(input.entity, input.seed);
+      const base = `set seed of "${input.entity}"`;
+      // The seed is once-ever (the `_vow_meta` ledger): when the entity was already seeded the new rows
+      // Do NOT land, so say so — the LLM must not believe the data changed (reset: delete `.vow/data.db`).
+      if (applied) {
+        return text(base);
+      }
+      return text(`${base} — existing rows untouched — the seed applies only to a fresh database`);
     },
   );
 }

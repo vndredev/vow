@@ -17,7 +17,7 @@ const { items, append, removeAt, removeById } = useCollection<Task>("task");
 
 ## The seam
 
-`useCollection` is the **data-adapter seam** — now backed by a **local SQLite DB** (`@vow/db`, `node:sqlite`). The store loads each collection from the dev API (`/__vow/db/<slug>`) on first use, writes mutations through (`append` · `update` · `removeAt` · `removeById`), and refetches on focus + a light interval so an out-of-band write (the agent) shows up. Records persist across reloads in `.vow/data.db` (gitignored), seeded once from each entity's `## seed`. The generated views don't change — only what's behind the seam does. In prod the **same `/__vow/db` routes** are served by a Worker over **Cloudflare D1** (D1 is SQLite), so a vow app is byte-identical local ↔ hosted.
+`useCollection` is the **data-adapter seam** — now backed by a **local SQLite DB** (`@vow/db`, `node:sqlite`). The store loads each collection from the dev API (`/__vow/db/<slug>`) on first use, writes mutations through (`append` · `update` · `removeAt` · `removeById`), and refetches on focus + a light interval so an out-of-band write (the agent) shows up. Records persist across reloads in `.vow/data.db` (gitignored), seeded **once-ever** from each entity's `## seed` — tracked in a `_vow_meta` ledger (not "empty now"), so deleting every record never resurrects the seed and a changed `## seed` does not re-apply (delete `.vow/data.db` to re-seed). The generated views don't change — only what's behind the seam does. In prod the **same `/__vow/db` routes** are served by a Worker over **Cloudflare D1** (D1 is SQLite), so a vow app is byte-identical local ↔ hosted.
 
 ## The framework-neutral reactive core
 
