@@ -545,8 +545,8 @@ body {
   font-weight: var(--vow-weight-medium);
 }
 
-/* The button primitive — the ONE structural control with no headless core. The variant/size surface is
-   pure theme, hooked via `data-variant` / `data-size` (which compose freely with any `data-state`). */
+/* The button primitive — the ONE structural control with no headless core. The variant/size/tone/density
+   surface is pure theme, hooked via `data-variant` / `data-size` / `data-tone` / `data-density`. */
 .vow-button {
   display: inline-flex;
   align-items: center;
@@ -574,14 +574,24 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.vow-button[data-variant="default"] {
+
+/* VARIANT AXIS — the visual treatment */
+.vow-button[data-variant="solid"] {
   background: var(--vow-color-accent);
   border-color: var(--vow-color-accent);
   color: var(--vow-color-on-accent);
 }
-.vow-button[data-variant="default"]:hover {
+.vow-button[data-variant="solid"]:hover {
   background: var(--vow-color-accent-hover);
   border-color: var(--vow-color-accent-hover);
+}
+.vow-button[data-variant="soft"] {
+  background: color-mix(in srgb, var(--vow-color-accent) 12%, transparent);
+  border-color: transparent;
+  color: var(--vow-color-accent);
+}
+.vow-button[data-variant="soft"]:hover {
+  background: color-mix(in srgb, var(--vow-color-accent) 18%, transparent);
 }
 .vow-button[data-variant="outline"] {
   background: transparent;
@@ -600,17 +610,81 @@ body {
 .vow-button[data-variant="ghost"]:hover {
   background: var(--vow-color-surface);
 }
+.vow-button[data-variant="link"] {
+  background: none;
+  border: none;
+  color: var(--vow-color-accent);
+  padding: 0;
+}
+.vow-button[data-variant="link"]:hover {
+  text-decoration: underline;
+}
+
+/* SIZE AXIS — the control scale (xs, sm, md, lg, xl) */
+.vow-button[data-size="xs"] {
+  padding: 0.25rem var(--vow-space-1);
+  font-size: 0.75rem;
+}
 .vow-button[data-size="sm"] {
   padding: var(--vow-space-1) var(--vow-space-3);
   font-size: var(--vow-text-sm);
+}
+.vow-button[data-size="md"] {
+  padding: var(--vow-space-2) var(--vow-space-5);
+  font-size: var(--vow-text-base);
 }
 .vow-button[data-size="lg"] {
   padding: var(--vow-space-3) var(--vow-space-5);
   font-size: var(--vow-text-lg);
 }
+.vow-button[data-size="xl"] {
+  padding: var(--vow-space-4) var(--vow-space-6);
+  font-size: var(--vow-text-lg);
+}
 
-/* The badge primitive — a structural status/label chip. `data-variant` is the status colour, a soft
-   tint of a semantic token (so it re-skins with the theme). */
+/* TONE AXIS — the semantic colour role */
+.vow-button[data-tone="neutral"] {
+  /* use default accent tint above */
+}
+.vow-button[data-tone="accent"] {
+  /* use default accent tint above */
+}
+.vow-button[data-tone="success"] {
+  background: var(--vow-color-success);
+  border-color: var(--vow-color-success);
+}
+.vow-button[data-tone="success"]:hover {
+  background: color-mix(in srgb, var(--vow-color-success) 85%, var(--vow-color-text));
+}
+.vow-button[data-tone="warning"] {
+  background: var(--vow-color-warning);
+  border-color: var(--vow-color-warning);
+}
+.vow-button[data-tone="warning"]:hover {
+  background: color-mix(in srgb, var(--vow-color-warning) 85%, var(--vow-color-text));
+}
+.vow-button[data-tone="danger"] {
+  background: var(--vow-color-danger);
+  border-color: var(--vow-color-danger);
+}
+.vow-button[data-tone="danger"]:hover {
+  background: color-mix(in srgb, var(--vow-color-danger) 85%, var(--vow-color-text));
+}
+.vow-button[data-tone="info"] {
+  background: var(--vow-color-accent);
+  border-color: var(--vow-color-accent);
+}
+
+/* DENSITY AXIS — the spacing scale (comfortable, compact) */
+.vow-button[data-density="comfortable"] {
+  /* default spacing above */
+}
+.vow-button[data-density="compact"] {
+  padding: var(--vow-space-1) var(--vow-space-3);
+}
+
+/* The badge primitive — a structural status/label chip. `data-tone` is the semantic colour role,
+   emitted as soft tints (so re-skins with the theme). */
 .vow-badge {
   display: inline-flex;
   align-items: center;
@@ -623,26 +697,62 @@ body {
   line-height: 1.5;
   white-space: nowrap;
 }
-.vow-badge[data-variant="neutral"] {
+/* VARIANT AXIS for badge */
+.vow-badge[data-variant="solid"] {
+  background: var(--vow-color-accent);
+  border-color: var(--vow-color-accent);
+  color: var(--vow-color-on-accent);
+}
+.vow-badge[data-variant="soft"] {
+  background: color-mix(in srgb, var(--vow-color-accent) 12%, transparent);
+  border-color: transparent;
+  color: var(--vow-color-accent);
+}
+.vow-badge[data-variant="outline"] {
+  background: transparent;
+  border-color: var(--vow-color-border);
+  color: var(--vow-color-text);
+}
+.vow-badge[data-variant="ghost"] {
+  background: transparent;
+  border-color: transparent;
+  color: var(--vow-color-text);
+}
+.vow-badge[data-variant="link"] {
+  background: none;
+  border: none;
+  color: var(--vow-color-accent);
+}
+/* TONE AXIS for badge (color modifiers) */
+.vow-badge[data-tone="neutral"] {
   background: var(--vow-color-surface);
   border-color: var(--vow-color-border);
   color: var(--vow-color-muted);
 }
-.vow-badge[data-variant="accent"] {
+.vow-badge[data-variant="soft"][data-tone="neutral"] {
+  background: var(--vow-color-surface);
+  border-color: var(--vow-color-border);
+  color: var(--vow-color-muted);
+}
+.vow-badge[data-tone="accent"] {
   background: color-mix(in srgb, var(--vow-color-accent) 12%, transparent);
   color: var(--vow-color-accent);
 }
-.vow-badge[data-variant="success"] {
+.vow-badge[data-tone="success"] {
   background: color-mix(in srgb, var(--vow-color-success) 14%, transparent);
   color: var(--vow-color-success);
 }
-.vow-badge[data-variant="warning"] {
+.vow-badge[data-tone="warning"] {
   background: color-mix(in srgb, var(--vow-color-warning) 16%, transparent);
   color: var(--vow-color-warning);
 }
-.vow-badge[data-variant="danger"] {
+.vow-badge[data-tone="danger"] {
   background: color-mix(in srgb, var(--vow-color-danger) 12%, transparent);
   color: var(--vow-color-danger);
+}
+.vow-badge[data-tone="info"] {
+  background: color-mix(in srgb, var(--vow-color-accent) 12%, transparent);
+  color: var(--vow-color-accent);
 }
 
 /* The switch (toggle) primitive — a pill track with a sliding thumb; state is the `data-state` hook. */
