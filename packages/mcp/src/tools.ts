@@ -40,7 +40,7 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
   {
     group: "structure",
     name: "set_nav",
-    summary: "Set a vow's nav entry (label, icon, order, group).",
+    summary: "Patch a vow's nav entry (label, icon, order, group); omitted keys keep their value.",
   },
   { group: "structure", name: "remove_vow", summary: "Delete a vow (its `.md`)." },
 
