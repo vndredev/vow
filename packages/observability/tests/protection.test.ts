@@ -1,5 +1,6 @@
 import {
   MAIN_PROTECTION,
+  driftReport,
   parseProtection,
   protectionDrift,
   protectionPayload,
@@ -56,4 +57,47 @@ test("protectionDrift flags a loosened protection, and is empty when it holds", 
   expect(drift).toContain("required reviews=1, want 0");
   const tight = { checks: ["gate"], enforceAdmins: true, requirePr: true, reviews: 0 };
   expect(protectionDrift(tight, MAIN_PROTECTION)).toEqual([]);
+});
+
+test("driftReport turns an empty drift into a green verdict the CI step passes on", () => {
+  const verdict = driftReport([]);
+  expect(verdict.ok).toBe(true);
+  expect(verdict.report).toContain("main protection holds");
+});
+
+test("driftReport turns drift into a failing verdict, one line per drift the CI step prints", () => {
+  const verdict = driftReport([
+    'the "gate" check is not required',
+    "enforce_admins=false, want true",
+  ]);
+  expect(verdict.ok).toBe(false);
+  expect(verdict.report).toContain("main protection has drifted:");
+  expect(verdict.report).toContain('drift: the "gate" check is not required');
+  expect(verdict.report).toContain("drift: enforce_admins=false, want true");
+});
+
+test("a mocked admin-PAT protection response compares clean: parse -> drift -> green verdict", () => {
+  // The shape the admin-scope `gh api .../branches/main/protection` returns when main is locked down — the
+  // CI step walks exactly this path once VOW_ADMIN_TOKEN is provisioned.
+  const live = JSON.stringify({
+    enforce_admins: { enabled: true },
+    required_pull_request_reviews: { required_approving_review_count: 0 },
+    required_status_checks: { contexts: ["gate"], strict: false },
+  });
+  const verdict = driftReport(protectionDrift(parseProtection(live), MAIN_PROTECTION));
+  expect(verdict.ok).toBe(true);
+});
+
+test("a mocked loosened protection response compares to a failing verdict naming every drift", () => {
+  // A main that silently lost enforce_admins + the gate check + gained a human review — the CI gate fails.
+  const live = JSON.stringify({
+    enforce_admins: { enabled: false },
+    required_pull_request_reviews: { required_approving_review_count: 1 },
+    required_status_checks: { contexts: [], strict: false },
+  });
+  const verdict = driftReport(protectionDrift(parseProtection(live), MAIN_PROTECTION));
+  expect(verdict.ok).toBe(false);
+  expect(verdict.report).toContain('the "gate" check is not required');
+  expect(verdict.report).toContain("enforce_admins=false, want true");
+  expect(verdict.report).toContain("required reviews=1, want 0");
 });
