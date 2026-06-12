@@ -27,7 +27,8 @@ export interface SelectApi {
   readonly selectedLabel: string;
   /** Props for the outer wrapper (carries the state hooks for theming). */
   readonly rootProps: Props;
-  /** Props for the focusable trigger — a `<button role="combobox">`. */
+  /** Props for the focusable trigger — a `<button role="combobox">`; carries `data-placeholder` when
+   *  nothing is selected (the adapter shows placeholder copy, the theme dims it). */
   readonly triggerProps: Props;
   /** Props for the popup listbox. */
   readonly listboxProps: Props;
@@ -226,6 +227,7 @@ function triggerProps(
   ctx: Readonly<SelectKeyContext>,
 ): Props {
   const disabled = state.disabled ?? false;
+  const hasSelection = state.options.some((option) => option.value === state.value);
   return {
     "aria-controls": ids.listboxId,
     "aria-expanded": state.open,
@@ -246,6 +248,7 @@ function triggerProps(
     role: "combobox",
     type: "button",
     ...when(state.open, { "aria-activedescendant": ids.optionId(state.active) }),
+    ...when(!hasSelection, { "data-placeholder": "" }),
     ...when(disabled, { disabled: true }),
   };
 }
