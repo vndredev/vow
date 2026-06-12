@@ -81,7 +81,7 @@ const verdict = await verify(plan.gates, cwd, run);
 prCreateArgs(title, prBody(plan, verdict), verdict.ok); // verdict.ok === false → adds "--draft"
 ```
 
-Merging always stays a human's call — the loop develops, verifies, and proposes; it never merges itself.
+After the PR, the agent closes the loop itself: it polls CI's `gate` and acts on the verdict — a **green** run is merged autonomously (`gh pr merge --squash --delete-branch`), a **red** run is flipped back to a draft (surfaced for a human, never merged off a red gate). The loop never merges itself off red; a human only intervenes on a red run.
 
 ## The loop, in one call
 
@@ -113,4 +113,4 @@ This is vow's own orchestration — no external CI/CD or Kubernetes — a provid
 
 ## The roadmap
 
-✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → ✓ `runTask` (the loop, one call) → ✓ `realOps` (the real exec — git worktrees + the CLI spawned via `execFileSync`; each run is its own process, so the sync exec doesn't block a parallel fleet) → ✓ `vow agent run <n>` + `run-all <n>...` (the CLI front-door — develops issues in worktrees and opens PRs, draft if gates fail; live-streaming progress; auth choices; NDJSON for LLMs) → next: the **trigger** (channel / board drag). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
+✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → ✓ `runTask` (the loop, one call) → ✓ `realOps` (the real exec — git worktrees + the CLI spawned via `execFileSync`; each run is its own process, so the sync exec doesn't block a parallel fleet) → ✓ `vow agent run <n>` + `run-all <n>...` (the CLI front-door — develops issues in worktrees and opens PRs, draft if gates fail; live-streaming progress; auth choices; NDJSON for LLMs) → ✓ `vow agent merge` (the agent-merge stage — polls CI's `gate`, merges a green PR squash+delete-branch, drafts a red one) → ✓ `vow agent auto` (self-merges green PRs in a loop) → ✓ `vow agent audit` → next: the **trigger** (channel / board drag). The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
