@@ -22,11 +22,11 @@ test("a provider omits the model flag when the task pins no model", () => {
 });
 
 test("claudeCode's per-role models follow the capability priority Fable > Opus > Sonnet (never Haiku)", () => {
-  /* The clear Anthropic rule, by knowledge-need: audit (whole-codebase) → Fable, execute (ships the
-     gate-green code) → Opus, plan (structures the issue) → Sonnet. Haiku is the floor, never these roles. */
+  /* The clear Anthropic rule, by reasoning-need: audit (whole-codebase) → Fable, plan (designs the gated
+     plan the executor follows) → Opus, execute (follows the plan) → Sonnet. Haiku never these roles. */
   expect(modelFor(claudeCode.models, "audit")).toBe("claude-fable-5");
-  expect(modelFor(claudeCode.models, "execute")).toBe("claude-opus-4-8");
-  expect(modelFor(claudeCode.models, "plan")).toBe("claude-sonnet-4-6");
+  expect(modelFor(claudeCode.models, "plan")).toBe("claude-opus-4-8");
+  expect(modelFor(claudeCode.models, "execute")).toBe("claude-sonnet-4-6");
   const roles = ["audit", "execute", "plan"] as const;
   expect(roles.map((role) => modelFor(claudeCode.models, role))).not.toContain("claude-haiku-4-5");
 });
