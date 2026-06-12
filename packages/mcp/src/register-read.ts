@@ -1,5 +1,6 @@
 import type { Maybe, Names, ReadonlyVow, Registrar, Studio, TextResult } from "./types.ts";
 import { json, text } from "./studio.ts";
+import { VIEW_NODE_TYPES } from "@vow/emit-view";
 import { defined } from "@vow/core";
 import { gitRemoteUrl } from "@vow/observability";
 import path from "node:path";
@@ -57,6 +58,7 @@ export function registerRead(server: Registrar, names: Names, studio: Studio): v
         entities: studio.entitySlugs(),
         project: process.env["VOW_PROJECT_ID"] ?? "",
         repo: orEmpty(gitRemoteUrl(appDir)),
+        viewNodeTypes: VIEW_NODE_TYPES,
         views: studio.viewSlugs(),
       }),
   );

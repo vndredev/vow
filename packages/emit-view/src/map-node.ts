@@ -153,10 +153,37 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   timeline,
 };
 
+/** A PascalCase primitive name as written in a `## view` (lower first char: `Card` -> `card`). */
+function lowerFirst(name: string): string {
+  return name.charAt(0).toLowerCase() + name.slice(1);
+}
+
+/**
+ * The closed view-node vocabulary, as the `type` strings written in a `## view` — every name
+ * `knownViewType` accepts. The single enumeration the `add_view` tool description + `studio_info`
+ * publish so the LLM sees the node names up front (semantic blocks, layout + UI primitives, text tags).
+ */
+export const VIEW_NODE_TYPES: readonly string[] = [
+  ...Object.keys(HANDLERS),
+  ...LAYOUT_PRIMITIVES.map((name) => lowerFirst(name)),
+  ...PRIMITIVES.map((name) => lowerFirst(name)),
+  ...TEXT_TAGS,
+  "text",
+].toSorted();
+
 /** Whether `type` names a layout primitive or a UI primitive (placed directly in a view). */
 function isPrimitive(type: string): boolean {
   const pascal = pascalCase(type);
   return LAYOUT_PRIMITIVES.includes(pascal) || PRIMITIVES.includes(pascal);
+}
+
+/**
+ * Whether `type` is a node `mapNode` can render — a semantic/structural handler, a primitive, a text
+ * tag, or the bare `text` escape. The single acceptance predicate: `mapNode` and `add_view`'s pre-write
+ * validation both gate on it, so a node that validates at the MCP seam is exactly one that renders.
+ */
+export function knownViewType(type: string): boolean {
+  return defined(HANDLERS[type]) || isPrimitive(type) || TEXT_TAGS.has(type) || type === "text";
 }
 
 /** A plain text node — a text tag (`h1`/`p`/…) or the bare `text` escape; throws on an unknown type. */

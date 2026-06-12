@@ -48,6 +48,15 @@ function fieldOf(body: string, key: string): string {
   return "";
 }
 
+/** An array field off a JSON-encoded record body — `[]` when absent or not an array. */
+function arrayOf(body: string, key: string): readonly unknown[] {
+  const parsed: unknown = JSON.parse(body);
+  if (isRecord(parsed) && isArray(parsed[key])) {
+    return parsed[key];
+  }
+  return [];
+}
+
 /** Connect a fresh in-memory client to a server composed over `studio` — its `call(name, args)`. */
 async function connect(studio: ReturnType<typeof openStudio>): Promise<Harness> {
   const server = new McpServer({ name: "vow-test", version: "0.0.0" });
@@ -121,5 +130,31 @@ test("set_record_field returns the patched row as json when found, a text miss o
       value: "x",
     });
     expect(miss).toBe('no record "nope"');
+  });
+});
+
+test("add_view rejects an unknown node type synchronously — the build error, not a false success", async () => {
+  await withHarness(async ({ call }) => {
+    const good = await call("add_view", {
+      intent: "A page",
+      slug: "home",
+      view: [{ type: "hero", value: { title: "Hi" } }],
+    });
+    expect(good).toBe('added view "home"');
+    const bad = await call("add_view", {
+      intent: "A bad page",
+      slug: "broken",
+      view: [{ type: "nope", value: {} }],
+    });
+    expect(bad).toContain('unknown view component "nope"');
+  });
+});
+
+test("studio_info publishes the view-node vocabulary so the LLM sees the valid types", async () => {
+  await withHarness(async ({ call }) => {
+    const types = arrayOf(await call("studio_info", {}), "viewNodeTypes");
+    expect(types).toContain("hero");
+    expect(types).toContain("button");
+    expect(types).not.toContain("nope");
   });
 });

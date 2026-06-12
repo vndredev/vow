@@ -19,6 +19,7 @@ export { fieldControl } from "./field-control.ts";
 export { emitForm } from "./form.ts";
 export { ISSUE_LAYOUTS, type IssueLayout, issueLayout } from "./issue-layout.ts";
 export { emitIssueBoardSfc, emitIssueRoadmapSfc, emitIssueTableSfc } from "./issue-sfc.ts";
+export { VIEW_NODE_TYPES, knownViewType } from "./map-node.ts";
 export {
   boardComponentName,
   cardsComponentName,
