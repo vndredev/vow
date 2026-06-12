@@ -168,7 +168,7 @@ test("setField rejects a rename that collides with another field, and a non-enti
     });
     expect(() => {
       setField(dir, "task", "title", { name: "done" });
-    }).toThrow(/add_field: "task" already has a field "done"/u);
+    }).toThrow(/set_field: "task" already has a field "done"/u);
     addView(dir, { intent: "The home", slug: "home", view: [{ type: "h1", value: "Hi" }] });
     expect(() => {
       setField(dir, "home", "ghost", { name: "phantom" });
