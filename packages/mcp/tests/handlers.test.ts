@@ -86,7 +86,7 @@ async function withHarness(body: (harness: Harness) => Promise<void>): Promise<v
   const appDir = path.join(root, "app");
   try {
     const studio = openStudio(appDir);
-    studio.createEntity({
+    studio.addEntity({
       fields: [{ name: "title", required: true, type: "text" }],
       intent: "A task",
       slug: "task",

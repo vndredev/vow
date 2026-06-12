@@ -112,7 +112,7 @@ export interface RecordPatch {
  * The structure-mutation seams the studio binds to (built by `structure-deps.ts`) — each a `@vow/db`
  * guard or migration run at the right moment relative to the vow `.md` rewrite, so the vow and the live
  * DB never diverge:
- * - `archiveDropped` — on `dropVow` of an emit entity, archive its table (`_dropped_<slug>`) so a
+ * - `archiveDropped` — on `removeVow` of an emit entity, archive its table (`_dropped_<slug>`) so a
  *   re-create starts fresh and the dead rows stay recoverable.
  * - `columnTypeOf` — the column type of a field BEFORE a patch (captured for `convertType`).
  * - `convertType` — after a `set_field` retype, rebuild the column with the new type (run AFTER the
@@ -157,31 +157,18 @@ export interface DepsContext {
  * adapted to the write APIs in its implementation, in one place.
  */
 export interface Studio {
+  /** Add an `emit entity` vow + re-derive the DB schema — the new vow's slug. */
+  readonly addEntity: (spec: EntitySpec) => string;
+  /** Add a field to an entity + re-derive the DB schema. */
+  readonly addField: (entity: string, field: ReadonlyField) => void;
+  /** Add an `emit form` vow (a bound `## form` over an entity) — the new vow's slug. */
+  readonly addForm: (spec: FormSpec) => string;
   /** Add a record to an entity (an id is minted; absent fields get defaults) — the stored row. */
   readonly addRecord: (entity: string, record: Readonly<Row>) => Row;
+  /** Add an `emit view` vow — the new vow's slug. */
+  readonly addView: (spec: ViewSpec) => string;
   /** The resolved app directory the studio operates on. */
   readonly appDir: string;
-  /** Add an `emit entity` vow + re-derive the DB schema — the new vow's slug. */
-  readonly createEntity: (spec: EntitySpec) => string;
-  /** Add a field to an entity + re-derive the DB schema. */
-  readonly createField: (entity: string, field: ReadonlyField) => void;
-  /** Add an `emit form` vow (a bound `## form` over an entity) — the new vow's slug. */
-  readonly createForm: (spec: FormSpec) => string;
-  /** Add an `emit view` vow — the new vow's slug. */
-  readonly createView: (spec: ViewSpec) => string;
-  /** Drop a field from an entity by name. */
-  readonly dropField: (entity: string, field: string) => void;
-  /** Drop a vow (its `.md`). */
-  readonly dropVow: (slug: string) => void;
-  /** Edit a field on an entity in place + re-derive the DB schema (a rename carries the column data). */
-  readonly editField: (entity: string, name: string, patch: FieldPatch) => void;
-  /** Edit a form's `of`/`submit`/`edit` in place. */
-  readonly editForm: (slug: string, patch: FormPatch) => void;
-  /** Replace an entity's versioned `## seed` records + apply them once-ever via the seed ledger — returns
-   *  whether THIS call's rows landed (false on an already-seeded entity, so the LLM never sees a silent no-op). */
-  readonly editSeed: (entity: string, seed: readonly Readonly<Row>[]) => boolean;
-  /** Replace a vow's `## view` (the page tree) in place. */
-  readonly editView: (slug: string, view: readonly ViewNode[]) => void;
   /** Every `emit entity` vow's slug, freshly loaded. */
   readonly entitySlugs: () => readonly string[];
   /** Get one record by id — absent when none. */
@@ -192,16 +179,29 @@ export interface Studio {
   readonly listRecords: (entity: string) => readonly Row[];
   /** Every vow, freshly loaded. */
   readonly listVows: () => readonly ReadonlyVow[];
+  /** Remove a field from an entity by name. */
+  readonly removeField: (entity: string, field: string) => void;
   /** Remove a record by id — `true` when one was deleted. */
   readonly removeRecord: (entity: string, id: string) => boolean;
+  /** Remove a vow (its `.md`). */
+  readonly removeVow: (slug: string) => void;
+  /** Edit a field on an entity in place + re-derive the DB schema (a rename carries the column data). */
+  readonly setField: (entity: string, name: string, patch: FieldPatch) => void;
+  /** Edit a form's `of`/`submit`/`edit` in place. */
+  readonly setForm: (slug: string, patch: FormPatch) => void;
   /** Set a vow's intent (the `# …` promise). */
   readonly setIntent: (slug: string, intent: string) => void;
   /** Set a vow's nav entry. */
   readonly setNav: (slug: string, nav: ReadonlyVow["nav"]) => void;
+  /** Patch one field of a record — the updated row, or absent when none. */
+  readonly setRecordField: (patch: RecordPatch) => Maybe<Row>;
+  /** Replace an entity's versioned `## seed` records + apply them once-ever via the seed ledger — returns
+   *  whether THIS call's rows landed (false on an already-seeded entity, so the LLM never sees a silent no-op). */
+  readonly setSeed: (entity: string, seed: readonly Readonly<Row>[]) => boolean;
+  /** Replace a vow's `## view` (the page tree) in place. */
+  readonly setView: (slug: string, view: readonly ViewNode[]) => void;
   /** Re-derive the DB schema (tables + seed) from the current entity set. */
   readonly syncDb: () => void;
-  /** Patch one field of a record — the updated row, or absent when none. */
-  readonly updateRecord: (patch: RecordPatch) => Maybe<Row>;
   /** Every `emit view` vow's slug, freshly loaded. */
   readonly viewSlugs: () => readonly string[];
 }

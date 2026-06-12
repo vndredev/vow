@@ -46,12 +46,12 @@ function withStudio(body: (studio: ReturnType<typeof openStudio>) => void): void
   const appDir = path.join(root, "app");
   try {
     const studio = openStudio(appDir);
-    studio.createEntity({
+    studio.addEntity({
       fields: [{ name: "name", required: true, type: "text" }],
       intent: "A user",
       slug: "user",
     });
-    studio.createEntity({
+    studio.addEntity({
       fields: [
         { name: "title", required: true, type: "text" },
         { name: "owner", ref: "user", required: false, type: "reference" },
@@ -80,7 +80,7 @@ test("addRecord and set_record_field resolve a reference name identically", () =
   withStudio((studio) => {
     const bob = studio.addRecord("user", { name: "Bob" });
     const created = studio.addRecord("task", { title: "Plan" });
-    const patched = studio.updateRecord({
+    const patched = studio.setRecordField({
       entity: "task",
       field: "owner",
       id: String(created["id"]),
@@ -115,7 +115,7 @@ test("set_record_field throws on an unknown field rather than a silent no-op pat
     const created = studio.addRecord("task", { title: "Plan" });
     // An unknown column is a no-op UPDATE that still returns the unchanged row as success — reject it.
     expect(() =>
-      studio.updateRecord({
+      studio.setRecordField({
         entity: "task",
         field: "titel",
         id: String(created["id"]),
@@ -164,14 +164,14 @@ function renameTo(name: string): FieldPatch {
   return { name, options: NONE, ref: NONE, required: NONE, type: NONE };
 }
 
-test("editField rename onto an orphaned column throws BEFORE the vow .md is rewritten", () => {
+test("setField rename onto an orphaned column throws BEFORE the vow .md is rewritten", () => {
   withStudio((studio) => {
     // Remove_field is additive at the DB layer — dropping `status` from the vow orphans its column.
-    studio.dropField("task", "status");
+    studio.removeField("task", "status");
     // Renaming `title` onto the orphaned `status` column must throw an actionable error, and the vow
     // Must stay untouched (no divergence: the field is still `title`, never silently rewritten).
     expect(() => {
-      studio.editField("task", "title", renameTo("status"));
+      studio.setField("task", "title", renameTo("status"));
     }).toThrow(
       /cannot rename field to "status": an orphaned column "status" still exists — remove it first/u,
     );
@@ -181,10 +181,10 @@ test("editField rename onto an orphaned column throws BEFORE the vow .md is rewr
   });
 });
 
-test("editField rename to a free column still carries the stored data across", () => {
+test("setField rename to a free column still carries the stored data across", () => {
   withStudio((studio) => {
     const stored = studio.addRecord("task", { title: "Carry me" });
-    studio.editField("task", "title", renameTo("label"));
+    studio.setField("task", "title", renameTo("label"));
     const got = studio.getRecord("task", String(stored["id"]));
     expect(got?.["label"]).toBe("Carry me");
   });
@@ -227,7 +227,7 @@ test("set_record_field rejects a select value outside the field's options", () =
   withStudio((studio) => {
     const created = studio.addRecord("task", { title: "Plan" });
     expect(() =>
-      studio.updateRecord({
+      studio.setRecordField({
         entity: "task",
         field: "status",
         id: String(created["id"]),
@@ -251,10 +251,10 @@ test("add_field of a removed field's name throws on the orphaned column, not a s
   withStudio((studio) => {
     const stored = studio.addRecord("task", { status: "done", title: "Ship it" });
     // Remove `status` — additive at the DB layer, so its column (with the stored "done") is orphaned.
-    studio.dropField("task", "status");
+    studio.removeField("task", "status");
     // Re-adding a field of the same name must throw, not adopt the orphan's dead data.
     expect(() => {
-      studio.createField("task", {
+      studio.addField("task", {
         name: "status",
         options: ["a", "b"],
         required: false,
@@ -273,9 +273,9 @@ test("add_field of a removed field's name throws on the orphaned column, not a s
 test("set_field retype rebuilds the column so a text 'false' re-decodes as a real boolean false", () => {
   withStudio((studio) => {
     // Add a free-text field, store the literal "false" — the value a naive boolean retype mis-reads as true.
-    studio.createField("task", { name: "flag", required: false, type: "text" });
+    studio.addField("task", { name: "flag", required: false, type: "text" });
     const stored = studio.addRecord("task", { flag: "false", title: "Ship it" });
-    studio.editField("task", "flag", retypeTo("boolean"));
+    studio.setField("task", "flag", retypeTo("boolean"));
     // The column was rebuilt to INTEGER, so the stored row reads back a real false (not true).
     expect(studio.getRecord("task", String(stored["id"]))?.["flag"]).toBe(false);
     // A future false write also round-trips false (no stale TEXT affinity).
@@ -289,7 +289,7 @@ test("set_field options shrink that strands a stored value throws before the vow
     studio.addRecord("task", { status: "done", title: "Ship it" });
     // Shrinking the options to drop "done" strands the stored row — the guard rejects it.
     expect(() => {
-      studio.editField("task", "status", optionsTo(["todo"]));
+      studio.setField("task", "status", optionsTo(["todo"]));
     }).toThrow(/cannot shrink options of "status": stored done — allowed: todo/u);
     // The vow kept both options (no divergence: the shrink never landed).
     const field = studio.getVow("task")?.fields.find((candidate) => candidate.name === "status");
@@ -302,7 +302,7 @@ test("set_field retype away from select is allowed even with stored values (the 
     studio.addRecord("task", { status: "done", title: "Ship it" });
     // A retype to text drops the options — the values-covered guard must NOT fire (the column is free now).
     expect(() => {
-      studio.editField("task", "status", retypeTo("text"));
+      studio.setField("task", "status", retypeTo("text"));
     }).not.toThrow();
     expect(studio.getVow("task")?.fields.find((field) => field.name === "status")?.type).toBe(
       "text",
@@ -314,10 +314,10 @@ test("remove_vow then re-create the same entity slug refuses while the orphaned 
   withStudio((studio) => {
     studio.addRecord("task", { title: "Dead row" });
     // Dropping the vow archives the table (recoverable) rather than leaving a live orphan...
-    studio.dropVow("task");
+    studio.removeVow("task");
     // ...but a manual orphan (no archive) would block a re-create; here the archive freed the slug, so a
     // Re-create succeeds and starts FRESH (the dead row does not resurrect under the new entity).
-    studio.createEntity({
+    studio.addEntity({
       fields: [{ name: "title", required: true, type: "text" }],
       intent: "A task again",
       slug: "task",
@@ -326,13 +326,41 @@ test("remove_vow then re-create the same entity slug refuses while the orphaned 
   });
 });
 
-test("editSeed reports true on a fresh entity and false once already seeded (no silent no-op)", () => {
+test("removeRecord refuses to delete a row another entity still references (no dangling ref)", () => {
+  withStudio((studio) => {
+    const alice = studio.addRecord("user", { name: "Alice" });
+    studio.addRecord("task", { owner: "Alice", title: "Ship it" });
+    // Deleting Alice while a task's `owner` points at her would strand the reference — refuse it, the
+    // Data-layer mirror of remove_vow's reference guard. The message names the referring column.
+    expect(() => studio.removeRecord("user", String(alice["id"]))).toThrow(
+      /cannot delete user "[^"]+": still referenced by task\.owner \(1 row\)/u,
+    );
+    // Alice is still there — the refused delete changed nothing.
+    expect(studio.getRecord("user", String(alice["id"]))?.["name"]).toBe("Alice");
+  });
+});
+
+test("removeRecord deletes once the referrer is repointed away", () => {
+  withStudio((studio) => {
+    const alice = studio.addRecord("user", { name: "Alice" });
+    const bob = studio.addRecord("user", { name: "Bob" });
+    const ship = studio.addRecord("task", { owner: "Alice", title: "Ship it" });
+    // Repoint the only referrer to Bob — Alice is now free to delete.
+    studio.setRecordField({ entity: "task", field: "owner", id: String(ship["id"]), value: "Bob" });
+    expect(studio.removeRecord("user", String(alice["id"]))).toBe(true);
+    expect(studio.getRecord("user", String(alice["id"]))).toBe(NONE);
+    // Bob is still referenced — deleting him is still refused.
+    expect(() => studio.removeRecord("user", String(bob["id"]))).toThrow(/still referenced by/u);
+  });
+});
+
+test("setSeed reports true on a fresh entity and false once already seeded (no silent no-op)", () => {
   withStudio((studio) => {
     // `task` has no seed yet and an empty table — the first set_seed applies its rows.
-    expect(studio.editSeed("task", [{ status: "done", title: "Seeded" }])).toBe(true);
+    expect(studio.setSeed("task", [{ status: "done", title: "Seeded" }])).toBe(true);
     expect(studio.listRecords("task")).toHaveLength(1);
     // A second set_seed on the now-seeded entity is a once-ever no-op — it reports false.
-    expect(studio.editSeed("task", [{ status: "todo", title: "Other" }])).toBe(false);
+    expect(studio.setSeed("task", [{ status: "todo", title: "Other" }])).toBe(false);
     expect(studio.listRecords("task")).toHaveLength(1);
   });
 });

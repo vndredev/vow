@@ -28,6 +28,7 @@ import {
   setView,
 } from "@vow/core/node";
 import {
+  assertNoReferrers,
   bootstrap,
   get,
   insert,
@@ -85,37 +86,37 @@ function toField(field: ReadonlyField): Field {
 /** The structure slice of the studio — the vow mutations. */
 type StructureSeam = Pick<
   Studio,
-  | "createEntity"
-  | "createField"
-  | "createForm"
-  | "createView"
-  | "dropField"
-  | "dropVow"
-  | "editField"
-  | "editForm"
-  | "editSeed"
-  | "editView"
+  | "addEntity"
+  | "addField"
+  | "addForm"
+  | "addView"
+  | "removeField"
+  | "removeVow"
+  | "setField"
+  | "setForm"
   | "setIntent"
   | "setNav"
+  | "setSeed"
+  | "setView"
 >;
 
-/** The create / drop half of the structure seam — adds a vow + re-derives the DB (for an entity). */
-type CreateSeam = Pick<
+/** The add / remove half of the structure seam — adds a vow + re-derives the DB (for an entity). */
+type AddSeam = Pick<
   StructureSeam,
-  "createEntity" | "createField" | "createForm" | "createView" | "dropField" | "dropVow"
+  "addEntity" | "addField" | "addForm" | "addView" | "removeField" | "removeVow"
 >;
 
-/** The edit half of the structure seam — patches an existing vow (intent · nav · view · form · seed · field). */
-type EditSeam = Pick<
+/** The set half of the structure seam — patches an existing vow (intent · nav · view · form · seed · field). */
+type SetSeam = Pick<
   StructureSeam,
-  "editField" | "editForm" | "editSeed" | "editView" | "setIntent" | "setNav"
+  "setField" | "setForm" | "setIntent" | "setNav" | "setSeed" | "setView"
 >;
 
-/** Build the create / drop methods over the app dir + the structure seams. */
-function createSeam(appDir: string, deps: StructureDeps): CreateSeam {
+/** Build the add / remove methods over the app dir + the structure seams. */
+function addSeam(appDir: string, deps: StructureDeps): AddSeam {
   const { archiveDropped, guardAddField, guardCreateEntity, syncDb } = deps;
   return {
-    createEntity: (spec) => {
+    addEntity: (spec) => {
       // Reject a slug whose orphaned table still holds rows BEFORE the vow `.md` is written — a prior
       // `remove_vow` archives the table, but a never-archived orphan would silently win + skip the seed.
       guardCreateEntity(spec.slug);
@@ -124,14 +125,14 @@ function createSeam(appDir: string, deps: StructureDeps): CreateSeam {
       syncDb();
       return vow.slug;
     },
-    createField: (entity, field) => {
+    addField: (entity, field) => {
       // Reject an orphaned column of the new name BEFORE the field is added (a prior `remove_field` is
       // DB-additive, so the new field would otherwise adopt the dead column's stored data).
       guardAddField(entity, field);
       addField(appDir, entity, toField(field));
       syncDb();
     },
-    createForm: (spec) =>
+    addForm: (spec) =>
       addForm(appDir, {
         edit: spec.edit,
         intent: spec.intent,
@@ -140,7 +141,7 @@ function createSeam(appDir: string, deps: StructureDeps): CreateSeam {
         slug: spec.slug,
         submit: spec.submit,
       }).slug,
-    createView: (spec) =>
+    addView: (spec) =>
       addView(appDir, {
         intent: spec.intent,
         nav: spec.nav,
@@ -150,10 +151,10 @@ function createSeam(appDir: string, deps: StructureDeps): CreateSeam {
         title: spec.title,
         view: spec.view,
       }).slug,
-    dropField: (entity, field) => {
+    removeField: (entity, field) => {
       removeField(appDir, entity, field);
     },
-    dropVow: (slug) => {
+    removeVow: (slug) => {
       // Archive an emit entity's table (rename to `_dropped_<slug>`) so a re-created slug starts fresh
       // (not on the dead rows) and the data stays recoverable. Run BEFORE the `.md` is removed, while the
       // Vow still says whether the dropped slug was an entity.
@@ -163,12 +164,12 @@ function createSeam(appDir: string, deps: StructureDeps): CreateSeam {
   };
 }
 
-/** Build the edit methods over the app dir + the schema-resync + column-rename seams. */
-function editSeam(appDir: string, deps: StructureDeps): EditSeam {
+/** Build the set methods over the app dir + the schema-resync + column-rename seams. */
+function setSeam(appDir: string, deps: StructureDeps): SetSeam {
   const { columnTypeOf, convertType, guardOptions, guardRename, renameField, seedFresh, syncDb } =
     deps;
   return {
-    editField: (entity, name, patch) => {
+    setField: (entity, name, patch) => {
       // Capture the column's pre-patch type — the retype rebuild below decides from the type the patch
       // Moves away from, but it runs AFTER the `.md` rewrite, when the live vow already shows the new type.
       const was = columnTypeOf(entity, name);
@@ -191,19 +192,8 @@ function editSeam(appDir: string, deps: StructureDeps): EditSeam {
       }
       syncDb();
     },
-    editForm: (slug, patch) => {
+    setForm: (slug, patch) => {
       setForm(appDir, slug, patch);
-    },
-    editSeed: (entity, seed) => {
-      setSeed(appDir, entity, seed);
-      // Seed via the once-ever ledger (a no-op once already seeded) and report whether THIS call's rows
-      // Actually landed, so the LLM never believes a silent no-op changed the data.
-      const applied = seedFresh(entity);
-      syncDb();
-      return applied;
-    },
-    editView: (slug, view) => {
-      setView(appDir, slug, view);
     },
     setIntent: (slug, intent) => {
       setIntent(appDir, slug, intent);
@@ -211,12 +201,23 @@ function editSeam(appDir: string, deps: StructureDeps): EditSeam {
     setNav: (slug, nav) => {
       setNav(appDir, slug, nav);
     },
+    setSeed: (entity, seed) => {
+      setSeed(appDir, entity, seed);
+      // Seed via the once-ever ledger (a no-op once already seeded) and report whether THIS call's rows
+      // Actually landed, so the LLM never believes a silent no-op changed the data.
+      const applied = seedFresh(entity);
+      syncDb();
+      return applied;
+    },
+    setView: (slug, view) => {
+      setView(appDir, slug, view);
+    },
   };
 }
 
-/** Build the full structure seam — the create / drop half + the edit half, over the same app dir. */
+/** Build the full structure seam — the add / remove half + the set half, over the same app dir. */
 function structureSeam(appDir: string, deps: StructureDeps): StructureSeam {
-  return { ...createSeam(appDir, deps), ...editSeam(appDir, deps) };
+  return { ...addSeam(appDir, deps), ...setSeam(appDir, deps) };
 }
 
 /** The display-name field of an entity — its first text field, else `id` (mirrors how a reference cell
@@ -350,12 +351,14 @@ type DataSeam = Pick<
   | "listRecords"
   | "listVows"
   | "removeRecord"
-  | "updateRecord"
+  | "setRecordField"
   | "viewSlugs"
 >;
 
-/** The closures the data seam binds to — the entity resolver + the reference-name resolver. */
+/** The closures the data seam binds to — the live entity set (for the referrer-scan delete guard), the
+ *  entity resolver, and the reference-name resolver. */
 interface DataDeps {
+  readonly allEntities: () => readonly ReadonlyVow[];
   readonly entityOf: (slug: string) => Vow;
   readonly resolveRef: ResolveField;
 }
@@ -363,7 +366,7 @@ interface DataDeps {
 /** Build the read + record-data methods over the app dir + the shared DB + the entity / reference seams. */
 // eslint-disable-next-line max-params
 function dataSeam(appDir: string, db: Db, deps: DataDeps): DataSeam {
-  const { entityOf, resolveRef } = deps;
+  const { allEntities, entityOf, resolveRef } = deps;
   return {
     addRecord: (entity, record) => {
       const target = entityOf(entity);
@@ -379,8 +382,14 @@ function dataSeam(appDir: string, db: Db, deps: DataDeps): DataSeam {
     getVow: (slug) => loadVows(appDir).find((vow: ReadonlyVow) => vow.slug === slug),
     listRecords: (entity) => list(db, entityOf(entity)),
     listVows: () => loadVows(appDir),
-    removeRecord: (entity, id) => remove(db, entityOf(entity), id),
-    updateRecord: (patch) => {
+    removeRecord: (entity, id) => {
+      const target = entityOf(entity);
+      // Refuse a delete that would strand a stored reference to this row — the data-layer mirror of
+      // RemoveVow's reference guard, the same `@vow/db` scan the dev API DELETE runs.
+      assertNoReferrers(db, allEntities(), target, id);
+      return remove(db, target, id);
+    },
+    setRecordField: (patch) => {
       const entity = entityOf(patch.entity);
       const resolved = resolveRecord(resolveRef, entity, { [patch.field]: patch.value });
       return update(db, entity, patch.id, resolved);
@@ -433,7 +442,7 @@ export function openStudio(appDir: string): Studio {
   return {
     appDir,
     syncDb,
-    ...dataSeam(appDir, db, { entityOf, resolveRef }),
+    ...dataSeam(appDir, db, { allEntities: entities, entityOf, resolveRef }),
     ...structureSeam(appDir, structureDeps({ appDir, db, entityOf, syncDb })),
   };
 }

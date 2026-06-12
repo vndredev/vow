@@ -4,6 +4,7 @@ import {
   archiveTable,
   assertColumnAbsent,
   assertColumnFree,
+  assertNoReferrers,
   assertTableFree,
   assertValuesCovered,
   bootstrap,
@@ -131,6 +132,47 @@ test("update patches only known fields (a stray key is dropped); remove deletes"
   expect(list(db, task)[0]?.["done"]).toBe(true);
   expect(remove(db, task, String(row["id"]))).toBe(true);
   expect(list(db, task)).toHaveLength(0);
+});
+
+// A `user` entity and a `task` whose `owner` field references it — the dangling-ref shape.
+const user = entity("user", [{ name: "name", required: true, type: "text" }]);
+const taskRef = entity("task", [
+  { name: "title", required: true, type: "text" },
+  { name: "owner", ref: "user", required: false, type: "reference" },
+]);
+
+test("assertNoReferrers refuses a delete whose id is still referenced, listing the referrers", () => {
+  const db = openDb(":memory:");
+  migrate(db, [user, taskRef]);
+  const alice = insert(db, user, { name: "Alice" });
+  insert(db, taskRef, { owner: String(alice["id"]), title: "Ship it" });
+  insert(db, taskRef, { owner: String(alice["id"]), title: "Plan it" });
+  // Two tasks point at Alice — deleting her would strand both references; the guard names the column + count.
+  expect(() => {
+    assertNoReferrers(db, [user, taskRef], user, String(alice["id"]));
+  }).toThrow(/still referenced by task\.owner \(2 rows\)/u);
+  // It is a no-op once the referrers are repointed (here, removed).
+  remove(db, taskRef, String(list(db, taskRef)[0]?.["id"]));
+  remove(db, taskRef, String(list(db, taskRef)[0]?.["id"]));
+  expect(() => {
+    assertNoReferrers(db, [user, taskRef], user, String(alice["id"]));
+  }).not.toThrow();
+});
+
+test("assertNoReferrers is a no-op for an unreferenced row and singularizes a one-row count", () => {
+  const db = openDb(":memory:");
+  migrate(db, [user, taskRef]);
+  const alice = insert(db, user, { name: "Alice" });
+  const bob = insert(db, user, { name: "Bob" });
+  insert(db, taskRef, { owner: String(alice["id"]), title: "Ship it" });
+  // Bob is referenced by no row — deleting him strands nothing.
+  expect(() => {
+    assertNoReferrers(db, [user, taskRef], user, String(bob["id"]));
+  }).not.toThrow();
+  // Alice has exactly one referrer — the message reads "1 row", not "1 rows".
+  expect(() => {
+    assertNoReferrers(db, [user, taskRef], user, String(alice["id"]));
+  }).toThrow(/still referenced by task\.owner \(1 row\)/u);
 });
 
 test("bootstrap fills once from the seed (idempotent), defaults for absent fields", () => {

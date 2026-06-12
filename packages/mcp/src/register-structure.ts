@@ -56,7 +56,7 @@ function registerAddEntity(server: Registrar, names: Names, studio: Studio): voi
       readonly intent: string;
       readonly slug: string;
     }): TextResult => {
-      const slug = studio.createEntity({
+      const slug = studio.addEntity({
         fields: input.fields ?? [],
         intent: input.intent,
         slug: input.slug,
@@ -97,7 +97,7 @@ function registerAddView(server: Registrar, names: Names, studio: Studio): void 
     }): TextResult => {
       requireKnownTypes(input.view);
       requireSafeNames(input.view);
-      const slug = studio.createView({
+      const slug = studio.addView({
         intent: input.intent,
         nav: input.nav,
         root: input.root,
@@ -136,7 +136,7 @@ function registerAddForm(server: Registrar, names: Names, studio: Studio): void 
       readonly slug: string;
       readonly submit: string;
     }): TextResult => {
-      const slug = studio.createForm({
+      const slug = studio.addForm({
         edit: input.edit,
         intent: input.intent,
         nav: input.nav,
@@ -170,7 +170,7 @@ function registerSetForm(server: Registrar, names: Names, studio: Studio): void 
       readonly slug: string;
       readonly submit: Maybe<string>;
     }): TextResult => {
-      studio.editForm(input.slug, { edit: input.edit, of: input.of, submit: input.submit });
+      studio.setForm(input.slug, { edit: input.edit, of: input.of, submit: input.submit });
       return text(`set form of "${input.slug}"`);
     },
   );
@@ -191,7 +191,7 @@ function registerSetView(server: Registrar, names: Names, studio: Studio): void 
     (input: { readonly slug: string; readonly view: readonly ViewInput[] }): TextResult => {
       requireKnownTypes(input.view);
       requireSafeNames(input.view);
-      studio.editView(input.slug, input.view);
+      studio.setView(input.slug, input.view);
       return text(`set view of "${input.slug}"`);
     },
   );
@@ -211,7 +211,7 @@ function registerSetSeed(server: Registrar, names: Names, studio: Studio): void 
       readonly entity: string;
       readonly seed: readonly Readonly<Record<string, unknown>>[];
     }): TextResult => {
-      const applied = studio.editSeed(input.entity, input.seed);
+      const applied = studio.setSeed(input.entity, input.seed);
       const base = `set seed of "${input.entity}"`;
       // The seed is once-ever (the `_vow_meta` ledger): when the entity was already seeded the new rows
       // Do NOT land, so say so — the LLM must not believe the data changed (reset: delete `.vow/data.db`).
@@ -251,7 +251,7 @@ function registerEditors(server: Registrar, names: Names, studio: Studio): void 
     removeVow.name,
     { description: removeVow.description, inputSchema: { slug: z.string() } },
     (input: { readonly slug: string }): TextResult => {
-      studio.dropVow(input.slug);
+      studio.removeVow(input.slug);
       return text(`removed vow "${input.slug}"`);
     },
   );
@@ -266,7 +266,7 @@ function registerFields(server: Registrar, names: Names, studio: Studio): void {
     addField.name,
     { description: addField.description, inputSchema: { entity: z.string(), field: Field } },
     (input: { readonly entity: string; readonly field: ReadonlyField }): TextResult => {
-      studio.createField(input.entity, input.field);
+      studio.addField(input.entity, input.field);
       return text(`added field "${input.field.name}" to "${input.entity}"`);
     },
   );
@@ -278,7 +278,7 @@ function registerFields(server: Registrar, names: Names, studio: Studio): void {
       inputSchema: { entity: z.string(), field: z.string() },
     },
     (input: { readonly entity: string; readonly field: string }): TextResult => {
-      studio.dropField(input.entity, input.field);
+      studio.removeField(input.entity, input.field);
       return text(`removed field "${input.field}" from "${input.entity}"`);
     },
   );
@@ -304,7 +304,7 @@ function registerSetField(server: Registrar, names: Names, studio: Studio): void
       },
     },
     (input: { readonly entity: string; readonly field: string } & FieldPatch): TextResult => {
-      studio.editField(input.entity, input.field, {
+      studio.setField(input.entity, input.field, {
         name: input.name,
         options: input.options,
         ref: input.ref,
