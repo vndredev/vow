@@ -58,7 +58,7 @@ function typeBadge(): UiNode {
     attrs: [
       { expr: "e.type", kind: "cond", type: "if" },
       { expr: "e.type", kind: "bound", name: "label" },
-      { expr: "e.variant", kind: "bound", name: "variant" },
+      { expr: "e.variant", kind: "bound", name: "tone" },
     ],
     children: [],
     kind: "component",
