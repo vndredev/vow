@@ -186,15 +186,28 @@ export function knownViewType(type: string): boolean {
   return defined(HANDLERS[type]) || isPrimitive(type) || TEXT_TAGS.has(type) || type === "text";
 }
 
+/**
+ * Throw the canonical "unknown view component" error, listing the whole `VIEW_NODE_TYPES` vocabulary so a
+ * typo'd/invented type points straight at the closed set. The single message the emitter (`textNode`) and
+ * the `add_view`/`set_view` MCP seam (`requireKnownTypes`) share, so a node that fails at one fails the
+ * same way at the other.
+ */
+export function assertKnownViewType(type: string): void {
+  if (knownViewType(type)) {
+    return;
+  }
+  throw new Error(
+    `emit-view: unknown view component "${type}" — allowed: ${VIEW_NODE_TYPES.join(", ")}`,
+  );
+}
+
 /** A plain text node — a text tag (`h1`/`p`/…) or the bare `text` escape; throws on an unknown type. */
 function textNode(type: string, value: unknown): UiNode {
-  if (TEXT_TAGS.has(type)) {
-    return el(type, [txt(str(value))]);
-  }
   if (type === "text") {
     return txt(str(value));
   }
-  throw new Error(`emit-view: unknown view component "${type}"`);
+  assertKnownViewType(type);
+  return el(type, [txt(str(value))]);
 }
 
 /**
