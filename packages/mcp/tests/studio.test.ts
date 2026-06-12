@@ -236,3 +236,103 @@ test("set_record_field rejects a select value outside the field's options", () =
     ).toThrow(/"blocked" is not an option of task.status — allowed: todo, done/u);
   });
 });
+
+/** A `set_field` patch that only retypes — the other keys are absent. */
+function retypeTo(type: FieldPatch["type"]): FieldPatch {
+  return { name: NONE, options: NONE, ref: NONE, required: NONE, type };
+}
+
+/** A `set_field` patch that only edits the options. */
+function optionsTo(options: readonly string[]): FieldPatch {
+  return { name: NONE, options, ref: NONE, required: NONE, type: NONE };
+}
+
+test("add_field of a removed field's name throws on the orphaned column, not a silent resurrection", () => {
+  withStudio((studio) => {
+    const stored = studio.addRecord("task", { status: "done", title: "Ship it" });
+    // Remove `status` — additive at the DB layer, so its column (with the stored "done") is orphaned.
+    studio.dropField("task", "status");
+    // Re-adding a field of the same name must throw, not adopt the orphan's dead data.
+    expect(() => {
+      studio.createField("task", {
+        name: "status",
+        options: ["a", "b"],
+        required: false,
+        type: "select",
+      });
+    }).toThrow(
+      /cannot add field "status": an orphaned column "status" still exists — remove it first/u,
+    );
+    // The vow is untouched — the field was not added.
+    expect(studio.getVow("task")?.fields.some((field) => field.name === "status")).toBe(false);
+    // The original record is intact (nothing corrupted).
+    expect(studio.getRecord("task", String(stored["id"]))?.["title"]).toBe("Ship it");
+  });
+});
+
+test("set_field retype rebuilds the column so a text 'false' re-decodes as a real boolean false", () => {
+  withStudio((studio) => {
+    // Add a free-text field, store the literal "false" — the value a naive boolean retype mis-reads as true.
+    studio.createField("task", { name: "flag", required: false, type: "text" });
+    const stored = studio.addRecord("task", { flag: "false", title: "Ship it" });
+    studio.editField("task", "flag", retypeTo("boolean"));
+    // The column was rebuilt to INTEGER, so the stored row reads back a real false (not true).
+    expect(studio.getRecord("task", String(stored["id"]))?.["flag"]).toBe(false);
+    // A future false write also round-trips false (no stale TEXT affinity).
+    const next = studio.addRecord("task", { flag: false, title: "Next" });
+    expect(studio.getRecord("task", String(next["id"]))?.["flag"]).toBe(false);
+  });
+});
+
+test("set_field options shrink that strands a stored value throws before the vow .md is rewritten", () => {
+  withStudio((studio) => {
+    studio.addRecord("task", { status: "done", title: "Ship it" });
+    // Shrinking the options to drop "done" strands the stored row — the guard rejects it.
+    expect(() => {
+      studio.editField("task", "status", optionsTo(["todo"]));
+    }).toThrow(/cannot shrink options of "status": stored done — allowed: todo/u);
+    // The vow kept both options (no divergence: the shrink never landed).
+    const field = studio.getVow("task")?.fields.find((candidate) => candidate.name === "status");
+    expect(field?.options).toEqual(["todo", "done"]);
+  });
+});
+
+test("set_field retype away from select is allowed even with stored values (the column becomes free text)", () => {
+  withStudio((studio) => {
+    studio.addRecord("task", { status: "done", title: "Ship it" });
+    // A retype to text drops the options — the values-covered guard must NOT fire (the column is free now).
+    expect(() => {
+      studio.editField("task", "status", retypeTo("text"));
+    }).not.toThrow();
+    expect(studio.getVow("task")?.fields.find((field) => field.name === "status")?.type).toBe(
+      "text",
+    );
+  });
+});
+
+test("remove_vow then re-create the same entity slug refuses while the orphaned table holds rows", () => {
+  withStudio((studio) => {
+    studio.addRecord("task", { title: "Dead row" });
+    // Dropping the vow archives the table (recoverable) rather than leaving a live orphan...
+    studio.dropVow("task");
+    // ...but a manual orphan (no archive) would block a re-create; here the archive freed the slug, so a
+    // Re-create succeeds and starts FRESH (the dead row does not resurrect under the new entity).
+    studio.createEntity({
+      fields: [{ name: "title", required: true, type: "text" }],
+      intent: "A task again",
+      slug: "task",
+    });
+    expect(studio.listRecords("task")).toHaveLength(0);
+  });
+});
+
+test("editSeed reports true on a fresh entity and false once already seeded (no silent no-op)", () => {
+  withStudio((studio) => {
+    // `task` has no seed yet and an empty table — the first set_seed applies its rows.
+    expect(studio.editSeed("task", [{ status: "done", title: "Seeded" }])).toBe(true);
+    expect(studio.listRecords("task")).toHaveLength(1);
+    // A second set_seed on the now-seeded entity is a once-ever no-op — it reports false.
+    expect(studio.editSeed("task", [{ status: "todo", title: "Other" }])).toBe(false);
+    expect(studio.listRecords("task")).toHaveLength(1);
+  });
+});

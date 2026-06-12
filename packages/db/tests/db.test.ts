@@ -1,8 +1,14 @@
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type ReadonlyField, type ReadonlyVow, isRecord } from "@vow/core";
 import {
+  archiveTable,
+  assertColumnAbsent,
   assertColumnFree,
+  assertTableFree,
+  assertValuesCovered,
   bootstrap,
+  convertColumn,
+  get,
   insert,
   list,
   migrate,
@@ -188,6 +194,116 @@ test("migrate is additive — a new field adds its column and keeps existing row
   expect(columnNames(db, "task")).toContain("note");
   // Data is preserved across the additive migration.
   expect(list(db, grown)).toHaveLength(1);
+});
+
+test("assertColumnAbsent throws on an orphaned column the additive migrate never dropped", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  // `status` is a live column standing in for an orphan a prior remove_field left behind — adding a
+  // Field of that name must throw an actionable error, never silently adopt the orphan's stored data.
+  expect(() => {
+    assertColumnAbsent(db, "task", "status");
+  }).toThrow(
+    /cannot add field "status": an orphaned column "status" still exists — remove it first/u,
+  );
+  // A free name (no orphan) passes.
+  expect(() => {
+    assertColumnAbsent(db, "task", "note");
+  }).not.toThrow();
+});
+
+test("convertColumn rebuilds a column with the new type so a text boolean re-decodes correctly", () => {
+  const db = openDb(":memory:");
+  const text = entity("flag", [{ name: "on", required: false, type: "text" }]);
+  migrate(db, [text]);
+  // A stored TEXT "false" — exactly the value a boolean retype would otherwise mis-decode (Boolean("false")
+  // Is true) and store future falses as "0.0" under TEXT affinity.
+  insert(db, text, { on: "false" });
+  convertColumn(db, "flag", "on", "INTEGER");
+  // The column is now INTEGER, so decodeField runs Boolean() over a real 0 — the row reads back false.
+  const bool = entity("flag", [{ name: "on", required: false, type: "boolean" }]);
+  expect(list(db, bool)[0]?.["on"]).toBe(false);
+  // A future write of false lands as INTEGER 0 and round-trips false (no stale TEXT affinity).
+  const row = insert(db, bool, { on: false });
+  expect(get(db, bool, String(row["id"]))?.["on"]).toBe(false);
+});
+
+test("convertColumn is a no-op when the column is absent", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  expect(() => {
+    convertColumn(db, "task", "ghost", "INTEGER");
+  }).not.toThrow();
+  expect(columnNames(db, "task")).toEqual(["id", "title", "done", "rank", "status"]);
+});
+
+test("assertValuesCovered throws when a stored value falls outside the shrunk option set", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  insert(db, task, { status: "done", title: "A" });
+  // Shrinking the options to just ["todo"] would strand the stored "done" — the guard lists it.
+  expect(() => {
+    assertValuesCovered(db, "task", "status", ["todo"]);
+  }).toThrow(/cannot shrink options of "status": stored done — allowed: todo/u);
+  // The current set covers the stored value — no throw.
+  expect(() => {
+    assertValuesCovered(db, "task", "status", ["todo", "done"]);
+  }).not.toThrow();
+  // An absent column is a no-op (a retype away from select drops the column from the scan).
+  expect(() => {
+    assertValuesCovered(db, "task", "ghost", ["todo"]);
+  }).not.toThrow();
+});
+
+test("archiveTable renames the table out of the way (recoverable) so a re-create starts fresh", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  insert(db, task, { title: "Dead row" });
+  archiveTable(db, "task");
+  // The live table is gone; its rows survive under the archive name (never a hard DROP).
+  expect(columnNames(db, "task")).toEqual([]);
+  expect(columnNames(db, "_dropped_task")).toContain("title");
+  // A re-created table of the same slug starts empty — the dead rows do not win.
+  migrate(db, [task]);
+  expect(list(db, task)).toHaveLength(0);
+});
+
+test("assertTableFree throws when a re-created slug's orphaned table still holds rows", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  insert(db, task, { title: "Dead row" });
+  expect(() => {
+    assertTableFree(db, "task");
+  }).toThrow(
+    /cannot create entity "task": an orphaned table "task" still holds rows — remove it first/u,
+  );
+  // After archiving, the slug is free to re-create.
+  archiveTable(db, "task");
+  expect(() => {
+    assertTableFree(db, "task");
+  }).not.toThrow();
+});
+
+test("the seed ledger makes seeding once-ever — a delete-all is not resurrected by a later bootstrap", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  bootstrap(db, [task]);
+  expect(list(db, task)).toHaveLength(1);
+  // The user deletes every record.
+  remove(db, task, String(list(db, task)[0]?.["id"]));
+  expect(list(db, task)).toHaveLength(0);
+  // A later structure change / vow.md save re-runs bootstrap — the ledger keeps it a no-op (no resurrection).
+  bootstrap(db, [task]);
+  expect(list(db, task)).toHaveLength(0);
+});
+
+test("seedEntity reports whether rows applied — true on a fresh entity, false once already seeded", () => {
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  expect(seedEntity(db, task, task.seed ?? [])).toBe(true);
+  // A second call is a once-ever no-op — it reports false (the caller surfaces that to the LLM).
+  expect(seedEntity(db, task, task.seed ?? [])).toBe(false);
+  expect(list(db, task)).toHaveLength(1);
 });
 
 // The repo root, three levels up from this test (packages/db/tests).
