@@ -1,6 +1,6 @@
+import type { Component, UiNode } from "../src/model.ts";
 import { expect, test } from "vite-plus/test";
-import type { UiNode } from "../src/model.ts";
-import { renderReactView } from "../src/index.ts";
+import { renderReactSfc, renderReactView } from "../src/index.ts";
 
 // A fixture exercising every in-scope React-adapter case in one tree.
 // Covers an element host with a renamed class -> className static attr plus a bound attr.
@@ -160,4 +160,79 @@ test("an out-of-scope attribute kind (model) throws — a #101 follow-up, not a 
 test("an out-of-scope node kind (raw) throws", () => {
   const node: UiNode = { html: "<svg/>", kind: "raw" };
   expect(() => renderReactView(node, 0)).toThrow("out of scope");
+});
+
+// A stateless presentational Component (imports + a view, no setup/props/events) — the in-scope shell.
+// Exercises a default import, a named import, and the view wrapped at depth 2 (function body + return).
+// The expected string is the byte-exact .tsx oracle; a render change is a red test, not silent drift.
+const card: Component = {
+  imports: [
+    { default: "Badge", from: "./Badge.tsx" },
+    { from: "./icons.ts", names: ["Star"] },
+  ],
+  name: "Card",
+  view: {
+    attrs: [{ kind: "static", name: "class", value: "card" }],
+    children: [
+      {
+        attrs: [{ expr: "status", kind: "bound", name: "label" }],
+        children: [],
+        kind: "component",
+        name: "Badge",
+      },
+      {
+        attrs: [],
+        children: [{ kind: "text", text: "Hello" }],
+        kind: "element",
+        tag: "p",
+      },
+    ],
+    kind: "element",
+    tag: "div",
+  },
+};
+
+const EXPECTED_CARD = [
+  `import Badge from "./Badge.tsx";`,
+  `import { Star } from "./icons.ts";`,
+  `export default function Card() {`,
+  `  return (`,
+  `    <div className="card">`,
+  `      <Badge label={status} />`,
+  `      <p>Hello</p>`,
+  `    </div>`,
+  `  );`,
+  `}`,
+  ``,
+].join("\n");
+
+test("renderReactSfc renders a stateless component to a .tsx shell byte-for-byte", () => {
+  expect(renderReactSfc(card)).toBe(EXPECTED_CARD);
+});
+
+test("renderReactSfc throws when setup is present (a #101 follow-up, not a half-feature)", () => {
+  const stateful: Component = {
+    name: "Counter",
+    setup: ["const count = 0;"],
+    view: { attrs: [], children: [], kind: "element", tag: "div" },
+  };
+  expect(() => renderReactSfc(stateful)).toThrow("#101 follow-up");
+});
+
+test("renderReactSfc throws when props are present", () => {
+  const withProps: Component = {
+    name: "Greeting",
+    props: [{ name: "label", tsType: "string" }],
+    view: { attrs: [], children: [], kind: "element", tag: "div" },
+  };
+  expect(() => renderReactSfc(withProps)).toThrow("#101 follow-up");
+});
+
+test("renderReactSfc throws when events are present", () => {
+  const withEvents: Component = {
+    events: [{ name: "click", payload: "void" }],
+    name: "Pressable",
+    view: { attrs: [], children: [], kind: "element", tag: "div" },
+  };
+  expect(() => renderReactSfc(withEvents)).toThrow("#101 follow-up");
 });
