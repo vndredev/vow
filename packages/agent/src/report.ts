@@ -29,6 +29,16 @@ function resultLine(outcome: TaskOutcome): string {
   return "result: a gate failed — the runner would open a draft";
 }
 
+/** The failed provider run's captured output, indented under a `reason:` heading — so the terminal report
+ *  carries WHY the run failed, not just "failed". Empty (no extra lines) for a successful run. */
+function reasonLines(outcome: TaskOutcome): readonly string[] {
+  const output = outcome.run.output.trim();
+  if (outcome.run.ok || !output) {
+    return [];
+  }
+  return ["reason:", ...output.split("\n").map((line) => `  ${line}`)];
+}
+
 /**
  * A report of a completed `vow agent run` — the provider's outcome, each re-run gate, and the verdict
  * (merge vs. draft). Pure (formats a `TaskOutcome`), so the runner's result is inspectable and the
@@ -42,5 +52,6 @@ export function runReport(issue: IssueSpec, outcome: TaskOutcome): string {
     `gates:`,
     gates,
     resultLine(outcome),
+    ...reasonLines(outcome),
   ].join("\n");
 }

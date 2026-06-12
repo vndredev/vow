@@ -30,6 +30,15 @@ test("realOps.run captures a failing command's output (so a draft PR can show it
   expect(result.output).toContain("boom");
 });
 
+test("realOps.run captures a failing command's STDERR — where git/gh/tsgo write the real reason", async () => {
+  const result = await realOps().run(
+    { args: ["-e", "process.stderr.write('the real reason'); process.exit(1)"], bin: "node" },
+    tmpdir(),
+  );
+  expect(result.code).toBe(1);
+  expect(result.output).toContain("the real reason");
+});
+
 test("childEnv strips the unsetEnv vars from the parent (the subscription auth-strip), keeps the rest", () => {
   const parent = { ANTHROPIC_API_KEY: "secret", PATH: "/bin" };
   expect(childEnv(parent, ["ANTHROPIC_API_KEY"])).toEqual({ PATH: "/bin" });
