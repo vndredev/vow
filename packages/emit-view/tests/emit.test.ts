@@ -301,3 +301,8 @@ test("emitEntityList fails fast when the target is not an emit entity", () => {
   };
   expect(() => emitEntityList(view)).toThrow();
 });
+
+test("emitEntityList rejects a zero-field entity (needs >=1 field to render)", () => {
+  const empty: VowNode = { ...entity, fields: [], id: "vow_empty", slug: "empty" };
+  expect(() => emitEntityList(empty)).toThrow(/needs >=1 field/u);
+});
