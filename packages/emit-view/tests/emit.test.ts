@@ -26,6 +26,14 @@ function expectMissing(sfc: string, parts: readonly string[]): void {
   }
 }
 
+/** The `$` of an interpolation, kept out of the adjacent `{` so no bare `${` literal trips a lint rule. */
+const DOLLAR = "$";
+
+/** A `${expr}` interpolation token assembled around `DOLLAR` — a bare literal trips no-template-curly-in-string. */
+function interp(expr: string): string {
+  return `${DOLLAR}{${expr}}`;
+}
+
 const entity: VowNode = {
   children: [],
   fields: [
@@ -227,6 +235,35 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
   expectMissing(sfc, ['dragged.value.status = option as Ticket["status"]']);
   // `by` must be a select field.
   expect(() => emitEntityBoard(ticket, "title")).toThrow();
+});
+
+test("emitEntityBoard gives each card a keyboard move path (WCAG 2.1.1), not drag-only", () => {
+  const ticket: VowNode = {
+    ...entity,
+    fields: [
+      { name: "title", required: true, type: "text" },
+      { name: "status", options: ["todo", "done"], required: false, type: "select" },
+    ],
+    id: "vow_ticket",
+    slug: "ticket",
+  };
+  const sfc = emitEntityBoard(ticket, "status");
+  // The card is focusable + labelled, and the arrow keys move it to the adjacent column — the same
+  // `update(id, { [by]: option })` mutation the pointer drag performs, with no pointer required.
+  expectContains(sfc, [
+    'tabindex="0"',
+    'role="group"',
+    `:aria-label="\`status: ${interp("item.status")}. Use the left and right arrows to move.\`"`,
+    '@keydown.left="move(item, -1)"',
+    '@keydown.right="move(item, 1)"',
+    "function move(card: Ticket, delta: number): void {",
+    "const option = options[options.indexOf(card.status as string) + delta];",
+    "if (option === undefined) return;",
+    'update(card.id, { ["status"]: option });',
+    `announce.value = \`Moved to ${interp("option")}\`;`,
+  ]);
+  // The move is announced to assistive tech through a polite live region.
+  expectContains(sfc, ['role="status"', 'aria-live="polite"', "{{ announce }}"]);
 });
 
 test("emitEntityList fails fast when the target is not an emit entity", () => {
