@@ -5,6 +5,7 @@ import type {
   ReadonlyField,
   ReadonlyVow,
   Row,
+  StructureDeps,
   Studio,
   TextResult,
   Vow,
@@ -27,7 +28,6 @@ import {
   setView,
 } from "@vow/core/node";
 import {
-  assertColumnFree,
   bootstrap,
   get,
   insert,
@@ -35,12 +35,12 @@ import {
   migrate,
   openDb,
   remove,
-  renameColumn,
   resolveDbPath,
   update,
 } from "@vow/db";
 import path from "node:path";
 import process from "node:process";
+import { structureDeps } from "./structure-deps.ts";
 
 /**
  * The studio backing the MCP server (its interface lives in `types.ts`) — the resolved app dir + the
@@ -99,16 +99,6 @@ type StructureSeam = Pick<
   | "setNav"
 >;
 
-/** The seams the structure mutations bind to: a schema-resync thunk + a column-rename (run after a
- *  field rename, so the stored data follows the new column name before the schema is re-derived) + a
- *  pre-write collision guard (run BEFORE the vow `.md` is rewritten, so a rename onto an orphaned column
- *  throws an actionable error while the vow and DB are still in step). */
-interface StructureDeps {
-  readonly guardRename: (entity: string, from: string, to: string) => void;
-  readonly renameField: (entity: string, from: string, to: string) => void;
-  readonly syncDb: () => void;
-}
-
 /** The create / drop half of the structure seam — adds a vow + re-derives the DB (for an entity). */
 type CreateSeam = Pick<
   StructureSeam,
@@ -121,16 +111,23 @@ type EditSeam = Pick<
   "editField" | "editForm" | "editSeed" | "editView" | "setIntent" | "setNav"
 >;
 
-/** Build the create / drop methods over the app dir + the schema-resync thunk. */
-function createSeam(appDir: string, syncDb: () => void): CreateSeam {
+/** Build the create / drop methods over the app dir + the structure seams. */
+function createSeam(appDir: string, deps: StructureDeps): CreateSeam {
+  const { archiveDropped, guardAddField, guardCreateEntity, syncDb } = deps;
   return {
     createEntity: (spec) => {
+      // Reject a slug whose orphaned table still holds rows BEFORE the vow `.md` is written — a prior
+      // `remove_vow` archives the table, but a never-archived orphan would silently win + skip the seed.
+      guardCreateEntity(spec.slug);
       const fields = spec.fields.map((field: ReadonlyField) => toField(field));
       const vow = addEntity(appDir, { fields, intent: spec.intent, slug: spec.slug });
       syncDb();
       return vow.slug;
     },
     createField: (entity, field) => {
+      // Reject an orphaned column of the new name BEFORE the field is added (a prior `remove_field` is
+      // DB-additive, so the new field would otherwise adopt the dead column's stored data).
+      guardAddField(entity, field);
       addField(appDir, entity, toField(field));
       syncDb();
     },
@@ -157,6 +154,10 @@ function createSeam(appDir: string, syncDb: () => void): CreateSeam {
       removeField(appDir, entity, field);
     },
     dropVow: (slug) => {
+      // Archive an emit entity's table (rename to `_dropped_<slug>`) so a re-created slug starts fresh
+      // (not on the dead rows) and the data stays recoverable. Run BEFORE the `.md` is removed, while the
+      // Vow still says whether the dropped slug was an entity.
+      archiveDropped(slug);
       removeVow(appDir, slug);
     },
   };
@@ -164,17 +165,30 @@ function createSeam(appDir: string, syncDb: () => void): CreateSeam {
 
 /** Build the edit methods over the app dir + the schema-resync + column-rename seams. */
 function editSeam(appDir: string, deps: StructureDeps): EditSeam {
-  const { guardRename, renameField, syncDb } = deps;
+  const { columnTypeOf, convertType, guardOptions, guardRename, renameField, seedFresh, syncDb } =
+    deps;
   return {
     editField: (entity, name, patch) => {
+      // Capture the column's pre-patch type — the retype rebuild below decides from the type the patch
+      // Moves away from, but it runs AFTER the `.md` rewrite, when the live vow already shows the new type.
+      const was = columnTypeOf(entity, name);
       // Guard the rename collision BEFORE the vow `.md` is rewritten — a rename onto an orphaned column
       // (one a prior `remove_field` left behind) must throw here, not as a raw SQLite error after the
       // `.md` already moved, so the vow and DB never diverge.
       guardRename(entity, name, patch.name ?? name);
+      // Reject a `select`-options shrink that strands a stored value — scanned on the OLD column name,
+      // BEFORE the `.md` moves, so the vow and DB stay in step (recovery: re-pick / set_record_field).
+      guardOptions(entity, name, patch);
       // Validate + rewrite the vow (it throws on a bad patch, leaving the DB untouched).
       setField(appDir, entity, name, patch);
       // Carry the column data across a rename — `migrate` is additive and would orphan the old column.
       renameField(entity, name, patch.name ?? name);
+      // Rebuild the column when the retype changed its type (`migrate` never converts an existing column,
+      // So the old affinity would otherwise corrupt every existing AND future write). Run AFTER the rename
+      // So it acts on the final column name.
+      if (defined(was)) {
+        convertType(entity, patch.name ?? name, patch, was);
+      }
       syncDb();
     },
     editForm: (slug, patch) => {
@@ -182,7 +196,11 @@ function editSeam(appDir: string, deps: StructureDeps): EditSeam {
     },
     editSeed: (entity, seed) => {
       setSeed(appDir, entity, seed);
+      // Seed via the once-ever ledger (a no-op once already seeded) and report whether THIS call's rows
+      // Actually landed, so the LLM never believes a silent no-op changed the data.
+      const applied = seedFresh(entity);
       syncDb();
+      return applied;
     },
     editView: (slug, view) => {
       setView(appDir, slug, view);
@@ -198,7 +216,7 @@ function editSeam(appDir: string, deps: StructureDeps): EditSeam {
 
 /** Build the full structure seam — the create / drop half + the edit half, over the same app dir. */
 function structureSeam(appDir: string, deps: StructureDeps): StructureSeam {
-  return { ...createSeam(appDir, deps.syncDb), ...editSeam(appDir, deps) };
+  return { ...createSeam(appDir, deps), ...editSeam(appDir, deps) };
 }
 
 /** The display-name field of an entity — its first text field, else `id` (mirrors how a reference cell
@@ -411,20 +429,12 @@ export function openStudio(appDir: string): Studio {
     migrate(db, live);
     bootstrap(db, live);
   };
-  // Carry a field's stored data across a rename — `entityOf` asserts the target exists (the table = slug).
-  const renameField = (entity: string, from: string, to: string): void => {
-    renameColumn(db, entityOf(entity).slug, from, to);
-  };
-  // Reject a rename onto an orphaned column BEFORE the vow `.md` is rewritten (keeps vow + DB in step).
-  const guardRename = (entity: string, from: string, to: string): void => {
-    assertColumnFree(db, entityOf(entity).slug, from, to);
-  };
   syncDb();
   return {
     appDir,
     syncDb,
     ...dataSeam(appDir, db, { entityOf, resolveRef }),
-    ...structureSeam(appDir, { guardRename, renameField, syncDb }),
+    ...structureSeam(appDir, structureDeps({ appDir, db, entityOf, syncDb })),
   };
 }
 

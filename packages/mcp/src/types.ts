@@ -1,4 +1,4 @@
-import type { Db, Row } from "@vow/db";
+import type { Db, Row, SqlColumn } from "@vow/db";
 import type { Field, ViewNode, Vow } from "@vow/core";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -14,7 +14,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /** The vow + DB types (re-exported as pure types — values come straight from the packages). */
 export type { Field, ViewNode, Vow };
-export type { Db, Row };
+export type { Db, Row, SqlColumn };
 
 /** A value that may be absent — the explicit name for `T | undefined`. */
 export type Maybe<T> = T | undefined;
@@ -109,6 +109,47 @@ export interface RecordPatch {
 }
 
 /**
+ * The structure-mutation seams the studio binds to (built by `structure-deps.ts`) — each a `@vow/db`
+ * guard or migration run at the right moment relative to the vow `.md` rewrite, so the vow and the live
+ * DB never diverge:
+ * - `archiveDropped` — on `dropVow` of an emit entity, archive its table (`_dropped_<slug>`) so a
+ *   re-create starts fresh and the dead rows stay recoverable.
+ * - `columnTypeOf` — the column type of a field BEFORE a patch (captured for `convertType`).
+ * - `convertType` — after a `set_field` retype, rebuild the column with the new type (run AFTER the
+ *   rename so it acts on the final column name) — `migrate` never changes a column's type.
+ * - `guardAddField` — BEFORE `add_field`, reject an orphaned column of the new name (a prior
+ *   `remove_field` is additive at the DB layer) so the new field never adopts the dead data.
+ * - `guardCreateEntity` — BEFORE `add_entity`, reject a slug whose orphaned table still holds rows.
+ * - `guardOptions` — BEFORE a `set_field` that lands a `select`, reject a shrink that strands a stored
+ *   value (run on the OLD column name, before the `.md` moves).
+ * - `guardRename` — BEFORE a `set_field` rename, reject a collision with an orphaned column.
+ * - `renameField` — after a rename, carry the stored data to the new column name (`migrate` is additive).
+ * - `seedFresh` — apply an entity's `## seed` once-ever via the ledger, reporting whether rows landed.
+ * - `syncDb` — re-derive the table set from the live entity set after a structure change.
+ */
+export interface StructureDeps {
+  readonly archiveDropped: (slug: string) => void;
+  readonly columnTypeOf: (entity: string, field: string) => Maybe<SqlColumn>;
+  // eslint-disable-next-line max-params
+  readonly convertType: (entity: string, field: string, patch: FieldPatch, was: SqlColumn) => void;
+  readonly guardAddField: (entity: string, field: ReadonlyField) => void;
+  readonly guardCreateEntity: (slug: string) => void;
+  readonly guardOptions: (entity: string, field: string, patch: FieldPatch) => void;
+  readonly guardRename: (entity: string, from: string, to: string) => void;
+  readonly renameField: (entity: string, from: string, to: string) => void;
+  readonly seedFresh: (entity: string) => boolean;
+  readonly syncDb: () => void;
+}
+
+/** The context `structureDeps` is built over — the shared DB, the app dir, the entity resolver, the resync. */
+export interface DepsContext {
+  readonly appDir: string;
+  readonly db: Db;
+  readonly entityOf: (slug: string) => Vow;
+  readonly syncDb: () => void;
+}
+
+/**
  * The studio backing the MCP server — the resolved app dir, plus the seams every tool needs. It owns
  * the shared SQLite handle privately (never a parameter, so the strict read-only-parameter rule never
  * sees a class instance) and exposes only methods + the app dir. It is the single boundary to
@@ -136,8 +177,9 @@ export interface Studio {
   readonly editField: (entity: string, name: string, patch: FieldPatch) => void;
   /** Edit a form's `of`/`submit`/`edit` in place. */
   readonly editForm: (slug: string, patch: FormPatch) => void;
-  /** Replace an entity's versioned `## seed` records + re-derive the DB (re-bootstrap into an empty table). */
-  readonly editSeed: (entity: string, seed: readonly Readonly<Row>[]) => void;
+  /** Replace an entity's versioned `## seed` records + apply them once-ever via the seed ledger — returns
+   *  whether THIS call's rows landed (false on an already-seeded entity, so the LLM never sees a silent no-op). */
+  readonly editSeed: (entity: string, seed: readonly Readonly<Row>[]) => boolean;
   /** Replace a vow's `## view` (the page tree) in place. */
   readonly editView: (slug: string, view: readonly ViewNode[]) => void;
   /** Every `emit entity` vow's slug, freshly loaded. */
