@@ -5,7 +5,7 @@ order: 4
 
 # The component model
 
-Vue, React and Solid are **three dialects of the same essence**: a component has props, events, and a tree of markup. vow captures that essence **once** as plain data — the `Component` model — and a per-framework **adapter** renders it. Today there is one adapter (`renderVueSfc`); React/Solid are later additions over the _same_ model, not a rewrite.
+Vue, React and Solid are **three dialects of the same essence**: a component has props, events, and a tree of markup. vow captures that essence **once** as plain data — the `Component` model — and a per-framework **adapter** renders it. Vue is the full adapter (`renderVueSfc`); a **second, stateless React adapter** (`renderReactSfc` / `renderReactView`) has already shipped — a byte-stable, test-pinned renderer over the _same_ model, not a rewrite. It proves the model is framework-neutral: one spec, more than one target.
 
 This is why the emitters don't hand-write Vue strings: an `emit view` or a primitive builds a `Component`, and the adapter turns it into an SFC. One model, many targets.
 
@@ -56,12 +56,14 @@ type Attr =
   | { kind: "cond"; type: "if" | "show"; expr: string }; // v-if="open" / v-show="open"
 ```
 
-The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _what_ to bind, the adapter decides the _syntax_. Vue renders `:aria-label="label"`; a future React adapter renders `aria-label={label}`. The model never learns a Vue keyword.
+The expression (`"label"`, `"api.rootProps"`) is the **seam**: the model says _what_ to bind, the adapter decides the _syntax_. Vue renders `:aria-label="label"`; the React adapter renders `aria-label={label}`. The model never learns a Vue keyword.
 
 ## One model, many adapters
 
-`renderVueSfc(component): string` is the Vue adapter — an exhaustive walk over the discriminated unions (a missing node kind is a type error, so drift is a red build). Its output is **byte-stable**, pinned by an equality test against the original hand-written SFC. Adding React later means writing `renderReact(component)` over the same `Component` — no model change.
+`renderVueSfc(component): string` is the Vue adapter — an exhaustive walk over the discriminated unions (a missing node kind is a type error, so drift is a red build). Its output is **byte-stable**, pinned by an equality test against the original hand-written SFC.
+
+`renderReactSfc(component): string` is the **second adapter** over the same `Component` — no model change. It renders a stateless presentational component to a `.tsx` shell, walking the _same_ `UiNode` tree (`renderReactView`) into JSX: `class` becomes `className`, `:aria-label="label"` becomes `aria-label={label}`, `@click="add"` becomes `onClick={() => add}`, `v-if` becomes `{expr && (…)}`, a loop becomes `{each.map((as) => …)}`. Its output is **byte-stable** too, pinned by its own equality test. The scope is deliberately partial: **stateless structure only**. A component carrying `setup`, `props`, or `events` — and the `model` / `spread` / `raw` attr kinds — throws loudly rather than render half a feature; that runtime-state translation (Vue composable to React hooks) is the strategic **#101** follow-up. No emitter targets React yet — generation is still Vue end-to-end; the React adapter exists to **prove** the model is framework-neutral, one renderer at a time.
 
 ::: warning Foundation status
-Emitters build Components and render them via `renderVueSfc`: the primitives (`@vow/emit-primitive`), the entity lists + forms (`@vow/emit-view`), the layout primitives (`@vow/layout`). This is **gated** — an emitter that writes a raw `<template>` string instead of the model fails the build (`@vow/gate`'s framework-neutrality test), so a single-framework hardcode can't slip in; a short, shrinking allowlist tracks the few remaining hand-written SFCs (the live issue views + the changelog timeline). Vue is the only adapter today — React or Solid would be a new `renderReact` over the same model, with no change to the IR.
+Emitters build Components and render them via `renderVueSfc`: the primitives (`@vow/emit-primitive`), the entity lists + forms (`@vow/emit-view`), the layout primitives (`@vow/layout`). This is **gated** — an emitter that writes a raw `<template>` string instead of the model fails the build (`@vow/gate`'s framework-neutrality test), so a single-framework hardcode can't slip in; a short, shrinking allowlist tracks the few remaining hand-written SFCs (the live issue views + the changelog timeline). The generators target Vue end-to-end; the **stateless React adapter** (`renderReactSfc` / `renderReactView`) is the second renderer over the same IR — shipped, byte-stable, and test-pinned — but it stays a proof, not a generation target: stateful translation throws as the #101 follow-up, and no emitter emits React yet. Solid would be a further adapter over the same model, with no change to the IR.
 :::
