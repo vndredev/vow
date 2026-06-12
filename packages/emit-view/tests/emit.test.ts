@@ -64,7 +64,7 @@ test("emitEntityList renders an unstyled, read-only table over the entity", () =
     'import { useCollection } from "@vow/store";',
     'const { items: rows } = useCollection<Task>("task");',
     'import Table from "./Table.vue";',
-    '<TableHead scope="col">title</TableHead>',
+    '<TableHead scope="col">Title</TableHead>',
     'v-for="grp in grouped"',
     'v-for="item in grp.items"',
     '<TableCell class="field-title">{{ item.title }}</TableCell>',
@@ -237,7 +237,7 @@ test("emitEntityCards renders a Card per record, titled by the first text field"
     'v-for="grp in grouped"',
     'v-for="item in grp.items"',
     "<CardHeader>{{ item.title }}</CardHeader>",
-    "status: ",
+    "Status: ",
   ]);
   const notEntity: VowNode = { ...ticket, fulfills: { as: "view", kind: "emit" } };
   expect(() => emitEntityCards(notEntity)).toThrow();
