@@ -7,7 +7,6 @@
   "exports": {
     ".": "./src/vocab.ts",
     "./fonts/*": "./fonts/*",
-    "./nacht.css": "./nacht.css",
     "./vow.css": "./vow.css"
   },
   "scripts": {

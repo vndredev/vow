@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import DarkToggle from "./dark-toggle.vue";
 import Icon from "@vow/icons/Icon.vue";
+import Mark from "./mark.vue";
 import type { Page } from "./types.ts";
 import { buildNav } from "./index.ts";
 import { computed } from "vue";
@@ -16,7 +17,10 @@ const sections = computed(() => buildNav(props.pages));
 
 <template>
   <div class="vow-shell__sidebar-inner">
-    <a class="vow-shell__brand" href="/">{{ title }}</a>
+    <a class="vow-shell__brand" href="/">
+      <Mark />
+      <span class="vow-shell__brand-word">{{ title }}</span>
+    </a>
     <nav class="vow-shell__nav">
       <template v-for="(section, i) in sections" :key="i">
         <div v-if="section.title" class="vow-shell__nav-group">{{ section.title }}</div>

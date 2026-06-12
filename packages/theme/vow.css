@@ -1,32 +1,98 @@
-/* vow's base theme — one token system over the class + data-* hooks the emitters produce.
+/* vow's design — "The Specification": terminal-grade, mono-forward. One token system over the class +
+   data-* hooks the emitters produce. Intent reads Vermilion (the accent), proof reads green (every prove
+   → a green test — vow's gate). Two surfaces of the one design: a warm light (the `:root`) and the deep
+   terminal Nacht (the `.dark` block). Archivo Expanded is the display voice; IBM Plex Sans/Mono the rest.
 
-   Every visual decision is a CSS custom property under `:root`; the `.vow-*` rules only *consume*
-   tokens, never hardcode a value. So re-theming the whole generated UI (brand colors, type scale,
-   density, radius) is editing the token block — no rule below changes, and no component changes.
-   Import it to dress the generated UI; omit it for fully unstyled output; replace it with your own
-   token block (e.g. the vndre.dev design tokens) for a different look over the same hooks. */
+   Every visual decision is a CSS custom property under `:root`; the `.vow-*` rules only *consume* tokens,
+   never hardcode a value. So re-theming the whole generated UI (brand colors, type scale, density, radius)
+   is editing the token block — no rule below changes, and no component changes. Import it to dress the
+   generated UI; omit it for fully unstyled output; point `vow({ theme })` at your own token block for a
+   different look over the same hooks (see docs/guide/theming.md). */
+
+/* The vow webfonts — self-hosted (OFL), latin subset (covers äöüß). */
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 800;
+  font-stretch: 125%;
+  font-display: swap;
+  src: url("./fonts/archivo-expanded.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-sans-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-600.woff2") format("woff2");
+}
 
 :root {
-  /* Color — semantic roles, not raw swatches. vow's default palette, tuned for the whole UI to read as
-     one; the names stay vow's. Dark is the `.dark` class block below. */
-  --vow-color-bg: #ffffff; /* page background */
-  --vow-color-surface: #f6f6f7; /* raised surfaces: cards, boxes, code */
-  --vow-color-text: #3c3c43; /* primary text */
-  --vow-color-muted: #67676c; /* secondary text */
-  --vow-color-accent: #3451b2; /* brand: links, eyebrow, focus ring */
-  --vow-color-accent-hover: #2c4496; /* accent fill on hover (primary button) */
-  --vow-color-ink: #213547; /* solid dark fills: primary button, checked box */
-  --vow-color-on-accent: #ffffff; /* text/icon on an accent or ink fill */
-  --vow-color-border: #e2e2e3; /* hairlines, input + card borders */
-  --vow-color-border-hover: #c2c2c4; /* input/control border on hover */
-  --vow-color-danger: #b8272c; /* destructive affordances (delete) */
-  --vow-color-warning: #915930; /* caution callouts */
-  --vow-color-success: #18794e; /* success callouts */
-  --vow-color-scrim: rgb(0 0 0 / 0.6); /* modal/overlay backdrop */
+  /* Color — semantic roles, not raw swatches. vow's light surface — the daylight inversion of the terminal
+     Nacht (the `.dark` block below), the same warm-graphite family, same Vermilion intent + green proof. */
+  --vow-color-bg: #f3efe7; /* warm graphite paper — page background */
+  --vow-color-surface: #e8e2d6; /* raised surfaces: cards, heads, hovers */
+  --vow-color-text: #1a1611; /* the terminal ink, now the type */
+  --vow-color-muted: #6b5e47; /* secondary text */
+  --vow-color-accent: #ee4b22; /* Signal/Vermilion — intent: links, eyebrow, primary fill, focus ring */
+  --vow-color-accent-hover: #ce3a14; /* signal-600 — accent fill on hover (darker on light) */
+  --vow-color-ink: #1b1712; /* solid dark fills: checked box */
+  --vow-color-on-accent: #fff7f2; /* text/icon on an accent or ink fill */
+  --vow-color-border: #dcd2bf; /* hairlines, input + card borders */
+  --vow-color-border-hover: #c7b9a0; /* control border on hover */
+  --vow-color-danger: #b3261e; /* a deep red, distinct from the Vermilion accent (delete) */
+  --vow-color-warning: #b9701a; /* amber — caution callouts */
+  --vow-color-success: #1c7a4e; /* the proof green, deepened for light — every prove → a green test */
+  --vow-color-scrim: rgb(19 16 12 / 0.5); /* the terminal ink as the overlay backdrop */
 
-  /* Type — one font stack, a size scale, weights, line-heights, tracking. */
-  --vow-font-sans: system-ui, -apple-system, "Segoe UI", roboto, helvetica, arial, sans-serif;
-  --vow-font-mono: ui-monospace, "Menlo", "Monaco", "Consolas", "Liberation Mono", monospace;
+  /* Type — Archivo Expanded (display), IBM Plex Sans (body), IBM Plex Mono (technical), a size scale,
+     weights, line-heights, tracking. */
+  --vow-font-display: "Archivo", "Arial Narrow", sans-serif;
+  --vow-font-sans:
+    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", roboto, helvetica, arial, sans-serif;
+  --vow-font-mono:
+    "IBM Plex Mono", ui-monospace, "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
   --vow-text-xs: 0.8rem;
   --vow-text-sm: 0.9rem;
   --vow-text-base: 1rem;
@@ -75,24 +141,25 @@
   --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.12);
 }
 
-/* Dark theme — re-declare only the colors, on the `.dark` class (toggled on <html>). vow's default
-   dark palette. A host can map `.dark` to a media query if it wants OS-driven dark. */
+/* The terminal "Nacht" — vow's signature dark, on the `.dark` class (toggled on <html>): a deep warm-black
+   ink, Vermilion intent, green proof. Re-declares only the colors. A host can map `.dark` to a media query
+   for OS-driven dark. */
 .dark {
-  --vow-color-bg: #1b1b1f;
-  --vow-color-surface: #202127;
-  --vow-color-text: #dfdfd6;
-  --vow-color-muted: #98989f;
-  --vow-color-accent: #a8b1ff;
-  --vow-color-accent-hover: #c0c6ff;
-  --vow-color-ink: #dfdfd6;
-  --vow-color-on-accent: #1b1b1f;
-  --vow-color-border: #2e2e32;
-  --vow-color-border-hover: #414853;
-  --vow-color-danger: #f66f81;
-  --vow-color-warning: #f9b44e;
-  --vow-color-success: #3dd68c;
-  --vow-color-scrim: rgb(0 0 0 / 0.7);
-  --vow-shadow-popover: 0 8px 24px rgb(0 0 0 / 0.45);
+  --vow-color-bg: #13100c; /* the terminal ink */
+  --vow-color-surface: #1a1611; /* panel — cards, heads, hovers */
+  --vow-color-text: #eae3d5;
+  --vow-color-muted: #b6ab97;
+  --vow-color-accent: #ee4b22; /* Vermilion holds across both surfaces */
+  --vow-color-accent-hover: #f2724e; /* signal-400, brighter on dark */
+  --vow-color-ink: #eae3d5; /* light ink — solid fills read light on the terminal */
+  --vow-color-on-accent: #fff7f2;
+  --vow-color-border: #2c2620;
+  --vow-color-border-hover: #3a332a;
+  --vow-color-danger: #f0796b; /* a soft red, distinct from the Vermilion accent */
+  --vow-color-warning: #e9a445;
+  --vow-color-success: #5fbf8a; /* the proof green — the green-test signal */
+  --vow-color-scrim: rgb(0 0 0 / 0.72);
+  --vow-shadow-popover: 0 12px 32px -10px rgb(0 0 0 / 0.55);
 }
 
 /* Base reset — applies once, app-wide (browser defaults gone: margin, box model, baseline). */
@@ -133,6 +200,7 @@ body {
   text-transform: uppercase;
 }
 .vow-app h1 {
+  font-family: var(--vow-font-display);
   font-size: var(--vow-text-3xl);
   font-weight: var(--vow-weight-display);
   line-height: var(--vow-leading-tight);
@@ -140,6 +208,7 @@ body {
   margin: 0;
 }
 .vow-app h2 {
+  font-family: var(--vow-font-display);
   font-size: var(--vow-text-2xl);
   font-weight: var(--vow-weight-bold);
   line-height: var(--vow-leading-tight);
