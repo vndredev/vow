@@ -18,9 +18,9 @@ function inlinePrimitive(kind: string, label: string, opts: string): UiNode {
     return comp("Icon", [sattr("name", label)], []);
   }
   const attrs: Attr[] = [sattr("label", label)];
-  const variant: Maybe<string> = VARIANT.exec(opts)?.[1];
-  if (defined(variant)) {
-    attrs.push(sattr("variant", variant));
+  const tone: Maybe<string> = VARIANT.exec(opts)?.[1];
+  if (defined(tone)) {
+    attrs.push(sattr("tone", tone));
   }
   return comp("Badge", attrs, []);
 }

@@ -757,6 +757,7 @@ body {
 /* The badge primitive — the kit's status/label chip: a small mono, UPPERCASE pill (the technical voice).
    `data-variant` is the semantic tint, so it re-skins with the theme. */
 .vow-badge {
+  --vow-tone: var(--vow-color-muted); /* the data-tone colour; neutral = muted */
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -771,25 +772,41 @@ body {
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
-.vow-badge[data-variant="neutral"] {
-  border-color: var(--vow-color-border);
-  color: var(--vow-color-muted);
+/* Tone — the data-tone colour the variants read (neutral is the base muted above). */
+.vow-badge[data-tone="accent"] {
+  --vow-tone: var(--vow-color-accent);
 }
-.vow-badge[data-variant="accent"] {
-  background: var(--vow-color-accent-tint);
-  color: var(--vow-color-accent);
+.vow-badge[data-tone="success"] {
+  --vow-tone: var(--vow-color-success);
 }
-.vow-badge[data-variant="success"] {
-  background: color-mix(in srgb, var(--vow-color-success) 16%, transparent);
-  color: var(--vow-color-success);
+.vow-badge[data-tone="warning"] {
+  --vow-tone: var(--vow-color-warning);
 }
-.vow-badge[data-variant="warning"] {
-  background: color-mix(in srgb, var(--vow-color-warning) 16%, transparent);
-  color: var(--vow-color-warning);
+.vow-badge[data-tone="danger"] {
+  --vow-tone: var(--vow-color-danger);
 }
-.vow-badge[data-variant="danger"] {
-  background: color-mix(in srgb, var(--vow-color-danger) 14%, transparent);
-  color: var(--vow-color-danger);
+.vow-badge[data-tone="info"] {
+  --vow-tone: var(--vow-color-accent);
+}
+/* Variant — the treatment over the tone. */
+.vow-badge[data-variant="soft"] {
+  background: color-mix(in srgb, var(--vow-tone) 14%, transparent);
+  color: var(--vow-tone);
+}
+.vow-badge[data-variant="outline"] {
+  border-color: color-mix(in srgb, var(--vow-tone) 45%, var(--vow-color-border));
+  color: var(--vow-tone);
+}
+.vow-badge[data-variant="solid"] {
+  background: var(--vow-tone);
+  color: var(--vow-color-on-accent);
+}
+.vow-badge[data-variant="ghost"] {
+  color: var(--vow-tone);
+}
+.vow-badge[data-variant="link"] {
+  color: var(--vow-tone);
+  text-decoration: underline;
 }
 
 /* The switch (toggle) primitive — a pill track with a sliding thumb; state is the `data-state` hook. */

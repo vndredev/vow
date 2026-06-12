@@ -16,7 +16,7 @@ import { renderVueSfc } from "@vow/component";
  * One source — change the mapping here, all three layouts follow.
  */
 const ISSUE_VARIANT_LINES = [
-  `const variant = (s: string): "neutral" | "accent" | "success" =>`,
+  `const tone = (s: string): "neutral" | "accent" | "success" =>`,
   `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
 ];
 
@@ -121,13 +121,9 @@ function issueSessionLink(): UiNode {
   };
 }
 
-/** A status `<Badge>` chip — `:label` + the shared `variant(...)` mapping over a status expression. */
+/** A status `<Badge>` chip — `:label` + the shared `tone(...)` mapping (a soft badge, tone from meaning). */
 function statusBadge(statusExpr: string): UiNode {
-  return comp(
-    "Badge",
-    [bound("label", statusExpr), bound("variant", `variant(${statusExpr})`)],
-    [],
-  );
+  return comp("Badge", [bound("label", statusExpr), bound("tone", `tone(${statusExpr})`)], []);
 }
 
 /** A static-class element node with the given tag and children. */
@@ -156,7 +152,7 @@ function tableHead(): UiNode {
  *  card so the two layouts render an issue's labels the same way. */
 function labelBadges(): UiNode {
   return {
-    attrs: [bound("label", "l"), { kind: "static", name: "variant", value: "neutral" }],
+    attrs: [bound("label", "l"), { kind: "static", name: "variant", value: "outline" }],
     children: [],
     for: { as: "l", each: "it.issue.labels", key: "l" },
     kind: "component",
