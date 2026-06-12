@@ -140,9 +140,9 @@ export function setIntent(appDir: string, slug: string, intent: string): Vow {
   return replace(appDir, slug, (vow) => ({ ...vow, intent }));
 }
 
-/** Set a vow's nav entry (label · icon · order · group). */
+/** Patch a vow's nav entry (label · icon · order · group) — omitted keys keep their existing value. */
 export function setNav(appDir: string, slug: string, nav: ReadonlyVow["nav"]): Vow {
-  return replace(appDir, slug, (vow) => ({ ...vow, nav }));
+  return replace(appDir, slug, (vow) => ({ ...vow, nav: { ...vow.nav, ...nav } }));
 }
 
 /** Delete a vow — remove its `.md` (and any child folder). The tree must stay reference-valid. */
