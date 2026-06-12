@@ -6,6 +6,6 @@
  * specifiers alongside values, no duplicate import of one module).
  */
 export type { Attr, Component, ImportDecl, UiNode } from "@vow/component";
-export type { Maybe, ReadonlyField, ReadonlyVow } from "@vow/core";
+export type { FieldCell, FieldControl, Maybe, ReadonlyField, ReadonlyVow } from "@vow/core";
 export type { BadgeVariant, TimelineEntry } from "@vow/observability";
 export type { IssueLayout } from "./issue-layout.ts";

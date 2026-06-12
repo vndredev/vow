@@ -1,8 +1,18 @@
 import type { Component, ImportDecl, ReadonlyField, ReadonlyVow, UiNode } from "./types.ts";
-import { defined, isEmitEntity } from "@vow/core";
+import { FIELD_KINDS, defined, isEmitEntity } from "@vow/core";
 import { pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
 import { fieldControl } from "./field-control.ts";
+
+/** Whether a field self-labels as a `<Checkbox>` (its registered control) rather than a labelled `<Field>`. */
+function isCheckbox(field: ReadonlyField): boolean {
+  return FIELD_KINDS[field.type].control === "checkbox";
+}
+
+/** Whether a field renders through vow's `<Select>` primitive (a fixed list or a reference's collection). */
+function isSelect(field: ReadonlyField): boolean {
+  return FIELD_KINDS[field.type].control === "select";
+}
 
 /** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set. */
 function errorNode(name: string): UiNode {
@@ -73,7 +83,7 @@ function booleanField(field: ReadonlyField): UiNode {
 
 /** One field in a form: a boolean self-labels as a `<Checkbox>`; everything else is a labelled `<Field>`. */
 function formField(field: ReadonlyField): UiNode {
-  if (field.type === "boolean") {
+  if (isCheckbox(field)) {
     return booleanField(field);
   }
   return {
@@ -107,13 +117,14 @@ function referenceLabel(byId: EntityLookup): (ref?: string) => string {
     byId.get(ref ?? "")?.fields.find((field) => field.type === "text")?.name ?? "id";
 }
 
-/** The control adapters a form's fields pull in (`<Checkbox>` for booleans, `<Select>` for select/ref). */
+/** The control adapters a form's fields pull in (`<Checkbox>` for booleans, `<Select>` for select/ref) —
+ *  derived from each field's registered control, so the imports track `fieldControl` exactly. */
 function controlImports(entity: ReadonlyVow): ImportDecl[] {
   const imports: ImportDecl[] = [];
-  if (entity.fields.some((field) => field.type === "boolean")) {
+  if (entity.fields.some((field) => isCheckbox(field))) {
     imports.push({ default: "Checkbox", from: "./Checkbox.vue" });
   }
-  if (entity.fields.some((field) => field.type === "select" || field.type === "reference")) {
+  if (entity.fields.some((field) => isSelect(field))) {
     imports.push({ default: "Select", from: "./Select.vue" });
   }
   return imports;
@@ -233,10 +244,10 @@ function submitLines(name: string, edit: boolean): string[] {
   return appendSubmit(name);
 }
 
-/** A `useId` per native (non-boolean) field, plus the choice computeds each reference field needs. */
+/** A `useId` per labelled (non-checkbox) field, plus the choice computeds each reference field needs. */
 function fieldSetup(entity: ReadonlyVow, label: (ref?: string) => string): string[] {
   const setup: string[] = [];
-  for (const field of entity.fields.filter((candidate) => candidate.type !== "boolean")) {
+  for (const field of entity.fields.filter((candidate) => !isCheckbox(candidate))) {
     setup.push(`const ${field.name}Id = useId();`);
   }
   for (const field of entity.fields.filter((candidate) => candidate.type === "reference")) {
