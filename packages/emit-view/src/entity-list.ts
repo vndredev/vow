@@ -11,6 +11,7 @@ import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
 import { FIELD_KINDS } from "@vow/core";
 import { assertEmitEntity } from "./entity-guard.ts";
+import { contextAttrs } from "./button-intent.ts";
 import { emptyStates } from "./status-message.ts";
 
 /** A reference cell labels its target by the target entity's first text field (else its id). */
@@ -205,7 +206,7 @@ function deleteCell(entity: ReadonlyVow): UiNode {
         attrs: [
           { expr: `\`Delete this ${entity.slug}\``, kind: "bound", name: "aria-label" },
           { kind: "static", name: "icon", value: "trash" },
-          { kind: "static", name: "variant", value: "ghost" },
+          ...contextAttrs("row"),
           { expr: "removeById(item.id)", kind: "event", name: "click" },
         ],
         children: [],
