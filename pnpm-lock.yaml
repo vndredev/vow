@@ -526,6 +526,9 @@ importers:
 
   packages/store:
     dependencies:
+      '@vow/db':
+        specifier: workspace:*
+        version: link:../db
       vue:
         specifier: ^3.5.13
         version: 3.5.35(typescript@6.0.3)

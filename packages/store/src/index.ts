@@ -1,3 +1,4 @@
+import { VOW_API, dbPath } from "@vow/db/routes";
 import { isObject } from "./guards.ts";
 import { parseIssuePlan } from "./issues.ts";
 import { reactive } from "vue";
@@ -25,7 +26,6 @@ export type IssueItem = ReturnType<typeof parseIssuePlan>[number];
 
 type Row = Record<string, unknown> & { id: string };
 
-const BASE = "/__vow/db";
 const REFRESH_INTERVAL_MS = 5000;
 const hasApi = "window" in globalThis && typeof fetch === "function";
 
@@ -200,7 +200,7 @@ const loaded = new Set<string>();
 /** Read a slug's rows from the dev API, returning `[]` on any non-ok response or transport failure. */
 async function fetchRows(slug: string): Promise<Row[]> {
   try {
-    const res = await fetch(`${BASE}/${slug}`);
+    const res = await fetch(dbPath(slug));
     if (!res.ok) {
       return [];
     }
@@ -223,10 +223,10 @@ async function load(slug: string): Promise<void> {
 
 type WriteMethod = "POST" | "PATCH" | "DELETE";
 
-/** Fire-and-forget a write to the dev API — the optimistic local change already happened. Takes plain
- *  string params (not a `RequestInit`, which is not deeply readonly) so the rule wall holds; an absent
- *  `body` (the default) is a body-less request, e.g. a DELETE. */
-async function write(path: string, method: WriteMethod, body = ""): Promise<void> {
+/** Fire-and-forget a write to a dev-API `url` (built by `dbPath`) — the optimistic local change already
+ *  happened. Takes plain string params (not a `RequestInit`, which is not deeply readonly) so the rule wall
+ *  holds; an absent `body` (the default) is a body-less request, e.g. a DELETE. */
+async function write(url: string, method: WriteMethod, body = ""): Promise<void> {
   if (!hasApi) {
     return;
   }
@@ -235,7 +235,7 @@ async function write(path: string, method: WriteMethod, body = ""): Promise<void
     init.body = body;
   }
   try {
-    await fetch(`${BASE}/${path}`, init);
+    await fetch(url, init);
   } catch {
     // Optimistic: the local change already happened; a failed write-through is swallowed.
   }
@@ -262,7 +262,7 @@ interface IssuesResult {
  *  not blindly trusted. */
 async function fetchIssues(): Promise<IssuesResult> {
   try {
-    const res = await fetch("/__vow/issues");
+    const res = await fetch(VOW_API.issues);
     if (!res.ok) {
       return { ok: false, plan: [] };
     }
@@ -294,7 +294,7 @@ async function writeIssue(action: "close" | "reopen", issue: number): Promise<vo
     return;
   }
   try {
-    const res = await fetch("/__vow/issues", {
+    const res = await fetch(VOW_API.issues, {
       body: JSON.stringify({ action, number: issue }),
       headers: { "content-type": "application/json" },
       method: "POST",
@@ -370,7 +370,7 @@ export function useCollection<T>(slug: string): Collection<T> {
         list.push(row);
       }
       detach(async () => {
-        await write(slug, "POST", JSON.stringify(item));
+        await write(dbPath(slug), "POST", JSON.stringify(item));
       });
     },
     items: viewAs<T>(list.rows),
@@ -378,14 +378,14 @@ export function useCollection<T>(slug: string): Collection<T> {
       const id = list.removeAt(index);
       if (typeof id === "string") {
         detach(async () => {
-          await write(`${slug}/${id}`, "DELETE");
+          await write(dbPath(slug, id), "DELETE");
         });
       }
     },
     update: (id, patch): void => {
       list.update(id, patch);
       detach(async () => {
-        await write(`${slug}/${id}`, "PATCH", JSON.stringify(patch));
+        await write(dbPath(slug, id), "PATCH", JSON.stringify(patch));
       });
     },
   };

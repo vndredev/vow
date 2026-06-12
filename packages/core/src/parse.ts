@@ -38,6 +38,22 @@ const REFERENCE_TARGET = /^reference\((.+)\)$/u;
 /** A frontmatter record (an unknown-valued map) — the YAML head of a `.vow.md`. */
 type Frontmatter = Record<string, unknown>;
 
+/** The closed set of frontmatter keys — anything else is a typo, rejected with a did-you-mean hint. */
+const KNOWN_KEYS: readonly string[] = ["fulfills", "id", "nav", "root", "shell", "title"];
+
+/**
+ * The known `## <section>` headings. Unlike the frontmatter (a closed contract), a `.vow.md` is plain
+ * Markdown and may carry legitimate prose H2s — so a heading is rejected ONLY when it is a near-miss of
+ * one of these, never for being merely unknown.
+ */
+const KNOWN_SECTIONS: readonly string[] = ["fields", "form", "proves", "seed", "view"];
+
+/** The largest edit distance at which a typo is treated as a near-miss of a known name (not a stranger). */
+const NEAR_MISS = 2;
+
+/** A `## <heading>` line — the heading text is its first capture group. */
+const H2 = /^##\s+(.+?)\s*$/u;
+
 /** The shape `parseFieldLine` hands to `Vow.parse` — validated there, so the strings stay raw here. */
 interface FieldDraft {
   readonly name: string;
@@ -239,9 +255,81 @@ function splitDocument(content: string): {
   };
 }
 
+/** A known name scored by its edit distance to a typo — the rows ranked by `nearestKnown`. */
+interface Scored {
+  readonly candidate: string;
+  readonly distance: number;
+}
+
+/** The Levenshtein edit distance between `from` and `into` — insertions, deletions, substitutions. */
+function editDistance(from: string, into: string): number {
+  let prev = Array.from({ length: into.length + 1 }, (_unused, index) => index);
+  for (let row = 0; row < from.length; row += 1) {
+    const next = [row + 1];
+    for (let col = 0; col < into.length; col += 1) {
+      const substitute = (prev[col] ?? 0) + Number(from[row] !== into[col]);
+      next.push(Math.min(substitute, (prev[col + 1] ?? 0) + 1, (next[col] ?? 0) + 1));
+    }
+    prev = next;
+  }
+  return prev[into.length] ?? 0;
+}
+
+/** The known name a typo is closest to within `NEAR_MISS` — or absent when it is a stranger, not a typo. */
+function nearestKnown(word: string, known: readonly string[]): string | undefined {
+  const ranked: readonly Scored[] = known
+    .map((candidate) => ({ candidate, distance: editDistance(word, candidate) }))
+    .filter((scored: Readonly<Scored>) => scored.distance > 0 && scored.distance <= NEAR_MISS)
+    .toSorted((left: Scored, right: Scored) => left.distance - right.distance);
+  return ranked[0]?.candidate;
+}
+
+/** The keys of `frontmatter` that fall outside the closed `KNOWN_KEYS` contract. */
+function unknownKeys(frontmatter: Readonly<Frontmatter>): string[] {
+  return Object.keys(frontmatter).filter((key) => !KNOWN_KEYS.includes(key));
+}
+
+/** Reject any frontmatter key outside the closed set — a typo'd key is silent-data-loss otherwise. */
+function assertKnownKeys(frontmatter: Readonly<Frontmatter>): void {
+  const [stray] = unknownKeys(frontmatter);
+  if (!defined(stray)) {
+    return;
+  }
+  const hint = mapDefined(nearestKnown(stray, KNOWN_KEYS), (near) => ` (did you mean "${near}"?)`);
+  throw new Error(`vow: unknown frontmatter key "${stray}"${hint ?? ""}`);
+}
+
+/** The `## <heading>` texts in `body`, lower-cased — every H2, prose included. */
+function headings(body: string): string[] {
+  return body
+    .split("\n")
+    .map((line) => firstGroup(H2, line)?.toLowerCase())
+    .filter((heading): heading is string => defined(heading));
+}
+
+/**
+ * Reject a `## <heading>` that is a NEAR-MISS of a known section (`fileds`, `prove`, `veiw`). A plain
+ * unknown H2 is legitimate prose and passes untouched — only a typo of a real section heading errors.
+ */
+function assertNoMistypedSections(body: string): void {
+  const mistyped = headings(body)
+    .filter((heading) => !KNOWN_SECTIONS.includes(heading))
+    .map((heading) => ({ heading, near: nearestKnown(heading, KNOWN_SECTIONS) }))
+    .find((scored: Readonly<{ heading: string; near: string | undefined }>) =>
+      defined(scored.near),
+    );
+  if (defined(mistyped) && defined(mistyped.near)) {
+    throw new Error(
+      `vow: unknown section heading "## ${mistyped.heading}" (did you mean "## ${mistyped.near}"?)`,
+    );
+  }
+}
+
 /** Parse one `<slug>.vow.md` into a validated Vow. `slug` is supplied by the loader (the filename). */
 export function parseVowMd(slug: string, content: string): VowNode {
   const { body, frontmatter } = splitDocument(content);
+  assertKnownKeys(frontmatter);
+  assertNoMistypedSections(body);
   const intent = firstGroup(INTENT, body)?.trim() ?? "";
   return Vow.parse({
     fields: itemsUnder(body, "fields").map((item) => parseFieldLine(item)),
