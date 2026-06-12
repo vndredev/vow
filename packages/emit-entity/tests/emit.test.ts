@@ -19,7 +19,7 @@ test("emitEntityModule generates a zod schema, its inferred type, and a validati
   const code = emitEntityModule(task);
   expect(code).toContain('import { z } from "zod";');
   expect(code).toContain("export const TaskSchema = z.object({");
-  expect(code).toContain('title: z.string().min(1, "title is required"),');
+  expect(code).toContain('title: z.string().min(1, "Title is required"),');
   expect(code).toContain("done: z.boolean(),");
   expect(code).toContain("export type Task = z.infer<typeof TaskSchema>;");
   expect(code).toContain("export function createTask(input: Partial<Task>): Task");
@@ -75,7 +75,7 @@ test("a date field is a string field (ISO-8601) with an ISO sample value", () =>
     slug: "event",
   };
   const code = emitEntityModule(event);
-  expect(code).toContain('starts: z.string().min(1, "starts is required"),');
+  expect(code).toContain('starts: z.string().min(1, "Starts is required"),');
   expect(code).toContain("starts: input.starts,");
   const testCode = emitEntityTest(event);
   expect(testCode).toContain('starts: "2026-01-01"');
@@ -90,7 +90,7 @@ test("a longtext field is a non-empty string in the schema (a textarea in the UI
     slug: "note",
   };
   const code = emitEntityModule(note);
-  expect(code).toContain('body: z.string().min(1, "body is required"),');
+  expect(code).toContain('body: z.string().min(1, "Body is required"),');
   expect(code).toContain("body: input.body,");
 });
 
