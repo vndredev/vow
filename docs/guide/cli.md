@@ -17,9 +17,10 @@ pnpm vow            # the help
 
 ## Running the apps
 
-`vow dev` runs the apps **in the foreground**, streaming their combined logs (each line tagged with the app) — one process, the standard dev-server model. You background it yourself (the harness, `&`, a supervisor); it frees an orphaned port first, so there's no more `pkill`. `vow status` / `vow stop` work off the fixed ports, so they find the apps no matter who started them.
+`vow serve` is the central **local hub** — the one front door that brings up the studio + the docs (and with them the `/__vow/*` control API) under one supervised process. It is where the persistent MCP channel and the agent watch-loop join next (see [the hub](/guide/serve)). `vow dev` is the same supervised runner aimed at one app while you work on it. Both stream their combined logs (each line tagged with the app), free an orphaned port first (no more `pkill`), and you background them yourself. `vow status` / `vow stop` work off the fixed ports, so they find the apps no matter who started them.
 
 ```bash
+vow serve            # the local hub — studio + docs + the /__vow control API
 vow dev              # run studio + docs (the default set), streaming
 vow dev all          # run every app (studio · docs · starter)
 vow dev studio       # run one
