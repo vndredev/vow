@@ -141,17 +141,21 @@ function tableHead(): UiNode {
   ]);
 }
 
+/** A neutral `<Badge>` per label, looped over `it.issue.labels` — shared by the table cell and the board
+ *  card so the two layouts render an issue's labels the same way. */
+function labelBadges(): UiNode {
+  return {
+    attrs: [bound("label", "l"), { kind: "static", name: "variant", value: "neutral" }],
+    children: [],
+    for: { as: "l", each: "it.issue.labels", key: "l" },
+    kind: "component",
+    name: "Badge",
+  };
+}
+
 /** The labels cell — a neutral `<Badge>` per label, looped over `it.issue.labels`. */
 function labelsCell(): UiNode {
-  return classed("td", "vow-table__cell vow-issue-table__labels", [
-    {
-      attrs: [bound("label", "l"), { kind: "static", name: "variant", value: "neutral" }],
-      children: [],
-      for: { as: "l", each: "it.issue.labels", key: "l" },
-      kind: "component",
-      name: "Badge",
-    },
-  ]);
+  return classed("td", "vow-table__cell vow-issue-table__labels", [labelBadges()]);
 }
 
 /** A single data row of the issue table. */
@@ -216,7 +220,35 @@ function boardColumnHead(): UiNode {
   };
 }
 
-/** A board card per issue in a column — number, title and the action button. */
+/** The board card's labels row — the shared per-label Badge loop, shown only when the issue has labels so
+ *  a card with none stays clean. */
+function boardCardLabels(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-issue-board__labels" },
+      { expr: "it.issue.labels.length > 0", kind: "cond", type: "if" },
+    ],
+    children: [labelBadges()],
+    kind: "element",
+    tag: "div",
+  };
+}
+
+/** The board card's assignee chip — the comma-joined assignees, shown only when the issue has any so a
+ *  card with none stays clean. Mirrors the table's assignee cell. */
+function boardCardAssignees(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-issue-board__assignee" },
+      { expr: "it.issue.assignees.length > 0", kind: "cond", type: "if" },
+    ],
+    children: [{ expr: `it.issue.assignees.join(", ")`, kind: "interp" }],
+    kind: "element",
+    tag: "span",
+  };
+}
+
+/** A board card per issue in a column — number, title, labels, assignee and the action button. */
 function boardCard(): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-board__card" }],
@@ -233,6 +265,8 @@ function boardCard(): UiNode {
         kind: "element",
         tag: "span",
       },
+      boardCardLabels(),
+      boardCardAssignees(),
       issueActionButton(),
       issueSessionLink(),
     ],

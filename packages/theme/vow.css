@@ -249,6 +249,17 @@ body {
   font-variant-numeric: tabular-nums;
   font-size: var(--vow-text-sm);
 }
+/* the card's labels — the same gapped, wrapping badge row the table cell uses */
+.vow-issue-board__labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vow-space-1);
+}
+/* the card's assignee chip — who owns the work, muted + small like the # */
+.vow-issue-board__assignee {
+  color: var(--vow-color-muted);
+  font-size: var(--vow-text-sm);
+}
 /* the issue roadmap — phases (milestones) as columns on a horizontal timeline, ordered by due date */
 .vow-roadmap {
   display: flex;
