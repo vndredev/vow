@@ -82,13 +82,57 @@ function isStep(item: SetupStep | string): item is SetupStep {
   return typeof item !== "string";
 }
 
+/** The code text a step carries that a `.value` access could hide in — its init/expr/body fragments. */
+function stepCode(step: SetupStep): readonly string[] {
+  if (step.kind === "state") {
+    return [step.init];
+  }
+  if (step.kind === "computed") {
+    return [step.expr];
+  }
+  if (step.kind === "handler") {
+    return step.body;
+  }
+  return [step.expr];
+}
+
+/** True for a step that DECLARES a reactive binding — `state`/`computed`, read as `x.value` in Vue. */
+function declaresReactive(step: SetupStep): boolean {
+  return step.kind === "state" || step.kind === "computed";
+}
+
+/** A regex matching `<name>.value` on a word boundary — `count.value`, never `e.target.value`. */
+function dotValueOf(name: string): RegExp {
+  return new RegExp(`\\b${name}\\.value\\b`, "u");
+}
+
+/**
+ * Guard the setup against Vue-idiom `.value` reads of a DECLARED reactive binding — interim until state
+ * references are structured (the seam where one setup model truly serves both adapters). The Vue adapter
+ * reads `count.value`; React reads `count`, so `count.value` would silently become `undefined.value`
+ * (NaN). We throw loudly, scoped to declared `state`/`computed` names only (`e.target.value` stays legit
+ * DOM code).
+ */
+function assertNoDeclaredDotValue(steps: readonly SetupStep[]): void {
+  const reactiveNames = steps.filter((step) => declaresReactive(step)).map((step) => step.name);
+  const fragments = steps.flatMap((step) => [...stepCode(step)]);
+  for (const name of reactiveNames) {
+    const pattern = dotValueOf(name);
+    if (fragments.some((fragment) => pattern.test(fragment))) {
+      throw new Error(
+        `component: setup reads "${name}.value" — Vue-idiom state untranslatable to React (a #101 follow-up)`,
+      );
+    }
+  }
+}
+
 /** One setup item as React lines: a `SetupStep` via `reactSetupStep`; a raw string is the narrow throw. */
 function reactSetupItem(item: SetupStep | string): readonly string[] {
   if (isStep(item)) {
     return reactSetupStep(item);
   }
   throw new Error(
-    `#101 follow-up: a raw setup string is verbatim Vue, untranslatable to React — "${item}"`,
+    `component: a raw setup string is verbatim Vue, untranslatable to React — "${item}" (a #101 follow-up)`,
   );
 }
 
@@ -97,6 +141,7 @@ function renderReactSetup(setup: readonly (SetupStep | string)[]): string[] {
   if (setup.length === 0) {
     return [];
   }
+  assertNoDeclaredDotValue(setup.filter((item) => isStep(item)));
   const lines = setup.flatMap((item) => [...reactSetupItem(item)]);
   return [...lines.map((line) => `${INDENT}${line}`), ``];
 }

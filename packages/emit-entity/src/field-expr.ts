@@ -1,5 +1,6 @@
 import { FIELD_KINDS } from "@vow/core";
 import type { ReadonlyField } from "./types.ts";
+import { humanizeFieldName } from "@vow/component";
 
 /**
  * Field-value expressions for the generated entity module — the zod type, the factory default, and the
@@ -33,7 +34,7 @@ function baseZodType(field: ReadonlyField): string {
  */
 export function zodType(field: ReadonlyField): string {
   if (field.required && isStringy(field)) {
-    return `z.string().min(1, ${JSON.stringify(`${field.name} is required`)})`;
+    return `z.string().min(1, ${JSON.stringify(`${humanizeFieldName(field.name)} is required`)})`;
   }
   return baseZodType(field);
 }

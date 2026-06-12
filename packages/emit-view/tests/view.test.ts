@@ -192,8 +192,8 @@ test("emitForm renders a labelled, zod-validated form bound to an entity", () =>
     'import { ZodError } from "zod";',
     'import { createTask, type Task } from "./task.ts";',
     '<form class="vow-form" @submit.prevent="submit">',
-    '<Field label="title" :control-id="titleId" :error="errors.title">',
-    '<Checkbox v-model="draft.done" label="done" />',
+    '<Field label="Title" :control-id="titleId" :error="errors.title">',
+    '<Checkbox v-model="draft.done" label="Done" />',
     "append(createTask(draft.value));",
     "err instanceof ZodError",
     '<Button type="submit" label="Add task" />',
@@ -208,7 +208,7 @@ test("a Select field forwards the field id as control-id so the label points at 
   const sfc = emitForm(addTaskForm, new Map([["task", entity]]));
   // Both the Field's `for` and the Select's `control-id` are `statusId`: the once-dangling label-for now points at the real combobox trigger (click-to-focus + a programmatic label association). The Select also takes `described-by` + `invalid`, which it forwards as the trigger's aria-describedby + aria-invalid — so the rendered error is programmatically associated (parity with native fields).
   expectContains(sfc, [
-    '<Field label="status" :control-id="statusId" :error="errors.status">',
+    '<Field label="Status" :control-id="statusId" :error="errors.status">',
     ':control-id="statusId"',
     `:described-by="statusId + '-error'"`,
     ':invalid="!!errors.status"',
