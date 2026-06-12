@@ -1,6 +1,7 @@
 import type { ReadonlyField, ReadonlyVow, UiNode } from "./types.ts";
 import { comp } from "./helpers.ts";
 import { defined } from "@vow/core";
+import { humanizeFieldName } from "@vow/component";
 
 /** One labelled body row in a card — `<p><strong>name: </strong>{{ value }}</p>`. */
 function bodyField(field: ReadonlyField): UiNode {
@@ -9,7 +10,7 @@ function bodyField(field: ReadonlyField): UiNode {
     children: [
       {
         attrs: [],
-        children: [{ kind: "text", text: `${field.name}: ` }],
+        children: [{ kind: "text", text: `${humanizeFieldName(field.name)}: ` }],
         kind: "element",
         tag: "strong",
       },
