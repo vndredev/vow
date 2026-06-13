@@ -222,6 +222,10 @@ importers:
         version: 0.1.24(@types/node@24.13.2)(@voidzero-dev/vite-plus-core@0.1.24(@types/node@24.13.2)(jiti@2.6.1)(typescript@6.0.3)(yaml@2.9.0))(jiti@2.6.1)(jsdom@29.1.1)(typescript@6.0.3)(yaml@2.9.0)
 
   packages/agent:
+    dependencies:
+      '@vow/observability':
+        specifier: workspace:*
+        version: link:../observability
     devDependencies:
       '@types/node':
         specifier: ^24

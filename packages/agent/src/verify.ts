@@ -5,6 +5,7 @@
  * stage is tested without running the gates or touching the network.
  */
 
+import { COMMIT_TYPES, HEADER_MAX } from "@vow/observability";
 import type { GateResult, RunResult, VerifyResult } from "./types.ts";
 
 /** Re-run each verification gate in `cwd`; the verdict is the conjunction. The exec is injected, so this
@@ -114,12 +115,14 @@ export function commitArgs(message: string): readonly string[] {
   return ["commit", "-m", message, "--no-verify"];
 }
 
-/** The 72-char header-max-length the title-lint enforces (the squash subject IS the PR title). */
-const PR_TITLE_MAX = 72;
+/** The header-max-length the title-lint enforces (the squash subject IS the PR title) — read from the
+ *  single source in @vow/observability, the same budget `commitlint.config.js` `header-max-length` uses. */
+export const PR_TITLE_MAX = HEADER_MAX;
 
 /** The conventional-commit types — a leading one (e.g. `docs: `) means the title is already a subject, so
- *  prefixing `feat: ` again would double it. Mirrors commit-types.json (the branch-name gate's source). */
-const TYPE_PREFIX = /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test): /u;
+ *  prefixing `feat: ` again would double it. Built from the single-sourced `COMMIT_TYPES` vocabulary (the
+ *  same map `commitlint.config.js` derives its `type-enum` from), so the agent and the lint can't drift. */
+export const TYPE_PREFIX = new RegExp(`^(?:${Object.keys(COMMIT_TYPES).join("|")}): `, "u");
 
 /** A conventional-commit subject from an issue title — kept as-is when it already opens with a type, else
  *  prefixed `feat: ` (an issue is a feature ask) with a lower-cased first letter. */
