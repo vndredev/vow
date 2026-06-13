@@ -82,16 +82,18 @@ function issueActionButton(): UiNode {
 /**
  * The start-work button the three issue layouts share — the human's one signal to begin an issue. It calls
  * `startWork` from `useIssues`, which POSTs the start-work signal to `/__vow/agent`; the dev server then
- * dispatches an agent session (`vow agent run <n>`). Shown only on an issue not yet `done` (an issue already
- * `doing` can still be re-signalled, e.g. a stalled run). A compact `default · sm` — the Vermilion accent
- * IS the intent (start an agent), so it shows as the one orange action per row, but SMALL (not the huge
- * default size); the quiet `Close`/`Reopen` sit beside it. Status stays derived — the PR makes it `doing`.
+ * dispatches an agent session (`vow agent run <n>`). Shown only on an issue not yet `done` AND not already
+ * carrying a session — once a run is live (`it.session`, an open PR redeeming it), the accent is "Watch run",
+ * not a second "Start work" that would dispatch a duplicate agent onto the same issue. So it appears on a
+ * planned issue (or a `doing` one whose run has gone — a re-signal), never beside a live run. A compact
+ * `default · sm` — the Vermilion accent IS the one intent per card (start an agent); the quiet
+ * `Close`/`Reopen` sit beside it. Status stays derived — the PR makes it `doing`.
  */
 function startWorkButton(): UiNode {
   return comp(
     "Button",
     [
-      { expr: "it.status !== 'done'", kind: "cond", type: "if" },
+      { expr: "it.status !== 'done' && !it.session", kind: "cond", type: "if" },
       { kind: "static", name: "label", value: "Start work" },
       { kind: "static", name: "size", value: "sm" },
       { kind: "static", name: "tone", value: "accent" },
