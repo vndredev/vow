@@ -57,6 +57,28 @@ vow pr-body --check  # validate a PR body (piped on stdin) against the template,
 vow pr-body --check < body.md && gh pr create --body-file body.md
 ```
 
+## Guardrails — the plan + the Project
+
+```bash
+vow guard            # enforce main's protection (PR-only · gate · no bypass · 0 reviews); --check reports only
+vow reconcile        # plan drift — retire candidates + open issues carrying no phase
+vow doctor           # check the GitHub Project's Roadmap view against vow's invariant
+```
+
+`vow reconcile` and `vow doctor` are **read-only diagnostics** — they report drift, never mutate. `reconcile` surfaces issues a merged PR already closed (the retire candidates) and any open issue with no phase (the "No milestone" drift the milestone gate otherwise prevents).
+
+`vow doctor` checks the upstream **GitHub Project Roadmap view** against vow's declared invariant — grouped by, dated by, and marked with **Milestone**. A [spike](https://github.com/vndredev/vow/issues/539) found the Projects v2 API can _set_ no view config (it is UI-only) and reads back only the layout + group-by, so doctor gives a real verdict on what's readable and lists the rest:
+
+```
+vow doctor — the GitHub Project Roadmap view (its config is UI-only):
+  ✓ the Roadmap view exists (ROADMAP_LAYOUT)
+  ✗ grouped by Status — set Group by → Milestone
+  □ Date field → Milestone (UI-only: Roadmap toolbar → Date fields)
+  □ Markers → Milestones (UI-only: Roadmap toolbar → Markers)
+```
+
+`✓` holds · `✗` is fixable drift doctor detected · `□` is a UI-only step to apply in the Roadmap toolbar. vow's **own** studio roadmap needs none of this — it derives the phased timeline straight from the milestones (gh-direct); this only configures the upstream GitHub Project view.
+
 ## Realtime observability
 
 ```bash

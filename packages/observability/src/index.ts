@@ -252,4 +252,5 @@ export { prBodyProblems } from "./pr-body.ts";
 export * from "./github.ts";
 export * from "./phase.ts";
 export * from "./project.ts";
+export * from "./project-view.ts";
 export * from "./protection.ts";
