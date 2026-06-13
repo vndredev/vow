@@ -9,6 +9,7 @@
 export * from "./auto.ts";
 export * from "./dispatch.ts";
 export * from "./dry-run.ts";
+export * from "./hook.ts";
 export * from "./loop.ts";
 export * from "./merge.ts";
 export * from "./model.ts";

@@ -83,6 +83,74 @@ function installChannel(cwd: string): string {
   return "wrote .mcp.json (vow-channel)";
 }
 
+/** The PreToolUse guard `.claude/settings.json` wires up — `vow hook claude` runs for every Bash tool call
+    and BLOCKS a wrong one (raw gh, push to main, `vp check --fix`) with the vow alternative. `.claude/settings.json`
+    is committed, so the guard travels with the repo to every user's LLM, not just the one who ran init. */
+const HOOK_ENTRY = {
+  hooks: [{ command: "vow hook claude", type: "command" }],
+  matcher: "Bash",
+} as const;
+
+/** The parsed `.claude/settings.json`, or `{}` when the file is absent / malformed. */
+function existingSettings(file: string): Record<string, unknown> {
+  if (!existsSync(file)) {
+    return {};
+  }
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+    if (isObject(parsed)) {
+      return parsed;
+    }
+  } catch {
+    return {};
+  }
+  return {};
+}
+
+/** Whether a settings object already wires a `vow hook` guard anywhere in its hooks (idempotent install). */
+function hasVowHook(settings: Readonly<Record<string, unknown>>): boolean {
+  const { hooks } = settings;
+  return JSON.stringify(hooks ?? "").includes("vow hook");
+}
+
+/** The existing `hooks` object of a settings object, or `{}` when absent — preserves a user's other hooks. */
+function existingHooks(settings: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const { hooks } = settings;
+  if (isObject(hooks)) {
+    return hooks;
+  }
+  return {};
+}
+
+/** The existing `PreToolUse` array of a settings object, or `[]` — preserves a user's other PreToolUse hooks. */
+function existingPreToolUse(settings: Readonly<Record<string, unknown>>): readonly unknown[] {
+  const { hooks } = settings;
+  if (isObject(hooks) && Array.isArray(hooks["PreToolUse"])) {
+    return hooks["PreToolUse"];
+  }
+  return [];
+}
+
+/** Install the `vow hook` PreToolUse guard into `.claude/settings.json` (merge, idempotent) — beside any
+    hooks the user already configured. So the wrong-tool-call block ships with the repo, no hand-editing. */
+function installHooks(cwd: string): string {
+  const file = path.join(cwd, ".claude", "settings.json");
+  const settings = existingSettings(file);
+  if (hasVowHook(settings)) {
+    return "kept  .claude/settings.json (vow hook)";
+  }
+  const merged = {
+    ...settings,
+    hooks: {
+      ...existingHooks(settings),
+      PreToolUse: [...existingPreToolUse(settings), HOOK_ENTRY],
+    },
+  };
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(merged, (_key, value: unknown) => value, JSON_INDENT)}\n`);
+  return "wrote .claude/settings.json (vow hook)";
+}
+
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
  *  AGENTS.md contract + the develop/orchestrate/audit skills + the operative develop/audit/plan PROMPTS as
  *  editable provider templates (`.claude/prompts/<role>.md`, what the agent reads). Idempotent — re-running
@@ -100,6 +168,7 @@ function init(cwd: string): number {
       scaffold(path.join(cwd, template.path), template.content),
     ),
     installChannel(cwd),
+    installHooks(cwd),
   ];
   for (const action of actions) {
     process.stdout.write(`  ${action}\n`);
