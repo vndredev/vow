@@ -354,7 +354,7 @@ export function emitIssueBoardSfc(): string {
 const ROADMAP_SCRIPT = [
   ISSUE_SETUP_LINE,
   ...ISSUE_VARIANT_LINES,
-  `interface Phase { title: string; due: string; dueAt: number; items: IssueItem[] }`,
+  `interface Phase { title: string; due: string; dueAt: number; open: IssueItem[]; done: IssueItem[] }`,
   `const phases = computed(() => {`,
   `  const by = new Map<string, Phase>();`,
   `  for (const it of items) {`,
@@ -364,18 +364,19 @@ const ROADMAP_SCRIPT = [
   `    if (phase === undefined) {`,
   `      const dueOn = m?.dueOn ?? "";`,
   `      const dueAt = dueOn ? Date.parse(dueOn) : Number.POSITIVE_INFINITY; // undated phases sort last`,
-  `      phase = { title, due: dueOn.slice(0, 10), dueAt, items: [] };`,
+  `      phase = { title, due: dueOn.slice(0, 10), dueAt, open: [], done: [] };`,
   `      by.set(title, phase);`,
   `    }`,
-  `    phase.items.push(it);`,
+  `    // The open work leads each phase; the done work collapses into the "shipped" disclosure (proof).`,
+  `    if (it.status === "done") { phase.done.push(it); } else { phase.open.push(it); }`,
   `  }`,
   `  return [...by.values()].sort((a, b) => a.dueAt - b.dueAt); // earliest phase first`,
   `});`,
 ];
 
 /** One roadmap item `<li>` — the title leads (the content), then a meta footer: the number + status grouped
- *  at the start, the actions trailing. The layout reads title-first, so the card has a clear hierarchy. */
-function roadmapItem(): UiNode {
+ *  at the start, the actions trailing. `each` is the source list (a phase's open or shipped items). */
+function roadmapItem(each: string): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-roadmap__item" }],
     children: [
@@ -389,13 +390,56 @@ function roadmapItem(): UiNode {
         issueActions(),
       ]),
     ],
-    for: { as: "it", each: "p.items", key: "it.issue.number" },
+    for: { as: "it", each, key: "it.issue.number" },
     kind: "element",
     tag: "li",
   };
 }
 
-/** One roadmap phase `<section>` — its milestone heading, optional due date and item list. */
+/** A phase's open work — the `<ul>` of cards that lead the phase, shown only when it has open items. */
+function roadmapOpen(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-roadmap__items" },
+      { expr: "p.open.length > 0", kind: "cond", type: "if" },
+    ],
+    children: [roadmapItem("p.open")],
+    kind: "element",
+    tag: "ul",
+  };
+}
+
+/** A phase's shipped work — a native `<details>` that collapses the done cards behind a "✓ N shipped"
+ *  disclosure (green = proof), shown only when the phase has done items. So a completed phase reads as one
+ *  compact line, a mixed phase leads with its open cards and tucks the rest away. */
+function roadmapShipped(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-roadmap__shipped" },
+      { expr: "p.done.length > 0", kind: "cond", type: "if" },
+    ],
+    children: [
+      classed("summary", "vow-roadmap__shipped-head", [
+        txt("✓ "),
+        {
+          expr: "p.done.length + (p.open.length > 0 ? ' more shipped' : ' shipped')",
+          kind: "interp",
+        },
+      ]),
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__items" }],
+        children: [roadmapItem("p.done")],
+        kind: "element",
+        tag: "ul",
+      },
+    ],
+    kind: "element",
+    tag: "details",
+  };
+}
+
+/** One roadmap phase `<section>` — its milestone heading + due date, then the open cards, then the
+ *  collapsed shipped work. */
 function roadmapPhase(): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-roadmap__phase" }],
@@ -422,12 +466,8 @@ function roadmapPhase(): UiNode {
         kind: "element",
         tag: "header",
       },
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__items" }],
-        children: [roadmapItem()],
-        kind: "element",
-        tag: "ul",
-      },
+      roadmapOpen(),
+      roadmapShipped(),
     ],
     for: { as: "p", each: "phases", key: "p.title" },
     kind: "element",
