@@ -21,7 +21,8 @@
     "@vow/emit-view": "workspace:*",
     "@vow/icons": "workspace:*",
     "@vow/layout": "workspace:*",
-    "@vow/observability": "workspace:*"
+    "@vow/observability": "workspace:*",
+    "html-to-image": "^1.11.13"
   },
   "devDependencies": {
     "vite": "catalog:",

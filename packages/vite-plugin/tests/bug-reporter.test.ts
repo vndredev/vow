@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { elementHint, resolveVowSource } from "../src/client/bug-reporter.ts";
 import { expect, test } from "vite-plus/test";
+import { parseReport, reportBody } from "../src/issue-report.ts";
+import { NONE } from "../src/none.ts";
 import { devOverlayTags } from "../src/virtual.ts";
-import { parseReport } from "../src/issue-report.ts";
 
 test("resolveVowSource walks up to the nearest data-vow-source — DOM → spec", () => {
   document.body.innerHTML = `<div data-vow-source="home"><section><button class="go">hi</button></section></div>`;
@@ -43,4 +44,16 @@ test("parseReport validates a posted bug/feature report, rejecting bad shapes", 
   expect(parseReport(JSON.stringify({ kind: "chore", title: "x" }))).toBeUndefined();
   expect(parseReport(JSON.stringify({ kind: "bug" }))).toBeUndefined();
   expect(parseReport("not json")).toBeUndefined();
+});
+
+test("reportBody names the area, and references the screenshot path only when one was saved", () => {
+  const report = parseReport(
+    JSON.stringify({ description: "broken", kind: "bug", route: "/board", title: "x" }),
+  );
+  if (!report) {
+    throw new Error("test setup: report missing");
+  }
+  expect(reportBody(report, ".vow/bugs/1.png")).toContain(".vow/bugs/1.png");
+  expect(reportBody(report, NONE)).toContain("Area");
+  expect(reportBody(report, NONE)).not.toContain("Screenshot");
 });

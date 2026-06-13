@@ -2,7 +2,9 @@
 import { type Maybe, isRecord } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
 import { createIssue, resolveCurrentPhase } from "@vow/observability";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { NONE } from "./none.ts";
+import path from "node:path";
 
 /**
  * The in-app reporter's server side — parse a posted report + file it as a real vow issue. An issue is a
@@ -26,6 +28,8 @@ export interface ReportInput {
   readonly source: string;
   readonly route: string;
   readonly element: string;
+  /** A PNG data URL of the page, or "" when none — saved to `.vow/bugs/` + referenced in the body. */
+  readonly screenshot: string;
 }
 
 /** A string field off an untrusted record, or "" when absent / not a string. */
@@ -54,6 +58,7 @@ export function parseReport(raw: string): Maybe<ReportInput> {
       element: fieldOf(parsed, "element"),
       kind,
       route: fieldOf(parsed, "route"),
+      screenshot: fieldOf(parsed, "screenshot"),
       source: fieldOf(parsed, "source"),
       title,
     };
@@ -62,15 +67,34 @@ export function parseReport(raw: string): Maybe<ReportInput> {
   }
 }
 
-/** The issue body — the description, then the AREA the picker resolved (vow source · route · element). */
-export function reportBody(report: Readonly<ReportInput>): string {
-  return [
+/** The prefix of a base64 PNG data URL (what `html-to-image` produces). */
+const PNG_PREFIX = "data:image/png;base64,";
+
+/** Save a PNG data URL to `.vow/bugs/<ts>.png` (gitignored), returning its repo-relative path; `NONE` for
+    an empty / non-PNG payload (filing never blocks on a screenshot). */
+function saveScreenshot(cwd: string, dataUrl: string): Maybe<string> {
+  if (!dataUrl.startsWith(PNG_PREFIX)) {
+    return NONE;
+  }
+  const rel = path.join(".vow", "bugs", `${Date.now()}.png`);
+  mkdirSync(path.join(cwd, ".vow", "bugs"), { recursive: true });
+  writeFileSync(path.join(cwd, rel), Buffer.from(dataUrl.slice(PNG_PREFIX.length), "base64"));
+  return rel;
+}
+
+/** The issue body — the description, the AREA the picker resolved (vow source · route · element), and the
+    saved screenshot path when there is one. */
+export function reportBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+  const lines = [
     report.description || "_No description._",
     "",
     `**Area** — vow \`${report.source || "—"}\` · \`${report.route}\` · \`${report.element}\``,
-    "",
-    "_Filed from vow's in-app reporter._",
-  ].join("\n");
+  ];
+  if (typeof shot === "string") {
+    lines.push(`**Screenshot** — \`${shot}\``);
+  }
+  lines.push("", "_Filed from vow's in-app reporter._");
+  return lines.join("\n");
 }
 
 /** The milestone fragment — the current phase when one resolves, so the issue is filed phased (else bare). */
@@ -82,10 +106,12 @@ function phasePart(cwd: string): { readonly milestone?: string } {
   return {};
 }
 
-/** File a report as a real vow issue (phased, labelled by kind) — returns its URL. Throws on a `gh` error. */
+/** File a report as a real vow issue (phased, labelled by kind), saving its screenshot to `.vow/bugs/` —
+    returns the issue URL. Throws on a `gh` error. */
 export function reportIssue(cwd: string, report: Readonly<ReportInput>): string {
+  const shot = saveScreenshot(cwd, report.screenshot);
   return createIssue(cwd, {
-    body: reportBody(report),
+    body: reportBody(report, shot),
     labels: [KIND_LABEL[report.kind]],
     title: report.title,
     ...phasePart(cwd),
