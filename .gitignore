@@ -34,3 +34,8 @@ dist-ssr
 .claude/workflows/scripts/
 # Plan-mode working files (kept project-local via plansDirectory) — transient; the real plan is the issues
 .claude/plans/
+
+# Emitter / gate machine output (generated, never edited)
+.generated/
+# Scaffolded prompt overrides + transient PR-body files (built-in defaults are the source of truth)
+.claude/prompts/
