@@ -14,6 +14,7 @@ import {
 } from "@vow/observability";
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
+import { parseReport, reportIssue } from "./issue-report.ts";
 import { NONE } from "./none.ts";
 import { existsSync } from "node:fs";
 import { mutable } from "./mutable.ts";
@@ -472,5 +473,33 @@ export function agentApi(cwd: string, dispatch: Dispatch = dispatchAgent): Middl
       return;
     }
     ignore(serveStartWork(req, res, state));
+  };
+}
+
+/** Read a posted bug/feature report + file it as a phased, labelled vow issue, replying with its URL. */
+async function serveIssue(req: IncomingMessage, res: ServerResponse, cwd: string): Promise<void> {
+  try {
+    const report = parseReport(await readBody(req));
+    if (!defined(report)) {
+      writeReply(res, { body: { error: "expected a kind + title" }, status: STATUS.badRequest });
+      return;
+    }
+    writeReply(res, {
+      body: { filed: true, url: reportIssue(cwd, report) },
+      status: STATUS.created,
+    });
+  } catch (error) {
+    writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.serverError });
+  }
+}
+
+/** `/__vow/issue` — the in-app reporter's POST target (the overlay's `client/bug-reporter.ts` posts here). */
+export function issueApi(cwd: string): Middleware {
+  return (req, res, next) => {
+    if ((req.method ?? "GET") !== "POST") {
+      next();
+      return;
+    }
+    ignore(serveIssue(req, res, cwd));
   };
 }

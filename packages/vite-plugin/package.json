@@ -5,7 +5,8 @@
   "description": "vow as a Vite plugin — projects the vow tree into the app live (the closed cap).",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./client/bug-reporter": "./src/client/bug-reporter.ts"
   },
   "scripts": {
     "test": "vp test",

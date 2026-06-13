@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 
 const freshState = (root: string): State => ({
   db: NONE,
+  dev: false,
   entities: [],
   genDir: path.join(root, ".generated"),
   lastWritten: [],
