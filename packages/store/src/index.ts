@@ -1,5 +1,6 @@
-import type { Collection, CollectionState, Row } from "./reactive-rows.ts";
-import { ReactiveRows } from "./reactive-rows.ts";
+/* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
+import { type Collection, type CollectionState, ReactiveRows, type Row } from "./reactive-rows.ts";
+/* oxlint-enable consistent-type-specifier-style */
 import { VOW_API, dbPath } from "@vow/db/routes";
 import { isObject } from "./guards.ts";
 import { parseEventFeed } from "./events.ts";
