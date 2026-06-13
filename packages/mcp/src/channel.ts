@@ -2,7 +2,7 @@
 /* oxlint-disable no-deprecated -- the channel protocol needs the low-level Server (its `notification` + the experimental capability); McpServer is the high-level tool API, the wrong tool here */
 /* oxlint-disable consistent-type-specifier-style -- one @vow/observability import; a separate type import trips no-duplicate-imports */
 import type { Notification, Request } from "@modelcontextprotocol/sdk/types.js";
-import { type VowEvent, eventsPath, readEvents } from "@vow/observability";
+import { type VowEvent, createEventTail, eventsPath } from "@vow/observability";
 import { mkdirSync, watch } from "node:fs";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -110,16 +110,17 @@ async function pushAll(server: ChannelServer, events: readonly VowEvent[]): Prom
 /* oxlint-enable no-await-in-loop */
 
 /** Tail `.vow/events.jsonl` and push each NEW event (recorded after the channel connected) into the session.
-    Skips the backlog so the orchestrator reacts to live state; a `pushed` counter makes a watch re-fire on
-    an unrelated `.vow/` change a harmless no-op. Call after `server.connect`. */
+    An incremental tail, PRIMED once before the watch starts so the connect-time backlog is consumed (skipped)
+    — the orchestrator reacts to live state. A watch re-fire on an unrelated `.vow/` change then costs only a
+    cheap re-read of the unchanged tail, never a full re-parse of the growing log (#595). Call after
+    `server.connect`. */
 export function watchAndPush(server: ChannelServer, cwd: string): void {
-  let pushed = readEvents(cwd).length;
+  const tail = createEventTail(cwd);
+  // Prime once: drop the connect-time backlog so only events recorded from now on push.
+  tail();
   mkdirSync(path.join(cwd, ".vow"), { recursive: true });
   watch(path.dirname(eventsPath(cwd)), () => {
-    const events = readEvents(cwd);
-    const fresh = events.slice(pushed);
-    pushed = events.length;
-    ignore(pushAll(server, fresh));
+    ignore(pushAll(server, tail()));
   });
 }
 
