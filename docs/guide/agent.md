@@ -11,6 +11,26 @@ Today this is the **provider-neutral seam** — the `Provider` interface, the Cl
 
 vow's north star is operation by a person _or_ an LLM. The agent layer is the second half: vow describes a unit of work; an autonomous coding CLI develops it. The one rule, learned the hard way, is **provider-neutrality** — Claude Code, Codex, and Gemini are interchangeable adapters behind one interface. The loop never names a provider.
 
+## The elite team
+
+A sprawling 28-package project can't be carried by one generalist juggling everything, so the work is divided among **owners** — one specialist subagent per concern. `vow agent init` scaffolds each to `.claude/agents/<name>.md` (Claude Code's custom-subagent format), committed so the team travels with the repo; the orchestrator dispatches the right specialist by the issue's `area:` label. The team is two kinds of member:
+
+- **The builder** — [`vow-developer`] is the general executor: it takes any issue and carries it end-to-end through the red line (branch → develop → verify → document → PR → agent-merge), reusing what vow already does before adding code, right-sizing to one coherent element per PR. Without it, end-to-end building would fall to a `general-purpose` stand-in instead of a real team member.
+- **The guardians** — one owner per area, each paired with the gate that mechanically enforces it, so the specialist's judgement and the wall agree:
+  - **`layer-architect`** — the 4-layer DAG + module boundaries (no upward import, no cycle, the index is the only entry, files split by concern under the max-lines cap).
+  - **`type-sentinel`** — the strict type + lint wall (`vp lint` = 0; an `as`/`any`/`!` on a real data path narrowed at its source).
+  - **`security-auditor`** — the trust boundaries (injection, path-traversal, an unhandled throw, a non-atomic write).
+  - **`framework-neutrality-guard`** — the emitters describe UI in the neutral component model; a concrete framework lives only behind its adapter seam.
+  - **`provider-neutrality-guard`** — a provider CLI bin is named only at the provider seam, never hunted through the loop.
+  - **`coverage-keeper`** — every `proves:` scenario has a matching test; the generated UI proves itself.
+  - **`docs-keeper`** — the docs stay 1:1 with reality (has-a-doc + docs-drift), honest, no overselling.
+  - **`perf-auditor`** — real, scale-bound hot paths (an O(n^2) or un-memoized path, a re-read per event).
+  - **`a11y-keeper`** — accessibility in @vow/headless + the generated views: keyboard operation, ARIA roles/states, live regions (WCAG 4.1.3), focus management, programmatic labels.
+  - **`design-language-keeper`** — the design language: primitives consume variant·tone·size·density → `data-*`, every value reads a vow.css token, climbing the interaction ladder toward the UI-framework DSL (Phase O).
+  - **`studio-dx`** — the studio cockpit: its `.vow.md` views + the `/__vow` dev-API surface, kept 100% vow (every control a primitive, every value a token).
+
+The builder develops; the guardians keep each area honest. Together they let the autonomous loop develop _everything_ with the right owner, barrier-free.
+
 ## The seam
 
 A `Provider` turns a task into the **command** that runs it headlessly — _built, never run here_, so the mapping is pure and unit-testable (a runner execs it):
