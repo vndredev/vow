@@ -8,7 +8,9 @@ import {
 } from "@vow/agent";
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
 import {
+  type Finding,
   type Maybe,
+  addToPlanBoard,
   auditIssue,
   createIssue,
   parseFindings,
@@ -97,6 +99,14 @@ interface AuditContext {
   readonly phase: Maybe<string>;
 }
 
+/** File one finding as a vow issue AND add it to the plan board — so an audit finding lands under Todo, not
+ *  orphaned off the board (the gap that left the audit's OWN issues invisible). */
+function fileFinding(cwd: string, finding: Readonly<Finding>, phase: Maybe<string>): void {
+  const url = createIssue(cwd, auditIssue(finding, phase));
+  process.stdout.write(`${url}\n`);
+  addToPlanBoard(cwd, url);
+}
+
 /** Run + file one dimension's audit. A broken shell-out files nothing and flags `broke`; a genuine empty
  *  array files nothing with `broke=false` (a real findings-free dimension). */
 function fileDimension(dimension: string, context: AuditContext): DimensionResult {
@@ -108,7 +118,7 @@ function fileDimension(dimension: string, context: AuditContext): DimensionResul
   }
   const findings = parseFindings(run.raw);
   for (const finding of findings) {
-    process.stdout.write(`${createIssue(cwd, auditIssue(finding, phase))}\n`);
+    fileFinding(cwd, finding, phase);
   }
   return { broke: false, filed: findings.length };
 }
@@ -209,7 +219,7 @@ function fileSliceDimension(
   }
   const findings = parseFindings(run.raw);
   for (const finding of findings) {
-    process.stdout.write(`${createIssue(cwd, auditIssue(finding, phase))}\n`);
+    fileFinding(cwd, finding, phase);
   }
   return { broke: false, filed: findings.length };
 }

@@ -10,6 +10,7 @@ import type {
   PlanItem,
 } from "./types.ts";
 import { NONE } from "./none.ts";
+import { PLAN_BOARD } from "./issue-body.ts";
 import { execFileSync } from "node:child_process";
 
 /**
@@ -415,34 +416,6 @@ export function staleIssues(
  * degrade to `[]`) — opening or moving an issue is an effect the caller must know succeeded.
  */
 
-/** The default strand attribution for an agent-opened feature issue. */
-const DEFAULT_STRAND = "generation · author layer";
-
-/** The live plan board — vow's issues / Project ARE the plan, so a filed issue links back to it. */
-const PLAN_BOARD = "https://github.com/users/vndredev/projects/3";
-
-/**
- * The feature-template body (fills `.github/ISSUE_TEMPLATE/feature.md`'s sections), so an issue the agent
- * opens passes the template gate instead of tripping it. The element + why lead (the essence first); the
- * strand attribution + a link to the live plan board are a quiet footer. Pure.
- */
-export function featureIssueBody(
-  input: Readonly<{ element: string; strand?: string; why: string }>,
-): string {
-  const strand = input.strand ?? DEFAULT_STRAND;
-  return [
-    `**What**`,
-    ``,
-    input.element,
-    ``,
-    `**Why** — ${input.why}`,
-    ``,
-    `---`,
-    `*Strand: ${strand} · [plan board](${PLAN_BOARD})*`,
-    ``,
-  ].join("\n");
-}
-
 /** The fields an agent supplies to open a feature issue. */
 export interface CreateIssueInput {
   readonly assignee?: string;
@@ -482,6 +455,26 @@ export function createIssue(cwd: string, input: Readonly<CreateIssueInput>): str
     ...createIssueOptions(input),
   ];
   return execFileSync("gh", args, { cwd, encoding: "utf8" }).trim();
+}
+
+/** Add an issue `url` to the plan board (the configured Project), so a programmatically-created issue lands
+    under Todo instead of orphaned off the board — the gap that left audit-filed issues invisible. The board's
+    number + owner come from `PLAN_BOARD` (no env needed). Best-effort: a `gh`/auth/network failure is
+    swallowed — the issue still exists; `sync_project` can add it later. */
+export function addToPlanBoard(cwd: string, url: string): void {
+  const number = /\/projects\/(\d+)/u.exec(PLAN_BOARD)?.[1] ?? "";
+  const owner = /\/users\/([^/]+)/u.exec(PLAN_BOARD)?.[1] ?? "";
+  if (number === "" || owner === "") {
+    return;
+  }
+  try {
+    execFileSync("gh", ["project", "item-add", number, "--owner", owner, "--url", url], {
+      cwd,
+      encoding: "utf8",
+    });
+  } catch {
+    // Best-effort: the issue exists; a reconcile / sync_project can add it to the board later.
+  }
 }
 
 /** Close an issue via `gh` (-> `done`). Throws on failure. */

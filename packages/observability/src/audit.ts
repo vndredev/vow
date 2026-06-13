@@ -1,6 +1,6 @@
-// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
-import { type CreateIssueInput, featureIssueBody } from "./github.ts";
+import type { CreateIssueInput } from "./github.ts";
 import type { Maybe } from "./types.ts";
+import { bugIssueBody } from "./issue-body.ts";
 
 /** The `area:` labels the repo actually carries. `gh issue create` does NOT auto-create a label, so an
  *  area outside this set (cli, store, agent, ...) would make the create exit non-zero and drop the
@@ -42,16 +42,12 @@ function phaseMilestone(phase: Maybe<string>): { readonly milestone?: string } {
  *  an unknown / empty area files without it (`gh` would otherwise reject the unknown label and drop the
  *  whole finding) — the title + phase still land. Pure (the phase is passed in). */
 export function auditIssue(finding: Readonly<Finding>, phase: Maybe<string>): CreateIssueInput {
-  const body = featureIssueBody({ element: finding.fix, why: finding.evidence });
-  if (!KNOWN_AREAS.has(finding.area)) {
-    return { body, title: finding.title, ...phaseMilestone(phase) };
+  const body = bugIssueBody({ evidence: finding.evidence, fix: finding.fix });
+  const labels = ["bug"];
+  if (KNOWN_AREAS.has(finding.area)) {
+    labels.push(`area: ${finding.area}`);
   }
-  return {
-    body,
-    labels: [`area: ${finding.area}`],
-    title: finding.title,
-    ...phaseMilestone(phase),
-  };
+  return { body, labels, title: finding.title, ...phaseMilestone(phase) };
 }
 
 /** Whether a value is a non-null object — the entry to read an untrusted findings payload. */
