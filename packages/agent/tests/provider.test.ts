@@ -21,14 +21,19 @@ test("providerFor resolves the documented 'claude' alias to the claude-code back
 test("auditCommand builds the read-only, print-mode claude args at the given model + prompt", () => {
   const command = auditCommand("claude-fable-5", "audit for types");
   expect(command.bin).toBe("claude");
+  // Prompt is the positional right after `--print`; the variadic `--allowedTools <tools...>` comes LAST.
+  // A trailing prompt would be swallowed as a tool, aborting claude with "Input must be provided".
   expect([...command.args]).toEqual([
+    "--print",
+    "audit for types",
     "--model",
     "claude-fable-5",
-    "--print",
     "--allowedTools",
     "Read,Grep,Glob",
-    "audit for types",
   ]);
+  // The prompt sits before the variadic flag — guard the exact ordering the CLI bug needs.
+  const args = [...command.args];
+  expect(args.indexOf("audit for types")).toBeLessThan(args.indexOf("--allowedTools"));
   // Subscription auth by default — the API key is stripped from the child env.
   expect([...(command.unsetEnv ?? [])]).toEqual(["ANTHROPIC_API_KEY"]);
   // `--auth api` keeps the key (pay-per-use).

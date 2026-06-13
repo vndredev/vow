@@ -83,11 +83,13 @@ export const AUDIT_MODEL: string = CLAUDE_MODELS.audit;
 
 /** The claude CLI command for a headless, read-only audit of one dimension: print mode at `model` with the
  *  audit prompt, restricted to read-only tools, and the API key stripped (subscription auth) unless `--auth
- *  api` is explicit. Built, never run here — the args array is the tested product (the LIVE shell-out is
- *  integration the CLI runs). Pure. */
+ *  api` is explicit. The `prompt` is the positional that MUST come right after `--print`, BEFORE the variadic
+ *  `--allowedTools <tools...>` — that flag greedily swallows every following arg, so a trailing prompt is eaten
+ *  as a "tool" and claude aborts with "Input must be provided … when using --print". Built, never run here —
+ *  the args array is the tested product (the LIVE shell-out is integration the CLI runs). Pure. */
 export function auditCommand(model: string, prompt: string, auth?: Auth): Command {
   return {
-    args: ["--model", model, "--print", "--allowedTools", AUDIT_TOOLS, prompt],
+    args: ["--print", prompt, "--model", model, "--allowedTools", AUDIT_TOOLS],
     bin: "claude",
     unsetEnv: authUnset(auth, "ANTHROPIC_API_KEY"),
   };
