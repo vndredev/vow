@@ -22,14 +22,14 @@ jobs:
       # The squash-merge subject IS the PR title — the source the roadmap timeline reads. Enforce the
       # same commit format on it (commitlint), so the timeline's input is guaranteed, not just commits.
       - name: Lint PR title
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         run: echo "$PR_TITLE" | pnpm exec commitlint
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
       # The branch is an anchor of the workflow — its name follows the commit convention, derived from the
       # SAME single source (commit-types.json), so the two can't drift apart.
       - name: Lint branch name
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
           types=$(jq -r 'keys | join("|")' packages/observability/src/commit-types.json)
           echo "$BRANCH" | grep -qE "^(${types})/" || { echo "::error::branch '$BRANCH' must be <type>/<slug>, type one of: ${types}"; exit 1; }
@@ -37,7 +37,7 @@ jobs:
           BRANCH: ${{ github.head_ref }}
       # Every change traces to a planned Issue — so the board can't lie about what's been done.
       - name: Require an issue link
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
         run: |
           echo "$BODY" | grep -qiE '(close[sd]?|fix(e[sd])?|resolve[sd]?|part of) #[0-9]+' || { echo "::error::the PR body must link an issue (Closes/Part of #N)"; exit 1; }
         env:

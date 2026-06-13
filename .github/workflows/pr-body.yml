@@ -12,6 +12,9 @@ on:
 
 jobs:
   body:
+    # Dependabot can't carry the template body — the convention gates (this + ci.yml's title/branch/
+    # issue-link) are for vow-authored work; the quality wall in ci.yml still runs on every dep bump.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
