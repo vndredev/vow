@@ -292,13 +292,26 @@ const CONVERTERS: Record<SqlColumn, (from: string) => string> = {
   TEXT: (from) => `CAST("${from}" AS TEXT)`,
 };
 
+/** The SQLite ≥ 3.35 column-rebuild dance — ADD a temp column of the new type, copy via a
+ *  type-appropriate CAST, DROP the old, RENAME the temp into place. Called only inside `convertColumn`'s
+ *  transaction so a mid-dance failure (a kill or a CAST error) rolls the whole sequence back. */
+// eslint-disable-next-line max-params
+function rebuildColumn(db: Db, slug: string, name: string, temp: string, toType: SqlColumn): void {
+  db.exec(`ALTER TABLE "${slug}" ADD COLUMN "${temp}" ${toType};`);
+  db.exec(`UPDATE "${slug}" SET "${temp}" = ${CONVERTERS[toType](name)};`);
+  db.exec(`ALTER TABLE "${slug}" DROP COLUMN "${name}";`);
+  db.exec(`ALTER TABLE "${slug}" RENAME COLUMN "${temp}" TO "${name}";`);
+}
+
 /**
  * Rebuild a field's column with a new declared type, converting the stored data — `migrate` never
  * changes a column's type, so a `set_field` retype must rebuild here or the column keeps its old
  * affinity (a TEXT column re-typed to boolean stores a fresh `false` as "0.0", which decodes back to
- * `true`; probe-verified) AND every existing row mis-decodes. The rebuild is the SQLite ≥ 3.35 dance:
- * ADD a temp column of the new type, copy via a type-appropriate CAST, DROP the old, RENAME the temp
- * into place. A no-op when the column is absent (a fresh `migrate` will add it with the right type).
+ * `true`; probe-verified) AND every existing row mis-decodes. The rebuild runs inside a transaction
+ * (BEGIN IMMEDIATE / COMMIT / ROLLBACK, mirroring `seedEntity`): an interrupted or failing retype rolls
+ * fully back instead of leaving the original data dropped and an orphaned `<name>__vow_convert` column —
+ * a corrupted entity. A no-op when the column is absent (a fresh `migrate` will add it with the right
+ * type).
  */
 // eslint-disable-next-line max-params
 export function convertColumn(db: Db, slug: string, name: string, toType: SqlColumn): void {
@@ -306,10 +319,14 @@ export function convertColumn(db: Db, slug: string, name: string, toType: SqlCol
     return;
   }
   const temp = `${name}__vow_convert`;
-  db.exec(`ALTER TABLE "${slug}" ADD COLUMN "${temp}" ${toType};`);
-  db.exec(`UPDATE "${slug}" SET "${temp}" = ${CONVERTERS[toType](name)};`);
-  db.exec(`ALTER TABLE "${slug}" DROP COLUMN "${name}";`);
-  db.exec(`ALTER TABLE "${slug}" RENAME COLUMN "${temp}" TO "${name}";`);
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    rebuildColumn(db, slug, name, temp, toType);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 /** The DISTINCT stored values of one column as strings (the column must exist) — the scan behind
