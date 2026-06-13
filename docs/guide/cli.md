@@ -92,7 +92,7 @@ The hub records what it does to an append-only feed (`.vow/events.jsonl`): a dev
 `vow agent` scaffolds and drives the **agent-native layer** — autonomous agents developing issues through vow's verification gates, opening PRs, and merging when green. One per vow; the executor is an LLM (Claude, Codex, etc.), not the user.
 
 ```bash
-vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit skills + prompts
+vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit skills + prompts + the agent team
 vow agent plan <n>                                      # print the verification-gated plan for issue <n>
 vow agent run <n>                                       # develop issue <n>, open a PR
 vow agent run <n> --dry-run                             # preview the run (branch, commands, gates)
