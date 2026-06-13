@@ -21,6 +21,13 @@ function requireKnownTypes(view: readonly ViewInput[]): void {
   }
 }
 
+/** A kebab-case slug — the same shape `@vow/core`'s `Vow` slug enforces (`^[a-z0-9]+(?:-[a-z0-9]+)*$`).
+ *  Used to validate `add_entity`'s slug AT THE TOOL BOUNDARY (before `guardCreateEntity` touches the DB),
+ *  so a slug carrying a `"` is rejected by the schema with a clear message instead of reaching raw SQL
+ *  identifier interpolation. `@vow/db`'s `assertSafeIdentifier` is the matching defense-in-depth one layer
+ *  down; this gives the LLM the actionable "must be kebab-case" error here. */
+const Slug = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u, "slug must be kebab-case");
+
 /** The nav-entry shape (frontmatter: label · icon · order · group) — parsed, so no cast is needed. */
 const Nav = z.object({
   group: z.string().optional(),
@@ -49,7 +56,7 @@ function registerAddEntity(server: Registrar, names: Names, studio: Studio): voi
     addEntity.name,
     {
       description: addEntity.description,
-      inputSchema: { fields: z.array(Field).optional(), intent: z.string(), slug: z.string() },
+      inputSchema: { fields: z.array(Field).optional(), intent: z.string(), slug: Slug },
     },
     (input: {
       readonly fields: Maybe<readonly ReadonlyField[]>;
