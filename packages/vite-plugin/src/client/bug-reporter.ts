@@ -12,8 +12,9 @@ import { NONE } from "../none.ts";
  * feature lives in, not a blind selector. A small form (title + description, pre-filled with the source +
  * route) POSTs the report — with its `kind` — to `/__vow/issue`.
  *
- * Framework-free on purpose: it is plugin-shipped glue, not part of the app's spec, so it builds its own
- * DOM and never depends on the app's components or CSS. The DOM-walking resolver is pure + unit-tested.
+ * Framework-free on purpose: it is plugin-shipped glue, not part of the app's spec. The look lives in ONE
+ * injected stylesheet that reads vow's own theme tokens (so it matches light + dark) — the elements carry
+ * classes, never inline styles, except the truly-dynamic cursor position. The DOM resolver is pure + tested.
  */
 
 /** The id of the overlay's mount node — also the guard against a double `setup`. */
@@ -24,17 +25,49 @@ const OVERLAY_Z = 2_147_483_000;
 const HIGHLIGHT_Z = OVERLAY_Z - 1;
 /** Where the report form anchors from the top-left. */
 const FORM_INSET = 24;
-/** The report form's width. */
-const FORM_WIDTH = 340;
-/** The vow accent (Vermilion) — the overlay's one signal colour, inlined so it needs no app CSS. */
-const ACCENT = "#ee4b22";
-/** The highlight box's shared style fragment (the accent outline + tint). */
-const HIGHLIGHT = `z-index:${HIGHLIGHT_Z};border:2px solid ${ACCENT};background:rgba(238,75,34,.12);pointer-events:none;border-radius:4px`;
+
+/** The overlay's one stylesheet — vow's theme tokens (loaded by the app's vow.css) with a literal fallback
+    for any app without the theme, so it matches light + dark. Injected once; the elements carry classes. */
+const OVERLAY_CSS = `
+#${MOUNT_ID} .r-surface {
+  position: fixed; z-index: ${OVERLAY_Z};
+  background: var(--vow-color-bg, #1a1611);
+  color: var(--vow-color-text, #eae3d5);
+  border: 1px solid var(--vow-color-border, #3a332a);
+  border-radius: var(--vow-radius-2, 7px);
+  box-shadow: var(--vow-shadow-popover, 0 12px 32px -10px rgb(0 0 0 / 0.4));
+  font: 13px/1.4 var(--vow-font-sans, ui-sans-serif, system-ui, sans-serif);
+}
+#${MOUNT_ID} .r-menu { padding: 4px; }
+#${MOUNT_ID} .r-item {
+  display: block; width: 100%; margin: 0; padding: 6px 12px;
+  background: none; border: none; color: inherit; font: inherit;
+  text-align: left; white-space: nowrap; cursor: pointer;
+  border-radius: var(--vow-radius-1, 5px);
+}
+#${MOUNT_ID} .r-item:hover { background: var(--vow-color-surface, #2c2620); }
+#${MOUNT_ID} .r-form { width: 320px; padding: 16px; }
+#${MOUNT_ID} .r-head { font-weight: 600; margin-bottom: 4px; }
+#${MOUNT_ID} .r-meta { font-size: 12px; color: var(--vow-color-muted, #b6ab97); margin-bottom: 12px; }
+#${MOUNT_ID} .r-field {
+  width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 8px; font: inherit;
+  background: var(--vow-color-bg, #13100c); color: var(--vow-color-text, #eae3d5);
+  border: 1px solid var(--vow-color-border, #3a332a); border-radius: var(--vow-radius-1, 5px);
+}
+#${MOUNT_ID} .r-field:focus { outline: 1px solid var(--vow-color-accent, #ee4b22); }
+#${MOUNT_ID} .r-send {
+  width: 100%; padding: 8px; font: inherit; font-weight: 600; cursor: pointer; color: #fff;
+  background: var(--vow-color-accent, #ee4b22); border: none; border-radius: var(--vow-radius-1, 5px);
+}
+#${MOUNT_ID} .r-highlight {
+  position: fixed; z-index: ${HIGHLIGHT_Z}; pointer-events: none; border-radius: 4px;
+  border: 2px solid var(--vow-color-accent, #ee4b22); background: rgb(238 75 34 / 0.12);
+}`;
 
 /** Whether the report is a bug or a feature — an issue is either, and the endpoint labels it accordingly. */
 export type IssueKind = "bug" | "feature";
 
-/** The human heading + the verb each kind shows in the form. */
+/** The human heading + the verb each kind shows in the form + the menu. */
 const KIND_LABEL: Readonly<Record<IssueKind, string>> = {
   bug: "Bug melden",
   feature: "Feature vorschlagen",
@@ -87,34 +120,24 @@ function isOverlay(node: EventTarget | null): boolean {
   return node instanceof Element && node.closest(`#${MOUNT_ID}`) !== null;
 }
 
-/** The shared style of the overlay's floating surfaces (menu + form) — a dark card with the accent edge. */
-function surfaceStyle(left: number, top: number): string {
-  return [
-    "position:fixed",
-    `left:${left}px`,
-    `top:${top}px`,
-    `z-index:${OVERLAY_Z}`,
-    "background:#1a1611",
-    "color:#eae3d5",
-    `border:1px solid ${ACCENT}`,
-    "border-radius:8px",
-    "box-shadow:0 12px 32px -10px rgba(0,0,0,.5)",
-    "font:14px/1.4 ui-sans-serif,system-ui,sans-serif",
-  ].join(";");
-}
-
 /** Remove a node if present, returning the cleared (absent) slot. */
 function drop(node: Maybe<HTMLElement>): Maybe<HTMLElement> {
   node?.remove();
   return NONE;
 }
 
-/** Append a fresh `<div>` to the overlay mount with the given inline style + return it. */
-function panel(overlay: Overlay, style: string): HTMLElement {
-  const node = document.createElement("div");
-  node.setAttribute("style", style);
+/** Append a `<div>` (or the given tag) with a class to the overlay mount + return it. */
+function add(overlay: Overlay, tag: string, className: string): HTMLElement {
+  const node = document.createElement(tag);
+  node.className = className;
   overlay.mount.append(node);
   return node;
+}
+
+/** Position a fixed surface at a viewport point (the one dynamic, per-cursor value the CSS can't hold). */
+function placeAt(node: HTMLElement, left: number, top: number): void {
+  node.style.left = `${left}px`;
+  node.style.top = `${top}px`;
 }
 
 /** The value of an overlay input by id, or "" when it is absent / not a field. */
@@ -146,24 +169,19 @@ function teardown(overlay: Overlay): void {
   overlay.picking = false;
 }
 
-/** The form's body — pre-filled with the kind, the element's source + route + hint, then inputs + submit. */
+/** The form's body — the kind heading, the element's source + route + hint, then the inputs + submit. */
 function formMarkup(base: Readonly<Omit<IssueReport, "description" | "title">>): string {
-  const field =
-    "width:100%;box-sizing:border-box;margin-bottom:8px;padding:8px;background:#13100c;color:#eae3d5;border:1px solid #3a332a;border-radius:5px";
   return [
-    `<div style="font-weight:600;margin-bottom:4px">${KIND_LABEL[base.kind]}</div>`,
-    `<div style="font-size:12px;color:#b6ab97;margin-bottom:12px">vow: ${base.source || "—"} · ${base.route} · ${base.element}</div>`,
-    `<input id="${MOUNT_ID}-title" placeholder="Titel" style="${field}" />`,
-    `<textarea id="${MOUNT_ID}-desc" placeholder="Beschreibung" rows="3" style="${field}"></textarea>`,
-    `<button id="${MOUNT_ID}-send" style="width:100%;padding:8px;background:${ACCENT};color:#fff;border:none;border-radius:5px;cursor:pointer;font-weight:600">Issue anlegen</button>`,
+    `<div class="r-head">${KIND_LABEL[base.kind]}</div>`,
+    `<div class="r-meta">vow: ${base.source || "—"} · ${base.route} · ${base.element}</div>`,
+    `<input id="${MOUNT_ID}-title" class="r-field" placeholder="Titel" />`,
+    `<textarea id="${MOUNT_ID}-desc" class="r-field" placeholder="Beschreibung" rows="3"></textarea>`,
+    `<button id="${MOUNT_ID}-send" class="r-send">Issue anlegen</button>`,
   ].join("");
 }
 
 /** Wire the form's submit — read the title + description, POST the report, and tear the overlay down. */
-function wireForm(
-  overlay: Overlay,
-  base: Readonly<Omit<IssueReport, "description" | "title">>,
-): void {
+function wireForm(overlay: Overlay, base: Readonly<Omit<IssueReport, "description" | "title">>): void {
   document.querySelector(`#${MOUNT_ID}-send`)?.addEventListener("click", () => {
     send({
       ...base,
@@ -182,10 +200,8 @@ function openForm(overlay: Overlay, el: Element): void {
     route: globalThis.location.pathname,
     source: resolveVowSource(el),
   } as const;
-  const form = panel(
-    overlay,
-    `${surfaceStyle(FORM_INSET, FORM_INSET)};width:${FORM_WIDTH}px;padding:16px`,
-  );
+  const form = add(overlay, "div", "r-surface r-form");
+  placeAt(form, FORM_INSET, FORM_INSET);
   form.innerHTML = formMarkup(base);
   overlay.form = form;
   wireForm(overlay, base);
@@ -196,7 +212,7 @@ function startPicking(overlay: Overlay, kind: IssueKind): void {
   overlay.menu = drop(overlay.menu);
   overlay.kind = kind;
   overlay.picking = true;
-  overlay.highlight = panel(overlay, `position:fixed;${HIGHLIGHT}`);
+  overlay.highlight = add(overlay, "div", "r-highlight");
 }
 
 /** Position the highlight box over the element under the cursor while picking. */
@@ -209,10 +225,9 @@ function onMove(overlay: Overlay, event: MouseEvent): void {
     return;
   }
   const box = target.getBoundingClientRect();
-  overlay.highlight.setAttribute(
-    "style",
-    `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;${HIGHLIGHT}`,
-  );
+  placeAt(overlay.highlight, box.left, box.top);
+  overlay.highlight.style.width = `${box.width}px`;
+  overlay.highlight.style.height = `${box.height}px`;
 }
 
 /** Capture the picked element on click (while picking), then open the report form over it. */
@@ -230,14 +245,11 @@ function onPick(overlay: Overlay, event: MouseEvent): void {
   }
 }
 
-/** One menu row — a labelled button that enters pick mode for its kind. */
+/** One menu row — a labelled button that enters pick mode for its kind (the hover wash lives in CSS). */
 function menuItem(overlay: Overlay, kind: IssueKind): HTMLElement {
   const item = document.createElement("button");
+  item.className = "r-item";
   item.textContent = KIND_LABEL[kind];
-  item.setAttribute(
-    "style",
-    "display:block;width:100%;padding:8px 16px;background:none;border:none;color:#eae3d5;cursor:pointer;text-align:left;font:inherit;border-radius:5px;white-space:nowrap",
-  );
   item.addEventListener("click", () => {
     startPicking(overlay, kind);
   });
@@ -247,33 +259,20 @@ function menuItem(overlay: Overlay, kind: IssueKind): HTMLElement {
 /** Open the "Bug melden / Feature vorschlagen" menu at the cursor; choosing one enters pick mode. */
 function openMenu(overlay: Overlay, event: MouseEvent): void {
   teardown(overlay);
-  const menu = panel(overlay, `${surfaceStyle(event.clientX, event.clientY)};padding:4px`);
+  const menu = add(overlay, "div", "r-surface r-menu");
+  placeAt(menu, event.clientX, event.clientY);
   menu.append(menuItem(overlay, "bug"), menuItem(overlay, "feature"));
   overlay.menu = menu;
 }
 
-/** Mount the overlay + wire the global listeners. Idempotent — a second call is a no-op (the guard node). */
-export function setupBugReporter(): void {
-  if (document.querySelector(`#${MOUNT_ID}`) !== null) {
-    return;
-  }
-  const mount = document.createElement("div");
-  mount.id = MOUNT_ID;
-  document.body.append(mount);
-  const overlay: Overlay = {
-    form: NONE,
-    highlight: NONE,
-    kind: "bug",
-    menu: NONE,
-    mount,
-    picking: false,
-  };
+/** Wire the overlay's global listeners — right-click opens the menu, a move tracks the pick highlight, a
+ *  click commits a pick, Escape / an outside pointer dismiss. Kept out of `setup` for the statement cap. */
+function wireListeners(overlay: Overlay): void {
   document.addEventListener("contextmenu", (event) => {
-    if (isOverlay(event.target)) {
-      return;
+    if (!isOverlay(event.target)) {
+      event.preventDefault();
+      openMenu(overlay, event);
     }
-    event.preventDefault();
-    openMenu(overlay, event);
   });
   document.addEventListener("mousemove", (event) => {
     onMove(overlay, event);
@@ -290,4 +289,25 @@ export function setupBugReporter(): void {
       teardown(overlay);
     }
   });
+  document.addEventListener("pointerdown", (event) => {
+    const live = overlay.menu !== NONE || overlay.form !== NONE;
+    if (!overlay.picking && live && !isOverlay(event.target)) {
+      teardown(overlay);
+    }
+  });
+}
+
+/** Mount the overlay (its stylesheet + surface host) + wire the listeners. Idempotent — a second call is a
+ *  no-op (the guard node). */
+export function setupBugReporter(): void {
+  if (document.querySelector(`#${MOUNT_ID}`) !== null) {
+    return;
+  }
+  const mount = document.createElement("div");
+  mount.id = MOUNT_ID;
+  const style = document.createElement("style");
+  style.textContent = OVERLAY_CSS;
+  mount.append(style);
+  document.body.append(mount);
+  wireListeners({ form: NONE, highlight: NONE, kind: "bug", menu: NONE, mount, picking: false });
 }
