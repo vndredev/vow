@@ -196,7 +196,7 @@ test("emitForm renders a labelled, zod-validated form bound to an entity", () =>
     '<Checkbox v-model="draft.done" label="Done" />',
     "append(createTask(draft.value));",
     "err instanceof ZodError",
-    '<Button type="submit" label="Add task" />',
+    '<Button type="submit" label="Add task" variant="solid" tone="accent" size="md" />',
   ]);
 });
 

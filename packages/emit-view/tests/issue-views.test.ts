@@ -80,8 +80,9 @@ test("each issue SFC emits the start-work button — the human's signal to the a
     // The board action POSTs the start-work signal through the store's `startWork` (-> /__vow/agent).
     expect(sfc).toContain("startWork(it.issue.number)");
     expect(sfc).toContain('label="Start work"');
-    // Shown only while the issue isn't yet done (a done issue is reopened, not started).
-    expect(sfc).toContain("v-if=\"it.status !== 'done'\"");
+    // Shown only while not done AND not already running — a live session shows "Watch run", not a second
+    // Start-work that would dispatch a duplicate agent onto the same issue.
+    expect(sfc).toContain("v-if=\"it.status !== 'done' && !it.session\"");
   }
 });
 
@@ -110,6 +111,28 @@ test("each issue SFC links the agent session (the open PR) when a doing item car
     expect(sfc).toContain("Watch run #{{ it.session.number }}");
     expect(sfc).toContain('target="_blank"');
   }
+});
+
+test("the roadmap and board cards lead with the title, then a meta footer with the actions grouped", () => {
+  for (const sfc of [emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    // The actions (start-work · close/reopen · session) travel as one group, pushed to the trailing edge.
+    expect(sfc).toContain('class="vow-issue-actions"');
+    // A meta footer carries the number beside the actions, so the card reads title-first.
+    expect(sfc).toContain("__meta");
+  }
+});
+
+test("the roadmap leads each phase with its open work and collapses the done into a shipped disclosure", () => {
+  const sfc = emitIssueRoadmapSfc();
+  // The open cards lead, shown only when the phase has open work.
+  expect(sfc).toContain('v-for="it in p.open"');
+  expect(sfc).toContain('v-if="p.open.length > 0"');
+  // The done cards collapse into a native <details> "shipped" disclosure (green = proof).
+  expect(sfc).toContain("<details");
+  expect(sfc).toContain('class="vow-roadmap__shipped"');
+  expect(sfc).toContain('v-for="it in p.done"');
+  expect(sfc).toContain('v-if="p.done.length > 0"');
+  expect(sfc).toContain("shipped");
 });
 
 test("the board card carries an issue's labels and assignee, each guarded so an empty card stays clean", () => {

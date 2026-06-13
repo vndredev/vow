@@ -1,4 +1,4 @@
-import { BADGE_VARIANTS, BUTTON_VARIANTS, SIZES, unionType } from "@vow/theme";
+import { CONTROL_SIZES, DENSITIES, TONES, VARIANTS, unionType } from "@vow/theme";
 import { primitive } from "./define.ts";
 
 /**
@@ -17,7 +17,7 @@ import { primitive } from "./define.ts";
 export const emitButtonSfc = primitive({
   doc: [
     "Generated button — the one structural control with NO headless core (<button> is accessible).",
-    "Carries only the variant/size theme surface; vow's base look lives in @vow/theme (swappable).",
+    "Carries the design-language surface (variant·tone·size·density data-* hooks); the look lives in @vow/theme.",
   ],
   imports: [
     { default: "Icon", from: "@vow/icons/Icon.vue" },
@@ -28,12 +28,19 @@ export const emitButtonSfc = primitive({
     { default: "''", name: "label", optional: true, tsType: "string" },
     { name: "icon", optional: true, tsType: "IconName" },
     {
-      default: "'default'",
+      default: "'solid'",
       name: "variant",
       optional: true,
-      tsType: unionType(BUTTON_VARIANTS),
+      tsType: unionType(VARIANTS),
     },
-    { default: "'md'", name: "size", optional: true, tsType: unionType(SIZES) },
+    { default: "'accent'", name: "tone", optional: true, tsType: unionType(TONES) },
+    { default: "'md'", name: "size", optional: true, tsType: unionType(CONTROL_SIZES) },
+    {
+      default: "'comfortable'",
+      name: "density",
+      optional: true,
+      tsType: unionType(DENSITIES),
+    },
     { default: "'button'", name: "type", optional: true, tsType: "'button' | 'submit'" },
   ],
   view: {
@@ -41,7 +48,9 @@ export const emitButtonSfc = primitive({
       { kind: "static", name: "class", value: "vow-button" },
       { expr: "type", kind: "bound", name: "type" },
       { expr: "variant", kind: "bound", name: "data-variant" },
+      { expr: "tone", kind: "bound", name: "data-tone" },
       { expr: "size", kind: "bound", name: "data-size" },
+      { expr: "density", kind: "bound", name: "data-density" },
     ],
     children: [
       {
@@ -68,7 +77,7 @@ export const emitButtonSfc = primitive({
 export const emitBadgeSfc = primitive({
   doc: [
     "Generated badge — a structural status/label chip (no headless core; it's inert text).",
-    "Carries only the variant theme surface; vow's base look lives in @vow/theme (swappable).",
+    "Carries the design-language surface (variant·tone data-* hooks); the look lives in @vow/theme.",
   ],
   imports: [
     { default: "Icon", from: "@vow/icons/Icon.vue" },
@@ -79,16 +88,18 @@ export const emitBadgeSfc = primitive({
     { default: "''", name: "label", optional: true, tsType: "string" },
     { name: "icon", optional: true, tsType: "IconName" },
     {
-      default: "'neutral'",
+      default: "'soft'",
       name: "variant",
       optional: true,
-      tsType: unionType(BADGE_VARIANTS),
+      tsType: unionType(VARIANTS),
     },
+    { default: "'neutral'", name: "tone", optional: true, tsType: unionType(TONES) },
   ],
   view: {
     attrs: [
       { kind: "static", name: "class", value: "vow-badge" },
       { expr: "variant", kind: "bound", name: "data-variant" },
+      { expr: "tone", kind: "bound", name: "data-tone" },
     ],
     children: [
       {

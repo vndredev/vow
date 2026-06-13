@@ -2,6 +2,7 @@ import type { Component, ImportDecl, ReadonlyField, ReadonlyVow, UiNode } from "
 import { FIELD_KINDS, defined, isEmitEntity } from "@vow/core";
 import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
 import type { EntityLookup } from "./lookup.ts";
+import { contextAttrs } from "./button-intent.ts";
 import { fieldControl } from "./field-control.ts";
 
 /** Whether a field self-labels as a `<Checkbox>` (its registered control) rather than a labelled `<Field>`. */
@@ -291,6 +292,7 @@ function submitButton(form: ReadonlyVow): UiNode {
     attrs: [
       { kind: "static", name: "type", value: "submit" },
       { kind: "static", name: "label", value: form.form?.submit ?? "" },
+      ...contextAttrs("form-footer"),
     ],
     children: [],
     kind: "component",

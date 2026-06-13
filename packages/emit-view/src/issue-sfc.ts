@@ -16,7 +16,7 @@ import { renderVueSfc } from "@vow/component";
  * One source — change the mapping here, all three layouts follow.
  */
 const ISSUE_VARIANT_LINES = [
-  `const variant = (s: string): "neutral" | "accent" | "success" =>`,
+  `const tone = (s: string): "neutral" | "accent" | "success" =>`,
   `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
 ];
 
@@ -67,6 +67,8 @@ function issueActionButton(): UiNode {
     "Button",
     [
       bound("label", `it.status === 'done' ? 'Reopen' : 'Close'`),
+      { kind: "static", name: "size", value: "sm" },
+      { kind: "static", name: "variant", value: "ghost" },
       {
         expr: `it.status === 'done' ? reopenIssue(it.issue.number) : closeIssue(it.issue.number)`,
         kind: "event",
@@ -80,16 +82,22 @@ function issueActionButton(): UiNode {
 /**
  * The start-work button the three issue layouts share — the human's one signal to begin an issue. It calls
  * `startWork` from `useIssues`, which POSTs the start-work signal to `/__vow/agent`; the dev server then
- * dispatches an agent session (`vow agent run <n>`). Shown only on an issue not yet `done` (an issue already
- * `doing` can still be re-signalled, e.g. a stalled run) and rendered with the default (primary) variant so
- * it reads as the lead action. Status stays derived — the resulting PR is what makes the issue read `doing`.
+ * dispatches an agent session (`vow agent run <n>`). Shown only on an issue not yet `done` AND not already
+ * carrying a session — once a run is live (`it.session`, an open PR redeeming it), the accent is "Watch run",
+ * not a second "Start work" that would dispatch a duplicate agent onto the same issue. So it appears on a
+ * planned issue (or a `doing` one whose run has gone — a re-signal), never beside a live run. A compact
+ * `default · sm` — the Vermilion accent IS the one intent per card (start an agent); the quiet
+ * `Close`/`Reopen` sit beside it. Status stays derived — the PR makes it `doing`.
  */
 function startWorkButton(): UiNode {
   return comp(
     "Button",
     [
-      { expr: "it.status !== 'done'", kind: "cond", type: "if" },
+      { expr: "it.status !== 'done' && !it.session", kind: "cond", type: "if" },
       { kind: "static", name: "label", value: "Start work" },
+      { kind: "static", name: "size", value: "sm" },
+      { kind: "static", name: "tone", value: "accent" },
+      { kind: "static", name: "variant", value: "solid" },
       { expr: "startWork(it.issue.number)", kind: "event", name: "click" },
     ],
     [],
@@ -115,13 +123,9 @@ function issueSessionLink(): UiNode {
   };
 }
 
-/** A status `<Badge>` chip — `:label` + the shared `variant(...)` mapping over a status expression. */
+/** A status `<Badge>` chip — `:label` + the shared `tone(...)` mapping (a soft badge, tone from meaning). */
 function statusBadge(statusExpr: string): UiNode {
-  return comp(
-    "Badge",
-    [bound("label", statusExpr), bound("variant", `variant(${statusExpr})`)],
-    [],
-  );
+  return comp("Badge", [bound("label", statusExpr), bound("tone", `tone(${statusExpr})`)], []);
 }
 
 /** A static-class element node with the given tag and children. */
@@ -132,6 +136,16 @@ function classed(tag: string, cls: string, children: readonly UiNode[]): UiNode 
     kind: "element",
     tag,
   };
+}
+
+/** The actions cell the issue layouts share — start-work, close/reopen and the session link grouped so they
+ *  travel as one unit (the card's CSS pushes the group to the trailing edge), never scattered. */
+function issueActions(): UiNode {
+  return classed("div", "vow-issue-actions", [
+    startWorkButton(),
+    issueActionButton(),
+    issueSessionLink(),
+  ]);
 }
 
 /** The `<thead>` of the issue table — one head cell per column. */
@@ -150,7 +164,7 @@ function tableHead(): UiNode {
  *  card so the two layouts render an issue's labels the same way. */
 function labelBadges(): UiNode {
   return {
-    attrs: [bound("label", "l"), { kind: "static", name: "variant", value: "neutral" }],
+    attrs: [bound("label", "l"), { kind: "static", name: "variant", value: "outline" }],
     children: [],
     for: { as: "l", each: "it.issue.labels", key: "l" },
     kind: "component",
@@ -158,9 +172,13 @@ function labelBadges(): UiNode {
   };
 }
 
-/** The labels cell — a neutral `<Badge>` per label, looped over `it.issue.labels`. */
+/** The labels cell — a neutral `<Badge>` per label. The flex wrap lives on an inner `<div>`, NOT the
+ *  `<td>`: a `display:flex` table-cell doesn't stretch to the row height, so its bottom border sits high
+ *  and the row separators slip. The `<td>` stays a real table-cell; the div owns the wrapping. */
 function labelsCell(): UiNode {
-  return classed("td", "vow-table__cell vow-issue-table__labels", [labelBadges()]);
+  return classed("td", "vow-table__cell", [
+    classed("div", "vow-issue-table__labels", [labelBadges()]),
+  ]);
 }
 
 /** A single data row of the issue table. */
@@ -257,17 +275,12 @@ function boardCardAssignees(): UiNode {
   };
 }
 
-/** A board card per issue in a column — number, title, labels, assignee and the action button. */
+/** A board card per issue in a column — the title leads (the content), then any labels, then a meta footer:
+ *  the number + assignee grouped at the start, the actions trailing. Same hierarchy as a roadmap item. */
 function boardCard(): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-board__card" }],
     children: [
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-issue-board__num" }],
-        children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
-        kind: "element",
-        tag: "span",
-      },
       {
         attrs: [{ kind: "static", name: "class", value: "vow-issue-board__title" }],
         children: [{ expr: "it.issue.title", kind: "interp" }],
@@ -275,10 +288,16 @@ function boardCard(): UiNode {
         tag: "span",
       },
       boardCardLabels(),
-      boardCardAssignees(),
-      startWorkButton(),
-      issueActionButton(),
-      issueSessionLink(),
+      classed("div", "vow-issue-board__meta", [
+        {
+          attrs: [{ kind: "static", name: "class", value: "vow-issue-board__num" }],
+          children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
+          kind: "element",
+          tag: "span",
+        },
+        boardCardAssignees(),
+        issueActions(),
+      ]),
     ],
     for: { as: "it", each: "col.items", key: "it.issue.number" },
     kind: "element",
@@ -337,7 +356,7 @@ export function emitIssueBoardSfc(): string {
 const ROADMAP_SCRIPT = [
   ISSUE_SETUP_LINE,
   ...ISSUE_VARIANT_LINES,
-  `interface Phase { title: string; due: string; dueAt: number; items: IssueItem[] }`,
+  `interface Phase { title: string; due: string; dueAt: number; open: IssueItem[]; done: IssueItem[] }`,
   `const phases = computed(() => {`,
   `  const by = new Map<string, Phase>();`,
   `  for (const it of items) {`,
@@ -347,51 +366,82 @@ const ROADMAP_SCRIPT = [
   `    if (phase === undefined) {`,
   `      const dueOn = m?.dueOn ?? "";`,
   `      const dueAt = dueOn ? Date.parse(dueOn) : Number.POSITIVE_INFINITY; // undated phases sort last`,
-  `      phase = { title, due: dueOn.slice(0, 10), dueAt, items: [] };`,
+  `      phase = { title, due: dueOn.slice(0, 10), dueAt, open: [], done: [] };`,
   `      by.set(title, phase);`,
   `    }`,
-  `    phase.items.push(it);`,
+  `    // The open work leads each phase; the done work collapses into the "shipped" disclosure (proof).`,
+  `    if (it.status === "done") { phase.done.push(it); } else { phase.open.push(it); }`,
   `  }`,
   `  return [...by.values()].sort((a, b) => a.dueAt - b.dueAt); // earliest phase first`,
   `});`,
 ];
 
-/** One roadmap item `<li>` — its number, status Badge, action button and title. */
-function roadmapItem(): UiNode {
+/** One roadmap item `<li>` — the title leads (the content), then a meta footer: the number + status grouped
+ *  at the start, the actions trailing. `each` is the source list (a phase's open or shipped items). */
+function roadmapItem(each: string): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-roadmap__item" }],
     children: [
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__meta" }],
-        children: [
-          {
-            attrs: [{ kind: "static", name: "class", value: "vow-roadmap__num" }],
-            children: [txt("#"), { expr: "it.issue.number", kind: "interp" }],
-            kind: "element",
-            tag: "span",
-          },
-          statusBadge("it.status"),
-          startWorkButton(),
-          issueActionButton(),
-          issueSessionLink(),
-        ],
-        kind: "element",
-        tag: "div",
-      },
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__title" }],
-        children: [{ expr: "it.issue.title", kind: "interp" }],
-        kind: "element",
-        tag: "span",
-      },
+      classed("span", "vow-roadmap__title", [{ expr: "it.issue.title", kind: "interp" }]),
+      classed("div", "vow-roadmap__meta", [
+        classed("span", "vow-roadmap__num", [
+          txt("#"),
+          { expr: "it.issue.number", kind: "interp" },
+        ]),
+        statusBadge("it.status"),
+        issueActions(),
+      ]),
     ],
-    for: { as: "it", each: "p.items", key: "it.issue.number" },
+    for: { as: "it", each, key: "it.issue.number" },
     kind: "element",
     tag: "li",
   };
 }
 
-/** One roadmap phase `<section>` — its milestone heading, optional due date and item list. */
+/** A phase's open work — the `<ul>` of cards that lead the phase, shown only when it has open items. */
+function roadmapOpen(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-roadmap__items" },
+      { expr: "p.open.length > 0", kind: "cond", type: "if" },
+    ],
+    children: [roadmapItem("p.open")],
+    kind: "element",
+    tag: "ul",
+  };
+}
+
+/** A phase's shipped work — a native `<details>` that collapses the done cards behind a "✓ N shipped"
+ *  disclosure (green = proof), shown only when the phase has done items. So a completed phase reads as one
+ *  compact line, a mixed phase leads with its open cards and tucks the rest away. */
+function roadmapShipped(): UiNode {
+  return {
+    attrs: [
+      { kind: "static", name: "class", value: "vow-roadmap__shipped" },
+      { expr: "p.done.length > 0", kind: "cond", type: "if" },
+    ],
+    children: [
+      classed("summary", "vow-roadmap__shipped-head", [
+        txt("✓ "),
+        {
+          expr: "p.done.length + (p.open.length > 0 ? ' more shipped' : ' shipped')",
+          kind: "interp",
+        },
+      ]),
+      {
+        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__items" }],
+        children: [roadmapItem("p.done")],
+        kind: "element",
+        tag: "ul",
+      },
+    ],
+    kind: "element",
+    tag: "details",
+  };
+}
+
+/** One roadmap phase `<section>` — its milestone heading + due date, then the open cards, then the
+ *  collapsed shipped work. */
 function roadmapPhase(): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-roadmap__phase" }],
@@ -418,12 +468,8 @@ function roadmapPhase(): UiNode {
         kind: "element",
         tag: "header",
       },
-      {
-        attrs: [{ kind: "static", name: "class", value: "vow-roadmap__items" }],
-        children: [roadmapItem()],
-        kind: "element",
-        tag: "ul",
-      },
+      roadmapOpen(),
+      roadmapShipped(),
     ],
     for: { as: "p", each: "phases", key: "p.title" },
     kind: "element",

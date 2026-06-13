@@ -7,6 +7,8 @@ import {
   createIssue,
   featureIssueBody,
   issuePlan,
+  milestoneFor,
+  resolveCurrentPhase,
   syncProjectStatus,
 } from "@vow/observability";
 import { json, text } from "./studio.ts";
@@ -103,14 +105,17 @@ function withProject(appDir: string, project: string, url: string): TextResult {
   }
 }
 
-/** Open an issue, then (when a Project is configured) add it — always reporting the issue URL. */
+/** Open an issue, then (when a Project is configured) add it — always reporting the issue URL. The
+ *  milestone defaults to the resolved current phase when the caller gives none, so no issue vow opens is
+ *  ever filed phase-less while a phase exists (the anti-drift invariant, enforced at the front door). */
 function openIssue(appDir: string, input: AddIssueInput): TextResult {
+  const milestone = milestoneFor(input.milestone, resolveCurrentPhase(appDir));
   const url = createIssue(appDir, {
     assignee: assigneeOf(input.assignee),
     body: featureIssueBody({ element: input.element, why: input.why }),
     labels: ["enhancement", ...(input.labels ?? [])],
     title: input.title,
-    ...milestoneOf(input.milestone),
+    ...milestoneOf(milestone),
   });
   const project = projectId(input.project);
   if (defined(project)) {

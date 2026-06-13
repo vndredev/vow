@@ -24,6 +24,7 @@ vow serve --watch --yes  # also run the agent watch-loop (the always-on self-hea
 - **the MCP channel** (<http://localhost:5176/mcp>) — the persistent agent channel: any number of agents/clients POST to one always-on server, replacing the stdio-per-editor-session launch (see [the MCP](/guide/mcp)).
 - **the event channel** (<http://localhost:5177/events>) — the **provider-neutral** realtime-observability feed over SSE: any client (the studio's browser, a generic agent, an orchestrator, a `curl`) subscribes to one always-on endpoint and receives the backlog, then each new event live. Same feed as the tailable `.vow/events.jsonl` + [`vow events`](/guide/cli#realtime-observability).
 - **the `/__vow/*` control API** — issues, the agent-trigger, the data layer — rides on the studio's dev server via `@vow/vite-plugin`, so serving the hub serves the control plane too.
+- **the board-status reconcile** — every tick the hub reconciles the GitHub Project's Status to the studio's derived truth (the board invariant), so any drift — a raw merge, a manual close, a flaky Project workflow — is auto-corrected within an interval, never needing a manual `sync_project`. A no-op when no Project is configured.
 
 It reuses the same supervised runner as [`vow dev`](/guide/cli#running-the-apps): combined tagged logs, an orphaned port freed first, foreground until interrupted (background it yourself — the harness, `&`, a supervisor).
 
