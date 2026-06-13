@@ -204,10 +204,20 @@ test("emitForm renders a labelled, zod-validated form bound to an entity", () =>
     'import { createTask, type Task } from "./task.ts";',
     '<form class="vow-form" data-vow-source="add-task" @submit.prevent="submit">',
     '<Field label="Title" :control-id="titleId" :error="errors.title">',
-    '<Checkbox v-model="draft.done" label="Done" />',
+    `<Checkbox v-model="draft.done" label="Done" :described-by="doneId + '-error'" :invalid="!!errors.done" />`,
     "append(createTask(draft.value));",
     "err instanceof ZodError",
     '<Button type="submit" label="Add task" variant="solid" tone="accent" size="md" />',
+  ]);
+});
+
+test("a boolean field associates its checkbox to its error via aria-describedby + aria-invalid", () => {
+  const sfc = emitForm(addTaskForm, new Map([["task", taskEntity]]));
+  // The boolean gets its own useId; the error node carries `<name>Id + '-error'`, and the Checkbox forwards described-by + invalid onto its control — so a SR navigating to the checkbox finds the error text and the invalid state, durably (not just the once-announced role=alert). WCAG 1.3.1 / 3.3.1 / 4.1.2.
+  expectContains(sfc, [
+    "const doneId = useId();",
+    `<Checkbox v-model="draft.done" label="Done" :described-by="doneId + '-error'" :invalid="!!errors.done" />`,
+    `<p class="vow-field__error" :id="doneId + '-error'" role="alert" v-if="errors.done">{{ errors.done }}</p>`,
   ]);
 });
 
