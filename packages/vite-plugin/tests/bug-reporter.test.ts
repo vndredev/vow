@@ -29,7 +29,7 @@ test("elementHint names the tag + its classes (the bug/feature area)", () => {
 test("devOverlayTags injects the reporter bootstrap in dev, nothing in a build", () => {
   const dev = devOverlayTags(true);
   expect(dev).toHaveLength(1);
-  expect(dev[0]?.children).toContain("setupBugReporter");
+  expect(dev[0]?.attrs.src).toContain("dev-overlay");
   expect(dev[0]?.injectTo).toBe("body");
   expect(devOverlayTags(false)).toEqual([]);
 });
