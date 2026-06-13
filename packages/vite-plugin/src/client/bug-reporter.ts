@@ -181,7 +181,10 @@ function formMarkup(base: Readonly<Omit<IssueReport, "description" | "title">>):
 }
 
 /** Wire the form's submit — read the title + description, POST the report, and tear the overlay down. */
-function wireForm(overlay: Overlay, base: Readonly<Omit<IssueReport, "description" | "title">>): void {
+function wireForm(
+  overlay: Overlay,
+  base: Readonly<Omit<IssueReport, "description" | "title">>,
+): void {
   document.querySelector(`#${MOUNT_ID}-send`)?.addEventListener("click", () => {
     send({
       ...base,
