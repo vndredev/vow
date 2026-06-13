@@ -22,7 +22,7 @@ import {
   parseFindings,
   resolveCurrentPhase,
 } from "@vow/observability";
-import { buildPlan, promptTemplates, renderAuditPrompt } from "@vow/agent";
+import { buildPlan, promptTemplates, renderAuditPrompt, teamTemplates } from "@vow/agent";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { readPrompt } from "./agent-prompts.ts";
@@ -168,6 +168,7 @@ function init(cwd: string): number {
     ...promptTemplates().map((template) =>
       scaffold(path.join(cwd, template.path), template.content),
     ),
+    ...teamTemplates().map((member) => scaffold(path.join(cwd, member.path), member.content)),
     installChannel(cwd),
     installHooks(cwd),
   ];
