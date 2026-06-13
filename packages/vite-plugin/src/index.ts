@@ -3,7 +3,16 @@ import { type Db, openDevDb, syncEntities } from "./dev-db.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, type ReadonlyVow, defined, loadVows } from "@vow/core/node";
 import type { Plugin, ViteDevServer } from "vite-plus";
-import { VOW_API, agentApi, dataApi, eventsApi, issueApi, issuesApi } from "./dev-api.ts";
+import {
+  VOW_API,
+  agentApi,
+  dataApi,
+  eventsApi,
+  issueApi,
+  issuesApi,
+  loopStatusApi,
+  repoRootOf,
+} from "./dev-api.ts";
 import { devOverlayTags, loadVowModule, resolveVowId } from "./virtual.ts";
 import { NONE } from "./none.ts";
 import type { VowOptions } from "./vows.ts";
@@ -112,7 +121,7 @@ export function openDevDbGuarded(state: State, logError: (message: string) => vo
 }
 
 /** Mount every `/__vow` API on the dev server's middleware chain — the data layer, the issue plan + the
- *  in-app reporter, the event feed, and the start-work signal. */
+ *  in-app reporter, the event feed, the start-work signal, and the agent-loop status. */
 // oxlint-disable-next-line prefer-readonly-parameter-types -- a plugin must mutate the dev server
 function mountApis(server: ViteDevServer, state: State): void {
   server.middlewares.use(
@@ -130,6 +139,10 @@ function mountApis(server: ViteDevServer, state: State): void {
   server.middlewares.use(VOW_API.agent, agentApi(state.root));
   // The in-app reporter — the dev overlay POSTs a bug/feature report; the server files it as a phased issue.
   server.middlewares.use(VOW_API.issue, issueApi(state.root));
+  // The agent-loop status — read from the REPO-ROOT `.vow/` the loop records (not the app-local `state.root`).
+  // The studio under `apps/studio` thus still reads the loop process's live state. The fallback to
+  // `state.root` covers a standalone app with no workspace root above (where it reads the idle default).
+  server.middlewares.use(VOW_API.agentLoop, loopStatusApi(repoRootOf(state.root) ?? state.root));
 }
 
 /** Wire the dev server: open the DB, mount the `/__vow` APIs, and watch `app/` for regenerate-on-save. */

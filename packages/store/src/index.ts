@@ -1,5 +1,6 @@
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
 import { type Collection, type CollectionState, ReactiveRows, type Row } from "./reactive-rows.ts";
+import { LOOP_STATUS_IDLE, type LoopStatusItem, parseLoopStatus } from "./loop-status.ts";
 /* oxlint-enable consistent-type-specifier-style */
 import { VOW_API, dbPath } from "@vow/db/routes";
 import { isObject } from "./guards.ts";
@@ -7,7 +8,7 @@ import { parseEventFeed } from "./events.ts";
 import { parseIssuePlan } from "./issues.ts";
 import { reactive } from "vue";
 
-export type { Collection, CollectionState };
+export type { Collection, CollectionState, LoopStatusItem };
 export { ReactiveRows };
 
 /**
@@ -164,6 +165,42 @@ const eventsState = reactive({ error: false, loading: false });
 /** True once a live SSE connection has been established at least once — once realtime is delivering, the
  *  poll stays a silent reconciler (it never flips the error flag back on while the stream is up). */
 let eventStreamLive = false;
+
+/** The shared reactive agent-loop status — one object the studio binds to, replaced field-by-field on each
+ *  poll so Vue tracks the change. Starts idle (`running: false`) until the first fetch lands. */
+const loopStatus = reactive<LoopStatusItem>({ ...LOOP_STATUS_IDLE });
+let loopStatusLoaded = false;
+
+/** The fetch state the loop-status view reads to distinguish loading / failed. Parallel to `issuesState`;
+ *  `loading` is on while a fetch is in flight, `error` latches on a non-ok response. */
+const loopStatusState = reactive({ error: false, loading: false });
+
+/** Read + parse the agent-loop status from `/__vow/agent-loop/status`, reporting `ok: false` (with the idle
+ *  default) on any non-ok response or transport failure. Validated by `parseLoopStatus` (see
+ *  `./loop-status.ts`), not blindly trusted. */
+async function fetchLoopStatus(): Promise<{ ok: boolean; status: LoopStatusItem }> {
+  try {
+    return { ok: true, status: parseLoopStatus(await okJson(VOW_API.agentLoop)) };
+  } catch {
+    return { ok: false, status: LOOP_STATUS_IDLE };
+  }
+}
+
+/** Pull the agent-loop status from `/__vow/agent-loop/status` and copy it into the shared reactive object,
+ *  driving `loopStatusState` so the view can show a loading / error branch. Copies field-by-field (not a
+ *  replace) so the reactive identity callers hold stays stable. */
+async function loadLoopStatus(): Promise<void> {
+  if (!hasApi) {
+    return;
+  }
+  loopStatusState.loading = true;
+  const result = await fetchLoopStatus();
+  loopStatusState.error = !result.ok;
+  loopStatusState.loading = false;
+  if (result.ok) {
+    Object.assign(loopStatus, LOOP_STATUS_IDLE, result.status);
+  }
+}
 
 /** Read + parse the issue plan from `/__vow/issues`, reporting `ok: false` (with an empty plan) on any
  *  non-ok response or transport failure. Entries are validated by `parseIssuePlan` (see `./issues.ts`),
@@ -361,6 +398,9 @@ function startFreshness(): void {
     if (eventsLoaded) {
       detach(loadEvents);
     }
+    if (loopStatusLoaded) {
+      detach(loadLoopStatus);
+    }
   };
   globalThis.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", refresh);
@@ -506,6 +546,25 @@ export function useEvents(): {
     startFreshness();
   }
   return { items: events, state: eventsState };
+}
+
+/** The shared reactive agent-loop status, read live from `/__vow/agent-loop/status` (the loop process records
+ *  it to the repo-root `.vow/loop-status.json`; the dev server serves it). It exposes whether autonomy is on
+ *  (`running`), the current `round`, the `backlog` + `openPrs` the round saw, and `lastRound` — so the studio
+ *  shows whether the loop is on and what it is working through, polled on focus + the 5s interval like the
+ *  others. `state` matches the `CollectionState` shape — its loading / error flags let a view show "Loading…"
+ *  or "Couldn't reach the loop". Read-only: the status is produced by the loop, never the browser (the
+ *  start/stop control half is a follow-up, #623). */
+export function useAgentLoopStatus(): {
+  status: LoopStatusItem;
+  state: CollectionState;
+} {
+  if (!loopStatusLoaded) {
+    loopStatusLoaded = true;
+    detach(loadLoopStatus);
+    startFreshness();
+  }
+  return { state: loopStatusState, status: loopStatus };
 }
 
 /** Create a stand-alone reactive row list — the in-place reconciliation surface, exported for tests and

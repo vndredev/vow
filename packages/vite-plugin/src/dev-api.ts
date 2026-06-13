@@ -13,6 +13,7 @@ import {
   issueDetail,
   issuePlan,
   readEvents,
+  readLoopStatus,
   reopenIssue,
 } from "@vow/observability";
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
@@ -364,19 +365,33 @@ function parseStartWork(body: string): Maybe<StartWork> {
 type Dispatch = (cwd: string, issue: number) => IssueDetail;
 
 /**
- * Resolve the workspace-root `vow` binary from a starting directory — walk up to the directory holding
- * `pnpm-workspace.yaml` (the repo root) and point at its `node_modules/.bin/vow`. The dev server's `cwd` is
- * the Vite app root (e.g. `apps/studio`), whose own `node_modules/.bin` has NO `vow`; resolving the
- * workspace bin is why the documented direct-bin start recipe can dispatch a run at all. The bare name
- * `"vow"` is the fallback when no workspace root is found above (a launch where it IS on PATH).
+ * Resolve the repo root from a starting directory — walk up to the directory holding `pnpm-workspace.yaml`,
+ * or `NONE` when none is found above. The dev server's `cwd` is the Vite app root (e.g. `apps/studio`), but
+ * the agent loop runs from (and records `.vow/`) at the REPO ROOT — so a surface reading the loop's output
+ * (the event feed, the loop status) must resolve up to it, not read the app-local `.vow/`.
  */
-export function vowBin(cwd: string): string {
+export function repoRootOf(cwd: string): Maybe<string> {
   let dir = path.resolve(cwd);
   while (dir !== path.dirname(dir)) {
     if (existsSync(path.join(dir, "pnpm-workspace.yaml"))) {
-      return path.join(dir, "node_modules", ".bin", "vow");
+      return dir;
     }
     dir = path.dirname(dir);
+  }
+  return NONE;
+}
+
+/**
+ * Resolve the workspace-root `vow` binary from a starting directory — the repo root's `node_modules/.bin/vow`
+ * (`repoRootOf` walks up to it). The dev server's `cwd` is the Vite app root (e.g. `apps/studio`), whose own
+ * `node_modules/.bin` has NO `vow`; resolving the workspace bin is why the documented direct-bin start recipe
+ * can dispatch a run at all. The bare name `"vow"` is the fallback when no workspace root is found above (a
+ * launch where it IS on PATH).
+ */
+export function vowBin(cwd: string): string {
+  const root = repoRootOf(cwd);
+  if (defined(root)) {
+    return path.join(root, "node_modules", ".bin", "vow");
   }
   return "vow";
 }
@@ -547,5 +562,24 @@ export function issueApi(cwd: string): Middleware {
       return;
     }
     ignore(serveIssue(req, res, cwd));
+  };
+}
+
+/**
+ * The dev agent-loop API — `/__vow/agent-loop/status`. A plain GET serves the agent loop's live status
+ * (`@vow/observability`'s `readLoopStatus`), read from the REPO-ROOT `.vow/loop-status.json` the loop process
+ * (`vow serve --watch` / `vow agent auto`) records as it advances — the seam that makes the autonomous loop
+ * observable, since the dev server can't read the loop process's memory. An absent/unread file is the
+ * `running: false` idle default (no loop has run yet), so the studio always renders a well-formed status. The
+ * `useAgentLoopStatus()` store hook polls this; the start/stop CONTROL half is a follow-up (#623). Read-only:
+ * the status is produced by the loop, never the browser.
+ */
+export function loopStatusApi(cwd: string): Middleware {
+  return (req, res, next) => {
+    if ((req.method ?? "GET") !== "GET") {
+      next();
+      return;
+    }
+    writeReply(res, { body: readLoopStatus(cwd), status: STATUS.ok });
   };
 }

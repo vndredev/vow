@@ -24,10 +24,27 @@ vow serve --watch --yes  # also run the agent watch-loop (the always-on self-hea
 - **the MCP channel** (<http://localhost:5176/mcp>) — the persistent agent channel: any number of agents/clients POST to one always-on server, replacing the stdio-per-editor-session launch (see [the MCP](/guide/mcp)).
 - **the event channel** (<http://localhost:5177/events>) — the **provider-neutral** realtime-observability feed over SSE: any client (the studio's browser, a generic agent, an orchestrator, a `curl`) subscribes to one always-on endpoint and receives the backlog, then each new event live. Same feed as the tailable `.vow/events.jsonl` + [`vow events`](/guide/cli#realtime-observability).
 - **the studio trace** — the studio's event-trace panel ([`events: { as: trace }`](/guide/views)) subscribes to the live SSE stream, so `run.started` / `run.phase` / `pr.merged` appear **instantly**, not within a poll. It reads the SSE over the studio's own `/__vow/events` (an `EventSource`) — true realtime under plain [`vow dev`](/guide/cli#running-the-apps), not only the hub. The 5s poll stays a graceful fallback when SSE is unavailable, so an event is never dropped or duplicated.
-- **the `/__vow/*` control API** — issues, the agent-trigger, the data layer — rides on the studio's dev server via `@vow/vite-plugin`, so serving the hub serves the control plane too.
+- **the `/__vow/*` control API** — issues, the agent-trigger, the agent-loop status, the data layer — rides on the studio's dev server via `@vow/vite-plugin`, so serving the hub serves the control plane too.
+- **the agent-loop status** (`GET /__vow/agent-loop/status`) — the autonomous loop made **observable**: whether autonomy is on (`running`), the current `round`, the effective `backlog` + `openPrs` the round saw, and when it `lastRound`ed. The studio reads it through the `useAgentLoopStatus()` store hook, polled on focus + a 5s interval like the issue plan and the trace. See [The agent-loop status](#the-agent-loop-status) below.
 - **the board-status reconcile** — every tick the hub reconciles the GitHub Project's Status to the studio's derived truth (the board invariant), so any drift — a raw merge, a manual close, a flaky Project workflow — is auto-corrected within an interval, never needing a manual `sync_project`. A no-op when no Project is configured.
 
 It reuses the same supervised runner as [`vow dev`](/guide/cli#running-the-apps): combined tagged logs, an orphaned port freed first, foreground until interrupted (background it yourself — the harness, `&`, a supervisor).
+
+## The agent-loop status
+
+The autonomous loop runs in its own process — `vow serve --watch --yes` (the hub daemon) or `vow agent auto --yes` (a one-shot spiral). The studio's dev server can't read that process's memory, so the loop publishes its live state through a **status file**, the same local-first seam the [event feed](#what-it-serves) uses:
+
+1. **The loop records** its round state to `<repo>/.vow/loop-status.json` as it advances — `running`, the current `round`, the effective `backlog` (the within-cap, PR-less issues it develops) and `openPrs` it saw, and `lastRound` (when it advanced). The write is **atomic** (write-temp-rename, so a reader never sees a half-written file) and **best-effort** (recording the state never breaks the round it observes).
+2. **The dev-API serves it** at `GET /__vow/agent-loop/status`, read from the **repo-root** `.vow/` the loop records to — resolved by walking up from the studio's app dir, so the studio under `apps/studio` still reads the loop process's live state, not an app-local copy. When no loop has ever run (the file is absent), it answers the idle default `{ running: false, round: 0, backlog: 0, openPrs: 0 }`.
+3. **The studio reads it** through the `useAgentLoopStatus()` hook in `@vow/store`, polled on focus + a 5s interval (mirroring `useIssues` / `useEvents`). A malformed response degrades to the same idle default — the surface is read-only and never throws.
+
+```bash
+# Watch the loop's status as it spirals (the same JSON the studio polls):
+curl -s http://localhost:5173/__vow/agent-loop/status
+# {"running":true,"round":2,"backlog":3,"openPrs":1,"lastRound":"2026-06-13T…Z"}
+```
+
+This is the **read** half of the cockpit — the loop observable from the studio. Start/stop **control** over the same surface (`POST /__vow/agent-loop/control`) is its own gated follow-up.
 
 ## Everything local
 

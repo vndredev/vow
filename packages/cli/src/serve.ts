@@ -1,11 +1,11 @@
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
 import { type App, repoRoot, resolveApps } from "./apps.ts";
 /* oxlint-enable consistent-type-specifier-style */
+import { LOOP_IDLE, eventsSseServer, readLoopStatus, writeLoopStatus } from "@vow/observability";
 import { autoConfirmed, runAuto } from "./agent-auto.ts";
 import type { Server } from "node:http";
 import { boardLine } from "./agent-run.ts";
 import { setTimeout as delay } from "node:timers/promises";
-import { eventsSseServer } from "@vow/observability";
 import { mcpHttpServer } from "@vow/mcp/http";
 import { once } from "node:events";
 import path from "node:path";
@@ -133,14 +133,25 @@ async function spiralOnce(): Promise<void> {
   }
 }
 
+/** Re-assert the agent loop's `running` status between spirals — the watch DAEMON is on for its whole
+    lifetime (spiraling, then idling), but a spiral that reaches a terminal records `running: false` on exit.
+    So between spirals the daemon re-marks itself running, preserving the round/backlog/openPrs counts the
+    last spiral recorded, so the studio shows the loop is on (idling) rather than blinking off each interval.
+    Best-effort (`writeLoopStatus` never throws). */
+function markDaemonRunning(cwd: string): void {
+  writeLoopStatus(cwd, { ...readLoopStatus(cwd), running: true });
+}
+
 /** The always-on agent loop inside the hub: run an auto spiral, then re-run every interval — developing new
     issues as they appear, the daemon staying up between spirals. Stops when `stop` aborts (the hub shutting
     down). The inter-spiral wait is abortable, so shutdown is prompt, not up to a full interval late. The
-    awaits are sequential by design (spiral, then wait, then repeat) — the whole point is a serial loop. */
+    awaits are sequential by design (spiral, then wait, then repeat) — the whole point is a serial loop.
+    Records the daemon's `running` status to `cwd`'s `.vow/loop-status.json` so the studio observes it on. */
 /* oxlint-disable no-await-in-loop -- the watch loop is intentionally serial: one spiral, wait, repeat */
-async function watchLoop(stop: Readonly<AbortSignal>): Promise<void> {
+async function watchLoop(cwd: string, stop: Readonly<AbortSignal>): Promise<void> {
   while (!stop.aborted) {
     await spiralOnce();
+    markDaemonRunning(cwd);
     try {
       // The resolve value (`true`) is unused — a placeholder so the abort `signal` option can be passed.
       await delay(WATCH_INTERVAL_MS, true, { signal: stop });
@@ -182,12 +193,57 @@ async function reconcileLoop(cwd: string, stop: Readonly<AbortSignal>): Promise<
 /* oxlint-enable no-await-in-loop */
 
 /** Start the hub's background loops: the board-status reconcile (ALWAYS — the board invariant), and the
-    agent watch-loop when opted in. Kept out of `runServe` so it stays under the statement cap. */
+    agent watch-loop when opted in. Marks the loop running at the repo root the instant the daemon starts
+    (so the studio shows it on before the first spiral computes counts). Kept out of `runServe` so it stays
+    under the statement cap. */
 function startLoops(watch: Watch, cwd: string, stop: Readonly<AbortSignal>): void {
   ignore(reconcileLoop(cwd, stop));
   if (watch === "run") {
-    ignore(watchLoop(stop));
+    markDaemonRunning(cwd);
+    ignore(watchLoop(cwd, stop));
   }
+}
+
+/** The running hub's pieces — the resolved apps + watch state, the repo root the loop records under, the
+    background HTTP servers, and the abort controller that tears the loops down. Bundled so `runServe` stays
+    a thin sequence (resolve, bring up, run, shut down) under the statement cap. */
+interface Hub {
+  readonly apps: readonly App[];
+  readonly root: string;
+  readonly servers: HubServers;
+  readonly stop: AbortController;
+  readonly watch: Watch;
+}
+
+/** Resolve the hub from the CLI args — the apps + watch state, the repo root, the started HTTP servers, and a
+    fresh abort controller. The one place the hub's pieces come together. */
+function resolveHub(rest: readonly string[]): Hub {
+  return {
+    apps: resolveApps(appNames(rest)),
+    root: repoRoot(),
+    servers: startServers(),
+    stop: new AbortController(),
+    watch: watchDecision(rest.includes("--watch"), autoConfirmed(rest)),
+  };
+}
+
+/** Print the hub banner + start its background loops — the one bring-up step. */
+// oxlint-disable-next-line prefer-readonly-parameter-types -- Hub holds the mutable AbortController + Servers
+function bringUp(hub: Readonly<Hub>): void {
+  process.stdout.write(serveBanner(hub.apps, { events: EVENTS_PORT, mcp: MCP_PORT }, hub.watch));
+  startLoops(hub.watch, hub.root, hub.stop.signal);
+}
+
+/** Tear the hub down: abort the loops, record the agent loop idle at the repo root (so the studio shows
+    autonomy is off the moment the hub stops — a no-op when the watch loop never ran), then close the HTTP
+    servers. */
+// oxlint-disable-next-line prefer-readonly-parameter-types -- Hub holds the mutable AbortController + Servers
+async function shutDown(hub: Readonly<Hub>): Promise<void> {
+  hub.stop.abort();
+  if (hub.watch === "run") {
+    writeLoopStatus(hub.root, { ...LOOP_IDLE, lastRound: new Date().toISOString() });
+  }
+  await closeServers(hub.servers);
 }
 
 /** `vow serve [app...] [--watch [--yes]]` — run the local hub in the foreground: the persistent MCP channel
@@ -195,14 +251,9 @@ function startLoops(watch: Watch, cwd: string, stop: Readonly<AbortSignal>): voi
     agent watch-loop in the background. Stays pending until interrupted, then tears the MCP channel + the
     children down. Background it yourself — it is the always-on entry. */
 export async function runServe(rest: readonly string[]): Promise<number> {
-  const apps = resolveApps(appNames(rest));
-  const watch = watchDecision(rest.includes("--watch"), autoConfirmed(rest));
-  const servers = startServers();
-  const stop = new AbortController();
-  process.stdout.write(serveBanner(apps, { events: EVENTS_PORT, mcp: MCP_PORT }, watch));
-  startLoops(watch, repoRoot(), stop.signal);
-  const code = await runDev(apps);
-  stop.abort();
-  await closeServers(servers);
+  const hub = resolveHub(rest);
+  bringUp(hub);
+  const code = await runDev(hub.apps);
+  await shutDown(hub);
   return code;
 }

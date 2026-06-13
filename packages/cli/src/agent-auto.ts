@@ -19,9 +19,9 @@ import {
   develop,
   flagValue,
 } from "./agent-run.ts";
+import { type LoopStatus, prHeadOid, writeLoopStatus } from "@vow/observability";
 /* oxlint-enable consistent-type-specifier-style */
 import { execFileSync } from "node:child_process";
-import { prHeadOid } from "@vow/observability";
 import { runAuditPass } from "./agent-audit.ts";
 
 /** A terminal outcome — the loop stops on any of these; the rest (`develop`, `audit`) run another round.
@@ -356,11 +356,26 @@ interface Carry {
   readonly state: RoundState;
 }
 
-/** One spiral iteration — read the live effective workload, ask `autoDecision`, and either return the next
- *  `Carry` (an action ran) or a terminal EXIT CODE (the loop stops). Keeps `loop` a thin driver. */
+/** Record the loop's live status to `cwd`'s `.vow/loop-status.json` (best-effort, never throws) so the studio
+ *  can observe the autonomous loop — `running` is whether a round is being decided/developed now, with the
+ *  current round + the effective backlog / open-PR counts it saw and the time it advanced. */
+function recordStatus(cwd: string, status: Readonly<LoopStatus>): void {
+  writeLoopStatus(cwd, status);
+}
+
+/** One spiral iteration — read the live effective workload, record the loop's live status (so the studio can
+ *  watch it), ask `autoDecision`, and either return the next `Carry` (an action ran) or a terminal EXIT CODE
+ *  (the loop stops). Keeps `loop` a thin driver. */
 async function step(spiral: Spiral, carry: Readonly<Carry>): Promise<Carry | number> {
   const { auditedClean, state } = carry;
   const effective = effectiveBacklog(spiral.cwd, state.attempts);
+  recordStatus(spiral.cwd, {
+    backlog: effective.within.length,
+    lastRound: new Date().toISOString(),
+    openPrs: effective.settleable.length,
+    round: state.round,
+    running: true,
+  });
   const outcome = autoDecision({
     auditedClean,
     backlog: effective.within.length,
@@ -392,6 +407,15 @@ async function loop(args: AutoArgs, cwd: string): Promise<number> {
     // oxlint-disable-next-line no-await-in-loop -- a round depends on the prior's merges; rounds ARE sequential
     const next = await step(spiral, carry);
     if (typeof next === "number") {
+      /* The spiral reached a terminal outcome — record it idle so the studio shows the loop stopped, keeping
+         the round it ended on so the studio can still show "last ran round N". */
+      recordStatus(spiral.cwd, {
+        backlog: 0,
+        lastRound: new Date().toISOString(),
+        openPrs: 0,
+        round: carry.state.round,
+        running: false,
+      });
       return next;
     }
     carry = next;
