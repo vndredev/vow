@@ -7,6 +7,9 @@ import {
   type IssueDetail,
   type PlanItem,
   closeIssue,
+  createEventTail,
+  eventFrame,
+  eventsPath,
   issueDetail,
   issuePlan,
   readEvents,
@@ -14,9 +17,9 @@ import {
 } from "@vow/observability";
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
+import { existsSync, mkdirSync, watch } from "node:fs";
 import { parseReport, reportIssue } from "./issue-report.ts";
 import { NONE } from "./none.ts";
-import { existsSync } from "node:fs";
 import { mutable } from "./mutable.ts";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -443,15 +446,58 @@ async function serveStartWork(
   }
 }
 
+/** Whether a request's `Accept` header asks for the SSE wire (`text/event-stream`) — true for a browser
+ *  `EventSource`, which always sends it, false for a plain JSON poll. Pure, so the content-negotiation is
+ *  unit-testable without a live socket. */
+export function wantsEventStream(accept: Maybe<string>): boolean {
+  return typeof accept === "string" && accept.includes("text/event-stream");
+}
+
 /**
- * The dev events API — `/__vow/events`. GET serves the append-only event feed (`@vow/observability`'s
- * `readEvents`, the tailable `.vow/events.jsonl`). The studio's event trace reads GET; no write seam is
- * exposed (the feed is produced by the agent loop + hub operations, never by the browser).
+ * Stream the live feed to one `EventSource` subscriber over the SAME `/__vow/events` mount: the backlog
+ * now, then each new event as `.vow/events.jsonl` grows, until the client disconnects. Mirrors the hub's
+ * standalone SSE server (`@vow/observability`'s `eventsSseServer`) but inside the dev server, so the studio
+ * gets true-push under `vow dev` (which never mounts that hub server). The incremental tail re-reads only
+ * the appended delta on each watch fire (#595) and never re-emits a line — so the stream never duplicates.
+ */
+function streamEvents(cwd: string, res: ServerResponse): void {
+  res.writeHead(STATUS.ok, {
+    "cache-control": "no-cache",
+    connection: "keep-alive",
+    "content-type": "text/event-stream",
+  });
+  const tail = createEventTail(cwd);
+  const flush = (): void => {
+    for (const event of tail()) {
+      res.write(eventFrame(event));
+    }
+  };
+  flush();
+  mkdirSync(path.join(cwd, ".vow"), { recursive: true });
+  const watcher = watch(path.dirname(eventsPath(cwd)), () => {
+    flush();
+  });
+  res.on("close", () => {
+    watcher.close();
+  });
+}
+
+/**
+ * The dev events API — `/__vow/events`. A browser `EventSource` (its `Accept: text/event-stream`) gets the
+ * live SSE stream (`streamEvents`): the backlog, then each new event PUSHED instantly as the agent loop /
+ * hub records it — so `run.started`/`run.phase`/`pr.merged` reach the trace in true realtime, not within a
+ * 5s poll. A plain GET still serves the append-only feed as JSON (`readEvents`), the store's poll fallback
+ * for when SSE is unavailable. No write seam either way — the feed is produced by operations, never the
+ * browser.
  */
 export function eventsApi(cwd: string): Middleware {
   return (req, res, next) => {
     if ((req.method ?? "GET") !== "GET") {
       next();
+      return;
+    }
+    if (wantsEventStream(req.headers.accept)) {
+      streamEvents(cwd, res);
       return;
     }
     writeReply(res, { body: readEvents(cwd), status: STATUS.ok });

@@ -1,6 +1,14 @@
 import { VOW_API, dbPath } from "@vow/db/routes";
-import { createList, useCollection, useIssues } from "../src/index.ts";
+import {
+  createList,
+  eventKey,
+  mergeEvent,
+  parseEventFrame,
+  useCollection,
+  useIssues,
+} from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
+import type { EventItem } from "../src/events.ts";
 import type { PlanItem } from "@vow/observability";
 import { parseIssuePlan } from "../src/issues.ts";
 
@@ -325,4 +333,51 @@ test("reconcile patches in place (keeps identity), adds new + drops missing", ()
   // Same object — an in-place patch, not a replace.
   expect(list.rows[0]).toBe(first);
   expect(list.rows.map((row: Readonly<{ id: string }>) => row.id).toSorted()).toEqual(["1", "2"]);
+});
+
+/** A feed event at a given timestamp — the realtime push the SSE stream delivers, frame-by-frame. */
+const ev = (ts: string, fields: Partial<EventItem> = {}): EventItem => ({
+  kind: "run.started",
+  ts,
+  ...fields,
+});
+
+test("the realtime path delivers a NEW event by push — appended without a poll (true realtime)", () => {
+  // The SSE handler merges each pushed event into the live feed: a brand-new event is appended at once.
+  // No 5s poll involved — `mergeEvent` is the push path's dedup, exercised here directly.
+  const feed: EventItem[] = [ev("2026-06-13T00:00:00.000Z", { issue: 615, phase: "develop" })];
+  const pushed = ev("2026-06-13T00:00:01.000Z", { issue: 615, kind: "pr.merged", pr: 700 });
+  const toAppend = mergeEvent(feed, pushed);
+  // The new event is appended — instant, no poll involved.
+  expect(toAppend).toEqual([pushed]);
+});
+
+test("the realtime push never duplicates an event the poll fallback already loaded (no drop, no dup)", () => {
+  // The SSE backlog replay (or a poll that landed first) means the feed may already hold the event.
+  // A push for a key it already has is a no-op — never a duplicate row, never a dropped one.
+  const existing = ev("2026-06-13T00:00:00.000Z", { detail: "started" });
+  const feed: EventItem[] = [existing];
+  // The very same event arrives again over SSE — deduped by key, so nothing is appended.
+  expect(mergeEvent(feed, ev("2026-06-13T00:00:00.000Z", { detail: "started" }))).toEqual([]);
+  // A different context field (a distinct event sharing the timestamp) is NOT swallowed — it appends.
+  const distinct = ev("2026-06-13T00:00:00.000Z", { detail: "finished" });
+  expect(mergeEvent(feed, distinct)).toEqual([distinct]);
+});
+
+test("eventKey identifies an event by ts+kind+context — distinct events get distinct keys", () => {
+  const base = ev("2026-06-13T00:00:00.000Z", { issue: 1 });
+  // Same fields → same key (the dedup identity).
+  expect(eventKey(base)).toBe(eventKey(ev("2026-06-13T00:00:00.000Z", { issue: 1 })));
+  // A changed context field → a different key (so a real second event is never swallowed as a dup).
+  expect(eventKey(base)).not.toBe(eventKey(ev("2026-06-13T00:00:00.000Z", { issue: 2 })));
+});
+
+test("parseEventFrame reads one SSE data frame's JSON into an event; a malformed frame is skipped", () => {
+  // The SSE `message` handler parses each `data:` payload — a well-formed frame yields the event.
+  // A malformed one degrades to an empty list (never a thrown handler that breaks the stream).
+  const [event] = parseEventFrame(JSON.stringify({ kind: "run.phase", phase: "gates", ts: "t" }));
+  expect(event).toEqual({ kind: "run.phase", phase: "gates", ts: "t" });
+  // Not JSON, and JSON that isn't a valid event — both skipped cleanly.
+  expect(parseEventFrame("not json")).toEqual([]);
+  expect(parseEventFrame(JSON.stringify({ no: "kind or ts" }))).toEqual([]);
 });
