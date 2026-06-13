@@ -8,12 +8,24 @@ updates:
     # proposing them, so dependency PRs don't fail the lockfile age check.
     cooldown:
       default-days: 7
-    groups:
-      voidzero:
-        patterns:
-          - "vite-plus"
-          - "@voidzero-dev/*"
-          - "@typescript/native-preview"
+    # The pnpm catalog (pnpm-workspace.yaml `catalog:`) pins the toolchain; packages reference it as
+    # `catalog:`. Dependabot can't bump a catalog entry — it edits package.json but leaves the lockfile
+    # out of sync (ERR_PNPM_OUTDATED_LOCKFILE), so the PR fails by construction. Ignore the catalog deps;
+    # the catalog is bumped deliberately by hand, not chased per-release. Keep this list in sync with
+    # pnpm-workspace.yaml's catalog.
+    ignore:
+      - dependency-name: "@types/node"
+      - dependency-name: "typescript"
+      - dependency-name: "vite"
+      - dependency-name: "vitest"
+      - dependency-name: "vite-plus"
+      - dependency-name: "@typescript/native-preview"
+      - dependency-name: "@vitejs/plugin-vue"
+      - dependency-name: "jsdom"
+      - dependency-name: "@vue/test-utils"
+      - dependency-name: "axe-core"
+      - dependency-name: "@commitlint/cli"
+      - dependency-name: "@commitlint/config-conventional"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
