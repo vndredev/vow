@@ -84,6 +84,8 @@ export interface IssueReport {
   readonly route: string;
   /** A coarse element hint — its tag + classes — so the agent can find it within the vow. */
   readonly element: string;
+  /** A PNG data URL of the page (the overlay hidden) — the server saves it to `.vow/bugs/`. */
+  readonly screenshot?: string;
 }
 
 /** The overlay's mutable handles — the live menu, highlight box, and form, plus the kind being reported.
@@ -180,18 +182,42 @@ function formMarkup(base: Readonly<Omit<IssueReport, "description" | "title">>):
   ].join("");
 }
 
-/** Wire the form's submit — read the title + description, POST the report, and tear the overlay down. */
+/** Snapshot the page as a PNG data URL (the overlay hidden so it's not in the shot) — "" on any failure,
+ *  so a missing screenshot never blocks filing. `html-to-image` is loaded lazily (browser-only, dev-only). */
+async function capture(overlay: Overlay): Promise<string> {
+  overlay.mount.style.visibility = "hidden";
+  try {
+    const { toPng } = await import("html-to-image");
+    return await toPng(document.body);
+  } catch {
+    return "";
+  } finally {
+    overlay.mount.style.visibility = "";
+  }
+}
+
+/** Finish a report — capture the page, POST it (with the screenshot), and tear the overlay down. */
+async function finish(
+  overlay: Overlay,
+  base: Readonly<Omit<IssueReport, "description" | "title">>,
+): Promise<void> {
+  const description = inputValue(`${MOUNT_ID}-desc`);
+  const title = inputValue(`${MOUNT_ID}-title`) || KIND_LABEL[base.kind];
+  const screenshot = await capture(overlay);
+  send({ ...base, description, screenshot, title });
+  teardown(overlay);
+}
+
+/** Wire the form's submit — capture + POST the report, then tear the overlay down. */
 function wireForm(
   overlay: Overlay,
   base: Readonly<Omit<IssueReport, "description" | "title">>,
 ): void {
   document.querySelector(`#${MOUNT_ID}-send`)?.addEventListener("click", () => {
-    send({
-      ...base,
-      description: inputValue(`${MOUNT_ID}-desc`),
-      title: inputValue(`${MOUNT_ID}-title`) || KIND_LABEL[base.kind],
+    // oxlint-disable-next-line promise/prefer-await-to-then -- the capture + POST runs off the click handler
+    finish(overlay, base).catch(() => {
+      // The capture + send own their errors; this only keeps the promise from floating.
     });
-    teardown(overlay);
   });
 }
 
