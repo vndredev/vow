@@ -88,7 +88,7 @@ function generateIntro(): { out: string; written: readonly string[] } {
 /** Assert the generated prose `.vue` renders the markdown and strips the frontmatter. */
 function expectProse(out: string): void {
   const vue = readFileSync(path.join(out, "doc-intro.vue"), "utf8");
-  expect(vue).toContain('<div class="vow-doc">');
+  expect(vue).toContain('<div class="vow-doc" data-vow-source="doc-intro">');
   expect(vue).toContain("<h1>Intro</h1>");
   expect(vue).toContain("<strong>world</strong>");
   // Frontmatter stripped
