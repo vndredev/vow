@@ -1,11 +1,13 @@
 import {
   DEFAULT_AUDIT_PROMPT,
+  DEFAULT_DEEP_AUDIT_PROMPT,
   PROMPT_ROLES,
   defaultPrompt,
   fillPrompt,
   promptRelPath,
   promptTemplates,
   renderAuditPrompt,
+  renderDeepAuditPrompt,
 } from "../src/prompts.ts";
 import { expect, test } from "vite-plus/test";
 
@@ -43,4 +45,23 @@ test("promptTemplates carries every role, derived from defaultPrompt (no stale c
 
 test("promptRelPath puts each role under the Claude-Code .claude/prompts layout", () => {
   expect(promptRelPath("develop")).toBe(".claude/prompts/develop.md");
+});
+
+test("the deep audit default carries {slice} + {dimension} placeholders and the exhaustive-coverage instruction", () => {
+  expect(DEFAULT_DEEP_AUDIT_PROMPT).toContain("{slice}");
+  expect(DEFAULT_DEEP_AUDIT_PROMPT).toContain("{dimension}");
+  expect(DEFAULT_DEEP_AUDIT_PROMPT).toContain("EVERY file");
+  expect(DEFAULT_DEEP_AUDIT_PROMPT).toContain("read-only");
+});
+
+test("renderDeepAuditPrompt fills both {dimension} and {slice}, leaving no placeholder", () => {
+  const rendered = renderDeepAuditPrompt(
+    DEFAULT_DEEP_AUDIT_PROMPT,
+    "correctness",
+    "packages/agent",
+  );
+  expect(rendered).toContain("correctness");
+  expect(rendered).toContain("packages/agent");
+  expect(rendered).not.toContain("{dimension}");
+  expect(rendered).not.toContain("{slice}");
 });

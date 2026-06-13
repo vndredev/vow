@@ -29,6 +29,21 @@ Output ONLY a JSON array (no prose). Each element is a finding with these string
 
 An empty array [] when nothing is found. Do NOT edit any file — this audit is read-only.`;
 
+/** The default DEEP AUDIT prompt — scopes one audit to a single `{slice}` (a package directory or `docs/`)
+ *  for one `{dimension}`. Unlike the regular audit (one claude for the whole codebase), the deep pass gives
+ *  each slice its own agent so every file in the slice is read exhaustively — no sampling. Used by
+ *  `runDeepAuditPass`; not scaffolded (the slice context makes it ineligible for user-level editing via
+ *  `audit.md`). Output is the same JSON Finding shape the filer ingests. */
+export const DEFAULT_DEEP_AUDIT_PROMPT = `Audit the \`{slice}\` directory for {dimension}. Read EVERY file in this directory before reporting — exhaustive coverage, no sampling.
+
+Output ONLY a JSON array (no prose). Each element is a finding with these string fields:
+- title: a concise issue title
+- area: the vow area (emit, gate, studio, docs, core), or empty
+- evidence: the proof — file:line + what is wrong
+- fix: the change to make
+
+An empty array [] when nothing is found. Do NOT edit any file — this audit is read-only.`;
+
 /** The default DEVELOP prompt — the operative develop instruction the IN-SESSION `/vow-develop` skill follows
  *  (read AGENTS.md, branch, keep it one coherent element, verify both gates, open a PR, merge green / draft
  *  red). The NATIVE `vow agent run` executor does NOT read this — it mechanizes branch/PR/merge in `loop.ts`
@@ -92,6 +107,13 @@ export function fillPrompt(template: string, values: Readonly<Record<string, str
  *  the `{dimension}` placeholder. The instruction's body is the editable template; the dimension is live. */
 export function renderAuditPrompt(template: string, dimension: string): string {
   return fillPrompt(template, { dimension });
+}
+
+/** Render a DEEP AUDIT prompt for `dimension` and `slice` from `template` (use `DEFAULT_DEEP_AUDIT_PROMPT`
+ *  directly — the slice context makes the regular `audit.md` scaffold ineligible). Fills both `{dimension}`
+ *  and `{slice}` so the instruction scopes the agent to one package directory or `docs/`. Pure. */
+export function renderDeepAuditPrompt(template: string, dimension: string, slice: string): string {
+  return fillPrompt(template, { dimension, slice });
 }
 
 /** One scaffolded prompt template — its role, the provider-relative path `init` writes it to, and the

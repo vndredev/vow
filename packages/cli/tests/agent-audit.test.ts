@@ -1,7 +1,7 @@
+import { AUDIT_DIMENSIONS, runAuditPass, runDeepAuditPass } from "../src/agent-audit.ts";
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { expect, test } from "vite-plus/test";
 import path from "node:path";
-import { runAuditPass } from "../src/agent-audit.ts";
 import { tmpdir } from "node:os";
 
 /** The executable mode for the stub `claude` script (rwxr-xr-x). */
@@ -38,6 +38,34 @@ function stubClaude(output: string, exit = 0): { cwd: string; restore: () => voi
   };
 }
 
+/** A throwaway DEEP-AUDIT repo — a `packages/agent` slice + a `docs/` slice — with a fake `claude` on PATH
+ *  that prints `output`. The slice directories exist so `discoverSlices` finds them; the stub handles all
+ *  (slice × dimension) invocations uniformly. */
+function stubDeep(output: string, exit = 0): { cwd: string; restore: () => void } {
+  const cwd = mkdtempSync(path.join(tmpdir(), "vow-deep-audit-"));
+  mkdirSync(path.join(cwd, "packages", "agent"), { recursive: true });
+  mkdirSync(path.join(cwd, "docs"), { recursive: true });
+  const bin = path.join(cwd, "bin");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(
+    path.join(bin, "claude"),
+    `#!/bin/sh\nprintf '%s' ${JSON.stringify(output)}\nexit ${exit}\n`,
+  );
+  chmodSync(path.join(bin, "claude"), EXECUTABLE);
+  // oxlint-disable-next-line no-process-env -- prepend stub bin
+  const prior = process.env["PATH"] ?? "";
+  // oxlint-disable-next-line no-process-env -- restored in `restore`
+  process.env["PATH"] = `${bin}:${prior}`;
+  return {
+    cwd,
+    restore: () => {
+      // oxlint-disable-next-line no-process-env -- restore
+      process.env["PATH"] = prior;
+      rmSync(cwd, { force: true, recursive: true });
+    },
+  };
+}
+
 test("runAuditPass: an empty-array audit across every dimension is a genuine findings-free pass", () => {
   const { cwd, restore } = stubClaude("[]");
   try {
@@ -66,6 +94,43 @@ test("runAuditPass: a failed shell-out (claude exits non-zero) reads as BROKEN",
   const { cwd, restore } = stubClaude("", 1);
   try {
     expect(runAuditPass("api", cwd).broke).toBe(true);
+  } finally {
+    restore();
+  }
+});
+
+test("AUDIT_DIMENSIONS includes docs/drift alongside the standard code-quality dimensions", () => {
+  expect(AUDIT_DIMENSIONS).toContain("docs/drift");
+  expect(AUDIT_DIMENSIONS).toContain("correctness");
+  expect(AUDIT_DIMENSIONS).toContain("architecture");
+});
+
+test("runDeepAuditPass: a clean empty-array audit across every slice + dimension is findings-free", () => {
+  const { cwd, restore } = stubDeep("[]");
+  try {
+    const result = runDeepAuditPass("api", cwd);
+    expect(result.filed).toBe(0);
+    expect(result.broke).toBe(false);
+  } finally {
+    restore();
+  }
+});
+
+test("runDeepAuditPass: a non-array (prose) response for any slice reads as BROKEN, never findings-free", () => {
+  const { cwd, restore } = stubDeep("I cannot help with that.");
+  try {
+    const result = runDeepAuditPass("api", cwd);
+    expect(result.broke).toBe(true);
+    expect(result.filed).toBe(0);
+  } finally {
+    restore();
+  }
+});
+
+test("runDeepAuditPass: a failed shell-out (claude exits non-zero) reads as BROKEN", () => {
+  const { cwd, restore } = stubDeep("", 1);
+  try {
+    expect(runDeepAuditPass("api", cwd).broke).toBe(true);
   } finally {
     restore();
   }
