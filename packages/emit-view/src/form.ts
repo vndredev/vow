@@ -15,11 +15,13 @@ function isSelect(field: ReadonlyField): boolean {
   return FIELD_KINDS[field.type].control === "select";
 }
 
-/** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set. */
-function errorNode(name: string): UiNode {
+/** A live `role="alert"` error paragraph for a field, shown only when `errors.<name>` is set.
+ *  Pass `idExpr` to emit a bound `:id` — required for boolean fields (no `<Field>` wrapper provides one). */
+function errorNode(name: string, idExpr?: string): UiNode {
   return {
     attrs: [
       { kind: "static", name: "class", value: "vow-field__error" },
+      ...(idExpr !== undefined ? [{ expr: idExpr, kind: "bound" as const, name: "id" }] : []),
       { kind: "static", name: "role", value: "alert" },
       { expr: `errors.${name}`, kind: "cond", type: "if" },
     ],
@@ -61,7 +63,7 @@ function withControlId(control: UiNode, name: string): UiNode {
   };
 }
 
-/** A boolean field — a `<Checkbox>` plus its error node. */
+/** A boolean field — a `<Checkbox>` plus its error node, with aria-describedby/aria-invalid wired. */
 function booleanField(field: ReadonlyField): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-field" }],
@@ -70,12 +72,14 @@ function booleanField(field: ReadonlyField): UiNode {
         attrs: [
           { expr: `draft.${field.name}`, kind: "model" },
           { kind: "static", name: "label", value: humanizeFieldName(field.name) },
+          { expr: `${field.name}Id + '-error'`, kind: "bound", name: "described-by" },
+          { expr: `!!errors.${field.name}`, kind: "bound", name: "invalid" },
         ],
         children: [],
         kind: "component",
         name: "Checkbox",
       },
-      errorNode(field.name),
+      errorNode(field.name, `${field.name}Id + '-error'`),
     ],
     kind: "element",
     tag: "div",
@@ -261,10 +265,10 @@ function submitLines(name: string, edit: boolean): string[] {
   return appendSubmit(name);
 }
 
-/** A `useId` per labelled (non-checkbox) field, plus the choice computeds each reference field needs. */
+/** A `useId` per field (all controls, including booleans), plus the choice computeds each reference field needs. */
 function fieldSetup(entity: ReadonlyVow, label: (ref?: string) => string): string[] {
   const setup: string[] = [];
-  for (const field of entity.fields.filter((candidate) => !isCheckbox(candidate))) {
+  for (const field of entity.fields) {
     setup.push(`const ${field.name}Id = useId();`);
   }
   for (const field of entity.fields.filter((candidate) => candidate.type === "reference")) {

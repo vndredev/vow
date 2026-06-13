@@ -33,7 +33,7 @@ test("emitCheckboxSfc binds the agnostic headless core (logic + a11y live there)
   const sfc = emitCheckboxSfc();
   expect(sfc).toContain('import { checkbox } from "@vow/headless";');
   expect(sfc).toContain(
-    "withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean }>(), { modelValue: false })",
+    "withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean; describedBy?: string; invalid?: boolean }>(), { modelValue: false })",
   );
   expect(sfc).toContain('emit("update:modelValue", next.checked)');
 });

@@ -204,7 +204,7 @@ test("emitForm renders a labelled, zod-validated form bound to an entity", () =>
     'import { createTask, type Task } from "./task.ts";',
     '<form class="vow-form" data-vow-source="add-task" @submit.prevent="submit">',
     '<Field label="Title" :control-id="titleId" :error="errors.title">',
-    '<Checkbox v-model="draft.done" label="Done" />',
+    `<Checkbox v-model="draft.done" label="Done" :described-by="doneId + '-error'" :invalid="!!errors.done" />`,
     "append(createTask(draft.value));",
     "err instanceof ZodError",
     '<Button type="submit" label="Add task" variant="solid" tone="accent" size="md" />',
@@ -226,6 +226,17 @@ test("a Select field forwards the field id as control-id so the label points at 
     // The unselected trigger shows a placeholder (the humanized field name), not a blank button.
     'placeholder="Status"',
     'import Select from "./Select.vue";',
+  ]);
+});
+
+test("a boolean field wires aria-describedby + aria-invalid on the Checkbox and gives the error node a stable id", () => {
+  const sfc = emitForm(addTaskForm, new Map([["task", taskEntity]]));
+  // The Checkbox forwards described-by + invalid so a SR navigating to the control finds the error.
+  expectContains(sfc, [
+    `const doneId = useId();`,
+    `:described-by="doneId + '-error'"`,
+    `:invalid="!!errors.done"`,
+    `:id="doneId + '-error'"`,
   ]);
 });
 
