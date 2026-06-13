@@ -1,4 +1,5 @@
 import { APPS, repoRoot } from "./apps.ts";
+import { checkToolCall, claudeDenyOutput, claudeToolCall } from "@vow/agent";
 import { prBodyProblems } from "@vow/observability";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
@@ -70,4 +71,27 @@ export async function prBody(): Promise<number> {
     return 0;
   }
   return 1;
+}
+
+/** Parse a hook payload; a malformed one defaults to `{}` so it guards as an allowed (empty) call. */
+function parsePayload(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+/** `vow hook [provider]` — a provider's PreToolUse guardrail (Claude Code today; Codex / Gemini as further
+    adapters over the same provider-neutral engine). Reads the hook payload on stdin, decides allow/deny via
+    `checkToolCall`, and prints the provider's DENY JSON on a blocked call — nothing on allow, so the provider
+    falls through to its normal permission flow. Always exits 0: the JSON, not the exit code, carries the
+    decision (a non-zero exit would read as a hook ERROR, not a clean deny). */
+export async function hook(): Promise<number> {
+  const call = claudeToolCall(parsePayload(await readStdin()));
+  const verdict = checkToolCall(call);
+  if (verdict.decision === "deny") {
+    process.stdout.write(`${JSON.stringify(claudeDenyOutput(verdict.reason))}\n`);
+  }
+  return 0;
 }

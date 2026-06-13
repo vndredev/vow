@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --experimental-strip-types
 import { APPS, resolveApps } from "./apps.ts";
 import { agent, agentHelp } from "./agent.ts";
-import { build, check, prBody, test } from "./basics.ts";
+import { build, check, hook, prBody, test } from "./basics.ts";
 import { doctor, reconcile } from "./reconcile.ts";
 import { runDev, status, stopApps } from "./dev.ts";
 import { guard } from "./guard.ts";
@@ -37,6 +37,8 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
   vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
   vow pr-body --check  validate a PR body (piped on stdin) against the template before \`gh pr create\`
+  vow hook [provider]  the PreToolUse guardrail — blocks a wrong tool-call (raw gh, push to main, vp check
+                       --fix) with the vow alternative; \`vow agent init\` wires it into .claude/settings.json
   vow reconcile        report plan drift — open issues a merged PR already closed (retire candidates) +
                        open issues carrying no phase (the "No milestone" drift the roadmap can't place)
   vow doctor           check the GitHub Project's Roadmap view against vow's invariant (grouped by
@@ -115,6 +117,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   events: runEvents,
   guard,
   help: showHelp,
+  hook,
   "pr-body": prBody,
   reconcile,
   serve: runServe,
