@@ -34,7 +34,7 @@ function statsView(): UiNode {
     attrs: [{ kind: "static", name: "class", value: "vow-view" }],
     children: [
       statsBlock(),
-      statusMessage("state.error && rows.length === 0", "Couldn't load this data"),
+      statusMessage("state.error && rows.length === 0", "Couldn't load this data", true),
     ],
     kind: "element",
     tag: "section",

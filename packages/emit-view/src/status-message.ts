@@ -9,11 +9,19 @@ import { txt } from "./helpers.ts";
  */
 
 /** A `.vow-empty` status message shown in place of the content, guarded by `cond` (a `v-if`) so only the
- *  one matching state renders. The three are mutually exclusive (no `v-else` in the component model). */
-export function statusMessage(cond: string, message: string): UiNode {
+ *  one matching state renders. The three are mutually exclusive (no `v-else` in the component model).
+ *  Pass `assertive: true` for error states — maps to `role="alert"` (WCAG 4.1.3).
+ *  Default is polite (`role="status"` + `aria-live="polite"`). */
+export function statusMessage(cond: string, message: string, assertive = false): UiNode {
+  const role = assertive ? "alert" : "status";
+  const liveAttr: { kind: "static"; name: string; value: string }[] = assertive
+    ? []
+    : [{ kind: "static", name: "aria-live", value: "polite" }];
   return {
     attrs: [
       { kind: "static", name: "class", value: "vow-empty" },
+      { kind: "static", name: "role", value: role },
+      ...liveAttr,
       { expr: cond, kind: "cond", type: "if" },
     ],
     children: [txt(message)],
@@ -41,7 +49,7 @@ export function emptyStates(count: string, copy: StatusCopy): readonly UiNode[] 
   const empty = `${count} === 0`;
   return [
     statusMessage(`state.loading && !state.error && ${empty}`, copy.loading),
-    statusMessage(`state.error && ${empty}`, copy.failed),
+    statusMessage(`state.error && ${empty}`, copy.failed, true),
     statusMessage(`!state.loading && !state.error && ${empty}`, copy.empty),
   ];
 }

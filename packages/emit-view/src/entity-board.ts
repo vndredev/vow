@@ -143,7 +143,7 @@ function boardView(entity: ReadonlyVow, by: string): UiNode {
         tag: "div",
       },
       boardLiveRegion(),
-      statusMessage("state.error && rows.length === 0", "Couldn't load this data"),
+      statusMessage("state.error && rows.length === 0", "Couldn't load this data", true),
     ],
     kind: "element",
     tag: "div",
