@@ -1,7 +1,7 @@
 /* oxlint-disable prefer-readonly-parameter-types -- the handler bridges the mutable Node req/res objects */
 /* oxlint-disable consistent-type-specifier-style -- one node:http import; a separate type import trips no-duplicate-imports */
 import { type Server, type ServerResponse, createServer } from "node:http";
-import { type VowEvent, eventsPath, readEvents } from "./events.ts";
+import { type VowEvent, createEventTail, eventsPath } from "./events.ts";
 import { mkdirSync, watch } from "node:fs";
 import path from "node:path";
 
@@ -27,21 +27,20 @@ export function eventFrame(event: Readonly<VowEvent>): string {
 }
 
 /** Stream the live feed to one subscriber: the backlog now, then each new event as the log grows, until the
-    client disconnects. `sent` tracks how many events went out, so a re-read only emits the delta (and a
-    watch firing on an unrelated `.vow/` change is a harmless idempotent re-check). */
+    client disconnects. An incremental tail emits only the events appended since the last flush, so a watch
+    firing on an unrelated `.vow/` change costs a cheap re-read of the unchanged tail, never a full re-parse
+    (#595) — and never re-emits a line. */
 function stream(cwd: string, res: ServerResponse): void {
   res.writeHead(STREAM_OK, {
     "cache-control": "no-cache",
     connection: "keep-alive",
     "content-type": "text/event-stream",
   });
-  let sent = 0;
+  const tail = createEventTail(cwd);
   const flush = (): void => {
-    const events = readEvents(cwd);
-    for (const event of events.slice(sent)) {
+    for (const event of tail()) {
       res.write(eventFrame(event));
     }
-    sent = events.length;
   };
   flush();
   mkdirSync(path.join(cwd, ".vow"), { recursive: true });

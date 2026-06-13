@@ -160,3 +160,51 @@ export function readEvents(cwd: string): VowEvent[] {
     return [];
   }
 }
+
+/** Read the whole log as text, or `""` when it is absent/unreadable — the never-throwing read the tail
+    slices its delta from. */
+function readEventText(cwd: string): string {
+  try {
+    return readFileSync(eventsPath(cwd), "utf8");
+  } catch {
+    return "";
+  }
+}
+
+/** The character index just past the last newline of `text`, or 0 when it holds no complete line — the
+    boundary up to which lines are whole (a half-written trailing line stays unparsed until its `\n` lands). */
+function lastLineBoundary(text: string): number {
+  const lastNewline = text.lastIndexOf("\n");
+  if (lastNewline === -1) {
+    return 0;
+  }
+  return lastNewline + 1;
+}
+
+/**
+ * An INCREMENTAL tail reader over the event log — a stateful closure that, on each call, reads ONLY the
+ * lines appended since the previous call and parses only that new tail (O(delta), not O(whole log)). It
+ * tracks a character offset into the log: the next call slices off the already-seen prefix, parses only the
+ * complete lines past it, and advances the offset to the last newline (a partial, still-being-written
+ * trailing line is held back, never emitted twice). Resets when the file shrank (a truncate/rotate). `[]` on
+ * an absent/unreadable log — never throws. The watch-driven readers (`events-sse`, the channel) use this so
+ * an unrelated `.vow/` write (WAL/db/png churn) costs only a cheap re-read of the unchanged tail, not a full
+ * re-parse of the growing log (#595).
+ */
+export function createEventTail(cwd: string): () => VowEvent[] {
+  let offset = 0;
+  return (): VowEvent[] => {
+    const text = readEventText(cwd);
+    // A shrink (truncate/rotate) means the offset no longer points into this content — start over.
+    if (text.length < offset) {
+      offset = 0;
+    }
+    const boundary = lastLineBoundary(text);
+    if (boundary <= offset) {
+      return [];
+    }
+    const fresh = parseEvents(text.slice(offset, boundary));
+    offset = boundary;
+    return fresh;
+  };
+}

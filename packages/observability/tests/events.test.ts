@@ -1,6 +1,6 @@
 // @vitest-environment node
+import { createEventTail, parseEvents, readEvents, recordEvent } from "../src/events.ts";
 import { expect, test } from "vite-plus/test";
-import { parseEvents, readEvents, recordEvent } from "../src/events.ts";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -45,4 +45,26 @@ test("recordEvent + readEvents round-trip — the writer appends, the reader lif
 test("readEvents is empty (never throws) when no hub has recorded yet", () => {
   const cwd = mkdtempSync(path.join(os.tmpdir(), "vow-events-empty-"));
   expect(readEvents(cwd)).toEqual([]);
+});
+
+test("createEventTail returns only events appended since the last call (#595)", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "vow-events-tail-"));
+  recordEvent(cwd, "run.started", { issue: ISSUE });
+  const tail = createEventTail(cwd);
+  // First call drains the backlog recorded so far.
+  expect(tail()).toMatchObject([{ issue: ISSUE, kind: "run.started" }]);
+  // A second call with no new write emits nothing — no re-emit of the already-seen tail.
+  expect(tail()).toEqual([]);
+  // A new event yields ONLY the new one, not the whole log re-parsed.
+  recordEvent(cwd, "pr.merged", { pr: PR });
+  expect(tail()).toMatchObject([{ kind: "pr.merged", pr: PR }]);
+  expect(tail()).toEqual([]);
+});
+
+test("createEventTail starts empty + never throws with no log (#595)", () => {
+  const cwd = mkdtempSync(path.join(os.tmpdir(), "vow-events-tail-empty-"));
+  const tail = createEventTail(cwd);
+  expect(tail()).toEqual([]);
+  // Still empty (never throws) on a repeat call before any hub has recorded.
+  expect(tail()).toEqual([]);
 });
