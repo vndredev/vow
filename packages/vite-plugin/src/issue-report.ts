@@ -82,19 +82,59 @@ function saveScreenshot(cwd: string, dataUrl: string): Maybe<string> {
   return rel;
 }
 
-/** The issue body — the description, the AREA the picker resolved (vow source · route · element), and the
-    saved screenshot path when there is one. */
-export function reportBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
-  const lines = [
-    report.description || "_No description._",
-    "",
-    `**Area** — vow \`${report.source || "—"}\` · \`${report.route}\` · \`${report.element}\``,
-  ];
+/** The auto-resolved context — the vow AREA the picker found + the saved screenshot path (when there is
+    one). Shared by both templates so the agent always sees which `.vow.md` / route / element a report hits. */
+function contextLines(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+  const area = `vow \`${report.source || "—"}\` · route \`${report.route}\` · element \`${report.element}\``;
   if (typeof shot === "string") {
-    lines.push(`**Screenshot** — \`${shot}\``);
+    return `${area}\n\nScreenshot: \`${shot}\``;
   }
-  lines.push("", "_Filed from vow's in-app reporter._");
-  return lines.join("\n");
+  return area;
+}
+
+/** A bug report filled into the bug template (`.github/ISSUE_TEMPLATE/bug.md`) so the issue-template gate
+    passes and the studio plan reads its sections. */
+function bugBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+  return [
+    "**What happened** (vs. what the docs say)",
+    "",
+    report.description || "_(see the screenshot)_",
+    "",
+    "**A minimal `app/*.vow.md`** that reproduces it",
+    "",
+    contextLines(report, shot),
+    "",
+    "**Relevant output** of `vp check` / `pnpm -r test`",
+    "",
+    "_Filed from vow's in-app reporter._",
+    "",
+    "**Environment**: vow dev (the in-app reporter)",
+  ].join("\n");
+}
+
+/** A feature report filled into the feature template (`.github/ISSUE_TEMPLATE/feature.md`) — the `What` /
+    `Why` / `Strand` sections the gate + the studio plan expect. */
+function featureBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+  return [
+    `**What** — ${report.description || report.title}`,
+    "",
+    "**Why** — proposed from the running app via the in-app reporter.",
+    "",
+    contextLines(report, shot),
+    "",
+    "---",
+    "",
+    "_Strand: generation · author layer_",
+  ].join("\n");
+}
+
+/** The issue body — filled into the bug OR feature template (by kind) so the issue-template gate passes,
+    carrying the resolved vow area + the screenshot. */
+export function reportBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+  if (report.kind === "bug") {
+    return bugBody(report, shot);
+  }
+  return featureBody(report, shot);
 }
 
 /** The milestone fragment — the current phase when one resolves, so the issue is filed phased (else bare). */

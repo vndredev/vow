@@ -46,14 +46,29 @@ test("parseReport validates a posted bug/feature report, rejecting bad shapes", 
   expect(parseReport("not json")).toBeUndefined();
 });
 
-test("reportBody names the area, and references the screenshot path only when one was saved", () => {
+test("reportBody fills the bug template (the gate's sections) + references the screenshot when saved", () => {
   const report = parseReport(
     JSON.stringify({ description: "broken", kind: "bug", route: "/board", title: "x" }),
   );
   if (!report) {
     throw new Error("test setup: report missing");
   }
-  expect(reportBody(report, ".vow/bugs/1.png")).toContain(".vow/bugs/1.png");
-  expect(reportBody(report, NONE)).toContain("Area");
+  const body = reportBody(report, ".vow/bugs/1.png");
+  // The issue-template gate requires these exact substrings for a bug — keep this in sync with it.
+  for (const section of ["What happened", "Relevant output", "Environment"]) {
+    expect(body).toContain(section);
+  }
+  expect(body).toContain(".vow/bugs/1.png");
   expect(reportBody(report, NONE)).not.toContain("Screenshot");
+});
+
+test("reportBody fills the feature template (Why + Strand) for a feature kind", () => {
+  const report = parseReport(JSON.stringify({ description: "add X", kind: "feature", title: "x" }));
+  if (!report) {
+    throw new Error("test setup: report missing");
+  }
+  const body = reportBody(report, NONE);
+  for (const section of ["What", "Why", "Strand"]) {
+    expect(body).toContain(section);
+  }
 });
