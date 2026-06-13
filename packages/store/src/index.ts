@@ -161,6 +161,10 @@ let eventsLoaded = false;
  *  `issuesState`; `loading` is on while a fetch is in flight, `error` latches on a non-ok response. */
 const eventsState = reactive({ error: false, loading: false });
 
+/** True once a live SSE connection has been established at least once — once realtime is delivering, the
+ *  poll stays a silent reconciler (it never flips the error flag back on while the stream is up). */
+let eventStreamLive = false;
+
 /** Read + parse the issue plan from `/__vow/issues`, reporting `ok: false` (with an empty plan) on any
  *  non-ok response or transport failure. Entries are validated by `parseIssuePlan` (see `./issues.ts`),
  *  not blindly trusted. The same `{ ok, items }` shape the rows fetch uses. */
@@ -181,19 +185,105 @@ async function fetchEvents(): Promise<FetchResult<EventItem>> {
   }
 }
 
+/** A stable identity for one feed event — the append-only log has no id, so the realtime push and the poll
+ *  reconcile against the same `ts`+`kind`+context key, never duplicating an event both paths saw. Pure +
+ *  exported so the dedup is unit-testable without a DOM. */
+export function eventKey(event: Readonly<EventItem>): string {
+  return JSON.stringify([event.ts, event.kind, event.issue, event.pr, event.phase, event.detail]);
+}
+
+/** Merge a realtime-pushed event into a feed by identity: the events to APPEND — `[event]` when its key is
+ *  new, `[]` when the feed (loaded by a poll, or an SSE backlog replay) already holds it. Never drops, never
+ *  duplicates. Pure + exported so the realtime invariant is unit-testable without an `EventSource`. */
+export function mergeEvent(
+  feed: readonly Readonly<EventItem>[],
+  event: Readonly<EventItem>,
+): EventItem[] {
+  const seen = new Set(feed.map((entry) => eventKey(entry)));
+  if (seen.has(eventKey(event))) {
+    return [];
+  }
+  return [event];
+}
+
+/** Append a realtime-pushed event to the shared feed only when it is new (`mergeEvent`) — the SSE stream
+ *  replays the backlog on connect and the poll fallback may have already loaded it, so a seen key is a
+ *  no-op. Clears the error/loading flags since a live push means the channel is up. */
+function appendEvent(event: Readonly<EventItem>): void {
+  for (const fresh of mergeEvent(events, event)) {
+    eventsState.error = false;
+    eventsState.loading = false;
+    events.push(fresh);
+  }
+}
+
 /** Pull the event feed from `/__vow/events` and replace the shared array, driving `eventsState` so the
- *  trace can show a loading / error / empty branch. */
+ *  trace can show a loading / error / empty branch. The realtime SSE path (`subscribeEvents`) is the live
+ *  channel; this poll is the fallback that still reconciles the whole feed when SSE is unavailable. */
 async function loadEvents(): Promise<void> {
   if (!hasApi) {
     return;
   }
   eventsState.loading = true;
   const result = await fetchEvents();
-  eventsState.error = !result.ok;
+  // While the live SSE channel is delivering, a transient poll failure must not blank the fresh trace.
+  eventsState.error = !result.ok && !eventStreamLive;
   eventsState.loading = false;
   if (result.ok) {
     events.splice(0, events.length, ...result.items);
   }
+}
+
+/** Whether the browser exposes `EventSource` — the realtime channel degrades to the 5s poll without it
+ *  (an SSR/jsdom env, or a dev server that answers `/__vow/events` only as a JSON snapshot). */
+const hasEventSource = hasApi && "EventSource" in globalThis;
+
+/** Parse one SSE `data:` frame into 0 or 1 events — a malformed frame is skipped (never a thrown handler).
+ *  Exported so the wire-parse is unit-testable without a live stream. */
+export function parseEventFrame(data: string): EventItem[] {
+  try {
+    return parseEventFeed([JSON.parse(data)]);
+  } catch {
+    return [];
+  }
+}
+
+/** The minimal, deeply-readonly shape of the SSE `message` event this subscriber reads — only `data` (the
+ *  raw frame text). Every `MessageEvent` satisfies it, so the listener passes its event straight through
+ *  without tripping the strict `prefer-readonly-parameter-types` rule on the library type. */
+interface EventMessage {
+  readonly data: unknown;
+}
+
+/** Append the events one SSE `message` frame carries — typed by the minimal readonly `EventMessage`. */
+function onEventMessage(event: EventMessage): void {
+  if (typeof event.data === "string") {
+    for (const item of parseEventFrame(event.data)) {
+      appendEvent(item);
+    }
+  }
+}
+
+/** Subscribe to the live event stream over `/__vow/events` (an `EventSource`, `Accept: text/event-stream`):
+ *  each recorded event is PUSHED instantly and appended (deduped), so the trace updates in true realtime
+ *  rather than within the 5s poll. The browser auto-reconnects on a dropped connection; the poll stays the
+ *  always-on fallback, so a dev server that serves only the JSON snapshot (no SSE) still refreshes. A no-op
+ *  without `EventSource` (SSR/jsdom) — the poll alone covers that env. */
+function subscribeEvents(): void {
+  if (!hasEventSource) {
+    return;
+  }
+  const source = new EventSource(VOW_API.events);
+  source.addEventListener("open", () => {
+    eventStreamLive = true;
+    eventsState.error = false;
+  });
+  source.addEventListener("message", onEventMessage);
+  source.addEventListener("error", () => {
+    // A dropped connection: the browser auto-reconnects and the 5s poll covers the gap. Not latched as an
+    // `error` here — a transient reconnect blip must not blank the trace the poll is still keeping fresh.
+    eventStreamLive = false;
+  });
 }
 
 /** Pull the issue plan from `/__vow/issues` (gh-direct) and replace the shared array (small, read-only),
@@ -399,9 +489,11 @@ export function useIssues(): {
   };
 }
 
-/** The shared reactive event feed, read live from `/__vow/events` (the tailable append-only log) + polled
- *  on focus + the interval. `state` matches the `CollectionState` shape — its loading / error flags let a
- *  view show "Loading…" or "Couldn't load events" instead of a bare trace. Read-only: the feed is
+/** The shared reactive event feed, read live from `/__vow/events`. It subscribes to the SSE stream (an
+ *  `EventSource`) so each recorded event PUSHES into the trace instantly — true realtime, not within the 5s
+ *  poll. The poll stays the always-on fallback (focus + interval) for when SSE is unavailable (an older dev
+ *  server that serves only the JSON snapshot, SSR/jsdom). `state` matches the `CollectionState` shape — its
+ *  loading / error flags let a view show "Loading…" or "Couldn't load events". Read-only: the feed is
  *  append-only and has no write seam in the browser. */
 export function useEvents(): {
   items: EventItem[];
@@ -410,6 +502,7 @@ export function useEvents(): {
   if (!eventsLoaded) {
     eventsLoaded = true;
     detach(loadEvents);
+    subscribeEvents();
     startFreshness();
   }
   return { items: events, state: eventsState };

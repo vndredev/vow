@@ -6,8 +6,9 @@ import { txt } from "./helpers.ts";
 /**
  * The live event-feed SFC (`useEvents`, tailable log) — the trace layout. It is a fixed component the
  * plugin materialises (`map-node.ts`'s `events:` node points at it). It reads `/__vow/events` live (no
- * baked data) and renders the feed as a timestamped trace list — the surface the studio trace panel, and
- * any live dashboard, binds to via `events: { as: trace }` in a `.vow.md`.
+ * baked data): `useEvents` subscribes to the SSE stream so each event PUSHES in instantly (true realtime),
+ * with the 5s poll as the fallback. Renders the feed as a timestamped trace list — the surface the studio
+ * trace panel, and any live dashboard, binds to via `events: { as: trace }` in a `.vow.md`.
  */
 
 /** The setup line the event trace SFC opens with — the live feed and its fetch state. */
@@ -96,8 +97,9 @@ function traceList(): UiNode {
 
 /**
  * The event-trace component — a fixed `<VowEventTrace>` reading the live event feed (`useEvents`,
- * tailable log). No baked data: it fetches `/__vow/events` and polls. Renders as a timestamped trace
- * list; the studio trace panel and any live dashboard bind to it via `events: { as: trace }`.
+ * tailable log). No baked data: `useEvents` subscribes to the `/__vow/events` SSE stream (realtime push)
+ * and polls as a fallback. Renders as a timestamped trace list; the studio trace panel and any live
+ * dashboard bind to it via `events: { as: trace }`.
  */
 export function emitEventTraceSfc(): string {
   const component: Component = {
