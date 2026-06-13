@@ -26,6 +26,8 @@ export const emitCheckboxSfc = primitive({
     { default: "false", name: "modelValue", optional: true, tsType: "boolean" },
     { name: "label", tsType: "string" },
     { name: "disabled", optional: true, tsType: "boolean" },
+    { name: "describedBy", optional: true, tsType: "string" },
+    { name: "invalid", optional: true, tsType: "boolean" },
   ],
   setup: [
     "const api = computed(() =>",
@@ -44,6 +46,8 @@ export const emitCheckboxSfc = primitive({
         attrs: [
           { expr: "api.controlProps", kind: "spread" },
           { expr: "label", kind: "bound", name: "aria-label" },
+          { expr: "describedBy", kind: "bound", name: "aria-describedby" },
+          { expr: "invalid", kind: "bound", name: "aria-invalid" },
           { kind: "static", name: "class", value: "vow-checkbox__control" },
         ],
         children: [

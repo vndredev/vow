@@ -33,9 +33,16 @@ test("emitCheckboxSfc binds the agnostic headless core (logic + a11y live there)
   const sfc = emitCheckboxSfc();
   expect(sfc).toContain('import { checkbox } from "@vow/headless";');
   expect(sfc).toContain(
-    "withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean }>(), { modelValue: false })",
+    "withDefaults(defineProps<{ modelValue?: boolean; label: string; disabled?: boolean; describedBy?: string; invalid?: boolean }>(), { modelValue: false })",
   );
   expect(sfc).toContain('emit("update:modelValue", next.checked)');
+});
+
+test("emitCheckboxSfc forwards describedBy + invalid onto the control as aria-describedby/aria-invalid", () => {
+  // So a form can durably associate a boolean field's validation error to its checkbox (WCAG 1.3.1 / 4.1.2).
+  const sfc = emitCheckboxSfc();
+  expect(sfc).toContain(':aria-describedby="describedBy"');
+  expect(sfc).toContain(':aria-invalid="invalid"');
 });
 
 test("emitCheckboxSfc emits a control + indicator with class + data hooks, no styling", () => {

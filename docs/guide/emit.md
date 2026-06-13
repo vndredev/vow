@@ -81,6 +81,8 @@ submit: Add task
 
 → a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. The form becomes its **own routed page** at `/<slug>`. (Standalone forms with inline `fields:` are on the [roadmap](/guide/changelog).)
 
+The error association is the same for **every** control: each field's error region is keyed `<field>Id-error`, and the control points its `aria-describedby` at it (with `aria-invalid` when the field errors). A boolean's [`<Checkbox>`](/guide/primitives/checkbox) is no exception — it forwards `described-by` + `invalid` onto its control, so a screen reader navigating to the checkbox finds the error text and the invalid state durably, not just the once-announced `role="alert"`.
+
 ### Edit a singleton (`edit: true`)
 
 For an entity that holds **one row** (a settings/config record), add `edit: true` to the `## form`:
