@@ -11,6 +11,9 @@
     "test": "vp test",
     "check": "vp check"
   },
+  "dependencies": {
+    "@vow/observability": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "catalog:",
     "vite-plus": "catalog:"

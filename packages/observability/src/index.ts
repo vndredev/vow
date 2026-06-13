@@ -21,6 +21,13 @@ export { NONE } from "./none.ts";
  */
 export const COMMIT_TYPES: Readonly<Record<string, string>> = commitTypes;
 
+/**
+ * The conventional 72-column header budget — the single source for the commit-subject / PR-title length.
+ * The commit-msg hook (`commitlint.config.js` `header-max-length`) enforces it, and the agent caps the PR
+ * titles it authors to it, so the squash subject the agent writes is the subject the title-lint accepts.
+ */
+export const HEADER_MAX = 72;
+
 const VARIANTS = new Set<string>(BADGE_VARIANTS);
 
 /** Narrow a raw string to a `BadgeVariant` — a known colour, else `neutral`. */
