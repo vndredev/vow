@@ -1,9 +1,9 @@
 import { NONE, defined } from "./guard.ts";
 import { SUFFIX, loadVows, validateReferences } from "./load.ts";
 import { existsSync, rmSync } from "node:fs";
+import { isEmit, isEmitEntity } from "./fulfillment.ts";
 import type { ReadonlyVow } from "./readonly.ts";
 import { Vow } from "./vow.ts";
-import { isEmitEntity } from "./fulfillment.ts";
 import path from "node:path";
 import { writeVow } from "./serialize.ts";
 
@@ -101,6 +101,14 @@ function assertFieldsUnique(action: string, slug: string, fields: readonly Field
 function assertEmitEntity(action: string, vow: ReadonlyVow): void {
   if (!isEmitEntity(vow)) {
     throw new Error(`${action}: "${vow.slug}" is not an entity`);
+  }
+}
+
+/** Assert a slug resolves to an `emit form` — a `## form` block merged onto a view/entity slug is inert
+ *  (the emitter is driven by `fulfills.as`), so editing one is a false success without this guard. */
+function assertEmitForm(action: string, vow: ReadonlyVow): void {
+  if (!isEmit(vow, "form")) {
+    throw new Error(`${action}: "${vow.slug}" is not a form`);
   }
 }
 
@@ -211,12 +219,16 @@ function mergeForm(form: Form | undefined, patch: FormPatch): Form {
   };
 }
 
-/** Edit an `emit form`'s `of`/`submit`/`edit` in place. Re-validates a changed `of` against the tree. */
+/** Edit an `emit form`'s `of`/`submit`/`edit` in place. Rejects a non-form target (a `form` block on a
+ *  view/entity is inert) and re-validates a changed `of` against the tree. */
 export function setForm(appDir: string, slug: string, patch: FormPatch): Vow {
   if (defined(patch.of)) {
     assertFormTarget("set_form", appDir, slug, patch.of);
   }
-  return replace(appDir, slug, (vow) => ({ ...vow, form: mergeForm(vow.form, patch) }));
+  return replace(appDir, slug, (vow) => {
+    assertEmitForm("set_form", vow);
+    return { ...vow, form: mergeForm(vow.form, patch) };
+  });
 }
 
 /** Add a field to an entity — rejects a non-entity target and a duplicate field name. */
