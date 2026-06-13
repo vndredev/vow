@@ -22,3 +22,14 @@ test("the group label pluralizes the change count (1 change, not 1 changes)", ()
   // The Collapsible label binds a length===1 conditional so a single-change group reads "1 change".
   expect(sfc).toContain("g.items.length === 1 ? ' change' : ' changes'");
 });
+
+test("a commit subject holding </script> is neutralized so it can't close the script block early", () => {
+  // A git subject is uncontrolled input; baked raw it would close <script setup> and break the build.
+  const sfc = emitTimelineSfc(
+    [{ date: "2026-06-01", title: "drop </script> from the title", version: "v2" }],
+    "https://example.test/repo",
+  );
+  // The embedded data must carry the inert escape, never a raw closing tag that ends the SFC's script.
+  expect(sfc).toContain(String.raw`drop <\/script> from the title`);
+  expect(sfc).not.toContain("drop </script> from the title");
+});
