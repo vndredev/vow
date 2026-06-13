@@ -16,6 +16,8 @@ export { emitEntityBoard } from "./entity-board.ts";
 export { emitEntityCards } from "./entity-cards.ts";
 export { type ListActions, emitEntityList } from "./entity-list.ts";
 export { emitEntityStats } from "./entity-stats.ts";
+export { EVENT_LAYOUTS, type EventLayout, eventLayout } from "./event-layout.ts";
+export { emitEventTraceSfc } from "./event-sfc.ts";
 export { fieldControl } from "./field-control.ts";
 export { emitForm } from "./form.ts";
 export { ISSUE_LAYOUTS, type IssueLayout, issueLayout } from "./issue-layout.ts";
@@ -37,6 +39,7 @@ export {
   type ListRef,
   boardRefs,
   cardsRefs,
+  eventLayouts,
   issueLayouts,
   listedEntities,
   statsRefs,

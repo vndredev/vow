@@ -9,6 +9,7 @@ import {
   closeIssue,
   issueDetail,
   issuePlan,
+  readEvents,
   reopenIssue,
 } from "@vow/observability";
 import { type Maybe, type ReadonlyVow, defined, isRecord } from "@vow/core";
@@ -439,6 +440,21 @@ async function serveStartWork(
   } catch (error) {
     writeReply(res, { body: { error: errorMessage(error) }, status: STATUS.serverError });
   }
+}
+
+/**
+ * The dev events API — `/__vow/events`. GET serves the append-only event feed (`@vow/observability`'s
+ * `readEvents`, the tailable `.vow/events.jsonl`). The studio's event trace reads GET; no write seam is
+ * exposed (the feed is produced by the agent loop + hub operations, never by the browser).
+ */
+export function eventsApi(cwd: string): Middleware {
+  return (req, res, next) => {
+    if ((req.method ?? "GET") !== "GET") {
+      next();
+      return;
+    }
+    writeReply(res, { body: readEvents(cwd), status: STATUS.ok });
+  };
 }
 
 /**
