@@ -1,4 +1,13 @@
-import { actOnPr, flagValue, issueArg, parseRun, runAll, runDry, runLive } from "./agent-run.ts";
+import {
+  actOnPr,
+  authArg,
+  flagValue,
+  issueArg,
+  parseRun,
+  runAll,
+  runDry,
+  runLive,
+} from "./agent-run.ts";
 import {
   agentsMd,
   vowAuditSkill,
@@ -18,6 +27,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { readPrompt } from "./agent-prompts.ts";
 import { runAuto } from "./agent-auto.ts";
+import { runDeepAuditPass } from "./agent-audit.ts";
 
 /** Write `content` to `file` only when absent — `init` is idempotent, never clobbering edits. Returns the
  *  action taken, for the report. */
@@ -154,20 +164,37 @@ function runAuditFile(file: string): number {
   return 0;
 }
 
-/** `vow agent audit --prompt <dimension>` prints an audit agent's instruction; `--file <findings.json>`
- *  files the findings as vow issues (the audit -> plan flow, a host workflow fanning out the audit between
- *  the two). */
+function runAuditDeep(rest: readonly string[]): number {
+  const result = runDeepAuditPass(authArg(rest), process.cwd());
+  if (result.broke) {
+    return 1;
+  }
+  return 0;
+}
+
+function runAuditPrompt(dimension: string): number {
+  process.stdout.write(`${renderAuditPrompt(readPrompt(process.cwd(), "audit"), dimension)}\n`);
+  return 0;
+}
+
+/** `vow agent audit --deep` runs the exhaustive deep audit sweep (every package + docs/, all dimensions
+ *  including docs/drift, completeness-critic); `--prompt <dimension>` prints an audit agent's instruction;
+ *  `--file <findings.json>` files findings as vow issues (the audit -> plan flow). */
 function runAudit(rest: readonly string[]): number {
+  if (rest.includes("--deep")) {
+    return runAuditDeep(rest);
+  }
   const dimension = flagValue(rest, "--prompt");
   if (dimension !== "") {
-    process.stdout.write(`${renderAuditPrompt(readPrompt(process.cwd(), "audit"), dimension)}\n`);
-    return 0;
+    return runAuditPrompt(dimension);
   }
   const file = flagValue(rest, "--file");
   if (file !== "") {
     return runAuditFile(file);
   }
-  process.stderr.write("usage: vow agent audit (--prompt <dimension> | --file <findings.json>)\n");
+  process.stderr.write(
+    "usage: vow agent audit (--deep | --prompt <dimension> | --file <findings.json>)\n",
+  );
   return 1;
 }
 
@@ -210,9 +237,9 @@ export const AGENT_SUBCOMMANDS: readonly AgentSubcommand[] = [
     summary: "the self-heal loop (needs --yes — audits + develops + merges unsupervised)",
   },
   {
-    args: "--file <f.json>",
+    args: "--deep | --file <f.json>",
     name: "audit",
-    summary: "file audit findings as vow issues (audit -> plan)",
+    summary: "deep-sweep the whole codebase (--deep) or file findings as issues (--file)",
   },
 ];
 
