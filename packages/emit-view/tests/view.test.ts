@@ -340,3 +340,21 @@ test("emitAppLayout passes the shell layout (nav · width · variant) only when 
   const without = emitAppLayout([{ slug: "team", title: "Team" }], "vow studio");
   expect(without).not.toContain(":nav=");
 });
+
+test("emitAppLayout neutralises a `</script>` XSS payload in the title, nav, and shell values", () => {
+  const payload = "</script><script>alert(1)</script>";
+  const code = emitAppLayout(
+    [{ group: payload, icon: payload, slug: "tasks", title: payload }],
+    payload,
+    { nav: payload },
+  );
+  // The raw closing tag never reaches the `<script setup>` body — only the inert escaped form does.
+  expect(code).not.toContain("</script><script>");
+  expectContains(code, [
+    `title: "<\\/script><script>alert(1)<\\/script>"`,
+    `icon: "<\\/script><script>alert(1)<\\/script>"`,
+    `group: "<\\/script><script>alert(1)<\\/script>"`,
+    `const title = "<\\/script><script>alert(1)<\\/script>";`,
+    `const nav = "<\\/script><script>alert(1)<\\/script>";`,
+  ]);
+});

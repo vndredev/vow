@@ -2,6 +2,7 @@ import { LAYOUT_EXPORT, LAYOUT_SUFFIX, ROUTES_EXPORT, ROUTES_SUFFIX } from "./bo
 import { defined, mapDefined } from "@vow/core";
 import type { Maybe } from "./types.ts";
 import { pascalCase } from "@vow/component";
+import { scriptJson } from "./helpers.ts";
 
 /** A routed page — a slug + its title, plus optional sidebar metadata (icon/order/group). */
 export interface RoutedPage {
@@ -39,14 +40,19 @@ export function emitAppRoutes(pages: readonly RoutedPage[]): string {
   ].join("\n");
 }
 
-/** One `Page` literal for the shell's sidebar — icon/group/order only when declared. */
+/**
+ * One `Page` literal for the shell's sidebar — icon/group/order only when declared. The literal lands in
+ * `emitAppLayout`'s `<script setup>` body, so every free-text value rides `scriptJson` (not bare
+ * `JSON.stringify`): a `title`/`icon`/`group` holding `</script>` would otherwise close the SFC's script
+ * block early and run the rest as markup (a stored-XSS sink).
+ */
 function navPageLiteral(page: RoutedPage): string {
-  const parts = [`path: "/${page.slug}"`, `title: ${JSON.stringify(page.title)}`];
+  const parts = [`path: "/${page.slug}"`, `title: ${scriptJson(page.title)}`];
   if (defined(page.icon)) {
-    parts.push(`icon: ${JSON.stringify(page.icon)}`);
+    parts.push(`icon: ${scriptJson(page.icon)}`);
   }
   if (defined(page.group)) {
-    parts.push(`group: ${JSON.stringify(page.group)}`);
+    parts.push(`group: ${scriptJson(page.group)}`);
   }
   if (defined(page.order)) {
     parts.push(`order: ${page.order}`);
@@ -60,11 +66,15 @@ interface ShellBinding {
   readonly attr: string;
 }
 
-/** A `<Shell>` binding for `name`, present only when its `value` is set. */
+/**
+ * A `<Shell>` binding for `name`, present only when its `value` is set. The decl lands in
+ * `emitAppLayout`'s `<script setup>` body, so the free-text value (e.g. the app `title`, a nav setting)
+ * rides `scriptJson` — a value holding `</script>` cannot close the SFC's script block early.
+ */
 function shellBinding(name: string, value: Maybe<string>): Maybe<ShellBinding> {
   return mapDefined(value, (set) => ({
     attr: `:${name}="${name}"`,
-    decl: `const ${name} = ${JSON.stringify(set)};`,
+    decl: `const ${name} = ${scriptJson(set)};`,
   }));
 }
 
