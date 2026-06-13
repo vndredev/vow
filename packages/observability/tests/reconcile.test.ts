@@ -22,7 +22,13 @@ test("staleIssues finds the open issues a merged PR already closes", () => {
     { assignees: [], labels: [], number: OTHER, state: "open", title: "unrelated" },
   ];
   const merged: GitHubPr[] = [
-    { body: `Closes #${FIRST}, #${SECOND}.`, number: PR, title: "ci gates", url: "" },
+    {
+      body: `Closes #${FIRST}, #${SECOND}.`,
+      isDraft: false,
+      number: PR,
+      title: "ci gates",
+      url: "",
+    },
   ];
   expect(staleIssues(open, merged).map((issue) => issue.number)).toEqual([SECOND]);
 });
