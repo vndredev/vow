@@ -34,3 +34,26 @@ export function loadVowModule(id: string, vows: readonly ReadonlyVow[]): Maybe<s
   }
   return NONE;
 }
+
+/** A Vite HTML tag descriptor (the subset the dev overlay needs) — an inline `<script type="module">`. */
+export interface OverlayTag {
+  readonly tag: "script";
+  readonly attrs: { readonly type: "module" };
+  readonly children: string;
+  readonly injectTo: "body";
+}
+
+/** The bootstrap the injected script runs — import the bug-reporter client (a package export) + start it. */
+const OVERLAY_BOOTSTRAP =
+  'import { setupBugReporter } from "@vow/vite-plugin/client/bug-reporter";\nsetupBugReporter();';
+
+/** The HTML tags injecting the in-app reporter overlay — the bootstrap in dev (`serve`), nothing in a
+    build, so the overlay NEVER ships to production. Pure: the dev gate is a boolean, not a side effect. */
+export function devOverlayTags(dev: boolean): OverlayTag[] {
+  if (!dev) {
+    return [];
+  }
+  return [
+    { attrs: { type: "module" }, children: OVERLAY_BOOTSTRAP, injectTo: "body", tag: "script" },
+  ];
+}

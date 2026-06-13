@@ -3,8 +3,8 @@ import { type Db, openDevDb, syncEntities } from "./dev-db.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, type ReadonlyVow, defined, loadVows } from "@vow/core/node";
 import type { Plugin, ViteDevServer } from "vite-plus";
-import { VOW_API, agentApi, dataApi, eventsApi, issuesApi } from "./dev-api.ts";
-import { loadVowModule, resolveVowId } from "./virtual.ts";
+import { VOW_API, agentApi, dataApi, eventsApi, issueApi, issuesApi } from "./dev-api.ts";
+import { devOverlayTags, loadVowModule, resolveVowId } from "./virtual.ts";
 import { NONE } from "./none.ts";
 import type { VowOptions } from "./vows.ts";
 import { generateFiles } from "./generate.ts";
@@ -58,6 +58,8 @@ export interface State {
   root: string;
   db: Maybe<Db>;
   entities: readonly ReadonlyVow[];
+  /** Whether the build is a dev server (`serve`) — gates the in-app reporter overlay to dev only. */
+  dev: boolean;
 }
 
 /** Remove the files this plugin wrote before but not now, so generated output never outlives its source. */
@@ -109,12 +111,10 @@ export function openDevDbGuarded(state: State, logError: (message: string) => vo
   }
 }
 
-/** Wire the dev server: open the DB, mount the `/__vow` APIs, and watch `app/` for regenerate-on-save. */
+/** Mount every `/__vow` API on the dev server's middleware chain — the data layer, the issue plan + the
+ *  in-app reporter, the event feed, and the start-work signal. */
 // oxlint-disable-next-line prefer-readonly-parameter-types -- a plugin must mutate the dev server
-function setupServer(server: ViteDevServer, state: State, options: VowOptions): void {
-  openDevDbGuarded(state, (message) => {
-    server.config.logger.error(message);
-  });
+function mountApis(server: ViteDevServer, state: State): void {
   server.middlewares.use(
     VOW_API.db,
     dataApi(
@@ -128,6 +128,17 @@ function setupServer(server: ViteDevServer, state: State, options: VowOptions): 
   server.middlewares.use(VOW_API.events, eventsApi(state.root));
   // The start-work signal — a board action POSTs an issue number; the dev server dispatches its agent run.
   server.middlewares.use(VOW_API.agent, agentApi(state.root));
+  // The in-app reporter — the dev overlay POSTs a bug/feature report; the server files it as a phased issue.
+  server.middlewares.use(VOW_API.issue, issueApi(state.root));
+}
+
+/** Wire the dev server: open the DB, mount the `/__vow` APIs, and watch `app/` for regenerate-on-save. */
+// oxlint-disable-next-line prefer-readonly-parameter-types -- a plugin must mutate the dev server
+function setupServer(server: ViteDevServer, state: State, options: VowOptions): void {
+  openDevDbGuarded(state, (message) => {
+    server.config.logger.error(message);
+  });
+  mountApis(server, state);
 
   // Watch the `app/` source (not in the module graph) → regenerate the `.vue` on change. Rewriting the
   // .vue then triggers plugin-vue's HMR; a full reload covers added/removed vows.
@@ -160,6 +171,7 @@ export function vow(options: VowOptions = {}): Plugin {
   const outOpt = options.outDir ?? ".generated";
   const state: State = {
     db: NONE,
+    dev: false,
     entities: [],
     genDir: outOpt,
     lastWritten: [],
@@ -172,6 +184,7 @@ export function vow(options: VowOptions = {}): Plugin {
     // oxlint-disable-next-line prefer-readonly-parameter-types -- Vite's ResolvedConfig is read here
     configResolved(config) {
       state.root = config.root;
+      state.dev = config.command === "serve";
       state.vowDir = resolveDir(config.root, dirOpt);
       state.genDir = resolveDir(config.root, outOpt);
       try {
@@ -189,5 +202,7 @@ export function vow(options: VowOptions = {}): Plugin {
     load: (id) => loadVowModule(id, state.vows),
     name: "vow",
     resolveId: (id) => resolveVowId(id),
+    // Inject the in-app reporter overlay — in dev only, so it never ships to a production build.
+    transformIndexHtml: () => devOverlayTags(state.dev),
   };
 }

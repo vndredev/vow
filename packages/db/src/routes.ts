@@ -16,6 +16,7 @@ export const VOW_API = {
   agent: "/__vow/agent",
   db: "/__vow/db",
   events: "/__vow/events",
+  issue: "/__vow/issue",
   issues: "/__vow/issues",
 } as const;
 
