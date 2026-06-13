@@ -57,7 +57,7 @@ export function validateReferences(vows: readonly ReadonlyVow[]): void {
     for (const field of vow.fields) {
       if (field.type === "reference" && !entities.has(field.ref ?? "")) {
         throw new Error(
-          `vow: "${vow.slug}.${field.name}" references "${field.ref ?? ""}", which is not a known entity`,
+          `vow: "${vow.slug}.${field.name}" references "${field.ref ?? ""}", which is not a known entity — known: ${[...entities].join(", ")} (create it with add_entity, or fix the ref)`,
         );
       }
     }
