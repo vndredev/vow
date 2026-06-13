@@ -2,29 +2,29 @@ import { auditIssue, parseFindings } from "../src/audit.ts";
 import { expect, test } from "vite-plus/test";
 import { NONE } from "../src/none.ts";
 
-test("auditIssue stamps the resolved phase, with the area label + the template body", () => {
+test("auditIssue files a BUG — the bug-template body, the bug + area labels, the resolved phase", () => {
   const issue = auditIssue(
     { area: "emit", evidence: "the why", fix: "the element to build", title: "A bug" },
     "Phase I — the UI framework",
   );
   expect(issue.title).toBe("A bug");
-  expect(issue.labels).toEqual(["area: emit"]);
+  // A bug, not a feature — so the `bug` label leads + the area label when the repo carries it.
+  expect(issue.labels).toEqual(["bug", "area: emit"]);
   expect(issue.milestone).toBe("Phase I — the UI framework");
-  expect(issue.body).toContain("the element to build");
+  // The BUG template (not the feature one), so the issue-template gate passes + it reads as a bug.
+  expect(issue.body).toContain("What happened");
   expect(issue.body).toContain("the why");
+  expect(issue.body).toContain("the element to build");
 });
 
-test("auditIssue omits labels when the finding has no area", () => {
+test("auditIssue always carries the bug label, with no area label for an empty / unknown area", () => {
+  expect(auditIssue({ area: "", evidence: "e", fix: "f", title: "t" }, "Phase X").labels).toEqual([
+    "bug",
+  ]);
+  // "cli" is a real area but carries no repo `area:` label — so just `bug`, never a label gh rejects.
   expect(
-    auditIssue({ area: "", evidence: "e", fix: "f", title: "t" }, "Phase X").labels,
-  ).toBeUndefined();
-});
-
-test("auditIssue omits the area label for an area with no repo label, but still files the phase", () => {
-  const issue = auditIssue({ area: "cli", evidence: "e", fix: "f", title: "t" }, "Phase X");
-  expect(issue.labels).toBeUndefined();
-  expect(issue.title).toBe("t");
-  expect(issue.milestone).toBe("Phase X");
+    auditIssue({ area: "cli", evidence: "e", fix: "f", title: "t" }, "Phase X").labels,
+  ).toEqual(["bug"]);
 });
 
 test("auditIssue files bare (no milestone) when no phase resolves — a milestone-less repo", () => {

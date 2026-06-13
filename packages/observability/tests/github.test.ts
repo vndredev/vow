@@ -2,7 +2,6 @@ import type { GitHubIssue, GitHubPr } from "../src/types.ts";
 import {
   IN_PROGRESS_LABEL,
   deriveIssueStatus,
-  featureIssueBody,
   linkedIssues,
   parseIssueDetail,
   parseIssues,
@@ -11,6 +10,7 @@ import {
   sessionsByIssue,
   statusVariant,
 } from "../src/github.ts";
+import { bugIssueBody, featureIssueBody } from "../src/issue-body.ts";
 import { expect, test } from "vite-plus/test";
 import { statusOption } from "../src/project.ts";
 
@@ -200,6 +200,16 @@ test("featureIssueBody fills the feature template — element + why lead, the st
   expect(body).toContain("**Why** — the plan derives itself");
   expect(body).toContain("Strand: generation · author layer");
   expect(body).toContain("[plan board](https://github.com/users/vndredev/projects/3)");
+});
+
+test("bugIssueBody fills the bug template — the exact sections the issue-template gate requires", () => {
+  const body = bugIssueBody({ evidence: "timeline.ts bakes raw JSON", fix: "use scriptJson" });
+  // The gate flags a bug missing any of these exact substrings — keep them verbatim.
+  for (const section of ["What happened", "Relevant output", "Environment"]) {
+    expect(body).toContain(section);
+  }
+  expect(body).toContain("timeline.ts bakes raw JSON");
+  expect(body).toContain("use scriptJson");
 });
 
 test("statusOption maps the derived status to the Project's Status options", () => {
