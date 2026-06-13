@@ -133,8 +133,11 @@ function mountApis(server: ViteDevServer, state: State): void {
   );
   // The GitHub issue plan, gh-direct.
   server.middlewares.use(VOW_API.issues, issuesApi(state.root));
-  // The append-only event feed — the trace panel reads it live.
-  server.middlewares.use(VOW_API.events, eventsApi(state.root));
+  // The append-only event feed (JSON snapshot + SSE), read from the REPO-ROOT `.vow/events.jsonl`.
+  // The loop records there, not to the app-local `state.root`, so the trace shows its live events.
+  // `repoRootOf` walks up from the studio's app dir to the workspace root — the SAME resolution below.
+  // The `state.root` fallback covers a standalone app with no workspace root above (its own app-local feed).
+  server.middlewares.use(VOW_API.events, eventsApi(repoRootOf(state.root) ?? state.root));
   // The start-work signal — a board action POSTs an issue number; the dev server dispatches its agent run.
   server.middlewares.use(VOW_API.agent, agentApi(state.root));
   // The in-app reporter — the dev overlay POSTs a bug/feature report; the server files it as a phased issue.
