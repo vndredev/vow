@@ -271,6 +271,24 @@ test("convertColumn rebuilds a column with the new type so a text boolean re-dec
   expect(get(db, bool, String(row["id"]))?.["on"]).toBe(false);
 });
 
+test("convertColumn rolls back to the original data when the rebuild fails partway", () => {
+  const db = openDb(":memory:");
+  const text = entity("flag", [{ name: "on", required: false, type: "text" }]);
+  migrate(db, [text]);
+  insert(db, text, { on: "keep" });
+  // An index on the column makes the mid-rebuild DROP COLUMN throw — a deterministic stand-in for the
+  // Process kill or CAST failure between the DROP and the RENAME (the corrupting window the issue
+  // Names). Without the transaction, the failed retype leaves an orphaned `on__vow_convert` column and
+  // Drops the original data; the BEGIN IMMEDIATE / ROLLBACK wrap must restore the table untouched.
+  db.exec('CREATE INDEX idx_flag_on ON "flag"("on");');
+  expect(() => {
+    convertColumn(db, "flag", "on", "INTEGER");
+  }).toThrow();
+  // Atomic: the original column survives (no orphan temp column) and its data is intact.
+  expect(columnNames(db, "flag")).toEqual(["id", "on"]);
+  expect(list(db, text)[0]?.["on"]).toBe("keep");
+});
+
 test("convertColumn is a no-op when the column is absent", () => {
   const db = openDb(":memory:");
   migrate(db, [task]);
