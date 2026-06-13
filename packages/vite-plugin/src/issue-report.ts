@@ -1,8 +1,8 @@
 /* oxlint-disable consistent-type-specifier-style -- one mixed import per module; separate trips no-duplicate-imports */
 import { type Maybe, isRecord } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
-import { createIssue, resolveCurrentPhase } from "@vow/observability";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { createIssue, githubIssues, resolveCurrentPhase } from "@vow/observability";
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { NONE } from "./none.ts";
 import path from "node:path";
 
@@ -70,31 +70,76 @@ export function parseReport(raw: string): Maybe<ReportInput> {
 /** The prefix of a base64 PNG data URL (what `html-to-image` produces). */
 const PNG_PREFIX = "data:image/png;base64,";
 
-/** Save a PNG data URL to `.vow/bugs/<ts>.png` (gitignored), returning its repo-relative path; `NONE` for
-    an empty / non-PNG payload (filing never blocks on a screenshot). */
-function saveScreenshot(cwd: string, dataUrl: string): Maybe<string> {
+/** Where the reporter's screenshots live — `.vow/issues/<issue>.png` (gitignored). Named for issues, not
+    "bugs", since a report is a bug OR a feature; keyed by the issue NUMBER so the cleanup can prune it. */
+const SHOTS_DIR = path.join(".vow", "issues");
+
+/** Save a PNG data URL to `.vow/issues/<issue>.png` — a no-op for an empty / non-PNG payload, so filing
+    never blocks on a screenshot. Keyed by the issue number (the cleanup prunes by it). */
+function saveScreenshot(cwd: string, dataUrl: string, issue: number): void {
   if (!dataUrl.startsWith(PNG_PREFIX)) {
-    return NONE;
+    return;
   }
-  const rel = path.join(".vow", "bugs", `${Date.now()}.png`);
-  mkdirSync(path.join(cwd, ".vow", "bugs"), { recursive: true });
-  writeFileSync(path.join(cwd, rel), Buffer.from(dataUrl.slice(PNG_PREFIX.length), "base64"));
-  return rel;
+  mkdirSync(path.join(cwd, SHOTS_DIR), { recursive: true });
+  const png = Buffer.from(dataUrl.slice(PNG_PREFIX.length), "base64");
+  writeFileSync(path.join(cwd, SHOTS_DIR, `${issue}.png`), png);
 }
 
-/** The auto-resolved context — the vow AREA the picker found + the saved screenshot path (when there is
-    one). Shared by both templates so the agent always sees which `.vow.md` / route / element a report hits. */
-function contextLines(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+/** The issue number in a `gh issue create` URL (its trailing path segment), or `NONE`. Pure. */
+export function issueNumber(url: string): Maybe<number> {
+  const match = /\/(\d+)$/u.exec(url.trim());
+  if (match === null) {
+    return NONE;
+  }
+  return Number(match[1]);
+}
+
+/** The screenshot files (`<n>.png`) whose issue number is not in `open` — the ones to prune. Pure. */
+export function orphanShots(files: readonly string[], open: readonly number[]): string[] {
+  return files.filter((file) => {
+    const match = /^(\d+)\.png$/u.exec(file);
+    return match !== null && !open.includes(Number(match[1]));
+  });
+}
+
+/** Remove each named file from `dir` (the prune step, kept out of `cleanIssueShots` for the statement cap). */
+function removeShots(dir: string, files: readonly string[]): void {
+  for (const file of files) {
+    rmSync(path.join(dir, file));
+  }
+}
+
+/** Prune `.vow/issues/<n>.png` for every issue no longer open (closed or deleted), so the folder stays in
+    step with the plan — returns how many were removed. A no-op when `gh` yields nothing (never mass-delete
+    on a network hiccup, which would read as "no issues open"). */
+export function cleanIssueShots(cwd: string): number {
+  const dir = path.join(cwd, SHOTS_DIR);
+  if (!existsSync(dir)) {
+    return 0;
+  }
+  const issues = githubIssues(cwd);
+  if (issues.length === 0) {
+    return 0;
+  }
+  const open = issues.filter((issue) => issue.state === "open").map((issue) => issue.number);
+  const orphans = orphanShots(readdirSync(dir), open);
+  removeShots(dir, orphans);
+  return orphans.length;
+}
+
+/** The auto-resolved context — the vow AREA the picker found, plus a note when a screenshot was saved (at
+    `.vow/issues/<this issue>.png`, keyed by number after the issue is created). */
+function contextLines(report: Readonly<ReportInput>): string {
   const area = `vow \`${report.source || "—"}\` · route \`${report.route}\` · element \`${report.element}\``;
-  if (typeof shot === "string") {
-    return `${area}\n\nScreenshot: \`${shot}\``;
+  if (report.screenshot !== "") {
+    return `${area}\n\n_A screenshot of the element is saved locally under \`.vow/issues/\`._`;
   }
   return area;
 }
 
 /** A bug report filled into the bug template (`.github/ISSUE_TEMPLATE/bug.md`) so the issue-template gate
     passes and the studio plan reads its sections. */
-function bugBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+function bugBody(report: Readonly<ReportInput>): string {
   return [
     "**What happened** (vs. what the docs say)",
     "",
@@ -102,7 +147,7 @@ function bugBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
     "",
     "**A minimal `app/*.vow.md`** that reproduces it",
     "",
-    contextLines(report, shot),
+    contextLines(report),
     "",
     "**Relevant output** of `vp check` / `pnpm -r test`",
     "",
@@ -114,13 +159,13 @@ function bugBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
 
 /** A feature report filled into the feature template (`.github/ISSUE_TEMPLATE/feature.md`) — the `What` /
     `Why` / `Strand` sections the gate + the studio plan expect. */
-function featureBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+function featureBody(report: Readonly<ReportInput>): string {
   return [
     `**What** — ${report.description || report.title}`,
     "",
     "**Why** — proposed from the running app via the in-app reporter.",
     "",
-    contextLines(report, shot),
+    contextLines(report),
     "",
     "---",
     "",
@@ -129,12 +174,12 @@ function featureBody(report: Readonly<ReportInput>, shot: Maybe<string>): string
 }
 
 /** The issue body — filled into the bug OR feature template (by kind) so the issue-template gate passes,
-    carrying the resolved vow area + the screenshot. */
-export function reportBody(report: Readonly<ReportInput>, shot: Maybe<string>): string {
+    carrying the resolved vow area. */
+export function reportBody(report: Readonly<ReportInput>): string {
   if (report.kind === "bug") {
-    return bugBody(report, shot);
+    return bugBody(report);
   }
-  return featureBody(report, shot);
+  return featureBody(report);
 }
 
 /** The milestone fragment — the current phase when one resolves, so the issue is filed phased (else bare). */
@@ -146,14 +191,20 @@ function phasePart(cwd: string): { readonly milestone?: string } {
   return {};
 }
 
-/** File a report as a real vow issue (phased, labelled by kind), saving its screenshot to `.vow/bugs/` —
-    returns the issue URL. Throws on a `gh` error. */
+/** File a report as a real vow issue (phased, labelled by kind), save its screenshot to `.vow/issues/<n>.png`
+    (keyed by the new issue number), and prune the screenshots of any closed/deleted issues. Returns the
+    issue URL. Throws on a `gh` create error. */
 export function reportIssue(cwd: string, report: Readonly<ReportInput>): string {
-  const shot = saveScreenshot(cwd, report.screenshot);
-  return createIssue(cwd, {
-    body: reportBody(report, shot),
+  const url = createIssue(cwd, {
+    body: reportBody(report),
     labels: [KIND_LABEL[report.kind]],
     title: report.title,
     ...phasePart(cwd),
   });
+  const number = issueNumber(url);
+  if (typeof number === "number") {
+    saveScreenshot(cwd, report.screenshot, number);
+  }
+  cleanIssueShots(cwd);
+  return url;
 }

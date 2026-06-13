@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import { elementHint, resolveVowSource } from "../src/client/bug-reporter.ts";
 import { expect, test } from "vite-plus/test";
-import { parseReport, reportBody } from "../src/issue-report.ts";
-import { NONE } from "../src/none.ts";
+import { issueNumber, orphanShots, parseReport, reportBody } from "../src/issue-report.ts";
 import { devOverlayTags } from "../src/virtual.ts";
 
 test("resolveVowSource walks up to the nearest data-vow-source — DOM → spec", () => {
@@ -46,20 +45,26 @@ test("parseReport validates a posted bug/feature report, rejecting bad shapes", 
   expect(parseReport("not json")).toBeUndefined();
 });
 
-test("reportBody fills the bug template (the gate's sections) + references the screenshot when saved", () => {
-  const report = parseReport(
-    JSON.stringify({ description: "broken", kind: "bug", route: "/board", title: "x" }),
+test("reportBody fills the bug template + notes a screenshot only when one was captured", () => {
+  const withShot = parseReport(
+    JSON.stringify({
+      description: "broken",
+      kind: "bug",
+      screenshot: "data:image/png;base64,xx",
+      title: "x",
+    }),
   );
-  if (!report) {
+  const without = parseReport(JSON.stringify({ description: "broken", kind: "bug", title: "x" }));
+  if (!withShot || !without) {
     throw new Error("test setup: report missing");
   }
-  const body = reportBody(report, ".vow/bugs/1.png");
+  const body = reportBody(withShot);
   // The issue-template gate requires these exact substrings for a bug — keep this in sync with it.
   for (const section of ["What happened", "Relevant output", "Environment"]) {
     expect(body).toContain(section);
   }
-  expect(body).toContain(".vow/bugs/1.png");
-  expect(reportBody(report, NONE)).not.toContain("Screenshot");
+  expect(body).toContain(".vow/issues/");
+  expect(reportBody(without)).not.toContain(".vow/issues/");
 });
 
 test("reportBody fills the feature template (Why + Strand) for a feature kind", () => {
@@ -67,8 +72,19 @@ test("reportBody fills the feature template (Why + Strand) for a feature kind", 
   if (!report) {
     throw new Error("test setup: report missing");
   }
-  const body = reportBody(report, NONE);
+  const body = reportBody(report);
   for (const section of ["What", "Why", "Strand"]) {
     expect(body).toContain(section);
   }
+});
+
+test("issueNumber reads the trailing number off a gh issue URL", () => {
+  const number = 573;
+  expect(issueNumber(`https://github.com/vndredev/vow/issues/${number}`)).toBe(number);
+  expect(issueNumber("not a url")).toBeUndefined();
+});
+
+test("orphanShots prunes <n>.png whose issue is no longer open, keeping open ones + non-numbers", () => {
+  const orphans = orphanShots(["1.png", "2.png", "notes.txt"], [1]);
+  expect(orphans).toEqual(["2.png"]);
 });
