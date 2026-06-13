@@ -57,6 +57,8 @@ with the page's components under `## view`:
 
 → a `.vue` for the page and — **because the view asked for it** — the entity's **read-only table** (`Task.vue`): a real `<table>` with a header from the field names and a row per record (a select value as a [`<Badge>`](/guide/primitives), a reference resolved to its target's **name**, a boolean as Yes/No). The list only _displays_ — the studio is read-only; the agent mutates the data via the MCP. No `list:`, no table — the entity stays a pure model.
 
+Every store-backed view (list, cards, board, stats, and the issue layouts) carries the same **loading / failed / empty** status trio, and each status node is a **live region** so a screen reader hears the async swap (WCAG 4.1.3 Status Messages). Loading and the genuinely-empty copy are polite (`role="status"` + `aria-live="polite"`); a **failed fetch** is assertive (`role="alert"` + `aria-live="assertive"`), so the error is announced at once rather than leaving a screen-reader user on a silently-empty view.
+
 ## emit form
 
 A form is an entity's create screen. A **`## form`** block bound to an entity with `of:` renders every field as a labelled [`<Field>`](/guide/primitives/field) (a boolean self-labels as a [`<Checkbox>`](/guide/primitives/checkbox)) and validates on submit with the entity's **zod schema** — surfacing a per-field error, never swallowing it:

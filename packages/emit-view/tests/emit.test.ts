@@ -120,11 +120,13 @@ test("the default list stays read-only — no delete button, no removeById, no B
 test("the empty state distinguishes loading / failed / genuinely empty — not always 'Nothing here yet.'", () => {
   // The first /__vow/db fetch must not read as empty: while it is in flight the list shows "Loading…".
   // A failed fetch shows "Couldn't load this data"; "Nothing here yet." is gated on not-loading-not-error.
+  // Each status node carries live-region semantics so a screen reader hears the swap (WCAG 4.1.3):
+  // Loading/empty are polite (role=status + aria-live=polite), the failure is assertive (role=alert).
   const sfc = emitEntityList(entity);
   expectContains(sfc, [
-    '<p class="vow-empty" v-if="state.loading && !state.error && rows.length === 0">Loading…</p>',
-    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
-    '<p class="vow-empty" v-if="!state.loading && !state.error && rows.length === 0">Nothing here yet.</p>',
+    '<p class="vow-empty" role="status" aria-live="polite" v-if="state.loading && !state.error && rows.length === 0">Loading…</p>',
+    '<p class="vow-empty" role="alert" aria-live="assertive" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
+    '<p class="vow-empty" role="status" aria-live="polite" v-if="!state.loading && !state.error && rows.length === 0">Nothing here yet.</p>',
   ]);
 });
 
@@ -235,7 +237,8 @@ test("emitEntityStats counts rows per a select field, composing Stats/Stat", () 
     '<Stat :value="s.value" :label="s.label"',
     // A failed fetch leaves every count at zero; the error branch surfaces it (#475).
     // The all-zero stats are then not silently read as a genuinely empty dataset.
-    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
+    // The error is an assertive live region (role=alert) so a screen reader is told at once (WCAG 4.1.3).
+    '<p class="vow-empty" role="alert" aria-live="assertive" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
   ]);
   // `by` must be a select field of the entity.
   expect(() => emitEntityStats(ticket, "title")).toThrow();
@@ -265,9 +268,9 @@ test("emitEntityCards renders a Card per record, titled by the first text field"
     'v-for="item in grp.items"',
     "<CardHeader>{{ item.title }}</CardHeader>",
     "Status: ",
-    '<p class="vow-empty" v-if="state.loading && !state.error && rows.length === 0">Loading…</p>',
-    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
-    '<p class="vow-empty" v-if="!state.loading && !state.error && rows.length === 0">Nothing here yet.</p>',
+    '<p class="vow-empty" role="status" aria-live="polite" v-if="state.loading && !state.error && rows.length === 0">Loading…</p>',
+    '<p class="vow-empty" role="alert" aria-live="assertive" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
+    '<p class="vow-empty" role="status" aria-live="polite" v-if="!state.loading && !state.error && rows.length === 0">Nothing here yet.</p>',
   ]);
   const notEntity: VowNode = { ...ticket, fulfills: { as: "view", kind: "emit" } };
   expect(() => emitEntityCards(notEntity)).toThrow();
@@ -297,7 +300,8 @@ test("emitEntityBoard renders a column per option, draggable cards, a status wri
     'update(dragged.value.id, { ["status"]: option });',
     // A failed fetch leaves every column at zero; the error branch surfaces it (#475).
     // The empty board is then not silently read as zero records.
-    '<p class="vow-empty" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
+    // The error is an assertive live region (role=alert) so a screen reader is told at once (WCAG 4.1.3).
+    '<p class="vow-empty" role="alert" aria-live="assertive" v-if="state.error && rows.length === 0">Couldn\'t load this data</p>',
     "defineProps<{ filter?: Record<string, unknown>; sort?: keyof Ticket; group?: keyof Ticket }>",
     "const visible = computed(()",
     "visible.value.filter((r) => r.status === o)",
