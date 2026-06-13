@@ -13,6 +13,7 @@ export {
   assertColumnAbsent,
   assertColumnFree,
   assertNoReferrers,
+  assertSafeIdentifier,
   assertTableFree,
   assertValuesCovered,
   bootstrap,

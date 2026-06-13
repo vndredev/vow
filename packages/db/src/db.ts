@@ -160,14 +160,35 @@ function decodeMaybe(entity: ReadonlyVow, row: Maybe<ReadRow>): Maybe<Row> {
 
 // --- schema helpers ---
 
+/**
+ * Reject an identifier that could break out of a quoted SQL identifier BEFORE it is interpolated into a
+ * statement — the data layer's last-line defense against identifier injection. Every table slug and column
+ * name reaches the SQL below through `"${name}"` interpolation (node:sqlite binds *values*, never
+ * identifiers), so a name carrying a `"` would escape the quotes and graft on arbitrary SQL. A legitimate
+ * vow identifier is kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`, slugs) or camelCase (field names), and the
+ * internal names this layer mints (`_vow_meta`, `_dropped_<slug>`, `<name>__vow_convert`) only add `_` —
+ * none of which contains a `"`. Callers a layer up (the MCP studio, the generated `create<Name>`) validate
+ * against `@vow/core`'s spec, but this guard makes the boundary safe regardless of what a caller forgets:
+ * a slug like `x" UNION SELECT … --` is refused HERE, before any `prepare`/`exec`, with a clear error.
+ */
+export function assertSafeIdentifier(name: string): void {
+  if (name.includes('"')) {
+    throw new Error(
+      `unsafe SQL identifier ${JSON.stringify(name)}: a name may not contain a quote`,
+    );
+  }
+}
+
 /** The existing column names of a table (empty when the table is absent). */
 function columnNames(db: Db, slug: string): ReadonlySet<string> {
+  assertSafeIdentifier(slug);
   const rows: readonly ReadRow[] = db.prepare(`PRAGMA table_info("${slug}")`).all();
   return new Set(rows.map((row) => nameOf(row)));
 }
 
 /** Whether a table holds no rows yet — used by `seedEntity`'s in-transaction race re-check. */
 function isEmpty(db: Db, slug: string): boolean {
+  assertSafeIdentifier(slug);
   const row: ReadRow = db.prepare(`SELECT COUNT(*) AS n FROM "${slug}"`).get() ?? {};
   return countOf(row) === 0;
 }
@@ -217,6 +238,7 @@ export function openDb(path: string): Db {
 /** Ensure a table per entity — create if absent, add any field column that's missing (additive only). */
 export function migrate(db: Db, entities: readonly ReadonlyVow[]): void {
   for (const entity of entities) {
+    assertSafeIdentifier(entity.slug);
     db.exec(createTableSql(entity));
     const have = columnNames(db, entity.slug);
     for (const field of entity.fields) {
@@ -374,6 +396,7 @@ export function renameColumn(db: Db, slug: string, from: string, to: string): vo
 }
 
 export function insert(db: Db, entity: ReadonlyVow, record: ReadRow): Row {
+  assertSafeIdentifier(entity.slug);
   const full = complete(entity, record);
   const cols = ["id", ...entity.fields.map((field) => field.name)];
   const placeholders = cols.map(() => "?").join(", ");
@@ -435,11 +458,13 @@ export function bootstrap(db: Db, entities: readonly ReadonlyVow[]): void {
 }
 
 export function list(db: Db, entity: ReadonlyVow): Row[] {
+  assertSafeIdentifier(entity.slug);
   const rows: readonly ReadRow[] = db.prepare(`SELECT * FROM "${entity.slug}"`).all();
   return rows.map((row) => decode(entity, row));
 }
 
 export function get(db: Db, entity: ReadonlyVow, id: string): Maybe<Row> {
+  assertSafeIdentifier(entity.slug);
   const row: Maybe<ReadRow> = db.prepare(`SELECT * FROM "${entity.slug}" WHERE "id" = ?`).get(id);
   return decodeMaybe(entity, row);
 }
@@ -451,6 +476,7 @@ export function get(db: Db, entity: ReadonlyVow, id: string): Maybe<Row> {
  */
 // eslint-disable-next-line max-params
 export function update(db: Db, entity: ReadonlyVow, id: string, patch: ReadRow): Maybe<Row> {
+  assertSafeIdentifier(entity.slug);
   // The column allow-list: only known fields present in the patch are written.
   const keys = entity.fields.map((field) => field.name).filter((key) => key in patch);
   if (keys.length > 0) {
@@ -539,5 +565,6 @@ export function assertNoReferrers(
 }
 
 export function remove(db: Db, entity: ReadonlyVow, id: string): boolean {
+  assertSafeIdentifier(entity.slug);
   return db.prepare(`DELETE FROM "${entity.slug}" WHERE "id" = ?`).run(id).changes > 0;
 }

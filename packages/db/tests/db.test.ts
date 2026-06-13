@@ -5,6 +5,7 @@ import {
   assertColumnAbsent,
   assertColumnFree,
   assertNoReferrers,
+  assertSafeIdentifier,
   assertTableFree,
   assertValuesCovered,
   bootstrap,
@@ -323,6 +324,36 @@ test("assertTableFree throws when a re-created slug's orphaned table still holds
   archiveTable(db, "task");
   expect(() => {
     assertTableFree(db, "task");
+  }).not.toThrow();
+});
+
+test("assertSafeIdentifier rejects a name that could break out of a quoted SQL identifier", () => {
+  // A legitimate kebab/camel identifier passes untouched.
+  expect(() => {
+    assertSafeIdentifier("task");
+  }).not.toThrow();
+  expect(() => {
+    assertSafeIdentifier("my-entity");
+  }).not.toThrow();
+  // A name carrying a double-quote would escape the `"${name}"` interpolation and graft on arbitrary SQL.
+  expect(() => {
+    assertSafeIdentifier('x" UNION SELECT name FROM sqlite_master --');
+  }).toThrow(/unsafe SQL identifier .* a name may not contain a quote/u);
+});
+
+test("assertTableFree refuses an injection slug BEFORE any SQL runs (identifier injection regression)", () => {
+  // The MCP `add_entity` path reaches `assertTableFree(db, slug)` with the raw tool slug, BEFORE the spec's
+  // Kebab regex validates it (the studio guards the orphan-table case ahead of the vow `.md` write). A slug
+  // Carrying a `"` would break out of `PRAGMA table_info("${slug}")` / `SELECT … FROM "${slug}"` and run
+  // Attacker SQL. The `assertSafeIdentifier` guard at the top of `columnNames`/`isEmpty` rejects it first.
+  const db = openDb(":memory:");
+  migrate(db, [task]);
+  expect(() => {
+    assertTableFree(db, 'task" UNION SELECT name, sql FROM sqlite_master --');
+  }).toThrow(/unsafe SQL identifier .* a name may not contain a quote/u);
+  // A safe slug still flows through to the orphan-table check unchanged.
+  expect(() => {
+    assertTableFree(db, "fresh-entity");
   }).not.toThrow();
 });
 
