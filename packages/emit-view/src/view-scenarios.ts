@@ -28,16 +28,27 @@ export function viewProves(vow: ReadonlyVow): readonly string[] {
 }
 
 /** The scenario a generated form proves: an incomplete submit is rejected — but ONLY when the form's
- *  entity has a required field. An all-optional entity validates an empty submit cleanly (no ZodError, no
- *  `[role=alert]`), so there is nothing to assert and no scenario/test is emitted. */
-export function formScenarios(label: string, hasRequired: boolean): readonly RenderScenario[] {
-  if (!hasRequired) {
+ *  entity has a required field AND the form is a create form. An all-optional entity validates an empty
+ *  submit cleanly (no ZodError, no `[role=alert]`), so there is nothing to assert and no scenario/test
+ *  is emitted. An edit form's submit guards on a loaded row (`current.value === undefined` early-returns),
+ *  so an empty submit (the jsdom mount state) no-ops rather than validating — no error surfaces, making
+ *  the assertion false. Pass `isEdit: true` for any edit or singleton form to exclude the scenario. */
+export function formScenarios(
+  label: string,
+  hasRequired: boolean,
+  isEdit: boolean,
+): readonly RenderScenario[] {
+  if (!hasRequired || isEdit) {
     return [];
   }
   return [{ claim: `The ${label} form rejects an incomplete submit`, kind: "submit" }];
 }
 
 /** The form-interaction claims a vow proves for its generated form (`add-task` → the `AddTask` claim). */
-export function formProves(vow: ReadonlyVow, hasRequired: boolean): readonly string[] {
-  return formScenarios(pascalCase(vow.slug), hasRequired).map((scenario) => scenario.claim);
+export function formProves(
+  vow: ReadonlyVow,
+  hasRequired: boolean,
+  isEdit: boolean,
+): readonly string[] {
+  return formScenarios(pascalCase(vow.slug), hasRequired, isEdit).map((scenario) => scenario.claim);
 }
