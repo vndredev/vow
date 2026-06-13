@@ -104,6 +104,22 @@ test("each issue SFC carries the loading / error / empty status messages, mutual
   }
 });
 
+test("each issue SFC's status messages are live regions — the swap is announced (WCAG 4.1.3)", () => {
+  // Loading/empty are polite (role=status, aria-live=polite); the failure is assertive (role=alert).
+  // A screen-reader user hears the load errored instead of being left on a silently-empty plan.
+  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+    expect(sfc).toContain(
+      '<p class="vow-empty" role="status" aria-live="polite" v-if="state.loading && !state.error && items.length === 0">Loading the plan…</p>',
+    );
+    expect(sfc).toContain(
+      '<p class="vow-empty" role="alert" aria-live="assertive" v-if="state.error && items.length === 0">Couldn\'t reach GitHub</p>',
+    );
+    expect(sfc).toContain(
+      '<p class="vow-empty" role="status" aria-live="polite" v-if="!state.loading && !state.error && items.length === 0">Nothing here yet.</p>',
+    );
+  }
+});
+
 test("each issue SFC links the agent session (the open PR) when a doing item carries one", () => {
   for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
     expect(sfc).toContain('v-if="it.session"');

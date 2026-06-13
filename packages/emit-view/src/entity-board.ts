@@ -4,9 +4,9 @@ import { humanizeFieldName, pascalCase, renderVueSfc } from "@vow/component";
 import { recordCard, titleField } from "./record-card.ts";
 import { boardComponentName } from "./naming.ts";
 import { defined } from "@vow/core";
+import { errorMessage } from "./status-message.ts";
 import { scriptJson } from "./helpers.ts";
 import { sliceComputed } from "./slice.ts";
-import { statusMessage } from "./status-message.ts";
 
 /** The board setup — the store, the option list, the per-column computed, drag + keyboard handlers. */
 function boardSetup(entity: ReadonlyVow, by: string, field: ReadonlyField): string[] {
@@ -143,7 +143,7 @@ function boardView(entity: ReadonlyVow, by: string): UiNode {
         tag: "div",
       },
       boardLiveRegion(),
-      statusMessage("state.error && rows.length === 0", "Couldn't load this data"),
+      errorMessage("state.error && rows.length === 0", "Couldn't load this data"),
     ],
     kind: "element",
     tag: "div",

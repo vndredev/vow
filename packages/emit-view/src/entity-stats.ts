@@ -1,9 +1,9 @@
 import type { Component, ReadonlyVow, UiNode } from "./types.ts";
 import { assertEmitEntity, selectField } from "./entity-guard.ts";
 import { pascalCase, renderVueSfc } from "@vow/component";
+import { errorMessage } from "./status-message.ts";
 import { scriptJson } from "./helpers.ts";
 import { statsComponentName } from "./naming.ts";
-import { statusMessage } from "./status-message.ts";
 
 /** The `<Stats>` composition — one `<Stat>` per option, bound to the per-group count computed. */
 function statsBlock(): UiNode {
@@ -34,7 +34,7 @@ function statsView(): UiNode {
     attrs: [{ kind: "static", name: "class", value: "vow-view" }],
     children: [
       statsBlock(),
-      statusMessage("state.error && rows.length === 0", "Couldn't load this data"),
+      errorMessage("state.error && rows.length === 0", "Couldn't load this data"),
     ],
     kind: "element",
     tag: "section",
