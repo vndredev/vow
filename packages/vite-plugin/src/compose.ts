@@ -224,8 +224,8 @@ export function composeEventViews(eventViews: readonly string[], outDir: string)
   if (wanted.has("trace")) {
     files.push({ path: path.join(outDir, "VowEventTrace.vue"), source: emitEventTraceSfc() });
   }
-  // The trace view is self-contained (no primitive adapters beyond what the SFC renders directly).
-  return { files, primitives: [] };
+  // The trace composes the Table parts (aligned columns) + a Badge per event kind.
+  return { files, primitives: primitivesFor(files, ["Table", "TableRow", "TableCell", "Badge"]) };
 }
 
 /** The live agent-loop-status views (`loop: { as }`) — a fixed component reading `/__vow/agent-loop/status`. */
@@ -238,8 +238,8 @@ export function composeLoopViews(loopViews: readonly string[], outDir: string): 
       source: emitAgentLoopStatusSfc(),
     });
   }
-  // The status view is self-contained (no primitive adapters beyond what the SFC renders directly).
-  return { files, primitives: [] };
+  // The status composes a run-state Badge + the Stats/Stat stat-card grid for the round's metrics.
+  return { files, primitives: primitivesFor(files, ["Badge", "Stats", "Stat"]) };
 }
 
 /** Materialise every needed primitive adapter once, from the closed registry (on demand → lean output). */

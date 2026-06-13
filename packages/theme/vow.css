@@ -583,6 +583,71 @@ body {
   font-size: var(--vow-text-sm);
   color: var(--vow-color-muted);
 }
+/* the live agent-loop status (`loop: { as: status }`) — a run-state Badge above the round's stat-card grid.
+   It composes the Stats/Stat primitives; these rules only arrange the panel + give the cockpit's stat labels
+   the small-uppercase-above-the-value treatment (the loop reads as a dashboard, not a jammed count run). */
+.vow-loop__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-4);
+}
+.vow-loop__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+}
+.vow-loop .vow-stat {
+  /* the label sits ABOVE the value — a small muted uppercase caption over a large tabular number */
+  flex-direction: column-reverse;
+  gap: var(--vow-space-1);
+}
+.vow-loop .vow-stat__label {
+  font-size: var(--vow-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--vow-tracking-wide);
+  font-weight: var(--vow-weight-medium);
+}
+.vow-loop .vow-stat__value {
+  font-size: var(--vow-text-3xl);
+}
+/* the live event trace (`events: { as: trace }`) — a structured Table of aligned columns, newest-first.
+   It composes the Table parts + a Badge per kind; `.vow-trace` caps the height + scrolls so a long run
+   stays a contained, scannable feed, and the column hooks tune the time/issue/detail cells. */
+.vow-events {
+  display: block;
+}
+.vow-trace {
+  max-height: 60vh;
+  overflow-y: auto;
+  border-radius: var(--vow-radius-3);
+}
+.vow-trace .vow-table {
+  border: none;
+}
+.vow-trace__ts {
+  font-family: var(--vow-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--vow-color-muted);
+  white-space: nowrap;
+  width: 1px;
+}
+.vow-trace__kind {
+  width: 1px;
+  white-space: nowrap;
+}
+.vow-trace__issue {
+  font-family: var(--vow-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--vow-color-muted);
+  white-space: nowrap;
+  width: 1px;
+}
+.vow-trace__phase {
+  color: var(--vow-color-muted);
+}
+.vow-trace__phase + .vow-trace__detail-text {
+  margin-left: var(--vow-space-2);
+}
 /* the Callout primitive — a structural notice; the variant tints it (the reusable form of `:::`) */
 .vow-callout {
   margin: var(--vow-space-3) 0;

@@ -80,6 +80,30 @@ test("a `## view` with `loop: { as: status }` materialises the live agent-loop-s
     expect(readFileSync(path.join(dir, "cockpit.vue"), "utf8")).toContain("<VowAgentLoopStatus");
     const sfc = readFileSync(path.join(dir, "VowAgentLoopStatus.vue"), "utf8");
     expect(sfc).toContain("useAgentLoopStatus");
+    // It composes the Badge + Stats/Stat primitives, so the plugin materialises them too (no dangling import).
+    expect(files).toContain("Badge.vue");
+    expect(files).toContain("Stats.vue");
+    expect(files).toContain("Stat.vue");
+  });
+});
+
+test("a `## view` with `events: { as: trace }` materialises the trace + its Table/Badge primitives", () => {
+  inTempDir((dir) => {
+    const cockpit: VowNode = {
+      ...shell,
+      id: "vow_cockpit",
+      slug: "cockpit",
+      view: [{ type: "events", value: { as: "trace" } }],
+    };
+    generateFiles([cockpit], { outDir: dir, srcDir: dir });
+    const files = readdirSync(dir);
+    expect(files).toContain("VowEventTrace.vue");
+    expect(readFileSync(path.join(dir, "cockpit.vue"), "utf8")).toContain("<VowEventTrace");
+    // The trace composes the Table parts + a Badge per kind, so the plugin writes them (no dangling import).
+    expect(files).toContain("Table.vue");
+    expect(files).toContain("TableRow.vue");
+    expect(files).toContain("TableCell.vue");
+    expect(files).toContain("Badge.vue");
   });
 });
 

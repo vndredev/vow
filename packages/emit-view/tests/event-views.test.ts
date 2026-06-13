@@ -72,15 +72,40 @@ test("the trace SFC carries the loading / error / empty status messages, mutuall
   expect(sfc).toContain("No events yet.");
 });
 
-test("the trace SFC loops over items and renders ts + kind for each entry", () => {
+test("the trace SFC renders a structured Table of rows, newest-first", () => {
   const sfc = emitEventTraceSfc();
-  expect(sfc).toContain('v-for="it in items"');
+  // A Table whose rows are the reversed feed (latest run at the top), keyed by ts.
+  expect(sfc).toContain("<Table");
+  expect(sfc).toContain("<TableRow");
+  expect(sfc).toContain("<TableCell");
+  expect(sfc).toContain("const feed = computed(() => [...items].reverse());");
+  expect(sfc).toContain('v-for="it in feed"');
   expect(sfc).toContain(':key="it.ts"');
-  expect(sfc).toContain("{{ it.ts }}");
-  expect(sfc).toContain("{{ it.kind }}");
 });
 
-test("the trace SFC renders optional fields (issue, phase, detail) only when present", () => {
+test("the trace SFC formats the time to HH:MM:SS, not the raw ISO string", () => {
+  const sfc = emitEventTraceSfc();
+  // A framework-neutral helper derives a short clock from the ISO `ts`.
+  expect(sfc).toContain("function time(ts: string): string {");
+  expect(sfc).toContain("return new Date(ts).toTimeString().slice(0, 8);");
+  expect(sfc).toContain("{{ time(it.ts) }}");
+  // The raw ISO string is never rendered bare.
+  expect(sfc).not.toContain("{{ it.ts }}");
+});
+
+test("the trace SFC colours each kind with a Badge tone via a kind → tone lookup", () => {
+  const sfc = emitEventTraceSfc();
+  expect(sfc).toContain("<Badge");
+  expect(sfc).toContain(':label="it.kind"');
+  expect(sfc).toContain(':tone="tone(it.kind)"');
+  // Started/publish → accent, done/merged/finished → success, failed → danger, else neutral.
+  expect(sfc).toContain('if (kind.includes("failed")) return "danger";');
+  expect(sfc).toContain('return "success";');
+  expect(sfc).toContain('return "accent";');
+  expect(sfc).toContain('return "neutral";');
+});
+
+test("the trace SFC renders the optional issue + phase + detail only when present", () => {
   const sfc = emitEventTraceSfc();
   expect(sfc).toContain('v-if="it.issue"');
   expect(sfc).toContain("{{ it.issue }}");
@@ -88,4 +113,12 @@ test("the trace SFC renders optional fields (issue, phase, detail) only when pre
   expect(sfc).toContain("{{ it.phase }}");
   expect(sfc).toContain('v-if="it.detail"');
   expect(sfc).toContain("{{ it.detail }}");
+});
+
+test("the trace SFC imports the Table parts + Badge it composes", () => {
+  const sfc = emitEventTraceSfc();
+  expect(sfc).toContain('import Badge from "./Badge.vue";');
+  expect(sfc).toContain('import Table from "./Table.vue";');
+  expect(sfc).toContain('import TableRow from "./TableRow.vue";');
+  expect(sfc).toContain('import TableCell from "./TableCell.vue";');
 });
