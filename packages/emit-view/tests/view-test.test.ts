@@ -61,12 +61,18 @@ const addTaskForm: Vow = {
 };
 
 test("formProves derives the interaction scenario only when the entity has a required field", () => {
-  expect(formProves(addTaskForm, true)).toEqual(["The AddTask form rejects an incomplete submit"]);
-  expect(formProves(addTaskForm, false)).toEqual([]);
+  expect(formProves(addTaskForm, true, false)).toEqual([
+    "The AddTask form rejects an incomplete submit",
+  ]);
+  expect(formProves(addTaskForm, false, false)).toEqual([]);
+});
+
+test("formProves returns [] for an edit form even when the entity has a required field", () => {
+  expect(formProves(addTaskForm, true, true)).toEqual([]);
 });
 
 test("emitFormTest mounts the form + submits it empty, asserting an error surfaces", () => {
-  const code = emitFormTest(addTaskForm, true);
+  const code = emitFormTest(addTaskForm, true, false);
   expect(code).toContain(`import AddTask from "./add-task.vue";`);
   expect(code).toContain(`test("The AddTask form rejects an incomplete submit", async () => {`);
   expect(code).toContain(`await wrapper.find("form").trigger("submit");`);
