@@ -66,25 +66,43 @@ test("the loop-status SFC binds to the store's status + state", () => {
   expect(sfc).toContain("const { status, state } = useAgentLoopStatus();");
 });
 
-test("the loop-status SFC reads one run-state truth — running XOR idle", () => {
+test("the loop-status SFC reads one run-state truth — a running Badge XOR an idle Badge", () => {
   const sfc = emitAgentLoopStatusSfc();
+  // Two mutually-exclusive run-state Badges, tone by `running` (success on, neutral idle).
+  expect(sfc).toContain("<Badge");
   expect(sfc).toContain('v-if="status.running"');
   expect(sfc).toContain('v-if="!status.running"');
-  expect(sfc).toContain("Autonomy on");
-  expect(sfc).toContain("Autonomy idle");
+  expect(sfc).toContain('label="Autonomy on"');
+  expect(sfc).toContain('tone="success"');
+  expect(sfc).toContain('label="Autonomy idle"');
+  expect(sfc).toContain('tone="neutral"');
 });
 
-test("the loop-status SFC shows the round's metrics (round, backlog, open PRs)", () => {
+test("the loop-status SFC shows the round's metrics as a Stats/Stat stat-card grid", () => {
   const sfc = emitAgentLoopStatusSfc();
-  expect(sfc).toContain("{{ status.round }}");
-  expect(sfc).toContain("{{ status.backlog }}");
-  expect(sfc).toContain("{{ status.openPrs }}");
+  // The metrics compose the Stats container + a Stat card per count (value bound, label the metric name).
+  expect(sfc).toContain("<Stats");
+  expect(sfc).toContain("<Stat");
+  expect(sfc).toContain(':value="status.round"');
+  expect(sfc).toContain('label="Round"');
+  expect(sfc).toContain(':value="status.backlog"');
+  expect(sfc).toContain('label="Backlog"');
+  expect(sfc).toContain(':value="status.openPrs"');
+  expect(sfc).toContain('label="Open PRs"');
 });
 
-test("the loop-status SFC renders the last-round timestamp only when the loop has advanced", () => {
+test("the loop-status SFC renders the last-round Stat only when the loop has advanced", () => {
   const sfc = emitAgentLoopStatusSfc();
   expect(sfc).toContain('v-if="status.lastRound"');
-  expect(sfc).toContain("{{ status.lastRound }}");
+  expect(sfc).toContain(':value="status.lastRound"');
+  expect(sfc).toContain('label="Last round"');
+});
+
+test("the loop-status SFC imports the Badge + Stats/Stat primitives it composes", () => {
+  const sfc = emitAgentLoopStatusSfc();
+  expect(sfc).toContain('import Badge from "./Badge.vue";');
+  expect(sfc).toContain('import Stats from "./Stats.vue";');
+  expect(sfc).toContain('import Stat from "./Stat.vue";');
 });
 
 test("the loop-status SFC carries the loading / failed messages, mutually exclusive", () => {

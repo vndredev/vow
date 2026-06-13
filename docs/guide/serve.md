@@ -48,12 +48,12 @@ This is the **read** half of the cockpit — the loop observable from the studio
 
 ## The operations cockpit
 
-The studio's **Cockpit** (the Operations home, `apps/studio/app/cockpit.vow.md`) is the single pane of glass over the autonomous system — built, like every studio page, from vow blocks + tokens, no hand-written markup:
+The studio's **Cockpit** (the Operations home, `apps/studio/app/cockpit.vow.md`) is the single pane of glass over the autonomous system — built, like every studio page, from vow blocks + tokens, no hand-written markup. Each section is a paneled [`Card`](/guide/primitives/card) (a bordered, padded surface from the tokens), stacked with breathing room:
 
-- **The agent loop** — `loop: { as: status }`, a generated view element (`VowAgentLoopStatus`) bound to the `useAgentLoopStatus()` hook. It renders whether autonomy is **running** or **idle**, and the round's `round` / `backlog` / `openPrs` metrics, with the optional last-round timestamp — the [agent-loop status](#the-agent-loop-status) made visible. Read-only: the loop is observed here, never driven from this element.
-- **The trace** — `events: { as: trace }`, the live agent-run feed (`run.started` / `run.phase` / `pr.merged`) over the same SSE stream the [studio trace](#what-it-serves) uses.
+- **The agent loop** — `loop: { as: status }`, a generated view element (`VowAgentLoopStatus`) bound to the `useAgentLoopStatus()` hook. It **composes vow primitives** — a [`Badge`](/guide/primitives/badge) for the run state (a positive tone when **running**, neutral when **idle**) above a [`Stats`](/guide/primitives/stats) stat-card grid for the round's `round` / `backlog` / `openPrs` metrics (plus the optional last-round) — so it inherits the design language exactly like the Board/Table views, not bespoke classed markup. The [agent-loop status](#the-agent-loop-status) made visible. Read-only: the loop is observed here, never driven from this element.
+- **The trace** — `events: { as: trace }`, the live agent-run feed (`run.started` / `run.phase` / `pr.merged`) over the same SSE stream as [what it serves](#what-it-serves). It renders as a structured [`Table`](/guide/primitives/table), **newest-first**, in aligned columns: the time formatted to `HH:MM:SS` (never the raw ISO string), a [`Badge`](/guide/primitives/badge) per `kind` coloured by meaning (started/publish → accent, done/merged → success, failed → danger, a phase → neutral), the `#issue`, then the phase/detail — capped in height and scrolled, so a long run stays a contained, scannable feed. The cockpit **is** the single Operations pane; there is no separate Trace page.
 
-The `loop: { as: status }` element follows exactly the `events: { as: trace }` pattern — the `as:` value picks the fixed component the plugin materialises, so the cockpit can never bind a component the plugin didn't write.
+The `loop: { as: status }` element follows exactly the `events: { as: trace }` pattern — the `as:` value picks the fixed component the plugin materialises, so the cockpit can never bind a component the plugin didn't write. Both compose the closed primitive registry (Badge · Stats/Stat · the Table parts), materialised on demand into `.generated/`.
 
 Two pieces are **deliberately deferred**, noted in the cockpit doc itself so the surface never oversells:
 

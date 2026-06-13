@@ -55,12 +55,18 @@ The catalog of ready-made components — you name them, vow brings the markup:
   date, each a type [`Badge`](/guide/primitives/badge) + a PR link — baked from `git log` at generate
   time (the same engine as the docs' `::: timeline`). Never hand-typed.
 - **`events: { as: trace }`** — the **live agent-run trace**: every `run.started` / `run.phase` / `pr.merged`
-  the loop and its agents emit, read live over the studio's `/__vow/events` SSE stream (no baked data). The
-  studio [trace](/guide/serve) panel binds to it.
+  the loop and its agents emit, read live over the studio's `/__vow/events` SSE stream (no baked data). It
+  composes the [`Table`](/guide/primitives/table) parts into a structured, newest-first feed of aligned
+  columns — the time formatted to `HH:MM:SS` (never the raw ISO string), a [`Badge`](/guide/primitives/badge)
+  per `kind` coloured by meaning (started/publish → accent, done/merged → success, failed → danger, a phase →
+  neutral), the `#issue`, then the phase/detail. The studio [Cockpit](/guide/serve#the-operations-cockpit)
+  panel binds to it.
 - **`loop: { as: status }`** — the **live agent-loop status**: whether autonomy is running or idle and the
   round's `round` / `backlog` / `openPrs` metrics, read live from `/__vow/agent-loop/status` (no baked data).
-  The [Cockpit](/guide/serve#the-operations-cockpit) composes it with the trace. Read-only — control is
-  a follow-up (#623).
+  It composes a [`Badge`](/guide/primitives/badge) for the run state (tone by `running`) above a
+  [`Stats`](/guide/primitives/stats) stat-card grid for the metrics. The
+  [Cockpit](/guide/serve#the-operations-cockpit) composes it with the trace. Read-only — control is a
+  follow-up (#623).
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
   `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radio` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
   The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
