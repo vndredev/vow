@@ -87,7 +87,8 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
   {
     group: "github",
     name: "add_issue",
-    summary: "Open a GitHub issue (feature template + labels) — assigned + added to the Project.",
+    summary:
+      "Open a GitHub issue (feature template + labels) — assigned, phased (the current milestone), added to the Project.",
   },
   { group: "github", name: "close_issue", summary: "Close a GitHub issue (marks it done)." },
   { group: "github", name: "assign_issue", summary: "Assign a user to a GitHub issue." },

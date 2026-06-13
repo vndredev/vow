@@ -1,5 +1,13 @@
 import { AUDIT_MODEL, auditCommand, childEnv, renderAuditPrompt } from "@vow/agent";
-import { auditIssue, createIssue, parseFindings } from "@vow/observability";
+/* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
+import {
+  type Maybe,
+  auditIssue,
+  createIssue,
+  parseFindings,
+  resolveCurrentPhase,
+} from "@vow/observability";
+/* oxlint-enable consistent-type-specifier-style */
 // oxlint-disable-next-line no-duplicate-imports -- the agent-run value import elsewhere; Auth is a type
 import type { Auth } from "./agent-run.ts";
 import { execFileSync } from "node:child_process";
@@ -69,9 +77,18 @@ interface DimensionResult {
   readonly filed: number;
 }
 
+/** A pass's shared context — the auth, the cwd, and the phase every filed finding is stamped with
+ *  (resolved once per pass, so the audit → plan step never re-resolves it per dimension). */
+interface AuditContext {
+  readonly auth: Auth;
+  readonly cwd: string;
+  readonly phase: Maybe<string>;
+}
+
 /** Run + file one dimension's audit. A broken shell-out files nothing and flags `broke`; a genuine empty
  *  array files nothing with `broke=false` (a real findings-free dimension). */
-function fileDimension(dimension: string, auth: Auth, cwd: string): DimensionResult {
+function fileDimension(dimension: string, context: AuditContext): DimensionResult {
+  const { auth, cwd, phase } = context;
   const run = runDimensionAudit(dimension, auth, cwd);
   if (!run.ran) {
     process.stdout.write(`auto: ${dimension} audit failed — pass is broken, not findings-free\n`);
@@ -79,7 +96,7 @@ function fileDimension(dimension: string, auth: Auth, cwd: string): DimensionRes
   }
   const findings = parseFindings(run.raw);
   for (const finding of findings) {
-    process.stdout.write(`${createIssue(cwd, auditIssue(finding))}\n`);
+    process.stdout.write(`${createIssue(cwd, auditIssue(finding, phase))}\n`);
   }
   return { broke: false, filed: findings.length };
 }
@@ -96,16 +113,23 @@ export interface AuditPassResult {
  *  when every dimension's shell-out succeeded and filed zero (`broke=false, filed=0`); any broken dimension
  *  marks the whole pass broken so the loop can stop loudly rather than declare success having audited nothing.
  *  Any findings re-fill the backlog for the next round. */
-export function runAuditPass(auth: Auth, cwd: string): AuditPassResult {
-  process.stdout.write("auto: backlog empty — auditing for new work\n");
+/** Audit + file every dimension under one context, summing the filed count and OR-ing the broke flag. */
+function fileAll(context: AuditContext): AuditPassResult {
   let filed = 0;
   let broke = false;
   for (const dimension of AUDIT_DIMENSIONS) {
     process.stdout.write(`auto: auditing ${dimension}\n`);
-    const result = fileDimension(dimension, auth, cwd);
+    const result = fileDimension(dimension, context);
     filed += result.filed;
     broke ||= result.broke;
   }
-  process.stdout.write(`auto: audit filed ${filed} issue(s)\n`);
   return { broke, filed };
+}
+
+export function runAuditPass(auth: Auth, cwd: string): AuditPassResult {
+  process.stdout.write("auto: backlog empty — auditing for new work\n");
+  const context: AuditContext = { auth, cwd, phase: resolveCurrentPhase(cwd) };
+  const result = fileAll(context);
+  process.stdout.write(`auto: audit filed ${result.filed} issue(s)\n`);
+  return result;
 }
