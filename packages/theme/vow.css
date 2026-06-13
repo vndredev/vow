@@ -429,6 +429,41 @@ body {
   color: var(--vow-color-muted);
   font-variant-numeric: tabular-nums;
 }
+/* a phase's shipped work — collapsed behind a "✓ N shipped" disclosure (green = proof), so the done flood
+   never buries the open plan; a completed phase is one compact line, expandable on demand */
+.vow-roadmap__shipped {
+  margin-top: var(--vow-space-1);
+}
+.vow-roadmap__shipped > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  width: fit-content;
+  padding: var(--vow-space-2) 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-success);
+}
+.vow-roadmap__shipped > summary::-webkit-details-marker {
+  display: none;
+}
+.vow-roadmap__shipped > summary::before {
+  content: "▸";
+  display: inline-block;
+  transition: transform 0.12s;
+}
+.vow-roadmap__shipped[open] > summary::before {
+  transform: rotate(90deg);
+}
+.vow-roadmap__shipped[open] > summary {
+  margin-bottom: var(--vow-space-2);
+}
+/* the shipped cards read as settled proof — dimmed a touch below the live, open work */
+.vow-roadmap__shipped > .vow-roadmap__items {
+  opacity: 0.7;
+}
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {
   font-weight: var(--vow-weight-semibold);
@@ -472,6 +507,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--vow-space-3);
+  /* cap the column so a long "done" stack scrolls inside it instead of growing the page kilometers tall */
+  max-height: 78vh;
+  overflow-y: auto;
 }
 .vow-board__col-head {
   display: flex;
@@ -480,6 +518,12 @@ body {
   font-size: var(--vow-text-sm);
   font-weight: var(--vow-weight-semibold);
   text-transform: capitalize;
+  /* keep the column's status + count in view while its cards scroll under it */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-bottom: var(--vow-space-2);
+  background: var(--vow-color-bg);
 }
 .vow-board__count {
   color: var(--vow-color-muted);

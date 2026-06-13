@@ -121,6 +121,19 @@ test("the roadmap and board cards lead with the title, then a meta footer with t
   }
 });
 
+test("the roadmap leads each phase with its open work and collapses the done into a shipped disclosure", () => {
+  const sfc = emitIssueRoadmapSfc();
+  // The open cards lead, shown only when the phase has open work.
+  expect(sfc).toContain('v-for="it in p.open"');
+  expect(sfc).toContain('v-if="p.open.length > 0"');
+  // The done cards collapse into a native <details> "shipped" disclosure (green = proof).
+  expect(sfc).toContain("<details");
+  expect(sfc).toContain('class="vow-roadmap__shipped"');
+  expect(sfc).toContain('v-for="it in p.done"');
+  expect(sfc).toContain('v-if="p.done.length > 0"');
+  expect(sfc).toContain("shipped");
+});
+
 test("the board card carries an issue's labels and assignee, each guarded so an empty card stays clean", () => {
   const sfc = emitIssueBoardSfc();
   // The shared per-label Badge loop, the same the table cell uses.
