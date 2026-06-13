@@ -2,9 +2,9 @@
 // oxlint-disable prefer-readonly-parameter-types -- the middleware bridges the mutable Node req/res objects
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Server, createServer } from "node:http";
-import { eventsApi, wantsEventStream } from "../src/dev-api.ts";
+import { eventsApi, repoRootOf, wantsEventStream } from "../src/dev-api.ts";
 import { expect, test } from "vite-plus/test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { once } from "node:events";
 import path from "node:path";
@@ -53,6 +53,16 @@ function seededDir(kind: string): string {
   const dir = mkdtempSync(path.join(tmpdir(), "vow-events-"));
   recordEvent(dir, kind);
   return dir;
+}
+
+/** A throwaway workspace root (holds `pnpm-workspace.yaml`) with an `apps/<slug>` app dir below it — the
+ *  shape `repoRootOf` walks up across. Returns the root and the nested app dir the dev server runs from. */
+function workspaceWithApp(): { root: string; app: string } {
+  const root = mkdtempSync(path.join(tmpdir(), "vow-events-root-"));
+  writeFileSync(path.join(root, "pnpm-workspace.yaml"), "packages:\n");
+  const app = path.join(root, "apps", "studio");
+  mkdirSync(app, { recursive: true });
+  return { app, root };
 }
 
 /** Close a loopback server and remove its throwaway workspace — the one teardown both tests share. */
@@ -129,5 +139,23 @@ test("an EventSource GET streams the live feed — a freshly recorded event PUSH
     await assertRealtimePush(readerOf(response), dir);
   } finally {
     await teardown(server, dir);
+  }
+});
+
+test("the events feed resolves the REPO ROOT — the trace reads where the loop records, not app-local (#620)", async () => {
+  // The dev server's cwd is `apps/studio`, but `vow agent auto` records to the REPO-ROOT `.vow/events.jsonl`.
+  // The mount resolves the root via `repoRootOf`, so the feed reads the loop's log, not the empty app-local
+  // `.vow/`. Record at the root, serve the feed from the resolved root, assert the GET snapshot has the event.
+  const { app, root } = workspaceWithApp();
+  recordEvent(root, "pr.merged");
+  const resolved = repoRootOf(app);
+  expect(resolved).toBe(root);
+  const server = await listening(eventsApi(resolved ?? app));
+  try {
+    const response = await get(server, "application/json");
+    const feed: unknown = await response.json();
+    expect(Array.isArray(feed) && feed.length === 1).toBe(true);
+  } finally {
+    await teardown(server, root);
   }
 });
