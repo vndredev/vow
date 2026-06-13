@@ -4,6 +4,7 @@ import { type Maybe, type ReadonlyVow, defined } from "@vow/core";
 import {
   boardComponentName,
   cardsComponentName,
+  emitAgentLoopStatusSfc,
   emitEntityBoard,
   emitEntityCards,
   emitEntityList,
@@ -224,6 +225,20 @@ export function composeEventViews(eventViews: readonly string[], outDir: string)
     files.push({ path: path.join(outDir, "VowEventTrace.vue"), source: emitEventTraceSfc() });
   }
   // The trace view is self-contained (no primitive adapters beyond what the SFC renders directly).
+  return { files, primitives: [] };
+}
+
+/** The live agent-loop-status views (`loop: { as }`) — a fixed component reading `/__vow/agent-loop/status`. */
+export function composeLoopViews(loopViews: readonly string[], outDir: string): Composed {
+  const wanted = new Set(loopViews);
+  const files: Artifact[] = [];
+  if (wanted.has("status")) {
+    files.push({
+      path: path.join(outDir, "VowAgentLoopStatus.vue"),
+      source: emitAgentLoopStatusSfc(),
+    });
+  }
+  // The status view is self-contained (no primitive adapters beyond what the SFC renders directly).
   return { files, primitives: [] };
 }
 

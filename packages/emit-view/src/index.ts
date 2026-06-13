@@ -22,6 +22,8 @@ export { fieldControl } from "./field-control.ts";
 export { emitForm } from "./form.ts";
 export { ISSUE_LAYOUTS, type IssueLayout, issueLayout } from "./issue-layout.ts";
 export { emitIssueBoardSfc, emitIssueRoadmapSfc, emitIssueTableSfc } from "./issue-sfc.ts";
+export { LOOP_LAYOUTS, type LoopLayout, loopLayout } from "./loop-layout.ts";
+export { emitAgentLoopStatusSfc } from "./loop-sfc.ts";
 export {
   VIEW_NODE_TYPES,
   assertKnownViewType,
@@ -42,6 +44,7 @@ export {
   eventLayouts,
   issueLayouts,
   listedEntities,
+  loopLayouts,
   statsRefs,
   usesTimeline,
 } from "./refs.ts";
