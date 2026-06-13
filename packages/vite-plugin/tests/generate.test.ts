@@ -59,7 +59,7 @@ test("generateFiles renders a `## view` and writes the layout primitives it need
     expect(files).toContain("Flex.vue");
 
     const shellVue = readFileSync(path.join(dir, "shell.vue"), "utf8");
-    expect(shellVue).toContain('<div class="vow-app">');
+    expect(shellVue).toContain('<div class="vow-app" data-vow-source="shell">');
     expect(shellVue).toContain('<Flex :direction="\'column\'" :gap="4">hi</Flex>');
     expect(shellVue).toContain('import Flex from "./Flex.vue";');
   });

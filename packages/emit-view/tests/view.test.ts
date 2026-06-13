@@ -55,6 +55,15 @@ const addTaskForm: Vow = {
   slug: "add-task",
 };
 
+test("generated views and forms carry data-vow-source — the picker maps a clicked element to its vow", () => {
+  expect(emitView(view([{ type: "list", value: "task" }]), ["task"])).toContain(
+    'data-vow-source="page"',
+  );
+  expect(emitForm(addTaskForm, new Map([["task", taskEntity]]))).toContain(
+    'data-vow-source="add-task"',
+  );
+});
+
 test("hero expands to a column Flex with eyebrow, title and lead", () => {
   const sfc = emitView(
     view([{ type: "hero", value: { eyebrow: "vow", lead: "Build it", title: "The framework" } }]),
@@ -182,7 +191,9 @@ test("every enumerated VIEW_NODE_TYPES entry is one knownViewType accepts — th
 });
 
 test("the view is wrapped in a vow-app root", () => {
-  expect(emitView(view([{ type: "text", value: "hello" }]))).toContain('<div class="vow-app">');
+  expect(emitView(view([{ type: "text", value: "hello" }]))).toContain(
+    '<div class="vow-app" data-vow-source="page">',
+  );
 });
 
 test("emitForm renders a labelled, zod-validated form bound to an entity", () => {
@@ -191,7 +202,7 @@ test("emitForm renders a labelled, zod-validated form bound to an entity", () =>
   expectContains(sfc, [
     'import { ZodError } from "zod";',
     'import { createTask, type Task } from "./task.ts";',
-    '<form class="vow-form" @submit.prevent="submit">',
+    '<form class="vow-form" data-vow-source="add-task" @submit.prevent="submit">',
     '<Field label="Title" :control-id="titleId" :error="errors.title">',
     '<Checkbox v-model="draft.done" label="Done" />',
     "append(createTask(draft.value));",

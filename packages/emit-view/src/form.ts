@@ -342,6 +342,7 @@ export function emitForm(form: ReadonlyVow, byId: EntityLookup): string {
     view: {
       attrs: [
         { kind: "static", name: "class", value: "vow-form" },
+        { kind: "static", name: "data-vow-source", value: form.slug },
         { expr: "submit", kind: "event", modifiers: ["prevent"], name: "submit" },
       ],
       children: [...fields, ...formControls(form, edit)],

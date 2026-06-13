@@ -22,7 +22,12 @@ export function buildView(
   }
   const nodes = view.view.map((node) => mapNode(node.type, node.value, entities));
   const root: UiNode = {
-    attrs: [{ kind: "static", name: "class", value: "vow-app" }],
+    attrs: [
+      { kind: "static", name: "class", value: "vow-app" },
+      // The page's spec source — the picker (the in-app bug reporter) walks up to the nearest
+      // `data-vow-source` to name which vow a clicked element came from. Only vow can map DOM → spec.
+      { kind: "static", name: "data-vow-source", value: view.slug },
+    ],
     children: nodes,
     kind: "element",
     tag: "div",
@@ -70,7 +75,10 @@ export function emitView(view: ReadonlyVow, entities: readonly string[] = []): s
  */
 export function emitProse(slug: string, nodes: readonly UiNode[]): string {
   const root: UiNode = {
-    attrs: [{ kind: "static", name: "class", value: "vow-doc" }],
+    attrs: [
+      { kind: "static", name: "class", value: "vow-doc" },
+      { kind: "static", name: "data-vow-source", value: slug },
+    ],
     children: [...nodes],
     kind: "element",
     tag: "div",
