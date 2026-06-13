@@ -41,10 +41,12 @@ function modelSetting(envKey: string, fallback: string): string {
 
 /**
  * Claude Code's per-role models — the clear Anthropic rule. Capability (knowledge) priority:
- * **Fable 5 > Opus 4.8 > Sonnet 4.6 > Haiku 4.5**. Each role gets a model by how much reasoning it
+ * **Opus 4.8 > Sonnet 4.6 > Haiku 4.5**. Fable 5 / Mythos 5 were the prior top tier, but an export-control
+ * directive (2026-06-12) suspended them GLOBALLY — disabled for every user — so no role may name them; the
+ * audit fell back to Opus, now the most capable available. Each role gets a model by how much reasoning it
  * demands, top-down — and the intelligence lives in the PLAN, which the executor then follows under the
  * gate (drift-proof), so the plan outranks the execute:
- *   - `audit`   — open-ended, whole-codebase bug-finding (the most knowledge) → **Fable 5**
+ *   - `audit`   — open-ended, whole-codebase bug-finding (the most knowledge) → **Opus 4.8**
  *   - `plan`    — designs the verification-gated plan the executor follows     → **Opus 4.8**
  *   - `execute` — writes the code by following the gated plan                  → **Sonnet 4.6**
  * Haiku is the floor — NEVER one of these roles: a cheap execute drafted a broken #502, so even the
@@ -52,7 +54,7 @@ function modelSetting(envKey: string, fallback: string): string {
  * deployment, but the default IS the rule.
  */
 const CLAUDE_MODELS: ModelPolicy = {
-  audit: modelSetting("VOW_AUDIT_MODEL", "claude-fable-5"),
+  audit: modelSetting("VOW_AUDIT_MODEL", "claude-opus-4-8"),
   execute: modelSetting("VOW_EXECUTE_MODEL", "claude-sonnet-4-6"),
   plan: modelSetting("VOW_PLAN_MODEL", "claude-opus-4-8"),
 };
@@ -77,8 +79,8 @@ export const claudeCode: Provider = {
   name: "claude-code",
 };
 
-/** The audit model — the brain a headless audit pass runs under (Fable, the most capable). Resolved from
- *  vow's native per-role setting, so it tracks the policy the loop already uses for the audit role. */
+/** The audit model — the brain a headless audit pass runs under (Opus 4.8, the most capable available since
+ *  Fable's suspension). Resolved from vow's native per-role setting, so it tracks the policy the loop uses. */
 export const AUDIT_MODEL: string = CLAUDE_MODELS.audit;
 
 /** The claude CLI command for a headless, read-only audit of one dimension: print mode at `model` with the

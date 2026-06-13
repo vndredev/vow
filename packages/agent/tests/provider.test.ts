@@ -19,7 +19,7 @@ test("providerFor resolves the documented 'claude' alias to the claude-code back
 });
 
 test("auditCommand builds the read-only, print-mode claude args at the given model + prompt", () => {
-  const command = auditCommand("claude-fable-5", "audit for types");
+  const command = auditCommand("claude-opus-4-8", "audit for types");
   expect(command.bin).toBe("claude");
   // Prompt is the positional right after `--print`; the variadic `--allowedTools <tools...>` comes LAST.
   // A trailing prompt would be swallowed as a tool, aborting claude with "Input must be provided".
@@ -27,7 +27,7 @@ test("auditCommand builds the read-only, print-mode claude args at the given mod
     "--print",
     "audit for types",
     "--model",
-    "claude-fable-5",
+    "claude-opus-4-8",
     "--allowedTools",
     "Read,Grep,Glob",
   ]);
@@ -37,10 +37,9 @@ test("auditCommand builds the read-only, print-mode claude args at the given mod
   // Subscription auth by default — the API key is stripped from the child env.
   expect([...(command.unsetEnv ?? [])]).toEqual(["ANTHROPIC_API_KEY"]);
   // `--auth api` keeps the key (pay-per-use).
-  expect(auditCommand("claude-fable-5", "p", "api").unsetEnv).toEqual([]);
+  expect(auditCommand("claude-opus-4-8", "p", "api").unsetEnv).toEqual([]);
 });
 
-test("AUDIT_MODEL defaults to Fable — the audit role's brain", () => {
-  expect(typeof AUDIT_MODEL).toBe("string");
-  expect(AUDIT_MODEL).not.toBe("");
+test("AUDIT_MODEL defaults to Opus — the audit role's brain since Fable's suspension", () => {
+  expect(AUDIT_MODEL).toBe("claude-opus-4-8");
 });
