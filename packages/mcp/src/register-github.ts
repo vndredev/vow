@@ -8,6 +8,7 @@ import {
   featureIssueBody,
   issuePlan,
   milestoneFor,
+  reopenIssue,
   resolveCurrentPhase,
   syncProjectStatus,
 } from "@vow/observability";
@@ -129,6 +130,7 @@ function registerIssues(server: Registrar, names: Names, appDir: string): void {
   const listIssues = names.at("list_issues");
   const addIssue = names.at("add_issue");
   const closeIssueTool = names.at("close_issue");
+  const reopenIssueTool = names.at("reopen_issue");
   const assignIssueTool = names.at("assign_issue");
 
   server.registerTool(
@@ -149,6 +151,15 @@ function registerIssues(server: Registrar, names: Names, appDir: string): void {
     (input: { readonly number: number }): TextResult => {
       closeIssue(appDir, input.number);
       return text(`closed #${input.number}`);
+    },
+  );
+
+  server.registerTool(
+    reopenIssueTool.name,
+    { description: reopenIssueTool.description, inputSchema: { number: z.number() } },
+    (input: { readonly number: number }): TextResult => {
+      reopenIssue(appDir, input.number);
+      return text(`reopened #${input.number}`);
     },
   );
 

@@ -88,6 +88,7 @@ A `reference` field on `set_record_field` accepts the target's **name**, not onl
 | `list_issues`  | List GitHub issues with their derived status (planned/doing/done).                                                |
 | `add_issue`    | Open a GitHub issue (feature template + labels) — assigned, phased (the current milestone), added to the Project. |
 | `close_issue`  | Close a GitHub issue (marks it done).                                                                             |
+| `reopen_issue` | Reopen a closed GitHub issue (marks it planned/doing again).                                                      |
 | `assign_issue` | Assign a user to a GitHub issue.                                                                                  |
 | `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).                                      |
 
