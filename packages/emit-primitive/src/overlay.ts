@@ -1,10 +1,11 @@
 import { primitive } from "./define.ts";
 
 /**
- * The overlay adapters over `@vow/headless` — dialog and select. Both layer content above the page and
- * carry the document-touching glue the core leaves to the host (focus moves, body-scroll lock, outside
- * pointer, scroll-into-view). The ARIA contract + keyboard live in the core; the adapter binds the
- * framework's reactivity and spreads the core's props, carrying only `class` + the `data-*` state hooks.
+ * The overlay adapters over `@vow/headless` — dialog, select and context menu. Each layers content above
+ * the page and carries the document-touching glue the core leaves to the host (focus moves, body-scroll
+ * lock, outside pointer, scroll-into-view, cursor positioning). The ARIA contract + keyboard live in the
+ * core; the adapter binds the framework's reactivity and spreads the core's props, carrying only `class` +
+ * the `data-*` state hooks.
  */
 
 /**
@@ -222,6 +223,110 @@ export const emitSelectSfc = primitive({
         ],
         kind: "element",
         tag: "ul",
+      },
+    ],
+    kind: "element",
+    tag: "div",
+  },
+});
+
+/**
+ * Generate the Vue context-menu adapter: a slot trigger that opens on right-click + a v-if'd `role="menu"`
+ * panel positioned at the cursor. Keyboard + the ARIA contract come from the core; the `setup` glue records
+ * the cursor, closes on an outside pointer, and moves focus into the panel on open (the document parts). A
+ * commit surfaces the chosen item via the core's `chosen`, which the adapter re-emits as `select`.
+ */
+export const emitContextMenuSfc = primitive({
+  doc: [
+    "Generated context-menu adapter over @vow/headless. Logic + a11y live in the core — do not edit.",
+    "Carries class + data-* hooks only; vow's base look lives in @vow/theme (swappable).",
+  ],
+  events: [{ name: "select", payload: "string" }],
+  imports: [
+    {
+      from: "vue",
+      names: ["computed", "nextTick", "onBeforeUnmount", "onMounted", "ref", "useId", "watch"],
+    },
+    { from: "@vow/headless", names: ["contextMenu"] },
+  ],
+  name: "ContextMenu",
+  props: [{ name: "items", tsType: "{ value: string; label: string }[]" }],
+  setup: [
+    "const uid = useId();",
+    "const open = ref(false);",
+    "const active = ref('');",
+    "const x = ref(0);",
+    "const y = ref(0);",
+    "const root = ref<HTMLElement>();",
+    "const panel = ref<HTMLElement>();",
+    "const api = computed(() =>",
+    "  contextMenu(",
+    "    { active: active.value, id: uid, items: props.items, open: open.value },",
+    "    (next) => {",
+    '      if (next.chosen !== undefined) emit("select", next.chosen);',
+    "      open.value = next.open;",
+    "      active.value = next.active;",
+    "    },",
+    "  ),",
+    ");",
+    "function onContextMenu(event: MouseEvent): void {",
+    "  event.preventDefault();",
+    "  x.value = event.clientX;",
+    "  y.value = event.clientY;",
+    "  active.value = props.items[0]?.value ?? '';",
+    "  open.value = true;",
+    "}",
+    "function onPointer(event: MouseEvent): void {",
+    "  if (open.value && root.value && !root.value.contains(event.target as Node)) {",
+    "    open.value = false;",
+    "  }",
+    "}",
+    "watch(open, async (isOpen) => {",
+    "  if (!isOpen) return;",
+    "  await nextTick();",
+    "  panel.value?.focus();",
+    "});",
+    'onMounted(() => document.addEventListener("pointerdown", onPointer));',
+    'onBeforeUnmount(() => document.removeEventListener("pointerdown", onPointer));',
+  ],
+  view: {
+    attrs: [
+      { expr: "api.rootProps", kind: "spread" },
+      { kind: "static", name: "ref", value: "root" },
+      { kind: "static", name: "class", value: "vow-context-menu" },
+    ],
+    children: [
+      {
+        attrs: [
+          { expr: "onContextMenu", kind: "event", name: "contextmenu" },
+          { kind: "static", name: "class", value: "vow-context-menu__trigger" },
+        ],
+        children: [{ children: [], kind: "slot" }],
+        kind: "element",
+        tag: "div",
+      },
+      {
+        attrs: [
+          { expr: "api.panelProps", kind: "spread" },
+          { kind: "static", name: "ref", value: "panel" },
+          { expr: "api.open", kind: "cond", type: "if" },
+          { expr: "{ left: x + 'px', top: y + 'px' }", kind: "bound", name: "style" },
+          { kind: "static", name: "class", value: "vow-context-menu__panel" },
+        ],
+        children: [
+          {
+            attrs: [
+              { expr: "api.itemProps(item)", kind: "spread" },
+              { kind: "static", name: "class", value: "vow-context-menu__item" },
+            ],
+            children: [{ expr: "item.label", kind: "interp" }],
+            for: { as: "item", each: "items", key: "item.value" },
+            kind: "element",
+            tag: "button",
+          },
+        ],
+        kind: "element",
+        tag: "div",
       },
     ],
     kind: "element",

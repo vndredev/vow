@@ -1308,6 +1308,53 @@ body {
   color: var(--vow-color-accent);
 }
 
+/* ContextMenu — a right-click floating menu, positioned at the cursor (the host binds top/left). The
+   trigger is the caller's slotted content (unstyled); the panel + items mirror the select listbox. */
+.vow-context-menu {
+  display: contents;
+}
+.vow-context-menu__panel {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
+  min-width: 11rem;
+  max-width: 18rem;
+  max-height: 60vh;
+  overflow: auto;
+  margin: 0;
+  padding: var(--vow-space-2);
+  list-style: none;
+  background: var(--vow-color-bg);
+  border: var(--vow-border) solid var(--vow-color-border);
+  border-radius: var(--vow-radius-2);
+  box-shadow: var(--vow-shadow-popover);
+}
+.vow-context-menu__panel:focus-visible {
+  outline: none;
+}
+.vow-context-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  margin: 0;
+  padding: var(--vow-space-2) var(--vow-space-3);
+  font: inherit;
+  font-size: var(--vow-text-sm);
+  text-align: left;
+  white-space: nowrap;
+  color: var(--vow-color-text);
+  background: none;
+  border: none;
+  border-radius: var(--vow-radius-1);
+  cursor: pointer;
+}
+.vow-context-menu__item:hover,
+.vow-context-menu__item[data-active] {
+  background: var(--vow-color-surface);
+}
+
 /* the git-derived timeline (`timeline:` view / `::: timeline`) — a spine + dots, dates as collapsibles */
 .vow-timeline {
   margin: var(--vow-space-5) 0;

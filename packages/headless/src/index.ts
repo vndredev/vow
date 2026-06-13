@@ -16,6 +16,12 @@
 
 export { checkbox, type CheckboxApi, type CheckboxState } from "./checkbox.ts";
 export { collapsible, type CollapsibleApi, type CollapsibleState } from "./collapsible.ts";
+export {
+  contextMenu,
+  type ContextMenuApi,
+  type ContextMenuItem,
+  type ContextMenuState,
+} from "./context-menu.ts";
 export { dialog, type DialogApi, type DialogState } from "./dialog.ts";
 export { radioGroup, type RadioGroupApi, type RadioGroupState } from "./radio-group.ts";
 export { select, type SelectApi, type SelectOption, type SelectState } from "./select.ts";
