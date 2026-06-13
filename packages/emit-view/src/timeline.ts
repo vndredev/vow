@@ -2,6 +2,7 @@ import { BADGE_VARIANTS, unionType } from "@vow/theme";
 import type { BadgeVariant, Component, TimelineEntry, UiNode } from "./types.ts";
 import { defined } from "@vow/core";
 import { renderVueSfc } from "@vow/component";
+import { scriptJson } from "./helpers.ts";
 import { variantForType } from "@vow/observability";
 
 /** One change in a rendered timeline group — its title, optional type/variant chip and PR number. */
@@ -160,8 +161,8 @@ export function emitTimelineSfc(entries: readonly TimelineEntry[], repoUrl?: str
     ],
     name: "VowTimeline",
     setup: [
-      `const groups: ${GROUPS_TYPE} = ${JSON.stringify(groups)};`,
-      `const repo = ${JSON.stringify(repoUrl ?? "")};`,
+      `const groups: ${GROUPS_TYPE} = ${scriptJson(groups)};`,
+      `const repo = ${scriptJson(repoUrl ?? "")};`,
       `const open = ref<boolean[]>(${JSON.stringify(openFlags)});`,
     ],
     view: timelineView(),
