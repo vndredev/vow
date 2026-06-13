@@ -1,29 +1,36 @@
 import { auditIssue, parseFindings } from "../src/audit.ts";
 import { expect, test } from "vite-plus/test";
+import { NONE } from "../src/none.ts";
 
-test("auditIssue maps a finding to a labelled, milestoned issue with the template body", () => {
-  const issue = auditIssue({
-    area: "emit",
-    evidence: "the why",
-    fix: "the element to build",
-    title: "A bug",
-  });
+test("auditIssue stamps the resolved phase, with the area label + the template body", () => {
+  const issue = auditIssue(
+    { area: "emit", evidence: "the why", fix: "the element to build", title: "A bug" },
+    "Phase I — the UI framework",
+  );
   expect(issue.title).toBe("A bug");
   expect(issue.labels).toEqual(["area: emit"]);
-  expect(issue.milestone).toBe("Phase G — hardening (audit fixes)");
+  expect(issue.milestone).toBe("Phase I — the UI framework");
   expect(issue.body).toContain("the element to build");
   expect(issue.body).toContain("the why");
 });
 
 test("auditIssue omits labels when the finding has no area", () => {
-  expect(auditIssue({ area: "", evidence: "e", fix: "f", title: "t" }).labels).toBeUndefined();
+  expect(
+    auditIssue({ area: "", evidence: "e", fix: "f", title: "t" }, "Phase X").labels,
+  ).toBeUndefined();
 });
 
-test("auditIssue omits the area label for an area with no repo label, but still files the finding", () => {
-  const issue = auditIssue({ area: "cli", evidence: "e", fix: "f", title: "t" });
+test("auditIssue omits the area label for an area with no repo label, but still files the phase", () => {
+  const issue = auditIssue({ area: "cli", evidence: "e", fix: "f", title: "t" }, "Phase X");
   expect(issue.labels).toBeUndefined();
   expect(issue.title).toBe("t");
-  expect(issue.milestone).toBe("Phase G — hardening (audit fixes)");
+  expect(issue.milestone).toBe("Phase X");
+});
+
+test("auditIssue files bare (no milestone) when no phase resolves — a milestone-less repo", () => {
+  expect(
+    auditIssue({ area: "emit", evidence: "e", fix: "f", title: "t" }, NONE).milestone,
+  ).toBeUndefined();
 });
 
 test("parseFindings reads the confirmed array, skipping items lacking a title or fix", () => {

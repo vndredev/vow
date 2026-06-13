@@ -83,13 +83,13 @@ A `reference` field on `set_record_field` accepts the target's **name**, not onl
 
 ### GitHub — the issue plan
 
-| Tool           |                                                                                    |
-| -------------- | ---------------------------------------------------------------------------------- |
-| `list_issues`  | List GitHub issues with their derived status (planned/doing/done).                 |
-| `add_issue`    | Open a GitHub issue (feature template + labels) — assigned + added to the Project. |
-| `close_issue`  | Close a GitHub issue (marks it done).                                              |
-| `assign_issue` | Assign a user to a GitHub issue.                                                   |
-| `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).       |
+| Tool           |                                                                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `list_issues`  | List GitHub issues with their derived status (planned/doing/done).                                                |
+| `add_issue`    | Open a GitHub issue (feature template + labels) — assigned, phased (the current milestone), added to the Project. |
+| `close_issue`  | Close a GitHub issue (marks it done).                                                                             |
+| `assign_issue` | Assign a user to a GitHub issue.                                                                                  |
+| `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).                                      |
 
 This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
 

@@ -37,7 +37,8 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
   vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
   vow pr-body --check  validate a PR body (piped on stdin) against the template before \`gh pr create\`
-  vow reconcile        report backlog drift — open issues a merged PR already closed (retire candidates)
+  vow reconcile        report plan drift — open issues a merged PR already closed (retire candidates) +
+                       open issues carrying no phase (the "No milestone" drift the roadmap can't place)
 
   the agent loop (autonomous issue -> PR through vow's gates):
 ${agentHelp()}
