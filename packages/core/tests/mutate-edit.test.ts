@@ -75,6 +75,29 @@ test("setForm patches of/submit/edit in place (omitted keys keep their value)", 
   }
 });
 
+test("setForm rejects a non-form target (an inert form block) and still patches a real form", () => {
+  const dir = freshDir();
+  try {
+    addEntity(dir, {
+      fields: [{ name: "title", required: true, type: "text" }],
+      intent: "A task",
+      slug: "task",
+    });
+    addForm(dir, { intent: "Add a task", of: "task", slug: "add-task", submit: "Add" });
+    addView(dir, { intent: "The home", slug: "home", view: [{ type: "h1", value: "Hi" }] });
+    // A view/entity slug is not a form: editing one merges an inert `form` block, so it must throw.
+    expect(() => {
+      setForm(dir, "home", { submit: "Save" });
+    }).toThrow(/set_form: "home" is not a form/u);
+    // A real form still patches.
+    setForm(dir, "add-task", { submit: "Save" });
+    const form = loadVows(dir).find((vow: { readonly slug: string }) => vow.slug === "add-task");
+    expect(form?.form).toEqual({ of: "task", submit: "Save" });
+  } finally {
+    rmSync(dir, { force: true, recursive: true });
+  }
+});
+
 test("setView replaces a vow's view in place", () => {
   const dir = freshDir();
   try {
