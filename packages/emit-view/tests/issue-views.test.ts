@@ -80,8 +80,9 @@ test("each issue SFC emits the start-work button — the human's signal to the a
     // The board action POSTs the start-work signal through the store's `startWork` (-> /__vow/agent).
     expect(sfc).toContain("startWork(it.issue.number)");
     expect(sfc).toContain('label="Start work"');
-    // Shown only while the issue isn't yet done (a done issue is reopened, not started).
-    expect(sfc).toContain("v-if=\"it.status !== 'done'\"");
+    // Shown only while not done AND not already running — a live session shows "Watch run", not a second
+    // Start-work that would dispatch a duplicate agent onto the same issue.
+    expect(sfc).toContain("v-if=\"it.status !== 'done' && !it.session\"");
   }
 });
 
