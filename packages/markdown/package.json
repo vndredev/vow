@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@types/markdown-it": "^13.0.9",
-    "@types/markdown-it-container": "^2.0.10",
+    "@types/markdown-it-container": "^4.0.0",
     "vite-plus": "catalog:"
   }
 }
