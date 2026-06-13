@@ -97,6 +97,8 @@ interface Overlay {
   form: Maybe<HTMLElement>;
   picking: boolean;
   kind: IssueKind;
+  /** The element the user picked — the screenshot captures THIS, not the whole page. */
+  picked: Maybe<HTMLElement>;
 }
 
 /** The vow source of an element — the nearest ancestor (or itself) carrying `data-vow-source`, else "". */
@@ -169,6 +171,7 @@ function teardown(overlay: Overlay): void {
   overlay.highlight = drop(overlay.highlight);
   overlay.form = drop(overlay.form);
   overlay.picking = false;
+  overlay.picked = NONE;
 }
 
 /** The form's body — the kind heading, the element's source + route + hint, then the inputs + submit. */
@@ -182,13 +185,17 @@ function formMarkup(base: Readonly<Omit<IssueReport, "description" | "title">>):
   ].join("");
 }
 
-/** Snapshot the page as a PNG data URL (the overlay hidden so it's not in the shot) — "" on any failure,
- *  so a missing screenshot never blocks filing. `html-to-image` is loaded lazily (browser-only, dev-only). */
+/** Snapshot the PICKED element as a PNG data URL (the overlay hidden so it's not in the shot) — "" on any
+ *  failure / no pick, so a missing screenshot never blocks filing. `html-to-image` loads lazily (browser). */
 async function capture(overlay: Overlay): Promise<string> {
+  const target = overlay.picked;
+  if (target === NONE) {
+    return "";
+  }
   overlay.mount.style.visibility = "hidden";
   try {
     const { toPng } = await import("html-to-image");
-    return await toPng(document.body);
+    return await toPng(target);
   } catch {
     return "";
   } finally {
@@ -269,7 +276,8 @@ function onPick(overlay: Overlay, event: MouseEvent): void {
   overlay.highlight = drop(overlay.highlight);
   overlay.picking = false;
   const target = document.elementFromPoint(event.clientX, event.clientY);
-  if (target !== null) {
+  if (target instanceof HTMLElement) {
+    overlay.picked = target;
     openForm(overlay, target);
   }
 }
@@ -338,5 +346,13 @@ export function setupBugReporter(): void {
   style.textContent = OVERLAY_CSS;
   mount.append(style);
   document.body.append(mount);
-  wireListeners({ form: NONE, highlight: NONE, kind: "bug", menu: NONE, mount, picking: false });
+  wireListeners({
+    form: NONE,
+    highlight: NONE,
+    kind: "bug",
+    menu: NONE,
+    mount,
+    picked: NONE,
+    picking: false,
+  });
 }
