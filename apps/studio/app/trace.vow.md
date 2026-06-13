@@ -1,7 +1,7 @@
 ---
 id: vow_trace
 fulfills: emit view
-nav: { label: Trace, icon: git-commit, group: Operations }
+nav: { label: Trace, icon: git-commit, group: Operations, order: 1 }
 ---
 
 # Trace

@@ -46,6 +46,20 @@ curl -s http://localhost:5173/__vow/agent-loop/status
 
 This is the **read** half of the cockpit — the loop observable from the studio. Start/stop **control** over the same surface (`POST /__vow/agent-loop/control`) is its own gated follow-up.
 
+## The operations cockpit
+
+The studio's **Cockpit** (the Operations home, `apps/studio/app/cockpit.vow.md`) is the single pane of glass over the autonomous system — built, like every studio page, from vow blocks + tokens, no hand-written markup:
+
+- **The agent loop** — `loop: { as: status }`, a generated view element (`VowAgentLoopStatus`) bound to the `useAgentLoopStatus()` hook. It renders whether autonomy is **running** or **idle**, and the round's `round` / `backlog` / `openPrs` metrics, with the optional last-round timestamp — the [agent-loop status](#the-agent-loop-status) made visible. Read-only: the loop is observed here, never driven from this element.
+- **The trace** — `events: { as: trace }`, the live agent-run feed (`run.started` / `run.phase` / `pr.merged`) over the same SSE stream the [studio trace](#what-it-serves) uses.
+
+The `loop: { as: status }` element follows exactly the `events: { as: trace }` pattern — the `as:` value picks the fixed component the plugin materialises, so the cockpit can never bind a component the plugin didn't write.
+
+Two pieces are **deliberately deferred**, noted in the cockpit doc itself so the surface never oversells:
+
+- **Loop on/off control** arrives with **#623** — it needs a cross-process stop signal, the write half of the read-only status surface above.
+- **An MCP/channel health indicator** (connected · tool count · last event), backed by a new `GET /__vow/mcp/status`, is the next cockpit element — tracked as [#636](https://github.com/vndredev/vow/issues/636) so this change stays one coherent element.
+
 ## Everything local
 
 The hub runs on **your machine**. The agent loop, the worktrees, `vp check`, `pnpm -r test`, the provider — all local. **GitHub Actions stay only as the PR gates** (CI · the PR-body check · branch-protection drift); they validate a PR, they never drive the loop. No GitHub runner runs the agent, and no Cloudflare is required.

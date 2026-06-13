@@ -1,6 +1,12 @@
 import type { Attr, UiNode } from "./types.ts";
-import { EVENT_LAYOUTS, eventLayout } from "./event-layout.ts";
-import { ISSUE_LAYOUTS, issueLayout } from "./issue-layout.ts";
+import {
+  EVENT_LAYOUTS,
+  ISSUE_LAYOUTS,
+  LOOP_LAYOUTS,
+  eventLayout,
+  issueLayout,
+  loopLayout,
+} from "./layouts.ts";
 import { asRecord, defined } from "@vow/core";
 import { assertAttrName, assertObjectKey, pascalCase } from "@vow/component";
 import { boardComponentName, cardsComponentName, statsComponentName } from "./naming.ts";
@@ -119,6 +125,8 @@ const issues: Handler = (value): UiNode => comp(ISSUE_LAYOUTS[issueLayout(value)
 
 const events: Handler = (value): UiNode => comp(EVENT_LAYOUTS[eventLayout(value)], [], []);
 
+const loop: Handler = (value): UiNode => comp(LOOP_LAYOUTS[loopLayout(value)], [], []);
+
 const icon: Handler = (value): UiNode => {
   const obj = asRecord(value);
   return comp("Icon", [{ kind: "static", name: "name", value: str(obj["name"]) }], []);
@@ -153,6 +161,7 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   issues,
   link,
   list,
+  loop,
   stats,
   timeline,
 };

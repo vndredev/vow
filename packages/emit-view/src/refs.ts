@@ -1,7 +1,6 @@
-import type { EventLayout, IssueLayout, ReadonlyVow } from "./types.ts";
+import type { EventLayout, IssueLayout, LoopLayout, ReadonlyVow } from "./types.ts";
 import { asRecord, defined } from "@vow/core";
-import { eventLayout } from "./event-layout.ts";
-import { issueLayout } from "./issue-layout.ts";
+import { eventLayout, issueLayout, loopLayout } from "./layouts.ts";
 import { str } from "./helpers.ts";
 
 /** A reference to a by-field composition (`stats`/`board`) — the entity slug + the select field. */
@@ -154,6 +153,20 @@ export function eventLayouts(view: ReadonlyVow): Set<EventLayout> {
   walkNodes(view, (type, value) => {
     if (type === "events") {
       found.add(eventLayout(value));
+    }
+  });
+  return found;
+}
+
+/**
+ * The agent-loop layouts a `## view` renders — so the plugin materialises the matching VowAgentLoop*
+ * components. Validated, so the set only ever holds real layouts.
+ */
+export function loopLayouts(view: ReadonlyVow): Set<LoopLayout> {
+  const found = new Set<LoopLayout>();
+  walkNodes(view, (type, value) => {
+    if (type === "loop") {
+      found.add(loopLayout(value));
     }
   });
   return found;

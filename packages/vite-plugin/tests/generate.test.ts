@@ -65,6 +65,24 @@ test("generateFiles renders a `## view` and writes the layout primitives it need
   });
 });
 
+test("a `## view` with `loop: { as: status }` materialises the live agent-loop-status component", () => {
+  inTempDir((dir) => {
+    const cockpit: VowNode = {
+      ...shell,
+      id: "vow_cockpit",
+      slug: "cockpit",
+      view: [{ type: "loop", value: { as: "status" } }],
+    };
+    generateFiles([cockpit], { outDir: dir, srcDir: dir });
+    const files = readdirSync(dir);
+    // The view references the loop-status component, so the plugin writes it (no dangling import).
+    expect(files).toContain("VowAgentLoopStatus.vue");
+    expect(readFileSync(path.join(dir, "cockpit.vue"), "utf8")).toContain("<VowAgentLoopStatus");
+    const sfc = readFileSync(path.join(dir, "VowAgentLoopStatus.vue"), "utf8");
+    expect(sfc).toContain("useAgentLoopStatus");
+  });
+});
+
 test("a lone entity is a pure model — only its .ts + .test.ts, no view, no primitives", () => {
   inTempDir((dir) => {
     generateFiles([task], { outDir: dir, srcDir: dir });
