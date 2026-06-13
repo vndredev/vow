@@ -38,9 +38,12 @@ export interface IssueDetail {
   readonly title: string;
 }
 
-/** An open pull request, reduced to what links it back to its issues + the URL the human watches it at. */
+/** An open pull request, reduced to what links it back to its issues + the URL the human watches it at.
+    `isDraft` tells a ready PR (the live develop -> merge arc) from a stalled draft (a red develop run parked
+    for a human) — only a ready PR marks its issue `doing`, so a draft never pins it "In Progress" forever. */
 export interface GitHubPr {
   readonly body: string;
+  readonly isDraft: boolean;
   readonly number: number;
   readonly title: string;
   readonly url: string;

@@ -94,21 +94,35 @@ test("parseIssues lifts the milestone (title + dueOn) when present, omits it whe
   expect(parseIssues(noMs)[0]).not.toHaveProperty("milestone");
 });
 
-test("parsePrs keeps number, title, body, url (defaulting a missing url to empty)", () => {
+test("parsePrs keeps number, title, body, url, isDraft (defaulting a missing url/isDraft)", () => {
   const json = JSON.stringify([
-    { body: "Closes #56", number: 9, title: "feat", url: "https://github.com/o/r/pull/9" },
+    {
+      body: "Closes #56",
+      isDraft: true,
+      number: 9,
+      title: "feat",
+      url: "https://github.com/o/r/pull/9",
+    },
   ]);
   expect(parsePrs(json)).toEqual([
-    { body: "Closes #56", number: 9, title: "feat", url: "https://github.com/o/r/pull/9" },
+    {
+      body: "Closes #56",
+      isDraft: true,
+      number: 9,
+      title: "feat",
+      url: "https://github.com/o/r/pull/9",
+    },
   ]);
   expect(parsePrs(JSON.stringify([{ body: "x", number: 1, title: "t" }]))[0]?.url).toBe("");
+  // A missing isDraft reads as a ready PR (false), never undefined.
+  expect(parsePrs(JSON.stringify([{ body: "x", number: 1, title: "t" }]))[0]?.isDraft).toBe(false);
 });
 
 test("parsePrs survives a malformed element — missing number/title default, never undefined", () => {
   // A payload missing the (non-optional) number/title must not become an undefined pair typed as a PR.
   // The PR path re-validates like the issue path, not trusting the predicate.
   const prs = parsePrs(JSON.stringify([{ body: "Closes #5" }]));
-  expect(prs).toEqual([{ body: "Closes #5", number: 0, title: "", url: "" }]);
+  expect(prs).toEqual([{ body: "Closes #5", isDraft: false, number: 0, title: "", url: "" }]);
 });
 
 test("linkedIssues lifts every closing keyword, deduped; a bare mention is ignored", () => {
@@ -118,6 +132,7 @@ test("linkedIssues lifts every closing keyword, deduped; a bare mention is ignor
 
 const pr = (over: Partial<GitHubPr> = {}): GitHubPr => ({
   body: "",
+  isDraft: false,
   number: 1,
   title: "t",
   url: "",
@@ -141,6 +156,19 @@ test("sessionsByIssue maps each closed issue to its open PR's number + url; the 
   expect(sessions.get(ISSUE_A)?.number).toBe(FIRST_PR);
   // A bare mention (no closing keyword) is not a session.
   expect(sessionsByIssue([pr({ body: `see #${MENTIONED}` })]).has(MENTIONED)).toBe(false);
+});
+
+test("sessionsByIssue skips a DRAFT PR — a stalled run never marks its issue doing (#521 stuck-board fix)", () => {
+  // A draft PR closing #56 is a red develop run parked for a human, not an active session — no session.
+  // Its issue then derives as planned (awaiting a fresh attempt), not pinned "In Progress" forever.
+  const draftClosing = [pr({ body: `Closes #${ISSUE_A}`, isDraft: true, number: FIRST_PR })];
+  expect(sessionsByIssue(draftClosing).has(ISSUE_A)).toBe(false);
+  const closing = [...sessionsByIssue(draftClosing).keys()];
+  expect(deriveIssueStatus(issue({ number: ISSUE_A }), closing)).toBe("planned");
+  // A READY PR closing the same issue still claims it — the live develop -> merge arc is unaffected.
+  expect(sessionsByIssue([pr({ body: `Closes #${ISSUE_A}`, number: FIRST_PR })]).has(ISSUE_A)).toBe(
+    true,
+  );
 });
 
 test("deriveIssueStatus: closed -> done, open+PR -> doing, open -> planned", () => {

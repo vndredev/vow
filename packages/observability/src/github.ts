@@ -167,19 +167,26 @@ function urlOf(raw: object): string {
   return "";
 }
 
-/** Lift one raw element into a PR — number/title re-validated (as the issue path does), body/url read
+/** A raw object's `isDraft` — true only when present + exactly the boolean `true`, else false. Read
+    defensively (the shared predicate asserts no PR field): a payload without `isDraft` is a ready PR. */
+function isDraftOf(raw: object): boolean {
+  return "isDraft" in raw && raw.isDraft === true;
+}
+
+/** Lift one raw element into a PR — number/title re-validated (as the issue path does), body/url/isDraft read
     defensively. The shared predicate narrows only to `RawIssue` (no non-optional PR field), so a malformed
     payload yields the not-found number + empty strings rather than `undefined` typed as a valid `GitHubPr`. */
 function liftPr(raw: RawIssue): GitHubPr {
   return {
     body: bodyOf(raw),
+    isDraft: isDraftOf(raw),
     number: liftNumber(raw),
     title: liftTitle(raw),
     url: urlOf(raw),
   };
 }
 
-/** Parse `gh pr list --json number,title,body,url` -> PRs. Pure; `[]` on malformed input. */
+/** Parse `gh pr list --json number,title,body,url,isDraft` -> PRs. Pure; `[]` on malformed input. */
 export function parsePrs(json: string): GitHubPr[] {
   return [...parseJsonArray(json, (pr) => liftPr(pr))];
 }
@@ -270,13 +277,18 @@ export function deriveIssueStatus(
 }
 
 /**
- * Index every open PR by each issue its body closes (`Closes #N`) -> the agent session for that issue (its
- * number + the URL the human watches the run at). The first PR that claims an issue wins. Pure — the
- * gh-direct read in `issuePlan` feeds it; the board renders the link for a `doing` issue.
+ * Index every open NON-DRAFT PR by each issue its body closes (`Closes #N`) -> the agent session for that
+ * issue (its number + the URL the human watches the run at). The first PR that claims an issue wins. Pure —
+ * the gh-direct read in `issuePlan` feeds it; the board renders the link for a `doing` issue.
+ *
+ * A DRAFT PR is skipped: it is a red develop run parked for a human, not an active session. Counting its
+ * `Closes #N` would derive the issue as `doing` and pin it "In Progress" forever — the exact stuck-board bug
+ * a failed run leaves behind. So a draft drops its issue back to `planned` (it awaits a fresh attempt).
  */
 export function sessionsByIssue(prs: readonly GitHubPr[]): Map<number, AgentSession> {
   const sessions = new Map<number, AgentSession>();
-  for (const pr of prs) {
+  const ready = prs.filter((pr) => !pr.isDraft);
+  for (const pr of ready) {
     for (const num of linkedIssues(pr.body)) {
       if (!sessions.has(num)) {
         sessions.set(num, { number: pr.number, url: pr.url });
@@ -341,7 +353,16 @@ export function githubPrs(cwd: string): GitHubPr[] {
   try {
     const out = execFileSync(
       "gh",
-      ["pr", "list", "--json", "number,title,body,url", "--state", "open", "--limit", ISSUE_LIMIT],
+      [
+        "pr",
+        "list",
+        "--json",
+        "number,title,body,url,isDraft",
+        "--state",
+        "open",
+        "--limit",
+        ISSUE_LIMIT,
+      ],
       { cwd, encoding: "utf8" },
     );
     return parsePrs(out);
