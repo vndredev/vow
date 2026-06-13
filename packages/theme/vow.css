@@ -434,7 +434,7 @@ body {
 .vow-roadmap__shipped {
   margin-top: var(--vow-space-1);
 }
-.vow-roadmap__shipped > summary {
+.vow-roadmap__shipped-head {
   display: flex;
   align-items: center;
   gap: var(--vow-space-2);
@@ -446,18 +446,18 @@ body {
   font-weight: var(--vow-weight-medium);
   color: var(--vow-color-success);
 }
-.vow-roadmap__shipped > summary::-webkit-details-marker {
+.vow-roadmap__shipped-head::-webkit-details-marker {
   display: none;
 }
-.vow-roadmap__shipped > summary::before {
+.vow-roadmap__shipped-head::before {
   content: "▸";
   display: inline-block;
   transition: transform 0.12s;
 }
-.vow-roadmap__shipped[open] > summary::before {
+.vow-roadmap__shipped[open] > .vow-roadmap__shipped-head::before {
   transform: rotate(90deg);
 }
-.vow-roadmap__shipped[open] > summary {
+.vow-roadmap__shipped[open] > .vow-roadmap__shipped-head {
   margin-bottom: var(--vow-space-2);
 }
 /* the shipped cards read as settled proof — dimmed a touch below the live, open work */
@@ -528,6 +528,15 @@ body {
 .vow-board__count {
   color: var(--vow-color-muted);
   font-weight: var(--vow-weight-medium);
+}
+/* a visually-hidden live region — announces keyboard card moves to assistive tech, off-screen for sight */
+.vow-board__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 .vow-board__card {
   display: flex;
@@ -642,6 +651,11 @@ body {
   white-space: nowrap;
   width: 1px;
 }
+/* the detail cell takes the row's remaining width (the time/kind/issue cells are 1px, content-sized), so
+   the phase + free-text detail fill the column and a long verdict wraps inside it, never overflowing */
+.vow-trace__detail {
+  width: auto;
+}
 .vow-trace__phase {
   color: var(--vow-color-muted);
 }
@@ -727,6 +741,14 @@ body {
   flex-direction: column;
   gap: var(--vow-space-4);
   max-width: 28rem;
+}
+/* the transient "Saved" confirmation after an edit-mode submit (`role="status"`) — a quiet success note,
+   small + coloured like a proof, never a shout */
+.vow-form__saved {
+  margin: 0;
+  font-size: var(--vow-text-sm);
+  font-weight: var(--vow-weight-medium);
+  color: var(--vow-color-success);
 }
 /* a labelled form field: a label over its control, with an optional description and a live error. */
 .vow-field {
@@ -1376,6 +1398,11 @@ body {
 /* ContextMenu — a right-click floating menu, positioned at the cursor (the host binds top/left). The
    trigger is the caller's slotted content (unstyled); the panel + items mirror the select listbox. */
 .vow-context-menu {
+  display: contents;
+}
+/* the trigger wraps the caller's slotted content + the contextmenu handler — it imposes no box of its own,
+   so the slotted content lays out exactly as the host placed it (the menu is summoned by right-click) */
+.vow-context-menu__trigger {
   display: contents;
 }
 .vow-context-menu__panel {
