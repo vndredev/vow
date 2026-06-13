@@ -20,7 +20,9 @@ import {
   flagValue,
 } from "./agent-run.ts";
 /* oxlint-enable consistent-type-specifier-style */
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import nodePath from "node:path";
 import { prHeadOid } from "@vow/observability";
 import { runAuditPass } from "./agent-audit.ts";
 
@@ -196,6 +198,37 @@ function settleRound(cwd: string): void {
   }
 }
 
+/** The HEAD commit SHA at `cwd` via `git rev-parse HEAD`. */
+function headSha(cwd: string): string {
+  return execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim();
+}
+
+/** The `.vow/last-clean-audit` stamp path — records the HEAD SHA of the last findings-free audit. */
+function cleanAuditStampPath(cwd: string): string {
+  return nodePath.join(cwd, ".vow", "last-clean-audit");
+}
+
+/** The stamped SHA from the last findings-free audit, or `undefined` when no stamp exists yet. */
+function readCleanAuditStamp(cwd: string): string | undefined {
+  const stamp = cleanAuditStampPath(cwd);
+  if (!existsSync(stamp)) {
+    return;
+  }
+  return readFileSync(stamp, "utf8").trim();
+}
+
+/** Stamp `sha` as the last findings-free audit SHA, creating `.vow/` if needed. */
+function writeCleanAuditStamp(cwd: string, sha: string): void {
+  const stamp = cleanAuditStampPath(cwd);
+  mkdirSync(nodePath.join(cwd, ".vow"), { recursive: true });
+  writeFileSync(stamp, `${sha}\n`, "utf8");
+}
+
+/** Whether HEAD has moved since the last clean-audit stamp (`true` when no stamp exists). */
+function headChanged(cwd: string): boolean {
+  return headSha(cwd) !== readCleanAuditStamp(cwd);
+}
+
 /** The round's EFFECTIVE workload, computed once per iteration so the decision and the develop step agree:
  *  `within` is the PR-less, within-cap backlog the round will actually develop, `dropped` the still-open
  *  issues the attempt cap excluded (stuck, surfaced for a human), and `settleable` the open non-draft PRs the
@@ -341,6 +374,9 @@ async function runDecision(
   if (pass.broke) {
     return { kind: "terminal", outcome: "audit-broken" };
   }
+  if (pass.filed === 0) {
+    writeCleanAuditStamp(spiral.cwd, headSha(spiral.cwd));
+  }
   return { auditedClean: pass.filed === 0, kind: "advance", state };
 }
 
@@ -365,6 +401,7 @@ async function step(spiral: Spiral, carry: Readonly<Carry>): Promise<Carry | num
     auditedClean,
     backlog: effective.within.length,
     capDropped: effective.dropped.length,
+    headChanged: headChanged(spiral.cwd),
     maxRounds: spiral.args.maxRounds,
     openPrs: effective.settleable.length,
     round: state.round,

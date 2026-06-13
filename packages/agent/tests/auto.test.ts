@@ -12,7 +12,8 @@ const ISSUE_B = 22;
 const ISSUE_C = 33;
 const ONE = 1;
 
-/** The default-empty state with the given overrides — every field present so the decision stays total. */
+/** The default-empty state with the given overrides — every field present so the decision stays total.
+ *  `headChanged` defaults to `true` (new code / no stamp yet) so existing tests cover the audit path. */
 function state(
   over: Partial<Parameters<typeof autoDecision>[0]>,
 ): Parameters<typeof autoDecision>[0] {
@@ -20,6 +21,7 @@ function state(
     auditedClean: false,
     backlog: 0,
     capDropped: 0,
+    headChanged: true,
     maxRounds: MAX,
     openPrs: 0,
     round: 0,
@@ -55,12 +57,23 @@ test("autoDecision: cap-dropped issues with no settleable PR is STALLED, not a n
 });
 
 test("autoDecision: a genuinely empty backlog audits for new work, then powers down once clean", () => {
-  // Empty backlog, nothing cap-dropped, not yet confirmed clean -> audit to generate the next work.
+  // Empty backlog, nothing cap-dropped, HEAD changed, not yet confirmed clean -> audit.
   expect(autoDecision(state({ round: MID }))).toBe("audit");
   // Empty backlog AND a full audit pass found nothing -> done (the self-heal spiral's goal).
   expect(autoDecision(state({ auditedClean: true, round: MID }))).toBe("done");
   // The round cap bounds the audit too — an empty backlog at the cap still stops as exhausted.
   expect(autoDecision(state({ round: MAX }))).toBe("exhausted");
+});
+
+test("autoDecision: HEAD unchanged since the clean-audit stamp skips the audit and powers down", () => {
+  // HEAD matches the last-clean-audit stamp — the tree is verified clean at this SHA; no Fable spend.
+  expect(autoDecision(state({ headChanged: false }))).toBe("done");
+  // AuditedClean also reaches done, but headChanged:false alone is enough (both paths are correct).
+  expect(autoDecision(state({ auditedClean: true, headChanged: false }))).toBe("done");
+  // The round cap is unconditional — it fires even when HEAD is unchanged.
+  expect(autoDecision(state({ headChanged: false, round: MAX }))).toBe("exhausted");
+  // Cap-dropped beats headChanged:false — a stuck backlog is not "findings-free".
+  expect(autoDecision(state({ capDropped: SOME, headChanged: false }))).toBe("stalled");
 });
 
 test("backlogWithinCap drops an issue at/over its attempt cap, keeps healthy ones progressing", () => {

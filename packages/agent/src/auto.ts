@@ -7,13 +7,16 @@
 /** The loop's state at the top of a round — the EFFECTIVE workload, not the raw open count: `backlog` is the
  *  cap-filtered set the round will actually develop, `capDropped` how many open issues the attempt cap
  *  excluded (issues still open but stuck), and `openPrs` how many PRs settle can still merge (so a round with
- *  open PRs is never a no-op). Plus how many rounds have run and whether the last full audit pass came back
- *  clean (filed zero findings). Feeding the decision the EFFECTIVE backlog — not the raw open count — is what
- *  keeps a cap-dropped issue from making every remaining round a guaranteed no-op that spins to the cap. */
+ *  open PRs is never a no-op). Plus how many rounds have run, whether the last full audit pass came back
+ *  clean (filed zero findings), and `headChanged` — whether HEAD has moved since the last findings-free audit
+ *  SHA was stamped (true when no stamp exists; false = the tree is verified clean at this SHA, skip audit).
+ *  Feeding the decision the EFFECTIVE backlog — not the raw open count — is what keeps a cap-dropped issue
+ *  from making every remaining round a guaranteed no-op that spins to the cap. */
 export interface AutoState {
   readonly auditedClean: boolean;
   readonly backlog: number;
   readonly capDropped: number;
+  readonly headChanged: boolean;
   readonly openPrs: number;
   readonly round: number;
   readonly maxRounds: number;
@@ -32,9 +35,10 @@ export type AutoOutcome = "audit" | "develop" | "done" | "exhausted" | "stalled"
  *  the cap. Below the cap: develop while there is EFFECTIVE work (a within-cap backlog OR an open PR still to
  *  settle). With no effective work but cap-dropped issues remaining (and no PR left to settle), every
  *  remaining round is a provable no-op — declare `stalled` so a human unsticks the capped issues. Otherwise
- *  (a genuinely empty backlog) audit for new findings, and only when a full audit pass came back clean, power
- *  down. The spiral's stop condition: develop -> audit -> develop -> ... -> done (findings-free), -> stalled
- *  (cap-stuck), or -> exhausted once the round cap is reached. */
+ *  (a genuinely empty backlog): if this session's audit came back clean, or HEAD has NOT changed since the
+ *  last clean-audit stamp, power down (`done`) — the tree is already verified. Only when HEAD HAS changed
+ *  does the loop audit for new findings. The spiral's stop condition: develop -> audit -> develop -> ... ->
+ *  done (findings-free), -> stalled (cap-stuck), or -> exhausted once the round cap is reached. */
 export function autoDecision(state: Readonly<AutoState>): AutoOutcome {
   if (state.round >= state.maxRounds) {
     return "exhausted";
@@ -45,7 +49,7 @@ export function autoDecision(state: Readonly<AutoState>): AutoOutcome {
   if (state.capDropped > 0) {
     return "stalled";
   }
-  if (state.auditedClean) {
+  if (state.auditedClean || !state.headChanged) {
     return "done";
   }
   return "audit";
