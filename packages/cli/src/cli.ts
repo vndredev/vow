@@ -2,9 +2,9 @@
 import { APPS, resolveApps } from "./apps.ts";
 import { agent, agentHelp } from "./agent.ts";
 import { build, check, prBody, test } from "./basics.ts";
+import { doctor, reconcile } from "./reconcile.ts";
 import { runDev, status, stopApps } from "./dev.ts";
 import { guard } from "./guard.ts";
-import { reconcile } from "./reconcile.ts";
 import { runChannelServer } from "./channel.ts";
 import { runEvents } from "./events.ts";
 import { runServe } from "./serve.ts";
@@ -39,6 +39,8 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow pr-body --check  validate a PR body (piped on stdin) against the template before \`gh pr create\`
   vow reconcile        report plan drift — open issues a merged PR already closed (retire candidates) +
                        open issues carrying no phase (the "No milestone" drift the roadmap can't place)
+  vow doctor           check the GitHub Project's Roadmap view against vow's invariant (grouped by
+                       Milestone, dated by Milestone) — ✓ holds · ✗ fixable drift · □ a UI-only step
 
   the agent loop (autonomous issue -> PR through vow's gates):
 ${agentHelp()}
@@ -109,6 +111,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   channel: runChannelServer,
   check,
   dev,
+  doctor,
   events: runEvents,
   guard,
   help: showHelp,
