@@ -83,11 +83,12 @@ function installChannel(cwd: string): string {
   return "wrote .mcp.json (vow-channel)";
 }
 
-/** The PreToolUse guard `.claude/settings.json` wires up — `vow hook claude` runs for every Bash tool call
-    and BLOCKS a wrong one (raw gh, push to main, `vp check --fix`) with the vow alternative. `.claude/settings.json`
+/** The PreToolUse guard `.claude/settings.json` wires up — `vow hook` runs for every Bash tool call and
+    BLOCKS a wrong one (raw gh, push to main, `vp check --fix`) with the vow alternative. The command stays
+    provider-neutral (the seam, not init, names a provider); the CLI resolves the adapter. `.claude/settings.json`
     is committed, so the guard travels with the repo to every user's LLM, not just the one who ran init. */
 const HOOK_ENTRY = {
-  hooks: [{ command: "vow hook claude", type: "command" }],
+  hooks: [{ command: "vow hook", type: "command" }],
   matcher: "Bash",
 } as const;
 
