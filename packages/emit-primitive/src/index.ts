@@ -32,7 +32,7 @@ import {
   emitSwitchSfc,
   emitTabsSfc,
 } from "./interactive.ts";
-import { emitDialogSfc, emitSelectSfc } from "./overlay.ts";
+import { emitContextMenuSfc, emitDialogSfc, emitSelectSfc } from "./overlay.ts";
 
 export {
   emitCheckboxSfc,
@@ -52,7 +52,7 @@ export {
   emitTableRowSfc,
   emitTableSfc,
 } from "./layout.ts";
-export { emitDialogSfc, emitSelectSfc } from "./overlay.ts";
+export { emitContextMenuSfc, emitDialogSfc, emitSelectSfc } from "./overlay.ts";
 export { emitBadgeSfc, emitButtonSfc, emitCalloutSfc, emitFieldSfc } from "./structural.ts";
 
 /**
@@ -69,6 +69,7 @@ export const PRIMITIVE_ADAPTERS: Record<string, () => string> = {
   CardHeader: emitCardHeaderSfc,
   Checkbox: emitCheckboxSfc,
   Collapsible: emitCollapsibleSfc,
+  ContextMenu: emitContextMenuSfc,
   Dialog: emitDialogSfc,
   Field: emitFieldSfc,
   RadioGroup: emitRadioGroupSfc,

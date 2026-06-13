@@ -1,6 +1,7 @@
 import {
   emitCheckboxSfc,
   emitCollapsibleSfc,
+  emitContextMenuSfc,
   emitDialogSfc,
   emitRadioGroupSfc,
   emitSelectSfc,
@@ -8,6 +9,25 @@ import {
   emitTabsSfc,
 } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
+
+test("emitContextMenuSfc binds the agnostic headless core + re-emits the chosen item as select", () => {
+  const sfc = emitContextMenuSfc();
+  expect(sfc).toContain('import { contextMenu } from "@vow/headless";');
+  expect(sfc).toContain('emit("select", next.chosen)');
+  expect(sfc).toContain('class="vow-context-menu"');
+});
+
+test("emitContextMenuSfc is a right-click slot trigger + a cursor-positioned menu panel", () => {
+  const sfc = emitContextMenuSfc();
+  // The trigger is the caller's content (a slot), opened on right-click.
+  expect(sfc).toContain('@contextmenu="onContextMenu"');
+  expect(sfc).toContain("<slot");
+  // The panel shows only when open, positioned at the recorded cursor, carrying the headless props + hooks.
+  expect(sfc).toContain('v-if="api.open"');
+  expect(sfc).toContain("{ left: x + 'px', top: y + 'px' }");
+  expect(sfc).toContain('class="vow-context-menu__panel"');
+  expect(sfc).toContain('class="vow-context-menu__item"');
+});
 
 test("emitCheckboxSfc binds the agnostic headless core (logic + a11y live there)", () => {
   const sfc = emitCheckboxSfc();
