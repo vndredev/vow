@@ -33,6 +33,8 @@ The split has one rule: `@vow/headless` holds **only logic** — no component, n
 
 A second rule is now **mechanical**: dependencies point only **down** the 4-layer DAG (foundation → emit → composition → orchestration), never up, and never in a cycle — `@vow/gate`'s `layerViolations` fails the build on an upward edge, an unassigned package, or a cycle. The architecture can't quietly erode.
 
+A third rule keeps the framework honest about its **own** design language: every CSS class an emitter writes must be defined in the theme. `@vow/gate`'s `designLanguageViolations` collects every `vow-*` class the emitters write (the static class literals in `@vow/emit-view` + `@vow/emit-primitive`, splitting a compound like `"vow-table vow-issue-table"` into its tokens), collects every `.vow-*` selector across the design-language stylesheets (`@vow/theme`'s `vow.css` plus each consumer layer's own sheet — `@vow/docs`, `@vow/shell`), and fails on any emitted class with no rule. A `.vow-block__el` rule counts as defining its block (a namespace base composed onto a themed primitive); a class built by interpolation (`` `vow-view--${slug}` ``) can't be checked at lint time, so it is **counted**, never silently dropped. The drift this forbids is bespoke unstyled markup — a `<div class="vow-loop__metric">` that ships flat text with no CSS, caught before only by a screenshot. The remedy the gate prints is the correction: **theme the class the token-only way (a `.vow-…` rule in `vow.css` or the consumer layer's sheet), or compose a primitive that already is themed.** vow dogfoods its own design language, by construction.
+
 ## The UI, top down
 
 An app is a **shell** wrapping **views**:
