@@ -68,7 +68,7 @@ The catalog of ready-made components — you name them, vow brings the markup:
   [Cockpit](/guide/serve#the-operations-cockpit) composes it with the trace. Read-only — control is a
   follow-up (#623).
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
-  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radio` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
+  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radioGroup` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
   The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
   the adapters a view references, and an unknown name fails loud at generate time.
 - **`icon: { name }`** — a glyph from [`@vow/icons`](/guide/primitives/button#icon), by semantic name
