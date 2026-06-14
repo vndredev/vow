@@ -39,6 +39,8 @@ test("each known banned rule maps to its named, concrete remedy", () => {
     ],
     ["capitalized-comments", "f.ts:3: eslint(capitalized-comments)", "capital letter"],
     ["no-inline-comments", "f.ts:3: eslint(no-inline-comments)", "OWN line"],
+    ["require-await", "f.ts:5:16: error eslint(require-await)", "remove the `async`"],
+    ["sort-imports", "f.ts:4:1: error eslint(sort-imports)", "multiple-specifier"],
   ];
   for (const [rule, output, fragment] of cases) {
     const corrections = gateCorrections(redVerdict(output));
@@ -62,6 +64,15 @@ test("the two live-stall classes self-explain — an undeclared @vow import + a 
   expect(block).toContain("const { sfc } = buildView");
   expect(block).toContain("- **cannot-find-module** —");
   expect(block).toContain('"@vow/<pkg>": "workspace:*"');
+});
+
+test("sort-imports gets its OWN remedy, not the sort-keys 'run vp fmt' advice that can't sort imports (#694)", () => {
+  const corrections = gateCorrections(redVerdict("agent-auto.ts:27:1: error eslint(sort-imports)"));
+  const sortImports = corrections.find((correction) => correction.rule === "sort-imports");
+  expect(sortImports?.remedy).toContain("does NOT sort imports");
+  const rules = corrections.map((correction) => correction.rule);
+  // A sort-keys correction must NOT fire for an imports-only failure — its "run vp fmt" advice would mislead.
+  expect(rules).not.toContain("sort-keys");
 });
 
 test("an unknown rule yields no correction — its verbatim output passes through (never lossy)", () => {
