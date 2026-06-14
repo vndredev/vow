@@ -80,6 +80,25 @@ test("pushArgs publishes the branch; prBody checks a passed gate", () => {
   expect(body).toContain("- [x] `vp check`");
 });
 
+test("prBody always emits the 3 canonical Proof rows the body gate names, even for the worktree-safe gates (#698)", () => {
+  // The worktree-safe finalVerify (#686) runs `vp check` + `vp test <package>`, never `pnpm -r test`, but the
+  // Body gate greps for the literal `pnpm -r test` row — so prBody must emit it regardless of the gate set.
+  const body = prBody(
+    { number: 521, title: "the gate" },
+    {
+      ok: true,
+      results: [
+        { command: "vp check", ok: true },
+        { command: "vp test packages/agent", ok: true },
+      ],
+    },
+  );
+  expect(body).toContain("`vp check`");
+  expect(body).toContain("`pnpm -r test`");
+  expect(body).toContain("the doc page");
+  expect(body.match(/- \[[ x]\]/gu)?.length).toBe(PROOF_CHECKBOXES);
+});
+
 test("prTitle is a conventional-commit subject — defaulted to feat, lower-cased, capped at 72", () => {
   expect(prTitle({ title: "Add a widget" })).toBe("feat: add a widget");
   expect(prTitle({ title: "X".repeat(OVERLONG) }).length).toBe(TITLE_MAX);

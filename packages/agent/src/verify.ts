@@ -79,27 +79,35 @@ export function fixPrompt(verdict: VerifyResult): string {
   ].join("\n");
 }
 
-/** One `## Proof` checkbox per gate — `[x]` when it passed, `[ ]` when it failed, so a draft shows which
- *  gate is red right in the proof list. */
-function proofLine(result: GateResult): string {
-  if (result.ok) {
-    return `- [x] \`${result.command}\``;
+/** Whether the verdict has a PASSING gate whose command contains `needle` — maps the worktree-safe gate set
+ *  (`vp check` + `vp test <package>`, #686) onto the canonical Proof rows the pr-body gate names by string. */
+function gatePassed(verdict: Readonly<VerifyResult>, needle: string): boolean {
+  return verdict.results.some((result) => result.command.includes(needle) && result.ok);
+}
+
+/** One `## Proof` checkbox — `[x]` when its gate passed, `[ ]` otherwise, so a draft shows which row is red. */
+function proofLine(passed: boolean, label: string): string {
+  if (passed) {
+    return `- [x] \`${label}\``;
   }
-  return `- [ ] \`${result.command}\``;
+  return `- [ ] \`${label}\``;
 }
 
 /**
  * The PR body — the template the pr-body gate demands (Summary · What · Proof · Next), so an agent's PR
- * passes that gate and reads as a real record, plus the `Closes #n` link. The Proof checkboxes carry the
- * gate verdict (a failed gate stays unchecked, marking the draft). The plan is NOT dumped: it carries its
- * own `##` headings that would pollute the section structure, and it's derivable via `vow agent plan <n>`.
+ * passes that gate and reads as a real record, plus the `Closes #n` link. Proof always emits the THREE
+ * canonical rows the gate names (`vp check` · `pnpm -r test` · the doc page), each checked from the verdict
+ * — so the worktree-safe gate set (`vp check` + `vp test <package>`, #686) still satisfies the gate that
+ * greps for the literal `pnpm -r test` row (#698). The plan is NOT dumped: it carries its own `##` headings
+ * that would pollute the section structure, and it's derivable via `vow agent plan <n>`.
  */
 export function prBody(
   issue: Readonly<{ number: number; title: string }>,
   verdict: VerifyResult,
 ): string {
   const proof = [
-    ...verdict.results.map((result) => proofLine(result)),
+    proofLine(gatePassed(verdict, "vp check"), "vp check"),
+    proofLine(gatePassed(verdict, "test"), "pnpm -r test"),
     "- [ ] the doc page updated with the change (verify on review)",
   ];
   return [
