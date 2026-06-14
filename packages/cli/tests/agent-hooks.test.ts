@@ -27,11 +27,27 @@ test("installHooks writes BOTH the PreToolUse guard and the SessionStart bootstr
     installHooks(cwd);
     const json = JSON.stringify(settings(cwd));
     // The PreToolUse guard (#584) — every Bash call hits `vow hook`.
-    expect(json).toContain('"vow hook"');
+    expect(json).toContain('"$CLAUDE_PROJECT_DIR/node_modules/.bin/vow hook"');
     expect(json).toContain('"Bash"');
     // The SessionStart bootstrap — `vow hook session-start` on startup/clear/compact.
-    expect(json).toContain("vow hook session-start");
+    expect(json).toContain('"$CLAUDE_PROJECT_DIR/node_modules/.bin/vow hook session-start"');
     expect(json).toContain("startup|clear|compact");
+  } finally {
+    rmSync(cwd, { force: true, recursive: true });
+  }
+});
+
+test("installHooks wires the local-bin command (#651) — resolves without a global vow on PATH", () => {
+  const cwd = tempRepo();
+  try {
+    installHooks(cwd);
+    const json = JSON.stringify(settings(cwd));
+    // The command is the project-root-anchored local bin, NOT the bare `vow` (which needs a global install).
+    expect(json).toContain("$CLAUDE_PROJECT_DIR/node_modules/.bin/vow");
+    // No bare `"vow hook"` entry survives — that only resolves when vow is on PATH (installed globally).
+    expect(json).not.toContain('"vow hook"');
+    // FAST, not npx — the PreToolUse hook fires on every Bash call, so no per-call resolution latency.
+    expect(json).not.toContain("npx");
   } finally {
     rmSync(cwd, { force: true, recursive: true });
   }
@@ -48,8 +64,8 @@ test("installHooks adds the SessionStart entry without dropping a user's PreTool
     const json = JSON.stringify(settings(cwd));
     // The user's hook survives, AND both vow entries are merged in beside it.
     expect(json).toContain("my-own-guard");
-    expect(json).toContain('"vow hook"');
-    expect(json).toContain("vow hook session-start");
+    expect(json).toContain('"$CLAUDE_PROJECT_DIR/node_modules/.bin/vow hook"');
+    expect(json).toContain('"$CLAUDE_PROJECT_DIR/node_modules/.bin/vow hook session-start"');
   } finally {
     rmSync(cwd, { force: true, recursive: true });
   }
@@ -65,6 +81,36 @@ test("installHooks is idempotent — a re-run that finds both vow entries touche
     expect(second).toContain("kept");
     // No duplicate entries — the second run left the file as-is.
     expect(settings(cwd)).toEqual(before);
+  } finally {
+    rmSync(cwd, { force: true, recursive: true });
+  }
+});
+
+test("hasVowHooks is idempotent against the local-bin command strings (#651) — no duplicate on re-run", () => {
+  const cwd = tempRepo();
+  try {
+    // A settings file already hand-wired with the NEW local-bin command strings.
+    writeUserSettings(cwd, {
+      hooks: {
+        PreToolUse: [
+          {
+            hooks: [{ command: "$CLAUDE_PROJECT_DIR/node_modules/.bin/vow hook", type: "command" }],
+          },
+        ],
+        SessionStart: [
+          {
+            hooks: [
+              {
+                command: "$CLAUDE_PROJECT_DIR/node_modules/.bin/vow hook session-start",
+                type: "command",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    // Re-running init recognises the new strings as already-present and touches nothing.
+    expect(installHooks(cwd)).toContain("kept");
   } finally {
     rmSync(cwd, { force: true, recursive: true });
   }

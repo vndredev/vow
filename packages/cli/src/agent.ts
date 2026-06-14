@@ -83,22 +83,33 @@ function installChannel(cwd: string): string {
   return "wrote .mcp.json (vow-channel)";
 }
 
-/** The PreToolUse guard `.claude/settings.json` wires up — `vow hook` runs for every Bash tool call and
-    BLOCKS a wrong one (raw gh, push to main, `vp check --fix`) with the vow alternative. The command stays
-    provider-neutral (the seam, not init, names a provider); the CLI resolves the adapter. `.claude/settings.json`
-    is committed, so the guard travels with the repo to every user's LLM, not just the one who ran init. */
+/** The local-bin invocation `.claude/settings.json` wires the hooks to — the absolute path of the vow bin
+    installed as a LOCAL dependency, resolved off `$CLAUDE_PROJECT_DIR` (Claude Code exports it to every hook
+    process as the project-root absolute path). A bare `vow` resolves ONLY when vow is installed GLOBALLY (on
+    PATH); for any local-dependency install — including vow's own monorepo — the hook would fire and hit
+    "command not found". `$CLAUDE_PROJECT_DIR` is the robust anchor: it holds regardless of the hook's cwd
+    (Claude Code runs handlers from the current directory, which may have been `cd`-ed away from the root), so
+    a cwd-relative `node_modules/.bin/vow` is NOT safe. A direct bin invocation is also FAST — the PreToolUse
+    hook fires on EVERY Bash call, so `npx` (which adds resolution latency per call) is avoided. */
+const HOOK_BIN = "$CLAUDE_PROJECT_DIR/node_modules/.bin/vow";
+
+/** The PreToolUse guard `.claude/settings.json` wires up — the local-bin `vow hook` runs for every Bash tool
+    call and BLOCKS a wrong one (raw gh, push to main, `vp check --fix`) with the vow alternative. The command
+    stays provider-neutral (the seam, not init, names a provider); the CLI resolves the adapter.
+    `.claude/settings.json` is committed, so the guard travels with the repo to every user's LLM, not just the
+    one who ran init. */
 const HOOK_ENTRY = {
-  hooks: [{ command: "vow hook", type: "command" }],
+  hooks: [{ command: `${HOOK_BIN} hook`, type: "command" }],
   matcher: "Bash",
 } as const;
 
-/** The SessionStart entry `.claude/settings.json` wires up — `vow hook session-start` runs at the start of
-    every session (startup, /clear, compact) and injects the `using-vow` bootstrap as the session's first
-    context, so vow's red line + gates + team auto-fire instead of being rediscovered by failing a gate. The
-    matcher covers the three session-open sources; the command stays provider-neutral (the CLI resolves the
-    harness). Committed, so the trigger travels with the repo to every user's LLM. */
+/** The SessionStart entry `.claude/settings.json` wires up — the local-bin `vow hook session-start` runs at
+    the start of every session (startup, /clear, compact) and injects the `using-vow` bootstrap as the
+    session's first context, so vow's red line + gates + team auto-fire instead of being rediscovered by
+    failing a gate. The matcher covers the three session-open sources; the command stays provider-neutral (the
+    CLI resolves the harness). Committed, so the trigger travels with the repo to every user's LLM. */
 const SESSION_HOOK_ENTRY = {
-  hooks: [{ command: "vow hook session-start", type: "command" }],
+  hooks: [{ command: `${HOOK_BIN} hook session-start`, type: "command" }],
   matcher: "startup|clear|compact",
 } as const;
 
@@ -119,10 +130,12 @@ function existingSettings(file: string): Record<string, unknown> {
 }
 
 /** Whether a settings object already wires both vow hook entries (the PreToolUse guard + the SessionStart
-    bootstrap), so the install is idempotent — a re-run that finds both touches nothing. */
+    bootstrap), so the install is idempotent — a re-run that finds both touches nothing. Matches the
+    local-bin command strings (`…/vow hook` and `…/vow hook session-start`) on the unambiguous suffix each
+    ends with, so the check tracks the resolvable command, not the legacy bare `vow`. */
 function hasVowHooks(settings: Readonly<Record<string, unknown>>): boolean {
   const serialized = JSON.stringify(settings["hooks"] ?? "");
-  return serialized.includes("vow hook session-start") && serialized.includes('"vow hook"');
+  return serialized.includes("vow hook session-start") && serialized.includes('vow hook"');
 }
 
 /** The existing `hooks` object of a settings object, or `{}` when absent — preserves a user's other hooks. */
