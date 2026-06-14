@@ -43,8 +43,39 @@ import { readPrompt } from "./agent-prompts.ts";
 /** The known provider names, for the unknown-provider error. */
 const KNOWN_PROVIDERS = PROVIDERS.map((each) => each.name).join(", ");
 
-/** The gates `vow agent run` re-runs in the worktree after the provider, before deciding merge vs. draft. */
-const RUN_GATES: readonly string[] = ["vp check", "pnpm -r test"];
+/** The THOROUGH pre-PR gates — `vow agent run` runs these ONCE after the fast fix rounds converge, before
+ *  deciding merge vs. draft: the full lint + typecheck + format (`vp check`) and the whole-repo suite. */
+const FINAL_GATES: readonly string[] = ["vp check", "pnpm -r test"];
+
+/** The areas (an issue's `area:` label) whose work lives in a single test package, so the FAST per-fix-round
+ *  gate can run ONLY that package's tests (`vp test <dir>`) instead of the whole-repo `pnpm -r test` (#676).
+ *  An area absent here (or no `area:` label) has no single home → the fix round runs `vp lint` alone (still
+ *  fast); CI runs the full suite on the PR either way, so a too-narrow scope never merges an untested change. */
+const AREA_PACKAGE: Readonly<Record<string, string>> = {
+  agent: "packages/agent",
+  core: "packages/core",
+  db: "packages/db",
+  docs: "packages/docs",
+  gate: "packages/gate",
+  github: "packages/observability",
+  mcp: "packages/mcp",
+  observability: "packages/observability",
+  router: "packages/router",
+  store: "packages/store",
+  theme: "packages/theme",
+};
+
+/** The FAST per-fix-round gate set for an issue's `area` — `vp lint` (whole-repo lint is fast; the suite is
+ *  the slow part) plus the area's package tests when it maps to one (`vp test <dir>`). NOT the whole-repo
+ *  `pnpm -r test` — a fix iteration must be bounded fast (#676). The thorough `FINAL_GATES` re-run once after
+ *  the fix rounds converge, and CI runs the full suite on the PR, so a narrow fix-round never lands untested. */
+export function fixGates(area: string): readonly string[] {
+  const pkg = AREA_PACKAGE[area];
+  if (typeof pkg === "string") {
+    return ["vp lint", `vp test ${pkg}`];
+  }
+  return ["vp lint"];
+}
 
 /** How many issues `run-all` develops at once — capped so one machine isn't swamped by parallel agents. */
 export const DEFAULT_CONCURRENCY = 3;
@@ -161,16 +192,19 @@ async function developClaimed(input: DevInput): Promise<DevResult> {
   const spec = issueDetail(cwd, issue);
   // Route the issue to its area's TEAM specialist and inject THAT agent's COMPLETE brief (its role +
   // Discipline + vow's wall) into the develop plan — not a thin roster sketch. The builder is the default.
-  const focus = teamFocus(areaOf(issueLabels(cwd, issue)));
+  const area = areaOf(issueLabels(cwd, issue));
+  const focus = teamFocus(area);
   const outcome = await runTask({
     auth,
     // Thread the scaffolded plan TEMPLATE into the LIVE run, so a user-edited `.claude/prompts/plan.md`
     // Drives the agent's actual plan — not only the `vow agent plan` preview (else preview/run diverge).
+    // The fast `verify` gates bound each fix round (#676); `finalVerify` is the thorough pre-PR wall.
     context: {
       commit: headCommit(cwd),
+      finalVerify: FINAL_GATES,
       focus,
       planTemplate: readPrompt(cwd, "plan"),
-      verify: RUN_GATES,
+      verify: fixGates(area),
     },
     cwd,
     issue: spec,

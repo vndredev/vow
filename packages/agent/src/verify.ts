@@ -67,8 +67,9 @@ export function fixPrompt(verdict: VerifyResult): string {
     .join("\n\n");
   return [
     "Your last changes do not pass the gates yet. Fix EVERY error below by editing the files in this",
-    "worktree — keep the approach, just make it pass. When you are done, `vp check` (format + lint +",
-    "typecheck) and `pnpm -r test` must BOTH exit 0; run them to confirm before you finish.",
+    "worktree — keep the approach, just make it pass. To confirm fast, run ONLY the failing gates listed",
+    "below (`vp lint` + the touched package's tests) and make each exit 0 — do NOT re-run the whole-repo",
+    "`pnpm -r test`; CI runs the full suite. Run those gates to confirm before you finish.",
     "",
     `${complySection(verdict)}## Failing gates`,
     "",

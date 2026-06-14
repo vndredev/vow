@@ -106,9 +106,27 @@ test("the fix-round prompt leads with the self-explaining correction, then the v
 test("the fix-round prompt for an UNKNOWN rule has no comply block — just the verbatim failures", () => {
   const prompt = fixPrompt({
     ok: false,
-    results: [{ command: "pnpm -r test", ok: false, output: "AssertionError: expected 1 to be 2" }],
+    results: [
+      {
+        command: "vp test packages/agent",
+        ok: false,
+        output: "AssertionError: expected 1 to be 2",
+      },
+    ],
   });
   expect(prompt).not.toContain("## How to comply");
   expect(prompt).toContain("## Failing gates");
   expect(prompt).toContain("AssertionError: expected 1 to be 2");
+});
+
+test("the fix-round prompt confirms with the FAST gates, NOT the whole-repo pnpm -r test (#676)", () => {
+  const prompt = fixPrompt({
+    ok: false,
+    results: [{ command: "vp lint", ok: false, output: "form.ts:12: lint(no-ternary)" }],
+  });
+  // The fix-round must stay fast — confirm via `vp lint` + the touched package, never the whole-repo suite.
+  expect(prompt).toContain("vp lint");
+  expect(prompt).toContain("touched package");
+  expect(prompt).toContain("do NOT");
+  expect(prompt).not.toContain("`pnpm -r test` must BOTH exit 0");
 });

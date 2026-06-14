@@ -1,4 +1,4 @@
-import type { AgentOps, Provider } from "../src/types.ts";
+import type { AgentOps, Command, Provider, RunResult } from "../src/types.ts";
 import { claudeCode, codex, runTask } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
@@ -288,6 +288,106 @@ test("a provider without reviewCommand skips the spec review — review phase is
   });
   expect(phases).toContain("review");
   expect(phases).toEqual(["worktree", "develop", "review", "format", "gates", "publish", "done"]);
+});
+
+// The fast `vp lint` gate runs red-then-green across at least two passes (first develop + a fix round).
+const MIN_FAST_RUNS = 2;
+// The thorough `pnpm -r test` runs exactly once — after the fast fix rounds converge.
+const ONE_FINAL_RUN = 1;
+// The fast/final split context: a fast per-fix `vp lint`, a thorough pre-PR `pnpm -r test`.
+const SPLIT_CONTEXT = { commit: "abc1234", finalVerify: ["pnpm -r test"], verify: ["vp lint"] };
+
+/** A no-op async effect — the worktree add/remove the split-gate ops use (no git is touched). */
+async function noopAsync(): Promise<void> {
+  await Promise.resolve();
+}
+
+/** An ops that records each gate command run (in its own `gateCalls`); `vp lint` is red on its FIRST pass then
+ *  green (one fix round), `pnpm -r test` is always green — so the test can assert the fast gate iterates while
+ *  the heavy suite runs exactly once, last. The provider + git are no-ops. */
+function splitGateOps(): { gateCalls: string[]; ops: AgentOps } {
+  const gateCalls: string[] = [];
+  let fastFirst = true;
+  const lintCode = (): number => {
+    if (fastFirst) {
+      fastFirst = false;
+      return 1;
+    }
+    return 0;
+  };
+  const run = async (command: Command): Promise<RunResult> => {
+    await Promise.resolve();
+    const full = `${command.bin} ${command.args.join(" ")}`.trim();
+    if (command.bin === "claude" && command.args[0] === "--print") {
+      return { code: 0, output: REVIEW_OK };
+    }
+    if (command.bin === "vp" && command.args[0] === "lint") {
+      gateCalls.push(full);
+      return { code: lintCode(), output: "lint(no-ternary)" };
+    }
+    if (command.bin === "pnpm") {
+      gateCalls.push(full);
+    }
+    return { code: 0, output: "" };
+  };
+  return { gateCalls, ops: { run, worktreeAdd: noopAsync, worktreeRemove: noopAsync } };
+}
+
+test("the fix rounds re-run the FAST gates; the thorough final verify runs ONCE before publish (#676)", async () => {
+  const { gateCalls, ops } = splitGateOps();
+  const outcome = await runTask({
+    context: SPLIT_CONTEXT,
+    cwd: "/repo",
+    issue,
+    ops,
+    provider: claudeCode,
+  });
+  expect(outcome.verdict.ok).toBe(true);
+  // The published verdict is the THOROUGH final gate (`pnpm -r test`), not the fast `vp lint`.
+  expect(outcome.verdict.results.map((each) => each.command)).toEqual(["pnpm -r test"]);
+  // The fast gate ran across the fix rounds (red then green); the whole-repo suite ran exactly ONCE, last.
+  expect(gateCalls.filter((each) => each === "vp lint").length).toBeGreaterThanOrEqual(
+    MIN_FAST_RUNS,
+  );
+  expect(gateCalls.filter((each) => each === "pnpm -r test").length).toBe(ONE_FINAL_RUN);
+  expect(gateCalls.at(-1)).toBe("pnpm -r test");
+});
+
+test("a still-red fast fix round drafts WITHOUT running the thorough whole-repo suite (#676)", async () => {
+  // The fast gate stays red through all fix rounds -> draft. The heavy `pnpm -r test` must NEVER run for a
+  // Known-red run (no point re-running the whole suite); the draft verdict carries the fast gate's failure.
+  const gateCalls: string[] = [];
+  const ops: AgentOps = {
+    run: async (command) => {
+      await Promise.resolve();
+      if (command.bin === "claude" && command.args[0] === "--print") {
+        return { code: 0, output: REVIEW_OK };
+      }
+      if (command.bin === "vp" && command.args[0] === "lint") {
+        gateCalls.push("vp lint");
+        return { code: 1, output: "still red" };
+      }
+      if (command.bin === "pnpm") {
+        gateCalls.push("pnpm -r test");
+      }
+      return { code: 0, output: "" };
+    },
+    worktreeAdd: async () => {
+      await Promise.resolve();
+    },
+    worktreeRemove: async () => {
+      await Promise.resolve();
+    },
+  };
+  const outcome = await runTask({
+    context: SPLIT_CONTEXT,
+    cwd: "/repo",
+    issue,
+    ops,
+    provider: claudeCode,
+  });
+  expect(outcome.verdict.ok).toBe(false);
+  expect(gateCalls).not.toContain("pnpm -r test");
 });
 
 test("a failed run skips the publish phase (nothing developed)", async () => {

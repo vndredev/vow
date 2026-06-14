@@ -153,6 +153,14 @@ It maps the **known vow-banned rules** to their remedy — the oxlint quality wa
 
 `fixPrompt(verdict)` prepends this `## How to comply` block to the verbatim failures, so each re-dispatched fix-round reads the NAMED rewrite first and self-corrects instead of re-approaching — the same 90%-mechanics move as the bootstrap: don't make the agent smarter, make the failure teach the fix. The mapper is pure and unit-tested (no IO, no provider name), so a new banned rule is one entry in its remedy list. A clean verdict yields no block (`""`); the verbatim failures still stand alone.
 
+## Fast fix-rounds, thorough final verify
+
+A fix-round must be **fast** — re-running the whole-repo `pnpm -r test` on every iteration once ground a single fix for 35+ minutes (#676). So the loop runs two gate sets. Each develop pass and each **fix-round** re-runs the **fast** set — `vp lint` (whole-repo lint is quick) plus the **touched package's** tests (`vp test <package>`, scoped by the issue's `area:` label), never the whole-repo suite. The fix rounds are also wall-time-bounded: after a fixed budget (or the attempt cap), a still-red run drafts rather than hangs. Only when the fast rounds converge green does the loop run the **thorough** final verify **once** — the full `vp check` + `pnpm -r test` — and that verdict decides merge vs. draft. CI re-runs the full suite on the PR either way, so a narrow fix-round can never land an untested change.
+
+## Per-PR settle — decoupled from the round barrier
+
+The settle (update-branch → wait-CI → merge-green / draft-red) used to run only **after** the whole round's develop finished, so a PR that was already green waited on the slowest sibling's fix-round — converged work could sit blocked for hours (#676). Now the settle is **decoupled from the round barrier**: each round develops the backlog **and** settles the open green PRs **concurrently**, each PR settled independently as its own CI is ready. A PR that greens — a prior round's converged work, or one that greens mid-round — merges in **minutes**, never gated behind a sibling's slow fix-round. Each settle (and each develop lane) is isolated, so one un-settleable PR never aborts the sweep.
+
 ## The loop, in one call
 
 `runTask(request)` is the whole loop as a single, provider-neutral call — build the gated plan, set up an isolated worktree, dispatch the provider in it, run the spec-compliance review, re-run the quality gates _in that worktree_, and always tear it down:
