@@ -92,6 +92,16 @@ const HOOK_ENTRY = {
   matcher: "Bash",
 } as const;
 
+/** The SessionStart entry `.claude/settings.json` wires up — `vow hook session-start` runs at the start of
+    every session (startup, /clear, compact) and injects the `using-vow` bootstrap as the session's first
+    context, so vow's red line + gates + team auto-fire instead of being rediscovered by failing a gate. The
+    matcher covers the three session-open sources; the command stays provider-neutral (the CLI resolves the
+    harness). Committed, so the trigger travels with the repo to every user's LLM. */
+const SESSION_HOOK_ENTRY = {
+  hooks: [{ command: "vow hook session-start", type: "command" }],
+  matcher: "startup|clear|compact",
+} as const;
+
 /** The parsed `.claude/settings.json`, or `{}` when the file is absent / malformed. */
 function existingSettings(file: string): Record<string, unknown> {
   if (!existsSync(file)) {
@@ -108,10 +118,11 @@ function existingSettings(file: string): Record<string, unknown> {
   return {};
 }
 
-/** Whether a settings object already wires a `vow hook` guard anywhere in its hooks (idempotent install). */
-function hasVowHook(settings: Readonly<Record<string, unknown>>): boolean {
-  const { hooks } = settings;
-  return JSON.stringify(hooks ?? "").includes("vow hook");
+/** Whether a settings object already wires both vow hook entries (the PreToolUse guard + the SessionStart
+    bootstrap), so the install is idempotent — a re-run that finds both touches nothing. */
+function hasVowHooks(settings: Readonly<Record<string, unknown>>): boolean {
+  const serialized = JSON.stringify(settings["hooks"] ?? "");
+  return serialized.includes("vow hook session-start") && serialized.includes('"vow hook"');
 }
 
 /** The existing `hooks` object of a settings object, or `{}` when absent — preserves a user's other hooks. */
@@ -123,28 +134,35 @@ function existingHooks(settings: Readonly<Record<string, unknown>>): Record<stri
   return {};
 }
 
-/** The existing `PreToolUse` array of a settings object, or `[]` — preserves a user's other PreToolUse hooks. */
-function existingPreToolUse(settings: Readonly<Record<string, unknown>>): readonly unknown[] {
+/** The existing array at `event` within a settings object's hooks, or `[]` — preserves a user's own hooks
+    for that event (PreToolUse, SessionStart) when vow's entry is merged in. */
+function existingEventHooks(
+  settings: Readonly<Record<string, unknown>>,
+  event: string,
+): readonly unknown[] {
   const { hooks } = settings;
-  if (isObject(hooks) && Array.isArray(hooks["PreToolUse"])) {
-    return hooks["PreToolUse"];
+  if (isObject(hooks) && Array.isArray(hooks[event])) {
+    return hooks[event];
   }
   return [];
 }
 
-/** Install the `vow hook` PreToolUse guard into `.claude/settings.json` (merge, idempotent) — beside any
-    hooks the user already configured. So the wrong-tool-call block ships with the repo, no hand-editing. */
-function installHooks(cwd: string): string {
+/** Install the vow hook entries into `.claude/settings.json` (merge, idempotent) — the PreToolUse guard (it
+    blocks a wrong tool-call) AND the SessionStart bootstrap (it injects the `using-vow` router so the team +
+    gates auto-fire), each beside any hooks the user already configured. So both ship with the repo, no
+    hand-editing. */
+export function installHooks(cwd: string): string {
   const file = path.join(cwd, ".claude", "settings.json");
   const settings = existingSettings(file);
-  if (hasVowHook(settings)) {
+  if (hasVowHooks(settings)) {
     return "kept  .claude/settings.json (vow hook)";
   }
   const merged = {
     ...settings,
     hooks: {
       ...existingHooks(settings),
-      PreToolUse: [...existingPreToolUse(settings), HOOK_ENTRY],
+      PreToolUse: [...existingEventHooks(settings, "PreToolUse"), HOOK_ENTRY],
+      SessionStart: [...existingEventHooks(settings, "SessionStart"), SESSION_HOOK_ENTRY],
     },
   };
   mkdirSync(path.dirname(file), { recursive: true });

@@ -1,5 +1,11 @@
 import { APPS, repoRoot } from "./apps.ts";
-import { checkToolCall, claudeDenyOutput, claudeToolCall } from "@vow/agent";
+import {
+  checkToolCall,
+  claudeDenyOutput,
+  claudeToolCall,
+  sessionBootstrap,
+  sessionStartOutput,
+} from "@vow/agent";
 import { prBodyProblems } from "@vow/observability";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
@@ -82,16 +88,37 @@ function parsePayload(raw: string): unknown {
   }
 }
 
-/** `vow hook [provider]` — a provider's PreToolUse guardrail (Claude Code today; Codex / Gemini as further
-    adapters over the same provider-neutral engine). Reads the hook payload on stdin, decides allow/deny via
-    `checkToolCall`, and prints the provider's DENY JSON on a blocked call — nothing on allow, so the provider
-    falls through to its normal permission flow. Always exits 0: the JSON, not the exit code, carries the
-    decision (a non-zero exit would read as a hook ERROR, not a clean deny). */
-export async function hook(): Promise<number> {
+/** `vow hook session-start` — the SessionStart bootstrap: inject the `using-vow` router (the red line, the
+    gates, the team) as the new session's first context, so vow's disciplines auto-fire instead of being
+    rediscovered by failing a gate. Prints the harness's injection JSON + exits 0; the bootstrap TEXT is the
+    provider-neutral `sessionBootstrap()`, wrapped here in the Claude Code envelope (a second harness is a new
+    wrapper over the same text). Reads no stdin — the bootstrap is the same for every session. */
+function sessionStart(): number {
+  process.stdout.write(`${JSON.stringify(sessionStartOutput(sessionBootstrap()))}\n`);
+  return 0;
+}
+
+/** The PreToolUse guardrail: read the hook payload on stdin, decide allow/deny via `checkToolCall`, and print
+    the harness's DENY JSON on a blocked call — nothing on allow, so the provider falls through to its normal
+    permission flow. Always exits 0: the JSON, not the exit code, carries the decision (a non-zero exit would
+    read as a hook ERROR, not a clean deny). */
+async function preToolUse(): Promise<number> {
   const call = claudeToolCall(parsePayload(await readStdin()));
   const verdict = checkToolCall(call);
   if (verdict.decision === "deny") {
     process.stdout.write(`${JSON.stringify(claudeDenyOutput(verdict.reason))}\n`);
   }
   return 0;
+}
+
+/** `vow hook <event>` — a provider's hook entry (Claude Code today; Codex / Gemini as further adapters over
+    the same provider-neutral engine). `session-start` injects the `using-vow` bootstrap into the new session;
+    any other arg (the default PreToolUse path) guards the tool call about to run. One command, two events, so
+    `.claude/settings.json` wires both to `vow hook`. */
+export function hook(rest: readonly string[]): number | Promise<number> {
+  const [event] = rest;
+  if (event === "session-start") {
+    return sessionStart();
+  }
+  return preToolUse();
 }

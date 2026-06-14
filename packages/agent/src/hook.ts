@@ -112,3 +112,25 @@ export function claudeDenyOutput(reason: string): ClaudeHookOutput {
     },
   };
 }
+
+/** Claude Code's SessionStart stdout that INJECTS context into the new session — its `additionalContext` is
+    prepended to the model's first turn (startup / clear / compact). The session-start envelope, beside the
+    PreToolUse one: the harness-specific shape lives here, the bootstrap TEXT stays neutral (`bootstrap.ts`). */
+export interface ClaudeSessionStartOutput {
+  readonly hookSpecificOutput: {
+    readonly additionalContext: string;
+    readonly hookEventName: "SessionStart";
+  };
+}
+
+/** Wrap the provider-neutral `bootstrap` as Claude Code's SessionStart `hookSpecificOutput`. Pure; the CLI
+    prints it as JSON + exits 0, so the harness injects the bootstrap as the session's first context. A second
+    harness is a new wrapper over the SAME `bootstrap` string, never a rewrite (vow's provider-neutral way). */
+export function sessionStartOutput(bootstrap: string): ClaudeSessionStartOutput {
+  return {
+    hookSpecificOutput: {
+      additionalContext: bootstrap,
+      hookEventName: "SessionStart",
+    },
+  };
+}
