@@ -46,14 +46,22 @@ vow build            # vp build, every app
 vow build studio     # one app
 vow test             # pnpm -r test (per-package — never `vp test`, which can't resolve jsdom)
 vow smoke            # boot the dev app + assert its client bundle is browser-safe (default: studio)
-vow pr-body --check  # validate a PR body (piped on stdin) against the template, before gh pr create
+vow pr-body --new 649  # scaffold the PR body for issue 649 (title + Closes #649)
+vow pr-body --check   # validate a piped PR body against the template, before gh pr create
 ```
 
 `vow smoke` is the runtime gate the static ones miss: it boots `vp dev`, crawls the client module graph, and fails if any `node:` builtin leaked into the browser bundle — a class of bug that lint, type-check, and the production build all pass (the build tree-shakes the leak away; the tests run in Node).
 
-`vow pr-body --check` is the **pre-flight** for the PR-body gate: it runs the exact same `prBodyProblems` rule CI runs, so a missing or empty template section (Summary / What / Proof / Next) is caught locally, never first in CI. Pipe the body in before opening the PR:
+`vow pr-body` has two modes:
+
+- **`--new <n>`** — scaffold the PR body for issue `<n>`: emits the template skeleton (Summary / What / Proof / Next + `Closes #N`) pre-filled with the issue title. The scaffold intentionally fails `--check` on `## What` (the bare `-` placeholder is not a real bullet), so the agent is forced to fill the bullets before the gate passes. The structure is mechanically guaranteed — the agent fills only the substance.
+- **`--check`** — the **pre-flight** for the PR-body gate: runs the same `prBodyProblems` rule CI runs, so a missing or empty section is caught locally, never first in CI.
+
+The intended flow:
 
 ```bash
+vow pr-body --new 649 > body.md
+# fill in the What bullets, tick Proof, adjust Next
 vow pr-body --check < body.md && gh pr create --body-file body.md
 ```
 

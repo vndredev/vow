@@ -33,7 +33,7 @@ const RED_LINE_SECTION: readonly string[] = [
   "3. **Develop** — in an isolated worktree, ONE coherent element (no scope creep, no gold-plating).",
   "4. **Verify** — `vp lint` = 0 AND `pnpm -r test` = 0. Machine-checkable; never judge it yourself.",
   "5. **Document** — every package has a row in `docs/guide/packages.md`; every element a doc page.",
-  "6. **PR** — fill the template (Summary / What / Proof / Next); link the issue with `Closes #N`.",
+  "6. **PR** — scaffold with `vow pr-body --new N` (title + structure); fill the substance; `vow pr-body --check` before `gh pr create`.",
   "7. **Merge** — the agent merges when CI's `gate` is green; a red run becomes a draft, never a merge.",
 ];
 

@@ -6,7 +6,7 @@ import {
   sessionBootstrap,
   sessionStartOutput,
 } from "@vow/agent";
-import { prBodyProblems } from "@vow/observability";
+import { issueDetail, prBodyProblems, prBodyScaffold } from "@vow/observability";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 
@@ -65,10 +65,25 @@ async function readStdin(): Promise<string> {
   return chunks.join("");
 }
 
+/** `vow pr-body --new <n>` — scaffold the PR body for issue <n>: emit the template skeleton pre-filled
+    with the issue title and `Closes #N` so an agent fills only the substance (What bullets, ticked Proof
+    checkboxes, Next deferral). The scaffold intentionally fails `--check` on `## What` (the bare `-` is
+    not a real bullet), so the agent is forced to supply the bullets before the gate passes. */
+function prBodyNew(arg: string): number {
+  const detail = issueDetail(repoRoot(), Number(arg));
+  process.stdout.write(`${prBodyScaffold(detail.number, detail.title)}\n`);
+  return 0;
+}
+
 /** `vow pr-body [--check]` — validate the PR body (piped on stdin) against the template BEFORE `gh pr
     create`, so a missing/empty section is caught LOCALLY, never first in CI. Runs the same `prBodyProblems`
-    rule (`@vow/observability`) the CI gate runs — a green local check means a green gate. */
-export async function prBody(): Promise<number> {
+    rule (`@vow/observability`) the CI gate runs — a green local check means a green gate.
+    `vow pr-body --new <n>` scaffolds the skeleton instead (see `prBodyNew`). */
+export async function prBody(rest: readonly string[]): Promise<number> {
+  const [flag, arg] = rest;
+  if (flag === "--new" && typeof arg === "string") {
+    return prBodyNew(arg);
+  }
   const problems = prBodyProblems(await readStdin());
   for (const line of verdictLines(problems)) {
     process.stdout.write(`${line}\n`);
