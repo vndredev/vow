@@ -7,6 +7,7 @@
 
 import { COMMIT_TYPES, HEADER_MAX } from "@vow/observability";
 import type { GateResult, RunResult, VerifyResult } from "./types.ts";
+import { correctionBlock } from "./gate-correction.ts";
 
 /** Re-run each verification gate in `cwd`; the verdict is the conjunction. The exec is injected, so this
  *  is tested without running the gates. A failed gate keeps its captured output, so the reason reaches the
@@ -44,9 +45,21 @@ export function prCreateArgs(title: string, body: string, verified: boolean): re
   return [...base, "--draft"];
 }
 
+/** A `## How to comply` section (named rewrite per violated rule) followed by a blank separator, or "" when
+ *  the verdict trips no KNOWN rule — so the fix prompt prepends the self-explaining block only when it adds
+ *  signal, and the verbatim failures still stand alone otherwise. */
+function complySection(verdict: VerifyResult): string {
+  const block = correctionBlock(verdict);
+  if (block === "") {
+    return "";
+  }
+  return `${block}\n\n`;
+}
+
 /** The fix-round prompt — the executor re-enters its worktree to make the still-failing gates pass. It gets
- *  the failures verbatim (the lint/type/test output) plus an instruction to fix IN PLACE, not re-approach,
- *  so a strict-wall slip self-corrects instead of drafting. */
+ *  the SELF-EXPLAINING correction first (each violated rule NAMED with its concrete rewrite, via
+ *  `correctionBlock`), then the failures verbatim, plus an instruction to fix IN PLACE, not re-approach — so
+ *  a banned-syntax slip (no-ternary / no-negated-condition / no-undefined) self-corrects instead of drafting. */
 export function fixPrompt(verdict: VerifyResult): string {
   const failures = verdict.results
     .filter((result) => !result.ok)
@@ -57,7 +70,7 @@ export function fixPrompt(verdict: VerifyResult): string {
     "worktree — keep the approach, just make it pass. When you are done, `vp check` (format + lint +",
     "typecheck) and `pnpm -r test` must BOTH exit 0; run them to confirm before you finish.",
     "",
-    "## Failing gates",
+    `${complySection(verdict)}## Failing gates`,
     "",
     failures,
   ].join("\n");

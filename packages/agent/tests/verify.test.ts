@@ -1,5 +1,6 @@
 import {
   commitArgs,
+  fixPrompt,
   prBody,
   prCreateArgs,
   prTitle,
@@ -85,4 +86,29 @@ test("prTitle keeps a title that already opens with a conventional type — no f
 test("stageArgs + commitArgs build the agent's worktree commit (commit skips the local hook)", () => {
   expect(stageArgs()).toEqual(["add", "-A"]);
   expect(commitArgs("feat: x")).toEqual(["commit", "-m", "feat: x", "--no-verify"]);
+});
+
+test("the fix-round prompt leads with the self-explaining correction, then the verbatim failures", () => {
+  const prompt = fixPrompt({
+    ok: false,
+    results: [{ command: "vp lint", ok: false, output: "form.ts:12: lint(no-ternary)" }],
+  });
+  // The NAMED rewrite for the banned rule comes first, so the next round self-corrects, not guesses.
+  expect(prompt).toContain("## How to comply");
+  expect(prompt).toContain("- **no-ternary** —");
+  expect(prompt).toContain("if/else block");
+  // The raw output is still carried verbatim, below the correction.
+  expect(prompt).toContain("## Failing gates");
+  expect(prompt.indexOf("## How to comply")).toBeLessThan(prompt.indexOf("## Failing gates"));
+  expect(prompt).toContain("form.ts:12: lint(no-ternary)");
+});
+
+test("the fix-round prompt for an UNKNOWN rule has no comply block — just the verbatim failures", () => {
+  const prompt = fixPrompt({
+    ok: false,
+    results: [{ command: "pnpm -r test", ok: false, output: "AssertionError: expected 1 to be 2" }],
+  });
+  expect(prompt).not.toContain("## How to comply");
+  expect(prompt).toContain("## Failing gates");
+  expect(prompt).toContain("AssertionError: expected 1 to be 2");
 });
