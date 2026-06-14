@@ -13,7 +13,7 @@ Every unit of work is a GitHub issue with a **derived status** — **planned** (
 
 ## The changelog is git
 
-The forward plan ends at the merge — which is where the **changelog** begins. `@vow/observability` reads `git log` at build time and renders the merged history below, newest first, each entry badged by its conventional-commit type ([the git format is enforced](/guide/git)). It's **generated, never typed** — it can't drift, because there's nothing to hand-maintain. (Versioning by semver tag is next, so the changelog groups by release, not just by date.)
+The forward plan ends at the merge — which is where the **changelog** begins. `@vow/observability` reads `git log` at build time and **derives** the merged history; `@vow/emit-view` **renders** it below, newest first, each entry badged by its conventional-commit type ([the git format is enforced](/guide/git)). It's **generated, never typed** — it can't drift, because there's nothing to hand-maintain. (Each commit's release version is read straight from its decorating semver tag, so the changelog groups by release — `Unreleased` above the shipped `v0.0.1` today — not just by date.)
 
 ## The three surfaces
 
