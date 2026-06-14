@@ -24,6 +24,8 @@ export { ISSUE_LAYOUTS, type IssueLayout, issueLayout } from "./issue-layout.ts"
 export { emitIssueBoardSfc, emitIssueRoadmapSfc, emitIssueTableSfc } from "./issue-sfc.ts";
 export { LOOP_LAYOUTS, type LoopLayout, loopLayout } from "./loop-layout.ts";
 export { emitAgentLoopStatusSfc } from "./loop-sfc.ts";
+export { MCP_LAYOUTS, type McpLayout, mcpLayout } from "./mcp-layout.ts";
+export { emitMcpStatusSfc } from "./mcp-sfc.ts";
 export {
   VIEW_NODE_TYPES,
   assertKnownViewType,
@@ -45,6 +47,7 @@ export {
   issueLayouts,
   listedEntities,
   loopLayouts,
+  mcpLayouts,
   statsRefs,
   usesTimeline,
 } from "./refs.ts";

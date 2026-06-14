@@ -21,6 +21,7 @@
     "@vow/emit-view": "workspace:*",
     "@vow/icons": "workspace:*",
     "@vow/layout": "workspace:*",
+    "@vow/mcp": "workspace:*",
     "@vow/observability": "workspace:*",
     "html-to-image": "^1.11.13"
   },

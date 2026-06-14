@@ -36,6 +36,7 @@ import { spawn } from "node:child_process";
 
 // The shared dev-API route shape (the mount prefixes), re-exported so the plugin mounts on the one contract.
 export { VOW_API } from "@vow/db/routes";
+export { NONE };
 
 /** The status codes the data + issue APIs answer with — named so the replies read as intent. */
 const STATUS = {

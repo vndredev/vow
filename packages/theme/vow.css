@@ -619,6 +619,32 @@ body {
 .vow-loop .vow-stat__value {
   font-size: var(--vow-text-3xl);
 }
+/* the live MCP/channel health status (`mcp: { as: status }`) — a channel-state Badge above the health
+   stat-card grid. It composes the Stats/Stat primitives; these rules arrange the panel the same way the
+   loop-status does (dashboard layout, label-above-value), so the cockpit reads consistently. */
+.vow-mcp__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-4);
+}
+.vow-mcp__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+}
+.vow-mcp .vow-stat {
+  flex-direction: column-reverse;
+  gap: var(--vow-space-1);
+}
+.vow-mcp .vow-stat__label {
+  font-size: var(--vow-text-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--vow-tracking-wide);
+  font-weight: var(--vow-weight-medium);
+}
+.vow-mcp .vow-stat__value {
+  font-size: var(--vow-text-3xl);
+}
 /* the live event trace (`events: { as: trace }`) — a structured Table of aligned columns, newest-first.
    It composes the Table parts + a Badge per kind; `.vow-trace` caps the height + scrolls so a long run
    stays a contained, scannable feed, and the column hooks tune the time/issue/detail cells. */

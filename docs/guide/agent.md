@@ -184,6 +184,20 @@ Decoupling the settle made the loop fast for **disjoint** work, but a concurrent
 
 A run develops each issue in `.vow-worktrees/feat-issue-N`. If the loop is restarted while leftovers remain, the new round's `git worktree add -B feat/issue-N` hits **"branch already used by worktree"** and can't reuse the branch (#681). So `vow serve --watch` **prunes stale worktrees on startup**, before the first spiral: `cleanStaleWorktrees(cwd, active)` lists the `feat-issue-N` dirs, keeps any whose issue is still **active** (an open PR — its worktree may be live), and force-removes the rest (`git worktree remove --force` + `git worktree prune`). An in-flight run's worktree is **spared**, a non-`feat-issue-N` directory is left untouched, and each removal is best-effort — a cleanup hiccup never blocks the hub coming up. The staleness **decision** is pure (`staleWorktrees` in `@vow/agent`); the fs + git shelling is its `@vow/cli` wrapper.
 
+## The prompt eval harness
+
+vow gates **code** mechanically — but the agent prompts themselves are the other half of the wall. An untested prompt is a prompt that drifts. The principle is borrowed from skill testing: **NO PROMPT WITHOUT A FAILING TEST FIRST** — write a test that pins one invariant, watch it fail, harden the prompt until it passes, repeat.
+
+The harness lives in `packages/agent/tests/prompt-eval.test.ts`. It tests the _content_ of the operative prompts — `WALL`, `DEFAULT_DEVELOP_PROMPT`, `DEFAULT_PLAN_PROMPT` — against three hardening invariants:
+
+- **Rationalization table** — every known LLM excuse for deviating from the wall is named and closed in `WALL`. An unnamed rationalization can fire without resistance; naming it means the agent sees the counter-argument before acting, not after failing a gate. Examples: _"the ternary is simpler"_ (the ban is unconditional, not context-weighted), _"this `as` is safe, I checked"_ (a cast hides divergence; write a predicate), _"just a tiny adjacent fix"_ (scope creep; open a separate issue).
+
+- **Letter = Spirit clause** — `WALL` carries the explicit statement that the rule IS the intent; there is no reading of "the spirit" that overrides the letter. Without this, an agent invents an intent-based escape hatch over the explicit rule.
+
+- **Red-Flags STOP list** — `DEFAULT_DEVELOP_PROMPT` names the specific _moment_ before a forbidden action (e.g., "about to write `a ? b : c`") so the agent stops before writing the violation, not after. A rule name tells you what to avoid; a Red-Flag names the moment to halt.
+
+Each invariant is a test assertion over the prompt string. A prompt change that drops one of these invariants fails the test — the eval harness is the gate, not a hope.
+
 ## The loop, in one call
 
 `runTask(request)` is the whole loop as a single, provider-neutral call — build the gated plan, set up an isolated worktree, dispatch the provider in it, run the spec-compliance review, re-run the quality gates _in that worktree_, and always tear it down:

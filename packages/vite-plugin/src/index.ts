@@ -2,8 +2,8 @@
 import { type Db, openDevDb, syncEntities } from "./dev-db.ts";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Maybe, type ReadonlyVow, defined, loadVows } from "@vow/core/node";
-import type { Plugin, ViteDevServer } from "vite-plus";
 import {
+  NONE,
   VOW_API,
   agentApi,
   dataApi,
@@ -13,10 +13,11 @@ import {
   loopStatusApi,
   repoRootOf,
 } from "./dev-api.ts";
+import type { Plugin, ViteDevServer } from "vite-plus";
 import { devOverlayTags, loadVowModule, resolveVowId } from "./virtual.ts";
-import { NONE } from "./none.ts";
 import type { VowOptions } from "./vows.ts";
 import { generateFiles } from "./generate.ts";
+import { mcpStatusApi } from "./mcp-status-handler.ts";
 import path from "node:path";
 import { rmSync } from "node:fs";
 
@@ -146,6 +147,8 @@ function mountApis(server: ViteDevServer, state: State): void {
   // The studio under `apps/studio` thus still reads the loop process's live state. The fallback to
   // `state.root` covers a standalone app with no workspace root above (where it reads the idle default).
   server.middlewares.use(VOW_API.agentLoop, loopStatusApi(repoRootOf(state.root) ?? state.root));
+  // The MCP/channel health status — derived from the same REPO-ROOT event feed as the loop status.
+  server.middlewares.use(VOW_API.mcp, mcpStatusApi(repoRootOf(state.root) ?? state.root));
 }
 
 /** Wire the dev server: open the DB, mount the `/__vow` APIs, and watch `app/` for regenerate-on-save. */

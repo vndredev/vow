@@ -67,6 +67,13 @@ The catalog of ready-made components — you name them, vow brings the markup:
   [`Stats`](/guide/primitives/stats) stat-card grid for the metrics. The
   [Cockpit](/guide/serve#the-operations-cockpit) composes it with the trace. Read-only — control is a
   follow-up (#623).
+- **`mcp: { as: status }`** — the **live MCP/channel health indicator**: whether the channel is connected
+  (`connected`), how many tools the vow MCP server registers (`toolCount`), and the newest event's kind +
+  timestamp (`lastEvent`). Reads live from `/__vow/mcp/status` (no baked data). `connected` derives from
+  event-feed freshness — a recent event within 5 minutes means the channel is active. Composes a
+  [`Badge`](/guide/primitives/badge) (connected / disconnected by tone) and a
+  [`Stats`](/guide/primitives/stats) grid for the health metrics. The
+  [Cockpit](/guide/serve#the-operations-cockpit) uses it in the Health card.
 - **`issues: { as: table | roadmap | board }`** — the studio's **live GitHub issues**, read over the
   `/__vow/issues` dev API: a [`Table`](/guide/primitives/table) feed (`as: table`), the milestoned
   [`timeline`](#) roadmap (`as: roadmap`), or a drag-to-restatus [`board`](#) (`as: board`). The plan IS
