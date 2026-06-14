@@ -256,7 +256,7 @@ export * from "./ci.ts";
 export * from "./events.ts";
 export * from "./events-sse.ts";
 export * from "./loop-status.ts";
-export { prBodyProblems } from "./pr-body.ts";
+export { prBodyProblems, prBodyScaffold } from "./pr-body.ts";
 export * from "./github.ts";
 export * from "./issue-body.ts";
 export * from "./phase.ts";

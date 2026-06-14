@@ -100,3 +100,34 @@ export function prBodyProblems(body: string): string[] {
     ...demand(hasText(linesOf(NEXT)), '## Next is missing — deferred work or "—".'),
   ];
 }
+
+/**
+ * The PR-body scaffold — the template skeleton (Summary / What / Proof / Next) pre-filled with the
+ * issue title and `Closes #N`, so an agent fills only the substance (What bullets, Proof ticks, Next
+ * deferral) instead of reconstructing the structure by hand. The same structure `prBodyProblems` checks;
+ * a freshly-emitted scaffold fails `--check` on `## What` (the bare `-` placeholder is not a real bullet)
+ * — by design, so the agent MUST supply the bullets. Pure.
+ */
+export function prBodyScaffold(issue: number, title: string): string {
+  return [
+    "## Summary",
+    "",
+    title,
+    "",
+    "## What",
+    "",
+    "-",
+    "",
+    "## Proof",
+    "",
+    "- [ ] `vp check` green (format · lint · typecheck)",
+    "- [ ] `pnpm -r test` green",
+    "- [ ] the relevant **doc page** updated 1:1 with the change",
+    "",
+    "## Next",
+    "",
+    "—",
+    "",
+    `Closes #${issue}`,
+  ].join("\n");
+}

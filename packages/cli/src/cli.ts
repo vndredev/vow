@@ -36,7 +36,8 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow test             pnpm -r test
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
   vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
-  vow pr-body --check  validate a PR body (piped on stdin) against the template before \`gh pr create\`
+  vow pr-body --new <n>  scaffold the PR body for issue <n> (title + Closes #N) — fill the substance, then --check
+  vow pr-body --check   validate a piped PR body against the template (same rule as CI)
   vow hook [provider]  the PreToolUse guardrail — blocks a wrong tool-call (raw gh, push to main, vp check
                        --fix) with the vow alternative; \`vow agent init\` wires it into .claude/settings.json
   vow reconcile        report plan drift — open issues a merged PR already closed (retire candidates) +
