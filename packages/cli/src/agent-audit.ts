@@ -17,7 +17,14 @@ import {
   resolveCurrentPhase,
 } from "@vow/observability";
 /* oxlint-enable consistent-type-specifier-style */
-import { existsSync, readdirSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 // oxlint-disable-next-line no-duplicate-imports -- the agent-run value import elsewhere; Auth is a type
 import type { Auth } from "./agent-run.ts";
 import { execFileSync } from "node:child_process";
@@ -288,4 +295,48 @@ export function runDeepAuditPass(auth: Auth, cwd: string): AuditPassResult {
     `auto: deep audit filed ${sweep.filed} issue(s) across ${slices.length} slice(s)\n`,
   );
   return { broke: sweep.broke || missed.length > 0, filed: sweep.filed };
+}
+
+/** The stamp file that records the HEAD SHA of the last findings-free audit. When absent, reads as "" so
+ *  any HEAD is treated as changed and an audit runs as normal. */
+const CLEAN_AUDIT_STAMP = ".vow/last-clean-audit";
+
+/** The current HEAD commit SHA via `git rev-parse HEAD`, or "" when git is unavailable. */
+export function headSha(cwd: string): string {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
+/** Read the last-clean-audit HEAD SHA from `.vow/last-clean-audit`, or "" when absent. */
+function readCleanAuditSha(cwd: string): string {
+  try {
+    return readFileSync(path.join(cwd, CLEAN_AUDIT_STAMP), "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+/** Stamp `sha` as the last-clean-audit HEAD, written atomically (write-temp-rename). Best-effort — a stamp
+ *  hiccup never crashes the loop; the next watch tick will re-audit and re-stamp if needed. */
+export function writeCleanAuditSha(cwd: string, sha: string): void {
+  try {
+    const dir = path.join(cwd, ".vow");
+    mkdirSync(dir, { recursive: true });
+    const target = path.join(cwd, CLEAN_AUDIT_STAMP);
+    const temp = `${target}.${process.pid}.tmp`;
+    writeFileSync(temp, sha);
+    renameSync(temp, target);
+  } catch {
+    // Best-effort: never throw from a stamp write.
+  }
+}
+
+/** Whether HEAD moved since the last findings-free audit stamp — `true` when HEAD is unknown (git
+ *  unavailable) or doesn't match the stamp, so the loop audits for safety. */
+export function resolveHeadChanged(cwd: string): boolean {
+  const sha = headSha(cwd);
+  return sha === "" || sha !== readCleanAuditSha(cwd);
 }

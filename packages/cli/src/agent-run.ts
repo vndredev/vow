@@ -321,7 +321,7 @@ function fleetHeader(issues: readonly number[], json: boolean): string {
 }
 
 /** The message of a thrown value — an `Error`'s `.message`, else its string form. */
-function errorReason(error: unknown): string {
+export function errorReason(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }

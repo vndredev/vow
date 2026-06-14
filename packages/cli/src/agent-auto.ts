@@ -20,13 +20,14 @@ import {
   actOnPrForHead,
   authArg,
   develop,
+  errorReason,
   flagValue,
 } from "./agent-run.ts";
 import { type LoopStatus, prHeadOid, writeLoopStatus } from "@vow/observability";
 /* oxlint-enable consistent-type-specifier-style */
+import { headSha, resolveHeadChanged, runAuditPass, writeCleanAuditSha } from "./agent-audit.ts";
 import { cleanStaleWorktrees } from "./agent-worktrees.ts";
 import { execFileSync } from "node:child_process";
-import { runAuditPass } from "./agent-audit.ts";
 
 /** A terminal outcome — the loop stops on any of these; the rest (`develop`, `audit`) run another round.
  *  `audit-broken` is NOT an `autoDecision` outcome: it is raised by running the audit (a dimension's
@@ -55,22 +56,10 @@ export const DEFAULT_MAX_ROUNDS = 10;
 
 /** A whitespace-separated list of positive integers from gh's `--jq` output -> the numbers (newline split). */
 function numbersOf(out: string): number[] {
-  const nums: number[] = [];
-  for (const line of out.split("\n")) {
-    const num = Number(line.trim());
-    if (Number.isInteger(num) && num > 0) {
-      nums.push(num);
-    }
-  }
-  return nums;
-}
-
-/** The message of a thrown value — an `Error`'s `.message`, else its string form. */
-function reasonOf(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
+  return out
+    .split("\n")
+    .map((line) => Number(line.trim()))
+    .filter((num) => Number.isInteger(num) && num > 0);
 }
 
 /** A validated `vow agent auto` invocation — the round cap, the resolved provider, and the auth choice. */
@@ -202,7 +191,7 @@ export function pruneStaleWorktreesOnStartup(cwd: string): void {
       );
     }
   } catch (error) {
-    process.stderr.write(`vow serve: stale-worktree cleanup skipped: ${reasonOf(error)}\n`);
+    process.stderr.write(`vow serve: stale-worktree cleanup skipped: ${errorReason(error)}\n`);
   }
 }
 
@@ -251,7 +240,7 @@ async function settleOne(pr: number, cwd: string): Promise<void> {
   } catch (error) {
     // A gh-exit-1 throw (not mergeable / already a draft / a permission hiccup) must fail only this PR.
     // The next round re-reads + re-settles it; a persistently-stuck PR stays surfaced, never crashing.
-    process.stdout.write(`auto: pr #${pr} settle threw — continuing (${reasonOf(error)})\n`);
+    process.stdout.write(`auto: pr #${pr} settle threw — continuing (${errorReason(error)})\n`);
   }
 }
 
@@ -315,7 +304,7 @@ async function developBacklog(spiral: Spiral, backlog: readonly number[]): Promi
       // A transient throw must fail only this lane, never reject the batch and crash the loop.
       // Settle + the next round then re-attempt the still-open issue naturally (until its attempt cap).
       process.stdout.write(
-        `auto: issue #${issue} develop threw — continuing (${reasonOf(error)})\n`,
+        `auto: issue #${issue} develop threw — continuing (${errorReason(error)})\n`,
       );
     }
   });
@@ -495,6 +484,10 @@ async function runDecision(
   if (pass.broke) {
     return { kind: "terminal", outcome: "audit-broken" };
   }
+  if (pass.filed === 0) {
+    // Stamp the HEAD SHA so the next watch tick knows this clean audit covered THIS exact tree.
+    writeCleanAuditSha(spiral.cwd, headSha(spiral.cwd));
+  }
   return { auditedClean: pass.filed === 0, kind: "advance", state };
 }
 
@@ -521,27 +514,28 @@ function recordStatus(cwd: string, status: Readonly<LoopStatus>): void {
  *  watch it), ask `autoDecision`, and either return the next `Carry` (an action ran) or a terminal EXIT CODE
  *  (the loop stops). Keeps `loop` a thin driver. */
 async function step(spiral: Spiral, carry: Readonly<Carry>): Promise<Carry | number> {
-  const { auditedClean, state } = carry;
-  const effective = effectiveBacklog(spiral.cwd, state.attempts);
+  const effective = effectiveBacklog(spiral.cwd, carry.state.attempts);
   recordStatus(spiral.cwd, {
     backlog: effective.within.length,
     lastRound: new Date().toISOString(),
     openPrs: effective.settleable.length,
-    round: state.round,
+    round: carry.state.round,
     running: true,
   });
+  const headChanged = resolveHeadChanged(spiral.cwd);
   const outcome = autoDecision({
-    auditedClean,
+    auditedClean: carry.auditedClean,
     backlog: effective.within.length,
     capDropped: effective.dropped.length,
+    headChanged,
     maxRounds: spiral.args.maxRounds,
     openPrs: effective.settleable.length,
-    round: state.round,
+    round: carry.state.round,
   });
   if (!isAction(outcome)) {
     return reportOutcome(outcome, effective.dropped);
   }
-  const advanced = await runDecision(spiral, outcome, { effective, state });
+  const advanced = await runDecision(spiral, outcome, { effective, state: carry.state });
   if (advanced.kind === "terminal") {
     return reportOutcome(advanced.outcome, effective.dropped);
   }
