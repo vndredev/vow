@@ -3,10 +3,10 @@ import { type RoundOps, advanceStatus, orchestrateRound } from "../src/agent-aut
 /* oxlint-enable consistent-type-specifier-style */
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { expect, test } from "vite-plus/test";
+import { finalGates, fixGates } from "../src/agent-run.ts";
 import type { LoopStatus } from "@vow/observability";
 import { cleanStaleWorktrees } from "../src/agent-worktrees.ts";
 import { execFileSync } from "node:child_process";
-import { fixGates } from "../src/agent-run.ts";
 import path from "node:path";
 import { tmpdir } from "node:os";
 
@@ -58,6 +58,21 @@ test("fixGates is the FAST per-fix-round set — vp lint + the touched package, 
   // The whole-repo suite must NEVER be a per-fix-round gate.
   for (const area of ["agent", "observability", "", "studio", "core"]) {
     expect(fixGates(area)).not.toContain("pnpm -r test");
+  }
+});
+
+test("finalGates is the THOROUGH pre-PR set — vp check + the touched package, WORKTREE-SAFE (no pnpm -r test) (#685)", () => {
+  // The thorough gate = `vp check` (full lint + type + format) + the area's package tests; it differs from the
+  // Fast `fixGates` only in `vp check` vs `vp lint`, and like it scopes tests to ONE package, never the repo.
+  expect(finalGates("agent")).toEqual(["vp check", "vp test packages/agent"]);
+  expect(finalGates("observability")).toEqual(["vp check", "vp test packages/observability"]);
+  // No mapped package (or no area) -> `vp check` alone; CI runs the full suite on the PR.
+  expect(finalGates("")).toEqual(["vp check"]);
+  expect(finalGates("studio")).toEqual(["vp check"]);
+  // THE #685 FIX: the whole-repo `pnpm -r test` throws in a develop worktree (`.git` is a FILE) and drafted
+  // EVERY run -> 0 convergence; the final verify must NEVER invoke it. CI runs the full suite as the backstop.
+  for (const area of ["agent", "observability", "", "studio", "core"]) {
+    expect(finalGates(area)).not.toContain("pnpm -r test");
   }
 });
 

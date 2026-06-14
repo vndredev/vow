@@ -333,6 +333,27 @@ function splitGateOps(): { gateCalls: string[]; ops: AgentOps } {
   return { gateCalls, ops: { run, worktreeAdd: noopAsync, worktreeRemove: noopAsync } };
 }
 
+/** An ops recording every gate command; the gate whose bin equals `redBin` exits non-zero, all others pass.
+ *  The review run stays compliant; git/gh are no-ops. `calls` is the ordered list of gate commands run. */
+function recordGates(redBin: string): { calls: string[]; ops: AgentOps } {
+  const calls: string[] = [];
+  const run = async (command: Command): Promise<RunResult> => {
+    await Promise.resolve();
+    if (command.bin === "claude" && command.args[0] === "--print") {
+      return { code: 0, output: REVIEW_OK };
+    }
+    if (command.bin === "claude") {
+      return { code: 0, output: "ok" };
+    }
+    calls.push(`${command.bin} ${command.args.join(" ")}`.trim());
+    if (command.bin === redBin) {
+      return { code: 1, output: "" };
+    }
+    return { code: 0, output: "" };
+  };
+  return { calls, ops: { run, worktreeAdd: noopAsync, worktreeRemove: noopAsync } };
+}
+
 test("the fix rounds re-run the FAST gates; the thorough final verify runs ONCE before publish (#676)", async () => {
   const { gateCalls, ops } = splitGateOps();
   const outcome = await runTask({
@@ -372,12 +393,8 @@ test("a still-red fast fix round drafts WITHOUT running the thorough whole-repo 
       }
       return { code: 0, output: "" };
     },
-    worktreeAdd: async () => {
-      await Promise.resolve();
-    },
-    worktreeRemove: async () => {
-      await Promise.resolve();
-    },
+    worktreeAdd: noopAsync,
+    worktreeRemove: noopAsync,
   };
   const outcome = await runTask({
     context: SPLIT_CONTEXT,
@@ -388,6 +405,34 @@ test("a still-red fast fix round drafts WITHOUT running the thorough whole-repo 
   });
   expect(outcome.verdict.ok).toBe(false);
   expect(gateCalls).not.toContain("pnpm -r test");
+});
+
+// A WORKTREE-SAFE final-verify context (#685): the thorough pre-PR gate is `vp check` + the touched package's
+// Tests, NEVER the whole-repo `pnpm -r test` (it throws in a develop worktree and drafted every run; CI is the
+// Full-suite backstop). Mirrors `finalGates(area)`.
+const WORKTREE_SAFE_CONTEXT = {
+  commit: "abc1234",
+  finalVerify: ["vp check", "vp test packages/agent"],
+  verify: ["vp lint", "vp test packages/agent"],
+};
+
+test("a worktree-safe final verify (vp check + the touched package, NO pnpm -r test) publishes a NON-DRAFT green verdict (#685)", async () => {
+  const gateCalls = recordGates("pnpm");
+  const outcome = await runTask({
+    context: WORKTREE_SAFE_CONTEXT,
+    cwd: "/repo",
+    issue,
+    ops: gateCalls.ops,
+    provider: claudeCode,
+  });
+  // GREEN -> a non-draft PR -> CI validates the full suite -> the settle merges (convergence). The published
+  // Verdict is the final gate set, and `pnpm -r test` is NEVER run by the final verify — the #685 fix.
+  expect(outcome.verdict.ok).toBe(true);
+  expect(outcome.verdict.results.map((each) => each.command)).toEqual([
+    "vp check",
+    "vp test packages/agent",
+  ]);
+  expect(gateCalls.calls).not.toContain("pnpm -r test");
 });
 
 test("a failed run skips the publish phase (nothing developed)", async () => {

@@ -22,7 +22,7 @@ export function dryRunReport(issue: IssueSpec, provider: Provider): string {
     `provider: ${provider.name}`,
     `branch:   ${branch}`,
     `command:  ${bin} ${args.join(" ")}`,
-    `gates:    vp check · pnpm -r test`,
+    `gates:    vp check · the touched package's tests (worktree-safe; CI runs the full pnpm -r test)`,
     `(dry run — nothing executed; \`vow agent plan ${issue.number}\` prints the inlined plan)`,
   ].join("\n");
 }

@@ -43,10 +43,6 @@ import { readPrompt } from "./agent-prompts.ts";
 /** The known provider names, for the unknown-provider error. */
 const KNOWN_PROVIDERS = PROVIDERS.map((each) => each.name).join(", ");
 
-/** The THOROUGH pre-PR gates — `vow agent run` runs these ONCE after the fast fix rounds converge, before
- *  deciding merge vs. draft: the full lint + typecheck + format (`vp check`) and the whole-repo suite. */
-const FINAL_GATES: readonly string[] = ["vp check", "pnpm -r test"];
-
 /** The areas (an issue's `area:` label) whose work lives in a single test package, so the FAST per-fix-round
  *  gate can run ONLY that package's tests (`vp test <dir>`) instead of the whole-repo `pnpm -r test` (#676).
  *  An area absent here (or no `area:` label) has no single home → the fix round runs `vp lint` alone (still
@@ -67,7 +63,7 @@ const AREA_PACKAGE: Readonly<Record<string, string>> = {
 
 /** The FAST per-fix-round gate set for an issue's `area` — `vp lint` (whole-repo lint is fast; the suite is
  *  the slow part) plus the area's package tests when it maps to one (`vp test <dir>`). NOT the whole-repo
- *  `pnpm -r test` — a fix iteration must be bounded fast (#676). The thorough `FINAL_GATES` re-run once after
+ *  `pnpm -r test` — a fix iteration must be bounded fast (#676). The thorough `finalGates` re-run once after
  *  the fix rounds converge, and CI runs the full suite on the PR, so a narrow fix-round never lands untested. */
 export function fixGates(area: string): readonly string[] {
   const pkg = AREA_PACKAGE[area];
@@ -75,6 +71,22 @@ export function fixGates(area: string): readonly string[] {
     return ["vp lint", `vp test ${pkg}`];
   }
   return ["vp lint"];
+}
+
+/** The THOROUGH pre-PR gate set for an issue's `area` — the full lint + typecheck + format (`vp check`) plus
+ *  the area's package tests when it maps to one (`vp test <dir>`). WORKTREE-SAFE by construction: it NEVER runs
+ *  the whole-repo `pnpm -r test`, which throws "fatal: not a git repository" in a develop worktree (a worktree
+ *  has a `.git` FILE, not a directory, and `packages/cli`'s agent-auto/audit tests + the vp-test path expansion
+ *  need a real repo). That whole-repo failure drafted EVERY run, so nothing converged (#685). The full suite
+ *  stays the CI backstop: a green worktree-local final verify -> a NON-DRAFT PR -> CI runs `pnpm -r test` in a
+ *  real checkout -> the per-PR settle merges on CI green. The thorough gate differs from the fast `fixGates`
+ *  only in `vp check` (vs. the fast `vp lint`) — both scope tests to the touched package, never the repo. */
+export function finalGates(area: string): readonly string[] {
+  const pkg = AREA_PACKAGE[area];
+  if (typeof pkg === "string") {
+    return ["vp check", `vp test ${pkg}`];
+  }
+  return ["vp check"];
 }
 
 /** How many issues `run-all` develops at once — capped so one machine isn't swamped by parallel agents. */
@@ -201,7 +213,7 @@ async function developClaimed(input: DevInput): Promise<DevResult> {
     // The fast `verify` gates bound each fix round (#676); `finalVerify` is the thorough pre-PR wall.
     context: {
       commit: headCommit(cwd),
-      finalVerify: FINAL_GATES,
+      finalVerify: finalGates(area),
       focus,
       planTemplate: readPrompt(cwd, "plan"),
       verify: fixGates(area),
