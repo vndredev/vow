@@ -121,6 +121,21 @@ prCreateArgs(title, prBody(plan, verdict), verdict.ok); // verdict.ok === false 
 
 After the PR, the agent closes the loop itself: it polls CI's `gate` and acts on the verdict — a **green** run is merged autonomously (`gh pr merge --squash --delete-branch`), a **red** run is flipped back to a draft (surfaced for a human, never merged off a red gate). The loop never merges itself off red; a human only intervenes on a red run.
 
+## The self-explaining gate
+
+A red gate is only useful if the executor knows _how_ to make it green. The loop's fix-rounds used to stall on banned-**syntax** failures — `no-ternary`, `no-negated-condition`, `no-undefined` — because the raw oxlint output named the rule but never the rewrite, so the agent guessed. The fix is the same one the [guardrail hook](#the-guardrail-hooks) uses on a wrong tool-call: **the wall explains itself**. `correctionBlock(verdict)` is a pure rule→remedy mapper — it reads the failed gates' output, NAMES each violated rule, and states the concrete rewrite:
+
+```ts
+correctionBlock(verdict);
+// ## How to comply (the named rewrite per violated rule)
+// - **no-ternary** — rewrite the ternary `a ? b : c` as an if/else block …
+// - **no-undefined** — use the vow `Maybe<T>` seam: return `NONE`, narrow with `defined(x)` …
+```
+
+It maps the **known vow-banned rules** to their remedy — the oxlint quality wall (`no-ternary` → an if/else block, `no-negated-condition` → lead with the positive branch, `no-undefined` → the `Maybe<T>` / `NONE` / `defined(x)` seam, `no-explicit-any` / the `as` cast → narrow with a type predicate, `no-magic-numbers`, `sort-keys`, `max-lines` → split by concern) and the vow gates (framework-neutrality → the neutral `@vow/component` model, provider-neutrality → behind a `Provider` adapter, design-language coverage → a vow.css token, `no-cycle` → invert the dependency, has-a-doc → update the page). A rule it doesn't know about **passes through verbatim** — the correction is never lossy.
+
+`fixPrompt(verdict)` prepends this `## How to comply` block to the verbatim failures, so each re-dispatched fix-round reads the NAMED rewrite first and self-corrects instead of re-approaching — the same 90%-mechanics move as the bootstrap: don't make the agent smarter, make the failure teach the fix. The mapper is pure and unit-tested (no IO, no provider name), so a new banned rule is one entry in its remedy list. A clean verdict yields no block (`""`); the verbatim failures still stand alone.
+
 ## The loop, in one call
 
 `runTask(request)` is the whole loop as a single, provider-neutral call — build the gated plan, set up an isolated worktree, dispatch the provider in it, re-run the gates _in that worktree_, and always tear it down:
