@@ -3,8 +3,8 @@ import { type App, repoRoot, resolveApps } from "./apps.ts";
 /* oxlint-enable consistent-type-specifier-style */
 import { LOOP_IDLE, eventsSseServer, readLoopStatus, writeLoopStatus } from "@vow/observability";
 import { autoConfirmed, pruneStaleWorktreesOnStartup, runAuto } from "./agent-auto.ts";
+import { boardLine, killRunningAgents } from "./agent-run.ts";
 import type { Server } from "node:http";
-import { boardLine } from "./agent-run.ts";
 import { setTimeout as delay } from "node:timers/promises";
 import { mcpHttpServer } from "@vow/mcp/http";
 import { once } from "node:events";
@@ -237,11 +237,12 @@ function bringUp(hub: Readonly<Hub>): void {
   startLoops(hub.watch, hub.root, hub.stop.signal);
 }
 
-/** Tear the hub down: abort the loops, record the agent loop idle at the repo root (so the studio shows
-    autonomy is off the moment the hub stops — a no-op when the watch loop never ran), then close the HTTP
-    servers. */
+/** Tear the hub down: kill any running agent children (so a restart leaves no orphans), abort the loops,
+    record the agent loop idle at the repo root (so the studio shows autonomy is off the moment the hub
+    stops — a no-op when the watch loop never ran), then close the HTTP servers. */
 // oxlint-disable-next-line prefer-readonly-parameter-types -- Hub holds the mutable AbortController + Servers
 async function shutDown(hub: Readonly<Hub>): Promise<void> {
+  killRunningAgents();
   hub.stop.abort();
   if (hub.watch === "run") {
     writeLoopStatus(hub.root, { ...LOOP_IDLE, lastRound: new Date().toISOString() });

@@ -12,6 +12,7 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@vow/core": "workspace:*",
     "@vow/observability": "workspace:*"
   },
   "devDependencies": {

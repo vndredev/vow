@@ -1,58 +1,25 @@
 import type { AgentOps, Command, RunResult } from "./types.ts";
+/* oxlint-disable consistent-type-specifier-style -- ChildProcess type alongside value imports avoids a duplicate-import violation */
+import { type ChildProcess, execFileSync, spawn } from "node:child_process";
+/* oxlint-enable consistent-type-specifier-style */
 import { worktreeAddArgs, worktreeRemoveArgs } from "./dispatch.ts";
-import { execFileSync } from "node:child_process";
+import { defined } from "@vow/core";
+import { once } from "node:events";
 
-/** The exit status carried by a failed `execFileSync`, or 1 when there's no numeric status. */
-function exitStatus(error: unknown): number {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof error.status === "number"
-  ) {
-    return error.status;
-  }
-  return 1;
-}
+/** The PIDs of currently-running agent child processes — tracked so `killRunningAgents` can terminate them
+ *  on hub shutdown, leaving no orphans from a killed/restarted `vow serve --watch`. */
+const agentPids = new Set<number>();
 
-/** The captured stdout of a failed `execFileSync`, or "" when there's none. */
-function failStdout(error: unknown): string {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "stdout" in error &&
-    typeof error.stdout === "string"
-  ) {
-    return error.stdout;
+/** Send SIGTERM to every tracked agent child. Best-effort: a process already gone is silently skipped.
+ *  Call on hub shutdown so a restart starts clean — no orphan agents still running the prior develop. */
+export function killRunningAgents(): void {
+  for (const pid of agentPids) {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {
+      // Already gone.
+    }
   }
-  return "";
-}
-
-/** The captured stderr of a failed `execFileSync` — where git/gh/tsgo write their actionable diagnostics. */
-function failStderr(error: unknown): string {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "stderr" in error &&
-    typeof error.stderr === "string"
-  ) {
-    return error.stderr;
-  }
-  return "";
-}
-
-/** The text a failed run produced — its captured stdout + stderr (the reason often sits in stderr), the
- *  error message, or a fallback. stderr matters: an empty-but-string stdout would otherwise short-circuit
- *  before the message, so the most common failures surfaced an uninformative string. */
-function failOutput(error: unknown): string {
-  const combined = [failStdout(error), failStderr(error)].filter(Boolean).join("\n");
-  if (combined) {
-    return combined;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "unknown error";
 }
 
 /** The child env: `parent` with the command's `unsetEnv` vars removed — so stripping an API key makes the
@@ -84,34 +51,95 @@ function removeWorktree(path: string): void {
   }
 }
 
-/** Run a `command` in `cwd` synchronously, capturing exit + stdout (its `unsetEnv` stripped from the
- *  child). The codebase shells via `execFileSync`; each agent run is its own process, so blocking is fine. */
-function execText(command: Command, cwd: string): RunResult {
+/** The accumulated text streams captured from a child process. */
+interface Captured {
+  readonly getSpawnError: () => string;
+  readonly getStderr: () => string;
+  readonly getStdout: () => string;
+}
+
+/** Attach stdout/stderr/error listeners to `child`, returning closures over the accumulated text.
+ *  Called before awaiting exit so no output is dropped between spawn and close. */
+function attachOutputListeners(child: Readonly<ChildProcess>): Captured {
+  let stdout = "";
+  let stderr = "";
+  let spawnError = "";
+  child.stdout?.setEncoding("utf8");
+  child.stderr?.setEncoding("utf8");
+  child.stdout?.on("data", (chunk: string) => {
+    stdout += chunk;
+  });
+  child.stderr?.on("data", (chunk: string) => {
+    stderr += chunk;
+  });
+  child.on("error", (error: Readonly<Error>) => {
+    spawnError = error.message;
+  });
+  return {
+    getSpawnError: () => spawnError,
+    getStderr: () => stderr,
+    getStdout: () => stdout,
+  };
+}
+
+/** Wait for `child` to close and return its exit code (defaults to 1 on spawn failure).
+ *  A spawn failure fires "error" before "close" — spawnError is already set by the listener. */
+async function waitForExit(child: Readonly<ChildProcess>): Promise<number> {
   try {
-    const stdout = execFileSync(command.bin, [...command.args], {
-      cwd,
-      encoding: "utf8",
-      // oxlint-disable-next-line no-process-env -- the parent env to hand (filtered) to the child spawn
-      env: childEnv(process.env, command.unsetEnv),
-    });
-    return { code: 0, output: stdout };
-  } catch (error) {
-    return { code: exitStatus(error), output: failOutput(error) };
+    const closeArgs: unknown[] = await once(child, "close");
+    const [rawCode] = closeArgs;
+    if (typeof rawCode === "number") {
+      return rawCode;
+    }
+    return 1;
+  } catch {
+    return 1;
   }
 }
 
+/** Build the `RunResult` from the exit code and captured output streams. */
+function buildResult(exitCode: number, captured: Captured): RunResult {
+  if (exitCode === 0 && captured.getSpawnError() === "") {
+    return { code: 0, output: captured.getStdout() };
+  }
+  const combined = [captured.getStdout(), captured.getStderr(), captured.getSpawnError()]
+    .filter(Boolean)
+    .join("\n");
+  return { code: exitCode, output: combined || "unknown error" };
+}
+
+/** Run a `command` in `cwd` asynchronously via `spawn`, capturing exit + stdout+stderr. The PID is tracked
+ *  in `agentPids` for the duration so `killRunningAgents` can terminate it on hub shutdown. Using `spawn`
+ *  (not `execFileSync`) keeps the event loop alive while the child runs — signal handlers fire promptly
+ *  instead of being deferred until the blocking call returns. */
+async function execText(command: Command, cwd: string): Promise<RunResult> {
+  const child = spawn(command.bin, [...command.args], {
+    cwd,
+    // oxlint-disable-next-line no-process-env -- the parent env to hand (filtered) to the child spawn
+    env: childEnv(process.env, command.unsetEnv),
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const { pid } = child;
+  if (defined(pid)) {
+    agentPids.add(pid);
+  }
+  const captured = attachOutputListeners(child);
+  const exitCode = await waitForExit(child);
+  if (defined(pid)) {
+    agentPids.delete(pid);
+  }
+  return buildResult(exitCode, captured);
+}
+
 /**
- * The real `AgentOps` — git worktrees + a spawned provider CLI via `execFileSync`. The thin side-effecting
+ * The real `AgentOps` — git worktrees + a spawned provider CLI via `spawn`. The thin side-effecting
  * adapter the pure loop runs against; `run` is integration-tested with a harmless command, and the git
  * wrappers reuse the already-tested worktree args. A failed worktree command throws (loud); a failed run
  * is captured as its exit code, so the loop can open a draft PR instead of crashing.
  */
 export function realOps(): AgentOps {
   return {
-    run: async (command, cwd) => {
-      await Promise.resolve();
-      return execText(command, cwd);
-    },
+    run: async (command, cwd) => execText(command, cwd),
     worktreeAdd: async (path, branch) => {
       await Promise.resolve();
       // `git worktree add` establishes OWNERSHIP of `path`: it throws when the path already exists (a

@@ -1,4 +1,4 @@
-import { childEnv, realOps } from "../src/real-ops.ts";
+import { childEnv, killRunningAgents, realOps } from "../src/real-ops.ts";
 import { expect, test } from "vite-plus/test";
 import { tmpdir } from "node:os";
 
@@ -43,4 +43,19 @@ test("childEnv strips the unsetEnv vars from the parent (the subscription auth-s
   const parent = { ANTHROPIC_API_KEY: "secret", PATH: "/bin" };
   expect(childEnv(parent, ["ANTHROPIC_API_KEY"])).toEqual({ PATH: "/bin" });
   expect(childEnv(parent, [])).toEqual(parent);
+});
+
+test("killRunningAgents terminates a running child before it finishes", async () => {
+  // 30 s — long enough that killRunningAgents fires while the child is still alive.
+  const LONG_MS = 30_000;
+  const runPromise = realOps().run(
+    { args: ["-e", `setTimeout(() => {}, ${LONG_MS})`], bin: "node" },
+    tmpdir(),
+  );
+  // Yield to the event loop so spawn can register the PID before we kill it.
+  await Promise.resolve();
+  killRunningAgents();
+  const result = await runPromise;
+  // A SIGTERM'd child exits non-zero (null code -> resolves to 1).
+  expect(result.code).not.toBe(0);
 });

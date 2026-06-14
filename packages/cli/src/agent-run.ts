@@ -4,6 +4,7 @@ import {
   areaOf,
   draftArgs,
   dryRunReport,
+  killRunningAgents,
   mapLimit,
   mergeArgs,
   mergeDecision,
@@ -499,3 +500,5 @@ export function actOnPr(pr: number, cwd: string): number {
 export function actOnPrForHead(pr: number, cwd: string, expectedHead: string): number {
   return actOnCi(pr, cwd, { ci: prCiStateForHead(cwd, pr, expectedHead), expectedHead });
 }
+
+export { killRunningAgents };
