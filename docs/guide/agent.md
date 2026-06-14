@@ -5,15 +5,15 @@ order: 4
 
 # The agent layer (`@vow/agent`)
 
-::: warning Foundation status
-Today this is the **provider-neutral seam** — the `Provider` interface, the Claude Code adapter, the registry. The loop on top (plan → dispatch → verify → PR → trigger) is the next elements. What's here is the foundation everything else hangs on.
+::: tip What's built
+The full loop is built on a **provider-neutral seam** — the `Provider` interface, the Claude Code adapter, the registry. On top of it: the plan-builder, isolated dispatch, verify + PR, `runTask` (the loop in one call), `realOps` (the real exec), the `vow agent run` / `run-all` / `merge` / `auto` CLI, and the **Start work** trigger ([the roadmap](#the-roadmap)). The loop today routes each issue to its area's specialist `focus` from the roster; running the richer [team](#the-elite-team) agent in the develop step is still open (#638).
 :::
 
 vow's north star is operation by a person _or_ an LLM. The agent layer is the second half: vow describes a unit of work; an autonomous coding CLI develops it. The one rule, learned the hard way, is **provider-neutrality** — Claude Code, Codex, and Gemini are interchangeable adapters behind one interface. The loop never names a provider.
 
 ## The elite team
 
-A sprawling 28-package project can't be carried by one generalist juggling everything, so the work is divided among **owners** — one specialist subagent per concern. `vow agent init` scaffolds each to `.claude/agents/<name>.md` (Claude Code's custom-subagent format), committed so the team travels with the repo; the orchestrator dispatches the right specialist by the issue's `area:` label. The team is two kinds of member:
+A sprawling 28-package project can't be carried by one generalist juggling everything, so the work is divided among **owners** — one specialist subagent per concern. `vow agent init` scaffolds each to `.claude/agents/<name>.md` (Claude Code's custom-subagent format), committed so the team travels with the repo; an interactive orchestrator dispatches the right specialist by the issue's `area:` label. The team is two kinds of member:
 
 - **The builder** — [`vow-developer`] is the general executor: it takes any issue and carries it end-to-end through the red line (branch → develop → verify → document → PR → agent-merge), reusing what vow already does before adding code, right-sizing to one coherent element per PR. Without it, end-to-end building would fall to a `general-purpose` stand-in instead of a real team member.
 - **The guardians** — one owner per area, each paired with the gate that mechanically enforces it, so the specialist's judgement and the wall agree:
@@ -29,7 +29,7 @@ A sprawling 28-package project can't be carried by one generalist juggling every
   - **`design-language-keeper`** — the design language: primitives consume variant·tone·size·density → `data-*`, every value reads a vow.css token, climbing the interaction ladder toward the UI-framework DSL (Phase O).
   - **`studio-dx`** — the studio cockpit: its `.vow.md` views + the `/__vow` dev-API surface, kept 100% vow (every control a primitive, every value a token).
 
-The builder develops; the guardians keep each area honest. Together they let the autonomous loop develop _everything_ with the right owner, barrier-free.
+The builder develops; the guardians keep each area honest. Together they aim to let the loop develop _everything_ with the right owner, barrier-free — today the team is reached via interactive orchestration, while the **autonomous** loop (`vow agent run` / `auto`) routes each issue to its area's specialist `focus` from the roster, a thinner per-area brief. Running the full team agent in the develop step is the open step (#638).
 
 ## The guardrail hooks
 
@@ -80,7 +80,7 @@ claudeCode.command(task);
 //     args: ["-p", task.plan, "--permission-mode", "acceptEdits", "--output-format", "json"] }
 ```
 
-`-p` is headless print mode; the runner sets the cwd to the task's git worktree. Codex and Gemini join the registry as further adapters over the _same_ `Provider` — the loop above is unchanged. `providerFor(name)` resolves one; nothing above this layer may hardcode a CLI (a gate will enforce that, #107).
+`-p` is headless print mode; the runner sets the cwd to the task's git worktree. Codex and Gemini join the registry as further adapters over the _same_ `Provider` — the loop above is unchanged. `providerFor(name)` resolves one; nothing above this layer may hardcode a CLI — the provider-neutrality gate (#107) enforces it, scanning @vow/agent + @vow/cli + @vow/mcp and flagging a CLI bin name written outside the seam.
 
 ## The plan is the product
 

@@ -22,17 +22,20 @@ A **✅** means a gate enforces it — it can't be skipped. A **❌** (or **◑*
 | 7   | **Document**     | a doc page, 1:1              | the docs-drift gate; a "has-a-doc" gate is still missing                                                                                    | ◑      |
 | 8   | **PR**           | a PR (`Closes #N`)           | CI gates on `vp lint` (no silent-green typecheck)                                                                                           | ✅     |
 | 9   | **Board: doing** | the open PR + a watch link   | `deriveIssueStatus` (open + the `in-progress` label or a PR → doing); the issue links its PR (the run)                                      | ✅     |
-| 10  | **Merge**        | green → the **agent** merges | the agent-merge step (a red run → a draft, never merged)                                                                                    | ❌     |
+| 10  | **Merge**        | green → the **agent** merges | `vow agent merge` — polls CI's `gate`, merges a green PR (squash + delete-branch), drafts a red run, never merged                           | ✅     |
 | 11  | **Board: done**  | merged / closed              | `deriveIssueStatus` (closed → done)                                                                                                         | ✅     |
-| 12  | **Reconcile**    | the backlog stays true       | a mechanical reconcile (issues + milestones)                                                                                                | ❌     |
+| 12  | **Reconcile**    | the backlog stays true       | the hub reconciles the board's Status to the derived truth every tick (`vow serve`)                                                         | ✅     |
 
 ## Secured vs missing
 
-The **spine holds** — steps 1, 4, 5, 6, 8, 9, 11 each fail the build or block the action. What's still on discipline:
+The **spine holds** — steps 1, 4, 5, 6, 8, 9, 10, 11, 12 each fail the build, block the action, or run mechanically. What's still on discipline:
 
 - **2 · the trigger** — the issue board's **Start work** button POSTs a start-work signal to `/__vow/agent`; the dev server dispatches `vow agent run <n>` for that issue (injecting its number/title/body). The run claims the issue (the `in-progress` label) the moment it starts, so it derives `doing` from the start — the PR then carries it onward. The human's one signal to begin; the status stays derived (no status hack). The remaining ◑ is the production channel (a Worker over the GitHub API, beside the dev-server path) and the real MCP-notification surface (#97's research-preview half).
 - **7 · the has-a-doc gate** — docs-drift checks the pages that exist; nothing yet fails an element that ships without one.
-- **10 · the agent-merge** — a green PR is merged by the agent; a red run becomes a draft for the human. The loop never merges itself off a red gate.
-- **12 · the reconcile** — verify what's DONE, unblock what's BLOCKED, retire what got fixed; today manual (#103).
 
-Each ❌/◑ is a tracked issue. When they're all ✅, a change **cannot reach `main` off-path** — that is what "perfect working" means here.
+What's now secured:
+
+- **10 · the agent-merge** — `vow agent merge` polls CI's `gate` and acts on the verdict: a green PR is merged by the agent (squash + delete-branch), a red run becomes a draft for the human. The loop never merges itself off a red gate.
+- **12 · the reconcile** — the hub (`vow serve`) reconciles the board's Status to the studio's derived truth every tick, so any drift (a raw merge, a manual close, a flaky Project workflow) is auto-corrected within an interval — no manual `sync_project`.
+
+Each ◑ is a tracked issue. When they're all ✅, a change **cannot reach `main` off-path** — that is what "perfect working" means here.
