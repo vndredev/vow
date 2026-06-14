@@ -1,9 +1,14 @@
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
 import { type RoundOps, advanceStatus, orchestrateRound } from "../src/agent-auto.ts";
 /* oxlint-enable consistent-type-specifier-style */
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { expect, test } from "vite-plus/test";
 import type { LoopStatus } from "@vow/observability";
+import { cleanStaleWorktrees } from "../src/agent-worktrees.ts";
+import { execFileSync } from "node:child_process";
 import { fixGates } from "../src/agent-run.ts";
+import path from "node:path";
+import { tmpdir } from "node:os";
 
 /** A fake `RoundOps` that records the order of effects, with a SLOW `developBacklog` (resolves on a later
  *  microtask tick) so a test can assert the settle ran CONCURRENTLY with it, not after it. */
@@ -106,4 +111,47 @@ test("orchestrateRound writes the LIVE status as the round advances — round nu
   // The FIRST write saw the open PRs; the LAST (post-settle) reflects the merged-down live count.
   expect(statuses[0]?.openPrs).toBe(OPEN_PRS);
   expect(statuses.at(-1)?.openPrs).toBe(SETTLED_OPEN_PRS);
+});
+
+/** Run `git` in `cwd`, silencing output — the worktree-cleanup test sets up a throwaway repo. */
+function git(cwd: string, ...args: readonly string[]): void {
+  execFileSync("git", [...args], { cwd, stdio: "ignore" });
+}
+
+/** A throwaway git repo with one commit, configured so `git worktree add` and `commit` succeed headless. */
+function makeRepo(): string {
+  const root = mkdtempSync(path.join(tmpdir(), "vow-wt-"));
+  git(root, "init", "-q");
+  git(root, "config", "user.email", "t@t.t");
+  git(root, "config", "user.name", "t");
+  git(root, "commit", "--allow-empty", "-q", "-m", "root");
+  return root;
+}
+
+const ACTIVE_ISSUE = 10;
+const STALE_ISSUE = 11;
+const ONE_REMOVED = 1;
+
+/** Register a per-issue worktree for `issue` under `root`'s `.vow-worktrees/` and return its path. */
+function addWorktree(root: string, issue: number): string {
+  const at = path.join(root, ".vow-worktrees", `feat-issue-${issue}`);
+  git(root, "worktree", "add", "-B", `feat/issue-${issue}`, at);
+  return at;
+}
+
+test("cleanStaleWorktrees removes a prior run's leftover but SPARES an active one (#681)", () => {
+  const root = makeRepo();
+  try {
+    // Two leftover per-issue worktrees from a prior run, both registered with git.
+    const activeDir = addWorktree(root, ACTIVE_ISSUE);
+    const staleDir = addWorktree(root, STALE_ISSUE);
+    // The active issue (an in-flight run owns it) is spared; the stale one is removed + its branch freed.
+    expect(cleanStaleWorktrees(root, [ACTIVE_ISSUE])).toBe(ONE_REMOVED);
+    expect(existsSync(staleDir)).toBe(false);
+    expect(existsSync(activeDir)).toBe(true);
+    // The freed branch re-adds at the same path — the "already used by worktree" block is gone.
+    expect(addWorktree(root, STALE_ISSUE)).toBe(staleDir);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
 });

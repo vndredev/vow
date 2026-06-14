@@ -4,11 +4,14 @@ import {
   type AutoOutcome,
   DEFAULT_ATTEMPT_CAP,
   DEFAULT_PROVIDER,
+  type IssueArea,
   type Provider,
+  areaOf,
   autoDecision,
   backlogOverCap,
   backlogWithinCap,
   mapLimit,
+  partitionByArea,
   providerFor,
 } from "@vow/agent";
 import {
@@ -21,6 +24,7 @@ import {
 } from "./agent-run.ts";
 import { type LoopStatus, prHeadOid, writeLoopStatus } from "@vow/observability";
 /* oxlint-enable consistent-type-specifier-style */
+import { cleanStaleWorktrees } from "./agent-worktrees.ts";
 import { execFileSync } from "node:child_process";
 import { runAuditPass } from "./agent-audit.ts";
 
@@ -61,6 +65,14 @@ function numbersOf(out: string): number[] {
   return nums;
 }
 
+/** The message of a thrown value — an `Error`'s `.message`, else its string form. */
+function reasonOf(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 /** A validated `vow agent auto` invocation — the round cap, the resolved provider, and the auth choice. */
 export interface AutoArgs {
   readonly auth: Auth;
@@ -94,6 +106,42 @@ function openIssues(cwd: string): number[] {
     { cwd, encoding: "utf8" },
   );
   return numbersOf(out);
+}
+
+/** The jq for the batched area read — one TAB-separated line per open issue: `<number>` then each label name
+ *  (`[(.number|tostring)] + [.labels[].name] | join("\t")`). A tab can't appear in a GitHub label name, so the
+ *  first field is always the number and the rest are clean label names. `String.raw` keeps the `\t` literal. */
+const AREA_JQ = String.raw`.[] | [(.number|tostring)] + [.labels[].name] | join("\t")`;
+
+/** The open issues' areas in ONE `gh issue list` call (#681) — `--json number,labels` + `AREA_JQ`, so the
+ *  per-round partition resolves every issue's `area:` label without a `gh issue view` apiece. Each line splits
+ *  on TAB into the number + its label names; `areaOf` then picks the `area:` label (or "" when none). */
+function openIssueAreas(cwd: string): IssueArea[] {
+  const out = execFileSync(
+    "gh",
+    ["issue", "list", "--state", "open", "--json", "number,labels", "--jq", AREA_JQ],
+    { cwd, encoding: "utf8" },
+  );
+  const areas: IssueArea[] = [];
+  for (const line of out.split("\n")) {
+    const [num = "", ...labels] = line.split("\t");
+    const issue = Number(num);
+    if (Number.isInteger(issue) && issue > 0) {
+      areas.push([issue, areaOf(labels)]);
+    }
+  }
+  return areas;
+}
+
+/** Partition the within-cap backlog to at most ONE issue per `area:` label (#681) — so the round's concurrent
+ *  develops touch DISJOINT files and the per-PR settle merges them instead of fleet-CONFLICTING into drafts.
+ *  Resolves each within-cap issue's area from the batched `openIssueAreas` map (an issue absent there — a
+ *  race — falls to "", kept), preserves the backlog order, and hands the pairs to the pure `partitionByArea`.
+ *  The rest wait for the next round, developed once their area is free. */
+function partitionBacklog(within: readonly number[], cwd: string): number[] {
+  const byIssue = new Map(openIssueAreas(cwd));
+  const pairs: IssueArea[] = within.map((issue) => [issue, byIssue.get(issue) ?? ""]);
+  return partitionByArea(pairs);
 }
 
 /** The open, NON-DRAFT PR numbers via `gh pr list` — `--json number,isDraft` then a `--jq` filter that drops
@@ -139,6 +187,25 @@ function inFlight(cwd: string): Set<number> {
   return issues;
 }
 
+/** Prune the prior run's leftover worktrees on `vow serve --watch` startup (#681) — without this a restart
+ *  hits "branch feat/issue-N already used by worktree" on a leftover `.vow-worktrees/feat-issue-N` and can't
+ *  reuse the branch. An issue with an OPEN PR is treated as active (its worktree may be live / wanted) and
+ *  SPARED; every other leftover per-issue worktree is removed. Best-effort + reported, never throws — a
+ *  cleanup hiccup must not block the hub coming up. Reads the in-flight set from gh, so a transient gh failure
+ *  is caught and logged rather than crashing startup. */
+export function pruneStaleWorktreesOnStartup(cwd: string): void {
+  try {
+    const removed = cleanStaleWorktrees(cwd, [...inFlight(cwd)]);
+    if (removed > 0) {
+      process.stdout.write(
+        `vow serve: pruned ${removed} stale agent worktree(s) from a prior run\n`,
+      );
+    }
+  } catch (error) {
+    process.stderr.write(`vow serve: stale-worktree cleanup skipped: ${reasonOf(error)}\n`);
+  }
+}
+
 /** Update PR `pr`'s branch from the base (so CI runs against the latest main), tolerating an already-current
  *  branch (gh exits non-zero when there is nothing to update — not an error for the loop). */
 function updateBranch(pr: number, cwd: string): void {
@@ -157,14 +224,6 @@ function watchChecks(pr: number, cwd: string): void {
   } catch {
     // A red check exits non-zero — settle reads the real CI state next and drafts it.
   }
-}
-
-/** The message of a thrown value — an `Error`'s `.message`, else its string form. */
-function reasonOf(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 }
 
 /** Settle one open PR — update its branch, wait on CI, then merge green / draft red / report pending. The
@@ -221,14 +280,18 @@ interface Effective {
 
 /** The round's effective workload (within-cap backlog · cap-dropped issues · settleable PRs) from the live
  *  gh state + the running attempt counts. The backlog excludes issues already in flight (an open PR exists),
- *  so a round never double-develops; the cap split is over the not-in-flight open set. */
+ *  so a round never double-develops; the cap split is over the not-in-flight open set. The within-cap backlog
+ *  is then PARTITIONED to at most one issue per `area:` label (#681), so the round's concurrent develops touch
+ *  disjoint files — same-area siblings wait for the next round, developed once their area is free, instead of
+ *  fleet-conflicting on the per-PR rebase and drafting. */
 function effectiveBacklog(cwd: string, attempts: readonly AttemptCount[]): Effective {
   const flight = inFlight(cwd);
   const open = openIssues(cwd).filter((issue) => !flight.has(issue));
+  const within = backlogWithinCap(open, attempts, DEFAULT_ATTEMPT_CAP);
   return {
     dropped: backlogOverCap(open, attempts, DEFAULT_ATTEMPT_CAP),
     settleable: settleablePrs(cwd),
-    within: backlogWithinCap(open, attempts, DEFAULT_ATTEMPT_CAP),
+    within: partitionBacklog(within, cwd),
   };
 }
 
