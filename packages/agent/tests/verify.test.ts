@@ -65,7 +65,14 @@ test("a failing run opens a DRAFT pr, never a mergeable one", () => {
 });
 
 test("pushArgs publishes the branch; prBody checks a passed gate", () => {
-  expect(pushArgs("feat/issue-98")).toEqual(["push", "-u", "origin", "feat/issue-98"]);
+  // Force-with-lease so a re-run over a stale remote feat/issue-N publishes instead of a non-fast-forward reject.
+  expect(pushArgs("feat/issue-98")).toEqual([
+    "push",
+    "--force-with-lease",
+    "-u",
+    "origin",
+    "feat/issue-98",
+  ]);
   const body = prBody(
     { number: 98, title: "t" },
     { ok: true, results: [{ command: "vp check", ok: true }] },

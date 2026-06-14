@@ -30,9 +30,11 @@ export async function verify(
   return { ok: results.every((result) => result.ok), results };
 }
 
-/** The `git push` args that publish the task's branch upstream. */
+/** The `git push` args that publish the task's branch upstream. Force-with-lease so a re-run over a STALE
+ *  remote `feat/issue-N` left by a prior attempt publishes instead of being rejected (non-fast-forward) — the
+ *  branch is vow-owned (one issue = one branch), and the lease still refuses to clobber an unexpected remote. */
 export function pushArgs(branch: string): readonly string[] {
-  return ["push", "-u", "origin", branch];
+  return ["push", "--force-with-lease", "-u", "origin", branch];
 }
 
 /** The `gh pr create` args — title + body; a DRAFT when the gates didn't all pass (a red run is surfaced
