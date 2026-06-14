@@ -67,10 +67,17 @@ The catalog of ready-made components — you name them, vow brings the markup:
   [`Stats`](/guide/primitives/stats) stat-card grid for the metrics. The
   [Cockpit](/guide/serve#the-operations-cockpit) composes it with the trace. Read-only — control is a
   follow-up (#623).
+- **`issues: { as: table | roadmap | board }`** — the studio's **live GitHub issues**, read over the
+  `/__vow/issues` dev API: a [`Table`](/guide/primitives/table) feed (`as: table`), the milestoned
+  [`timeline`](#) roadmap (`as: roadmap`), or a drag-to-restatus [`board`](#) (`as: board`). The plan IS
+  GitHub — never baked data.
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
-  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radioGroup` · `select` · `field` · `collapsible` · `tabs` · `dialog`.
-  The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow materialises only
-  the adapters a view references, and an unknown name fails loud at generate time.
+  `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radioGroup` · `select` · `field` ·
+  `callout` · `collapsible` · `tabs` · `dialog` · `contextMenu`. The node name is the primitive's PascalCase name with a
+  lowercased first letter (the `RadioGroup` adapter is the `radioGroup` node). Its **composable parts** are placeable too —
+  a `card` holds a `cardHeader` + `cardBody`; a `table` holds a `tableHead`, `tableRow` and `tableCell`; a `stats` strip
+  holds `stat` tiles. The reserved **`model:`** key becomes a `v-model`. The set is a **closed registry** — vow
+  materialises only the adapters a view references, and an unknown name fails loud at generate time.
 - **`icon: { name }`** — a glyph from [`@vow/icons`](/guide/primitives/button#icon), by semantic name
   (`plus` · `trash` · `pencil` · `arrow-right` · `check` · `x` · `search` · `menu` · `chevron-down`/`-right` ·
   `sun` · `moon` · `monitor`). Sizes with the surrounding font (`1em`), inherits `currentColor`.
@@ -161,7 +168,8 @@ Defaults: `p=0`; `width` / `height` unset unless given.
 | ------ | --------------------- | ------------------------- |
 | `size` | `1` · `2` · `3` · `4` | `max-width` (+ centering) |
 
-Default: `size=3`. (For a vertical stack, reach for [`Stack`](#stack) — a flex column with a `gap`.)
+Default: `size=3`. Place it as `- container: { size: 2, children: [...] }`. (For a vertical stack, reach for
+[`Stack`](#stack) — a flex column with a `gap`.)
 
 ## Why this is framework-free and 100% flexible
 

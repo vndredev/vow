@@ -397,6 +397,9 @@ importers:
       '@vow/emit-entity':
         specifier: workspace:*
         version: link:../emit-entity
+      '@vow/emit-primitive':
+        specifier: workspace:*
+        version: link:../emit-primitive
       '@vow/emit-view':
         specifier: workspace:*
         version: link:../emit-view

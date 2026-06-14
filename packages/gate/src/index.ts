@@ -299,6 +299,46 @@ export function undocumentedPackages(names: readonly string[], docSource: string
 }
 
 /**
+ * The docs-coverage gate — every registered element carries a doc.
+ *
+ * The has-a-doc gate above proves every shipped *package* has a row. This proves the next layer down:
+ * every *element* the generator can place. Two closed registries name vow's built vocabulary —
+ * `PRIMITIVE_ADAPTERS` (the PascalCase primitive SFC adapters) and `VIEW_NODE_TYPES` (the camelCase
+ * `## view` node names). The author + agent paths validate against them: `emit view` rejects a `## view`
+ * node not in the set, and the `add_view` MCP tool publishes the names and validates writes against them.
+ * So a name in either registry is a contract — and a contract with no doc is exactly the drift the audit
+ * found shipped UNGATED (a fully-registered, themed `ContextMenu` primitive with no page; `views.md`
+ * naming the node `radio` while the registry calls it `radioGroup`, which BREAKS the agent path).
+ *
+ * The check mirrors `undocumentedPackages`: an element is documented when its registry name appears as a
+ * whole word in its doc source — the primitives corpus for a primitive (its page heading, its directory
+ * row, a `` `Name` `` part mention in its parent's page), and `views.md` for a view-node name. A whole-word
+ * match (not a substring) keeps `card` from spuriously covering `cardBody`, so a composable part still
+ * earns its own mention. Adding a registered element without documenting it fails a test, not a reader.
+ */
+
+/** A whole-word matcher for `name` — bounded by non-word chars (or the string edges), case-sensitive so a
+ *  PascalCase primitive isn't matched by an unrelated lowercased word. The name is regex-escaped (the
+ *  registry names are plain identifiers, but escaping keeps the matcher safe against any future entry). */
+function mentionsWord(source: string, name: string): boolean {
+  const escaped = name.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
+  return new RegExp(String.raw`(?<![\w-])${escaped}(?![\w-])`, "u").test(source);
+}
+
+/** The registered primitive names not mentioned (as a whole word) anywhere in the primitives doc corpus —
+ *  each is a built, themed element with no page or directory row. Pass `Object.keys(PRIMITIVE_ADAPTERS)`. */
+export function undocumentedPrimitives(names: readonly string[], docSource: string): string[] {
+  return names.filter((name) => !mentionsWord(docSource, name));
+}
+
+/** The view-node type names not mentioned (as a whole word) in the views doc — each is a node an author or
+ *  the `add_view` tool may place that the page never names (the `radio`/`radioGroup` drift). Pass
+ *  `VIEW_NODE_TYPES`. */
+export function undocumentedViewNodes(types: readonly string[], docSource: string): string[] {
+  return types.filter((type) => !mentionsWord(docSource, type));
+}
+
+/**
  * The language gate — the codebase and docs are English-only.
  *
  * Returns the distinct German-language markers (umlauts and the sharp-s) in a source. They are an
