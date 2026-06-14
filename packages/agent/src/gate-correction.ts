@@ -86,10 +86,22 @@ const REMEDIES: readonly RemedyRule[] = [
       "name the magic number — lift it to a `const` with a meaning, so the value reads as intent (the same rule the studio + emitters follow).",
   },
   {
-    id: "sort-keys",
-    match: /sort-keys|sort-imports/u,
+    id: "require-await",
+    match: /require-await/u,
     remedy:
-      "order the keys/imports alphabetically (run `vp fmt` first; if it persists, the order is the rewrite the wall wants).",
+      "an `async` function has no `await` — remove the `async` keyword (the function is synchronous), or `await` the async call it should be waiting on. Don't mark a sync function `async`.",
+  },
+  {
+    id: "sort-keys",
+    match: /sort-keys/u,
+    remedy:
+      "order the object keys alphabetically (run `vp fmt`; if it persists, apply the alphabetical order by hand).",
+  },
+  {
+    id: "sort-imports",
+    match: /sort-imports/u,
+    remedy:
+      "reorder the imports by hand — multiple-specifier imports (`import { a, b }`) before single-specifier (`import x`), then alphabetical. `vp fmt` does NOT sort imports, so this is a manual rewrite.",
   },
   {
     id: "capitalized-comments",
