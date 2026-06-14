@@ -5,7 +5,7 @@ order: 2
 
 # The CLI (`vow`)
 
-The studio is **run by a person** with the `vow` CLI and **operated by an LLM** through the [MCP](/guide/mcp). They split cleanly: `vow` covers **running the apps** (run · status · stop) and the **basics** (check · build · test) — the process work that doesn't belong in an LLM tool — while the MCP is the authoring surface (vows · data · the plan).
+The studio is **run by a person** with the `vow` CLI and **operated by an LLM** through the [MCP](/guide/mcp). They split cleanly: `vow` covers **running the apps** (serve · dev · status · stop) and the **basics** (check · build · test) — the process work that doesn't belong in an LLM tool — while the MCP is the authoring surface (vows · data · the plan).
 
 ## Install
 
@@ -101,6 +101,7 @@ vow agent run <n> --auth api                            # use API key auth (defa
 vow agent run <n> --json                                # emit NDJSON per phase (for LLM / studio)
 vow agent run-all <n>... [--provider <name>]            # develop multiple issues concurrently
 vow agent merge <pr>                                    # merge a green PR / draft a red one (no merge off red)
+vow agent auto --yes                                    # the self-heal loop — audit + develop + merge, unsupervised
 vow agent audit --file <findings.json>                  # file audit findings as vow issues
 ```
 
@@ -117,5 +118,5 @@ The hooks ship in the committed `.claude/settings.json`, so a repo that already 
 These prompts are the **single source of truth across every surface**: the `vow-develop` and `vow-audit` skills are POINTERS — they tell a session to read `.claude/prompts/develop.md` / `.claude/prompts/audit.md` rather than restating their own copy, and a host-orchestration script reads the same file through ONE shared reader (`readPrompt` from `@vow/cli/agent-prompts`, with the same built-in-default fallback). Edit one prompt file and the native agent, the skill, and the orchestration all change together.
 
 ::: tip The split is the point
-**`vow` is for people; the [MCP](/guide/mcp) is for LLMs.** Process management (run · stop · status) lives in the CLI, never in an LLM tool; authoring (vows · records · the plan) lives in the MCP, never in the CLI.
+**`vow` is for people; the [MCP](/guide/mcp) is for LLMs.** Process management (serve · dev · stop · status) lives in the CLI, never in an LLM tool; authoring (vows · records · the plan) lives in the MCP, never in the CLI.
 :::

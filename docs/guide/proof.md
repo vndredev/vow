@@ -8,7 +8,7 @@ order: 2
 A vow's `## proves` are its contract: the scenarios that must hold. The **scenario-coverage gate** makes sure none goes unproven — every promised scenario must have a matching test, or the gate is red.
 
 - For **`emit`**, vow derives the scenarios from the declaration and names the generated tests after them — they prove themselves.
-- For **`bind`**, you write the scenario; vow expects a test whose name _is_ that scenario.
+- For **`bind`**, you write the scenario; vow expects a test whose name _is_ that scenario, and **you own the assertion** (see the honest limit below).
 
 ## How the gate runs
 
@@ -21,6 +21,10 @@ A vow's `## proves` are its contract: the scenarios that must hold. The **scenar
 ```
 
 A claim is _covered_ only when a test's name **equals it exactly** — a substring match would let an empty claim ride on every test (and "adds a task" ride on "readds a task"). Anything else is an unproven promise.
+
+::: warning The honest limit — naming-coverage, not behaviour
+The gate scans test sources for `test("<name>")` strings; it never runs them. So it proves a test **named** after each claim exists, not that the test asserts anything. For **`emit`** that is enough — the same emitter writes both the claim and a real test body, in lock-step. For **`bind`** the body is hand-written, so a green name means "a test of this name exists", **not** "the bound behaviour is proven" — you still own writing a test that actually exercises the symbol. (`pnpm -r test` runs the bodies; the coverage gate only guarantees the test is there to run.)
+:::
 
 ## Generated views prove themselves — render + a11y
 

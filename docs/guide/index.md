@@ -30,7 +30,7 @@ The visible `app/` folder holds the vows. The generated `.vue` / `.ts` lives in 
 ## Why
 
 - **No drift.** What can be generated is never the source. The vow is the single truth; the code is a projection.
-- **Governed.** Every promise carries a proof; an unproven claim can't go green (see [proof](/guide/proof)).
+- **Governed.** Every promise needs a named test, or the gate is red — for `emit`, the generated test proves the behaviour; for `bind`, you own the assertion (see [proof](/guide/proof)).
 - **Yours.** vow is a generator, not a runtime — the output is plain code (Vue today), yours to keep.
 
 Next: [Getting started →](/guide/getting-started)

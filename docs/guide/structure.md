@@ -25,14 +25,16 @@ my-app/
 │  ├─ Task.vue              its CRUD list — emitted because home says `list: task`
 │  ├─ Checkbox.vue Field.vue  emitted primitive adapters (over @vow/headless)
 │  ├─ home.vue users.vue    the pages + Flex/Grid/Box/Stack/Container primitives
+│  ├─ home.render.test.ts   each view/form's proof — mounts the .vue + runs axe (render + a11y)
 │  ├─ add-task.vue          the form — labelled <Field>s + zod validation
+│  ├─ add-task.form.test.ts the form's proof — submits empty, asserts a role="alert" surfaces
 │  ├─ vow-pages.routes.ts   the route table for non-root pages (/add-task, /users)
 │  ├─ vow-app.layout.vue    the app chrome (wraps every page in @vow/shell)
 │  ├─ main.ts               the boot — mounts the root page (was a hand-written src/)
 │  ├─ vow-env.d.ts          *.vue / *.css shims for tsgo
 │  └─ task-summary.bind.ts  bind anchor (tsgo verifies the seam)
 ├─ index.html               loads /.generated/main.ts
-├─ vite.config.ts           plugins: [vue(), vow({ title })]
+├─ vite.config.ts           plugins: [vue(), vow()]  (the app title is the root vow's `title:`)
 ├─ tsconfig.json            include: ["app", ".generated"]
 └─ package.json             @vow/headless · @vow/store · @vow/router · @vow/shell · @vow/theme · vue · zod
 ```
