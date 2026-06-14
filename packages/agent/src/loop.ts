@@ -11,6 +11,7 @@ import {
   verify,
 } from "./verify.ts";
 import { dispatch, gateCommand, worktreePath } from "./dispatch.ts";
+import { specFixPrompt, specReviewOnce } from "./review.ts";
 import { modelFor } from "./model.ts";
 
 /** Publish the developed task — stage + commit the agent's work, push the branch, open the PR (a draft
@@ -64,10 +65,36 @@ async function gateOnce(request: TaskRequest, task: AgentTask): Promise<VerifyRe
   });
 }
 
+/** How many times the spec reviewer may flag a deviation before the loop hands off to the gate stage.
+ *  After this many rounds the loop proceeds regardless — so a stuck review can't block the gate. */
+const MAX_REVIEW_ROUNDS = 2;
+
 /** How many times the executor may re-attempt the gates after a red verdict (re-dispatched with the
  *  errors). After this many fix rounds a still-red run opens a draft for a human; bounded so a stuck run
  *  can't loop forever (cost + time). */
 const MAX_FIX_ROUNDS = 2;
+
+/** Run a spec-compliance review and re-dispatch the provider when the reviewer finds a deviation — up to
+ *  MAX_REVIEW_ROUNDS rounds. Emits the `review` phase before the first review so the orchestration is
+ *  visible. A provider without a `reviewCommand` returns compliant on the first call; the phase is still
+ *  emitted so the phase sequence is predictable regardless of provider. */
+async function specReviewLoop(request: TaskRequest, task: AgentTask): Promise<void> {
+  request.onPhase?.("review");
+  const reviewOpts = { auth: request.auth, ops: request.ops, provider: request.provider };
+  let result = await specReviewOnce(request.issue, task, reviewOpts);
+  let round = 0;
+  while (!result.compliant && round < MAX_REVIEW_ROUNDS) {
+    round += 1;
+    // oxlint-disable-next-line no-await-in-loop -- spec-review rounds are inherently sequential
+    await dispatch(
+      { ...task, plan: specFixPrompt(result.feedback) },
+      request.provider,
+      request.ops,
+    );
+    // oxlint-disable-next-line no-await-in-loop -- review after each correction, in order
+    result = await specReviewOnce(request.issue, task, reviewOpts);
+  }
+}
 
 /** Re-attempt the gates with the executor fixing its OWN failures — up to MAX_FIX_ROUNDS re-dispatches,
  *  each fed the prior verdict's errors (`fixPrompt`) then re-formatted + re-gated. Returns the final outcome
@@ -91,13 +118,17 @@ async function iterate(
   return { run, verdict };
 }
 
-/** Develop the task inside its worktree — dispatch the provider, auto-format + gate, then let the executor
- *  fix its OWN gate failures (up to MAX_FIX_ROUNDS) before publishing, so a strict-wall lint/type slip
- *  self-corrects instead of drafting. Still red after the fix rounds → a DRAFT. Each step emits a `Phase`
- *  via `onPhase`; the worktree setup + teardown stay in `runTask`. */
+/** Develop the task inside its worktree — dispatch the provider, run the spec-compliance review (before
+ *  the quality gates, so "green but wrong" is caught first), auto-format + gate, then let the executor fix
+ *  its OWN gate failures (up to MAX_FIX_ROUNDS) before publishing. The spec review only runs when the
+ *  provider succeeded (nothing to review if the run failed). Each step emits a `Phase` via `onPhase`; the
+ *  worktree setup + teardown stay in `runTask`. */
 async function develop(request: TaskRequest, task: AgentTask): Promise<TaskOutcome> {
   request.onPhase?.("develop");
   const run = await dispatch(task, request.provider, request.ops);
+  if (run.ok) {
+    await specReviewLoop(request, task);
+  }
   const verdict = await gateOnce(request, task);
   const outcome = await iterate(request, task, { run, verdict });
   await publishOutcome(request, task, outcome);

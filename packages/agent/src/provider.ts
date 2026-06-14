@@ -59,8 +59,24 @@ const CLAUDE_MODELS: ModelPolicy = {
   plan: modelSetting("VOW_PLAN_MODEL", "claude-opus-4-8"),
 };
 
+/** The claude CLI command for a headless, read-only audit of one dimension: print mode at `model` with the
+ *  audit prompt, restricted to read-only tools, and the API key stripped (subscription auth) unless `--auth
+ *  api` is explicit. The `prompt` is the positional that MUST come right after `--print`, BEFORE the variadic
+ *  `--allowedTools <tools...>` — that flag greedily swallows every following arg, so a trailing prompt is eaten
+ *  as a "tool" and claude aborts with "Input must be provided … when using --print". Built, never run here —
+ *  the args array is the tested product (the LIVE shell-out is integration the CLI runs). Pure. */
+export function auditCommand(model: string, prompt: string, auth?: Auth): Command {
+  return {
+    args: ["--print", prompt, "--model", model, "--allowedTools", AUDIT_TOOLS],
+    bin: "claude",
+    unsetEnv: authUnset(auth, "ANTHROPIC_API_KEY"),
+  };
+}
+
 /** Claude Code — `claude -p` headless: print mode, edits accepted, structured output. The plan is the
- *  prompt; the runner sets the cwd to the task's worktree. */
+ *  prompt; the runner sets the cwd to the task's worktree. `reviewCommand` reuses the read-only audit
+ *  command (same bin, same tools) — the spec review is a headless read-only check, so the audit command
+ *  is the correct shape; the difference is only the prompt content. */
 export const claudeCode: Provider = {
   command: (task) => ({
     args: [
@@ -77,25 +93,12 @@ export const claudeCode: Provider = {
   }),
   models: CLAUDE_MODELS,
   name: "claude-code",
+  reviewCommand: auditCommand,
 };
 
 /** The audit model — the brain a headless audit pass runs under (Opus 4.8, the most capable available since
  *  Fable's suspension). Resolved from vow's native per-role setting, so it tracks the policy the loop uses. */
 export const AUDIT_MODEL: string = CLAUDE_MODELS.audit;
-
-/** The claude CLI command for a headless, read-only audit of one dimension: print mode at `model` with the
- *  audit prompt, restricted to read-only tools, and the API key stripped (subscription auth) unless `--auth
- *  api` is explicit. The `prompt` is the positional that MUST come right after `--print`, BEFORE the variadic
- *  `--allowedTools <tools...>` — that flag greedily swallows every following arg, so a trailing prompt is eaten
- *  as a "tool" and claude aborts with "Input must be provided … when using --print". Built, never run here —
- *  the args array is the tested product (the LIVE shell-out is integration the CLI runs). Pure. */
-export function auditCommand(model: string, prompt: string, auth?: Auth): Command {
-  return {
-    args: ["--print", prompt, "--model", model, "--allowedTools", AUDIT_TOOLS],
-    bin: "claude",
-    unsetEnv: authUnset(auth, "ANTHROPIC_API_KEY"),
-  };
-}
 
 /** Codex CLI — `codex exec` non-interactive, `--full-auto` so edits apply without a prompt. */
 export const codex: Provider = {

@@ -21,6 +21,7 @@ export * from "./prompts.ts";
 export * from "./provider.ts";
 export * from "./real-ops.ts";
 export * from "./report.ts";
+export * from "./review.ts";
 export * from "./roster.ts";
 export * from "./team.ts";
 export type * from "./types.ts";

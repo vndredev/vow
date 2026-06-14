@@ -1,18 +1,25 @@
-import { claudeCode, runTask } from "../src/index.ts";
+import type { AgentOps, Provider } from "../src/types.ts";
+import { claudeCode, codex, runTask } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
-import type { AgentOps } from "../src/types.ts";
 
 const issue = { body: "do the thing", number: 98, title: "the loop" };
 const context = { commit: "abc1234", verify: ["vp check"] };
 
-/** A fake ops: records the worktree + run lifecycle; the provider (`claude`) exits 0, the verify gate
- *  exits `gateCode`. No git is touched and `claude` never runs. */
+/** JSON the fake review run emits — compliant so the review loop exits on the first pass. */
+const REVIEW_OK = JSON.stringify({ compliant: true, feedback: "" });
+
+/** A fake ops: records the worktree + run lifecycle. The provider run (claude `-p`) exits `runCode`;
+ *  the spec-review run (claude `--print`) always emits a compliant result so the review loop exits
+ *  on the first pass; all other commands (vp, git, gh) exit `gateCode`. */
 function fakeOps(gateCode: number, runCode = 0): { calls: string[]; ops: AgentOps } {
   const calls: string[] = [];
   const ops: AgentOps = {
     run: async (command) => {
       await Promise.resolve();
       calls.push(`run ${command.bin}`);
+      if (command.bin === "claude" && command.args[0] === "--print") {
+        return { code: 0, output: REVIEW_OK };
+      }
       if (command.bin === "claude") {
         return { code: runCode, output: "ok" };
       }
@@ -83,7 +90,7 @@ test("a failed provider run yields run.ok=false — the draft-PR trigger", async
   const ops: AgentOps = {
     run: async (command) => {
       await Promise.resolve();
-      if (command.bin === "claude") {
+      if (command.bin === "claude" && command.args[0] === "-p") {
         return { code: 1, output: "boom" };
       }
       return { code: 0, output: "" };
@@ -125,7 +132,23 @@ test("runTask emits the lifecycle phases in order — the live-orchestration sig
     ops,
     provider: claudeCode,
   });
-  expect(phases).toEqual(["worktree", "develop", "format", "gates", "publish", "done"]);
+  expect(phases).toEqual(["worktree", "develop", "review", "format", "gates", "publish", "done"]);
+});
+
+test("a failed provider run skips the review — no spec-review when nothing was developed", async () => {
+  const { ops } = fakeOps(0, 1);
+  const phases: string[] = [];
+  await runTask({
+    context,
+    cwd: "/repo",
+    issue,
+    onPhase: (phase) => {
+      phases.push(phase);
+    },
+    ops,
+    provider: claudeCode,
+  });
+  expect(phases).toEqual(["worktree", "develop", "format", "gates", "done"]);
 });
 
 test("the worktree is auto-formatted before the gate — a format deviation can never fail the gate", async () => {
@@ -134,6 +157,9 @@ test("the worktree is auto-formatted before the gate — a format deviation can 
     run: async (command) => {
       await Promise.resolve();
       commands.push(`${command.bin} ${command.args.join(" ")}`.trim());
+      if (command.bin === "claude" && command.args[0] === "--print") {
+        return { code: 0, output: REVIEW_OK };
+      }
       if (command.bin === "claude") {
         return { code: 0, output: "ok" };
       }
@@ -160,6 +186,9 @@ test("the executor gets fix rounds — a gate red then green after a fix publish
     run: async (command) => {
       await Promise.resolve();
       calls.push(`run ${command.bin}`);
+      if (command.bin === "claude" && command.args[0] === "--print") {
+        return { code: 0, output: REVIEW_OK };
+      }
       if (command.bin === "vp" && command.args[0] === "check") {
         if (firstGate) {
           firstGate = false;
@@ -190,6 +219,75 @@ test("the executor gets fix rounds — a gate red then green after a fix publish
   expect(phases).toContain("fix");
   expect(outcome.verdict.ok).toBe(true);
   expect(calls).toContain("run gh");
+});
+
+test("a non-compliant spec review triggers a re-dispatch before the quality gates", async () => {
+  let reviewRound = 0;
+  const calls: string[] = [];
+  const ops: AgentOps = {
+    run: async (command) => {
+      await Promise.resolve();
+      calls.push(`run ${command.bin} ${command.args[0] ?? ""}`);
+      if (command.bin === "claude" && command.args[0] === "--print") {
+        reviewRound += 1;
+        if (reviewRound === 1) {
+          return {
+            code: 0,
+            output: JSON.stringify({ compliant: false, feedback: "missing test" }),
+          };
+        }
+        return { code: 0, output: REVIEW_OK };
+      }
+      if (command.bin === "claude") {
+        return { code: 0, output: "ok" };
+      }
+      return { code: 0, output: "" };
+    },
+    worktreeAdd: async () => {
+      await Promise.resolve();
+    },
+    worktreeRemove: async () => {
+      await Promise.resolve();
+    },
+  };
+  const outcome = await runTask({ context, cwd: "/repo", issue, ops, provider: claudeCode });
+  expect(outcome.run.ok).toBe(true);
+  const MIN_REVIEW_CALLS = 2;
+  const reviewCalls = calls.filter((call) => call.startsWith("run claude --print"));
+  expect(reviewCalls.length).toBeGreaterThanOrEqual(MIN_REVIEW_CALLS);
+});
+
+test("a provider without reviewCommand skips the spec review — review phase is still emitted", async () => {
+  const providerNoReview: Provider = {
+    command: codex.command,
+    models: codex.models,
+    name: "codex",
+  };
+  const phases: string[] = [];
+  const ops: AgentOps = {
+    run: async () => {
+      await Promise.resolve();
+      return { code: 0, output: "" };
+    },
+    worktreeAdd: async () => {
+      await Promise.resolve();
+    },
+    worktreeRemove: async () => {
+      await Promise.resolve();
+    },
+  };
+  await runTask({
+    context,
+    cwd: "/repo",
+    issue,
+    onPhase: (phase) => {
+      phases.push(phase);
+    },
+    ops,
+    provider: providerNoReview,
+  });
+  expect(phases).toContain("review");
+  expect(phases).toEqual(["worktree", "develop", "review", "format", "gates", "publish", "done"]);
 });
 
 test("a failed run skips the publish phase (nothing developed)", async () => {

@@ -6,7 +6,7 @@ order: 4
 # The agent layer (`@vow/agent`)
 
 ::: tip What's built
-The full loop is built on a **provider-neutral seam** — the `Provider` interface, the Claude Code adapter, the registry. On top of it: the plan-builder, isolated dispatch, verify + PR, `runTask` (the loop in one call), `realOps` (the real exec), the `vow agent run` / `run-all` / `merge` / `auto` CLI, and the **Start work** trigger ([the roadmap](#the-roadmap)). The loop **dispatches the [elite team](#the-elite-team)** (#638): it routes each issue by its `area:` label to the matching specialist and injects that agent's **complete** brief — its role, discipline, and vow's wall — into the develop plan, not a thin per-area sketch. There is **one** source of agent definitions (`team.ts`), so the autonomous loop and interactive orchestration dispatch the very same specialists.
+The full loop is built on a **provider-neutral seam** — the `Provider` interface, the Claude Code adapter, the registry. On top of it: the plan-builder, isolated dispatch, **spec-compliance review** (a fresh headless reviewer checks "right code?" before the quality gates), verify + PR, `runTask` (the loop in one call), `realOps` (the real exec), the `vow agent run` / `run-all` / `merge` / `auto` CLI, and the **Start work** trigger ([the roadmap](#the-roadmap)). The loop **dispatches the [elite team](#the-elite-team)** (#638): it routes each issue by its `area:` label to the matching specialist and injects that agent's **complete** brief — its role, discipline, and vow's wall — into the develop plan, not a thin per-area sketch. There is **one** source of agent definitions (`team.ts`), so the autonomous loop and interactive orchestration dispatch the very same specialists.
 :::
 
 vow's north star is operation by a person _or_ an LLM. The agent layer is the second half: vow describes a unit of work; an autonomous coding CLI develops it. The one rule, learned the hard way, is **provider-neutrality** — Claude Code, Codex, and Gemini are interchangeable adapters behind one interface. The loop never names a provider.
@@ -67,6 +67,7 @@ interface Command {
 interface Provider {
   name: string;
   command(task: AgentTask): Command;
+  reviewCommand?(model: string, prompt: string, auth?: Auth): Command; // optional: headless read-only review
 }
 ```
 
@@ -110,9 +111,25 @@ await dispatch(task, claudeCode, ops);
 
 The worktree is the **isolation** that lets a fleet of agents run in parallel without colliding on the working tree — the foundation for stepping on the gas with multiple agents at once.
 
+## Spec-compliance review
+
+Before the quality gates, a fresh headless reviewer asks "did the provider build _exactly_ what the issue asked — no over-build, no under-build?" This is the class of failure the quality wall can't see: code that is lint-clean and all-tests-green but builds the wrong thing.
+
+`specReviewOnce(issue, task, provider, ops, auth)` sends a read-only headless command (the same audit-command shape — `--print`, restricted tools, subscription auth stripped) with the issue's title and body embedded. The reviewer outputs a JSON verdict:
+
+```json
+{ "compliant": true, "feedback": "" }
+// or
+{ "compliant": false, "feedback": "The handler exists but the test for it is missing." }
+```
+
+`parseReviewOutput` parses this; a malformed reply is itself non-compliant. The loop re-dispatches the provider with the feedback (via `specFixPrompt`) and re-reviews — up to `MAX_REVIEW_ROUNDS` rounds — before handing off to the quality gates. A provider without `reviewCommand` returns compliant immediately (the review is skipped for that backend; the `"review"` phase is still emitted so the phase sequence is predictable).
+
+Provider-neutrality is maintained: `buildReviewPrompt` and `specFixPrompt` are pure string functions with no provider name; the review command is built by the `Provider` seam's `reviewCommand` method.
+
 ## Verify, then PR
 
-After the run, `verify(gates, cwd, run)` re-runs every gate (the improve "review like a tech lead" — done-criteria re-checked, never trusted); the verdict is the conjunction. Then the branch is pushed and `gh pr create` opens the PR — **a red run opens a DRAFT**, surfaced for a human, never mergeable:
+After the run and spec-compliance review, `verify(gates, cwd, run)` re-runs every gate (the improve "review like a tech lead" — done-criteria re-checked, never trusted); the verdict is the conjunction. Then the branch is pushed and `gh pr create` opens the PR — **a red run opens a DRAFT**, surfaced for a human, never mergeable:
 
 ```ts
 const verdict = await verify(plan.gates, cwd, run);
@@ -138,15 +155,19 @@ It maps the **known vow-banned rules** to their remedy — the oxlint quality wa
 
 ## The loop, in one call
 
-`runTask(request)` is the whole loop as a single, provider-neutral call — build the gated plan, set up an isolated worktree, dispatch the provider in it, re-run the gates _in that worktree_, and always tear it down:
+`runTask(request)` is the whole loop as a single, provider-neutral call — build the gated plan, set up an isolated worktree, dispatch the provider in it, run the spec-compliance review, re-run the quality gates _in that worktree_, and always tear it down:
 
 ```ts
 const outcome = await runTask({ issue, context, cwd, provider: claudeCode, ops });
-// ops.worktreeAdd → dispatch(plan, worktree) → verify(gates, worktree) → ops.worktreeRemove (always)
+// ops.worktreeAdd → dispatch(plan, worktree)
+//   → specReviewLoop (right code? loops until compliant or MAX_REVIEW_ROUNDS)
+//   → verify(gates, worktree)   (clean code? fix rounds up to MAX_FIX_ROUNDS)
+//   → ops.worktreeRemove (always)
+// Phases: worktree → develop → review → format → gates → publish → done
 // → { run, verdict }
 ```
 
-Every effect is injected via `ops`, so the entire loop is tested end-to-end without running claude or touching git. The worktree's lifecycle lives here, not in `dispatch` — verify must see the agent's changes _before_ teardown.
+Every effect is injected via `ops`, so the entire loop is tested end-to-end without running the provider CLI or touching git. The worktree's lifecycle lives here, not in `dispatch` — the spec review and the quality gates both run in the live worktree before teardown.
 
 ## The `vow agent run` CLI
 
@@ -166,4 +187,4 @@ This is vow's own orchestration — no external CI/CD or Kubernetes — a provid
 
 ## The roadmap
 
-✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → ✓ `runTask` (the loop, one call) → ✓ `realOps` (the real exec — git worktrees + the CLI spawned via `execFileSync`; each run is its own process, so the sync exec doesn't block a parallel fleet) → ✓ `vow agent run <n>` + `run-all <n>...` (the CLI front-door — develops issues in worktrees and opens PRs, draft if gates fail; live-streaming progress; auth choices; NDJSON for LLMs) → ✓ `vow agent merge` (the agent-merge stage — polls CI's `gate`, merges a green PR squash+delete-branch, drafts a red one) → ✓ `vow agent auto --yes` (the self-heal loop — **opt-in only**: it audits + develops + merges unsupervised, so it refuses to start without `--yes` / `VOW_AGENT_AUTO=1`, and `--help` is help, never a launch) → ✓ `vow agent audit` → ✓ the **trigger** (the issue board's **Start work** action POSTs `/__vow/agent`, dispatching `vow agent run <n>` for the issue — the human's one signal to begin; the run's PR derives `doing`) → ✓ **team dispatch** (the loop routes each issue by its `area:` label to the matching [team](#the-elite-team) specialist and injects that agent's complete brief into the develop plan — one source of agent definitions, #638) → next: the production channel (a Worker over the GitHub API) + the real MCP-notification surface. The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
+✓ provider abstraction → ✓ plan-builder → ✓ dispatch → ✓ verify + PR → ✓ `runTask` (the loop, one call) → ✓ `realOps` (the real exec — git worktrees + the CLI spawned via `execFileSync`; each run is its own process, so the sync exec doesn't block a parallel fleet) → ✓ `vow agent run <n>` + `run-all <n>...` (the CLI front-door — develops issues in worktrees and opens PRs, draft if gates fail; live-streaming progress; auth choices; NDJSON for LLMs) → ✓ `vow agent merge` (the agent-merge stage — polls CI's `gate`, merges a green PR squash+delete-branch, drafts a red one) → ✓ `vow agent auto --yes` (the self-heal loop — **opt-in only**: it audits + develops + merges unsupervised, so it refuses to start without `--yes` / `VOW_AGENT_AUTO=1`, and `--help` is help, never a launch) → ✓ `vow agent audit` → ✓ the **trigger** (the issue board's **Start work** action POSTs `/__vow/agent`, dispatching `vow agent run <n>` for the issue — the human's one signal to begin; the run's PR derives `doing`) → ✓ **team dispatch** (the loop routes each issue by its `area:` label to the matching [team](#the-elite-team) specialist and injects that agent's complete brief into the develop plan — one source of agent definitions, #638) → ✓ **spec-compliance review** (a fresh headless reviewer checks "right code?" BEFORE the quality gates — closes the "green but wrong" blind spot; #648) → next: the production channel (a Worker over the GitHub API) + the real MCP-notification surface. The whole thing is vow's own, provider-neutral — not a dependency on any single CLI's orchestration.
