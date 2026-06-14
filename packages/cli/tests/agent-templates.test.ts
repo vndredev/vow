@@ -85,3 +85,18 @@ test("cli.md documents init scaffolding every skill, not just develop", () => {
   const doc = source("../../../docs/guide/cli.md");
   expect(doc).toContain(`the ${INIT_SKILLS.join("/")} skills`);
 });
+
+test("the init summary mentions engineering skills alongside the workflow skills", () => {
+  expect(agentHelp()).toContain("engineering skills");
+});
+
+test("the init doc comment names the engineering-discipline skills it scaffolds", () => {
+  const comment = source("../src/agent.ts");
+  expect(comment).toContain("engineering-discipline skills");
+  expect(comment).toContain("test-first");
+  expect(comment).toContain("verification-before-completion");
+  expect(comment).toContain("systematic-debugging");
+  expect(comment).toContain("condition-based-waiting");
+  expect(comment).toContain("defense-in-depth");
+  expect(comment).toContain("how-to-write-a-vow-skill");
+});

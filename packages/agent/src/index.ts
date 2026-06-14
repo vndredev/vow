@@ -23,6 +23,7 @@ export * from "./real-ops.ts";
 export * from "./report.ts";
 export * from "./review.ts";
 export * from "./roster.ts";
+export * from "./skills.ts";
 export * from "./team.ts";
 export type * from "./types.ts";
 export * from "./verify.ts";
