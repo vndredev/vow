@@ -21,10 +21,22 @@ test("each known banned rule maps to its named, concrete remedy", () => {
     ["design-language", "design-language: vow-x has no token in vow.css", "vow.css token"],
     ["no-cycle", "import cycle: no-cycle a -> b -> a", "clean DAG"],
     ["has-a-doc", "has-a-doc: element missing a doc page", "docs/"],
-    ["cannot-find-name", "x.ts:5:3: error typescript(TS2304): Cannot find name 'sfc'", "DESTRUCTURE"],
+    [
+      "cannot-find-name",
+      "x.ts:5:3: error typescript(TS2304): Cannot find name 'sfc'",
+      "DESTRUCTURE",
+    ],
     ["cannot-find-name", "x.ts:5:3: error typescript(TS2552): Cannot find name 'v'", "DESTRUCTURE"],
-    ["cannot-find-module", "a.ts: error typescript(TS2307): Cannot find module '@vow/core'", "workspace:*"],
-    ["cannot-find-module", "Cannot find package '@vow/core' imported from real-ops.ts", "workspace:*"],
+    [
+      "cannot-find-module",
+      "a.ts: error typescript(TS2307): Cannot find module '@vow/core'",
+      "workspace:*",
+    ],
+    [
+      "cannot-find-module",
+      "Cannot find package '@vow/core' imported from real-ops.ts",
+      "workspace:*",
+    ],
     ["capitalized-comments", "f.ts:3: eslint(capitalized-comments)", "capital letter"],
     ["no-inline-comments", "f.ts:3: eslint(no-inline-comments)", "OWN line"],
   ];
