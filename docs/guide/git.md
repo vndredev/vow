@@ -23,13 +23,13 @@ Every commit and every PR title is a **Conventional Commit** — `type(scope): i
 
 The `type` set is the single source (`packages/observability/src/commit-types.json`) — each one colours its timeline badge:
 
-| Type                                                 | Badge                            | Meaning               |
-| ---------------------------------------------------- | -------------------------------- | --------------------- |
-| `feat`                                               | :badge[feat]{variant=success}    | a new capability      |
-| `fix`                                                | :badge[fix]{variant=warning}     | a bug fix             |
-| `perf` · `refactor`                                  | :badge[refactor]{variant=accent} | faster / restructured |
-| `revert`                                             | :badge[revert]{variant=danger}   | an undo               |
-| `docs` · `chore` · `test` · `style` · `build` · `ci` | :badge[chore]{variant=neutral}   | everything else       |
+| Type                                                 | Badge                         | Meaning               |
+| ---------------------------------------------------- | ----------------------------- | --------------------- |
+| `feat`                                               | :badge[feat]{tone=success}    | a new capability      |
+| `fix`                                                | :badge[fix]{tone=warning}     | a bug fix             |
+| `perf` · `refactor`                                  | :badge[refactor]{tone=accent} | faster / restructured |
+| `revert`                                             | :badge[revert]{tone=danger}   | an undo               |
+| `docs` · `chore` · `test` · `style` · `build` · `ci` | :badge[chore]{tone=neutral}   | everything else       |
 
 ## The PR template
 
@@ -78,7 +78,7 @@ issuePlan(cwd)           ->  [{ issue, status }]      status: planned | doing | 
 - **doing** — open, and either an open PR closes it (`Closes #N` · `Fixes #N` · `Resolves #N`) **or** it carries the `in-progress` label (an agent is developing it right now). The agent applies the label the moment it claims the issue and removes it when the run ends, so the board shows `doing` across the whole **develop → PR → merge** arc, not only once the PR exists.
 - **planned** — open, no PR and not being developed.
 
-`statusVariant` colours each — planned → :badge[planned]{variant=neutral} · doing → :badge[doing]{variant=accent} · done → :badge[done]{variant=success}. Like `gitTimeline`, the reads are **graceful**: no `gh`, no auth, no network ⇒ `[]`, so a build without GitHub simply has no issue plan. This is the read foundation the board + the roadmap's three sections (Done · Doing · Planned) build on.
+`statusVariant` colours each — planned → :badge[planned]{tone=neutral} · doing → :badge[doing]{tone=accent} · done → :badge[done]{tone=success}. Like `gitTimeline`, the reads are **graceful**: no `gh`, no auth, no network ⇒ `[]`, so a build without GitHub simply has no issue plan. This is the read foundation the board + the roadmap's three sections (Done · Doing · Planned) build on.
 
 The studio reads it **live** over `/__vow/issues` — the dev plugin serves `issuePlan` (gh-direct, behind a 10 s cache so a poll never blocks the server); a Worker serves the same over the GitHub API in prod. **GitHub is the single source — there is no local mirror to keep in sync**, so the plan can't drift. The board + roadmap fetch this endpoint and poll it; the agent's MCP writes land on GitHub and the next poll reflects them.
 

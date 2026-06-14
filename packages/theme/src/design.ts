@@ -4,9 +4,8 @@
  * intent, the emitters resolve it here, and `@vow/theme` styles one rule per token combination.
  * `docs/guide/design.md` is the prose spec this module mirrors 1:1.
  *
- * This is ADDITIVE — the current primitives still read the legacy vocabulary (the `*_VARIANTS`/`SIZES`
- * in ./vocab.ts); they migrate onto these intents in follow-ups (button + badge first). Nothing here
- * changes an emitted SFC yet; this ships the language the components are rebuilt against.
+ * Button + Badge read these axes directly (`variant`·`tone`·`size`·`density` → `data-*`); the only legacy
+ * vocabulary left in ./vocab.ts is `BADGE_VARIANTS` (the observability status set) and `SIZE_DEFAULT`.
  *
  * Scope: the button/action + status/badge intents — the families the spec resolves to concrete
  * variant·tone·size. The text, spacing, and surface intent families (design.md) resolve to a different

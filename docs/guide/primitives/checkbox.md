@@ -29,13 +29,15 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 
 Derived from the adapter's `Component` definition — the same shape you see in the generated code below:
 
-| Prop         | Type                                  | Purpose                                         |
-| ------------ | ------------------------------------- | ----------------------------------------------- |
-| `modelValue` | `boolean` (optional, default `false`) | the checked state — use with `v-model`          |
-| `label`      | `string`                              | visible text, and the control's `aria-label`    |
-| `disabled`   | `boolean` (optional)                  | block interaction and remove from the tab order |
+| Prop          | Type                                  | Purpose                                                              |
+| ------------- | ------------------------------------- | -------------------------------------------------------------------- |
+| `modelValue`  | `boolean` (optional, default `false`) | the checked state — use with `v-model`                               |
+| `label`       | `string`                              | visible text, and the control's `aria-label`                         |
+| `disabled`    | `boolean` (optional)                  | block interaction and remove from the tab order                      |
+| `describedBy` | `string` (optional)                   | an element id for the control's `aria-describedby` (a hint or error) |
+| `invalid`     | `boolean` (optional)                  | sets `aria-invalid` on the control — the error state                 |
 
-Emits `update:modelValue: boolean` on every toggle.
+Emits `update:modelValue: boolean` on every toggle. `describedBy` / `invalid` let a [`## form`](/guide/emit) wire the checkbox to a field's description and validation, the same as any other control.
 
 ## Styling hooks
 

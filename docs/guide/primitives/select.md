@@ -28,14 +28,18 @@ The behaviour lives in the framework-free core (`@vow/headless`), conformant wit
 
 ## Props & events
 
-| Prop         | Type                                 | Purpose                                 |
-| ------------ | ------------------------------------ | --------------------------------------- |
-| `modelValue` | `string` (optional, default `""`)    | the selected value — use with `v-model` |
-| `options`    | `{ value: string; label: string }[]` | the choices                             |
-| `label`      | `string`                             | the combobox's accessible name          |
-| `disabled`   | `boolean` (optional)                 | block interaction                       |
+| Prop          | Type                                     | Purpose                                                                             |
+| ------------- | ---------------------------------------- | ----------------------------------------------------------------------------------- |
+| `modelValue`  | `string` (optional, default `""`)        | the selected value — use with `v-model`                                             |
+| `options`     | `{ value: string; label: string }[]`     | the choices                                                                         |
+| `label`       | `string`                                 | the combobox's accessible name                                                      |
+| `placeholder` | `string` (optional, default `"Select…"`) | the trigger text when nothing is selected                                           |
+| `controlId`   | `string` (optional)                      | the trigger's `id` — so a [`Field`](/guide/primitives/field) `<label for>` lines up |
+| `describedBy` | `string` (optional)                      | an element id for the trigger's `aria-describedby` (a hint or error)                |
+| `invalid`     | `boolean` (optional)                     | sets `aria-invalid` on the trigger — the error state                                |
+| `disabled`    | `boolean` (optional)                     | block interaction                                                                   |
 
-Emits `update:modelValue: string` on commit.
+Emits `update:modelValue: string` on commit. `controlId` / `describedBy` / `invalid` let a [`## form`](/guide/emit) wire the select into a `Field` — its label, description, and validation — like any other control.
 
 ## Styling hooks
 
