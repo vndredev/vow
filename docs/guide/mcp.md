@@ -42,7 +42,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Twenty-five tools, in four groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Twenty-nine tools, in five groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -80,6 +80,16 @@ Twenty-five tools, in four groups. Structure mutations **validate** (the zod sch
 | `remove_record`    | Delete a record by id.                                                   |
 
 A `reference` field on `set_record_field` accepts the target's **name**, not only its raw id — the name is resolved against the target entity's first text field, so the agent assigns work by `"Andre"`, not a copied id (an existing id still passes through; an unknown name errors).
+
+### Docs — the guide
+
+| Tool          |                                                                           |
+| ------------- | ------------------------------------------------------------------------- |
+| `list_docs`   | List the guide pages the site renders (slug, title, group).               |
+| `read_docs`   | Read one guide page's markdown by slug (e.g. `mcp`, `primitives/button`). |
+| `search_docs` | Search the guide pages by query — matching pages with a short excerpt.    |
+
+These read the **same** `docs/guide/*.md` the site renders ([the doc system](/guide/doc-system) scans that one folder), so an agent reaches the docs through the front door it already drives — no HTTP-only `llms.txt`. A page's **slug** is its path under `docs/guide` with `.md` stripped (`mcp`, `primitives/button`). An absent or malformed slug returns a plain `no doc "…"` message, never an error.
 
 ### GitHub — the issue plan
 

@@ -1,6 +1,7 @@
 import type { Registrar, Studio } from "./types.ts";
 import { names } from "./register.ts";
 import { registerData } from "./register-data.ts";
+import { registerDocs } from "./register-docs.ts";
 import { registerGithub } from "./register-github.ts";
 import { registerRead } from "./register-read.ts";
 import { registerStructure } from "./register-structure.ts";
@@ -16,6 +17,7 @@ export function composeTools(server: Registrar, studio: Studio): readonly string
   registerRead(server, recorder, studio);
   registerStructure(server, recorder, studio);
   registerData(server, recorder, studio);
+  registerDocs(server, recorder, studio);
   registerGithub(server, recorder, studio);
   return recorder.all;
 }
