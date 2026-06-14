@@ -5,8 +5,8 @@ import process from "node:process";
 
 /**
  * The phase resolution — vow's anti-drift answer to "every issue must carry a phase". A phase is a
- * milestone on the roadmap timeline; the CURRENT phase is the open milestone with the latest due date
- * (the newest band on the timeline). `add_issue` + `auditIssue` default to it, so no issue is ever filed
+ * milestone on the roadmap timeline; the CURRENT phase is the open milestone with the earliest due date
+ * (the next phase still in flight). `add_issue` + `auditIssue` default to it, so no issue is ever filed
  * phase-less while a phase exists; `phaselessIssues` is the detector that surfaces any that slipped
  * through. All the decision logic is pure — only the `gh` fetch touches the world.
  */
@@ -67,8 +67,8 @@ function envPhase(): Maybe<string> {
   return NONE;
 }
 
-/** The current phase: the `override` when set, else the milestone with the latest `dueOn` (the newest band
-    on the roadmap timeline — what new work joins). Pure; `NONE` when no dated milestone exists. */
+/** The current phase: the `override` when set, else the milestone with the earliest `dueOn` (the next
+    phase still in flight — what new work joins). Pure; `NONE` when no dated milestone exists. */
 export function currentPhase(
   milestones: readonly Milestone[],
   override: Maybe<string>,
@@ -76,14 +76,14 @@ export function currentPhase(
   if (typeof override === "string" && override !== "") {
     return override;
   }
-  let latest: Maybe<Milestone> = NONE;
+  let earliest: Maybe<Milestone> = NONE;
   for (const milestone of milestones) {
     const due = milestone.dueOn;
-    if (typeof due === "string" && (typeof latest !== "object" || due > (latest.dueOn ?? ""))) {
-      latest = milestone;
+    if (typeof due === "string" && (typeof earliest !== "object" || due < (earliest.dueOn ?? ""))) {
+      earliest = milestone;
     }
   }
-  return latest?.title;
+  return earliest?.title;
 }
 
 /** The open milestones via `gh api`. Returns `[]` (never throws) when `gh`/auth/network is absent. */
@@ -111,7 +111,7 @@ export function listMilestones(cwd: string): Milestone[] {
   }
 }
 
-/** Resolve the current phase against the live repo — the `VOW_PHASE` override, else the latest-due open
+/** Resolve the current phase against the live repo — the `VOW_PHASE` override, else the earliest-due open
     milestone. `NONE` when no phase exists (a milestone-less repo: the gate is then a no-op). */
 export function resolveCurrentPhase(cwd: string): Maybe<string> {
   return currentPhase(listMilestones(cwd), envPhase());

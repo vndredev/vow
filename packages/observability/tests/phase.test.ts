@@ -24,11 +24,11 @@ test("parseMilestones returns [] on malformed JSON or a non-array", () => {
   expect(parseMilestones('{"title":"x"}')).toEqual([]);
 });
 
-test("currentPhase picks the milestone with the latest due date — the newest band on the timeline", () => {
-  expect(currentPhase(parseMilestones(MILESTONES), NONE)).toBe("Phase I — the UI framework");
+test("currentPhase picks the milestone with the earliest due date — the next phase in flight", () => {
+  expect(currentPhase(parseMilestones(MILESTONES), NONE)).toBe("Phase G — hardening");
 });
 
-test("currentPhase honours the VOW_PHASE override over the latest-due milestone", () => {
+test("currentPhase honours the VOW_PHASE override over the earliest-due milestone", () => {
   expect(currentPhase(parseMilestones(MILESTONES), "Phase Z — pinned")).toBe("Phase Z — pinned");
 });
 
