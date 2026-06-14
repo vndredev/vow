@@ -100,7 +100,7 @@ The hub records what it does to an append-only feed (`.vow/events.jsonl`): a dev
 `vow agent` scaffolds and drives the **agent-native layer** — autonomous agents developing issues through vow's verification gates, opening PRs, and merging when green. One per vow; the executor is an LLM (Claude, Codex, etc.), not the user.
 
 ```bash
-vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit/brainstorm skills + prompts + the agent team
+vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit/brainstorm skills + engineering skills + prompts + the agent team
 vow agent plan <n>                                      # print the verification-gated plan for issue <n>
 vow agent run <n>                                       # develop issue <n>, open a PR
 vow agent run <n> --dry-run                             # preview the run (branch, commands, gates)
@@ -124,6 +124,8 @@ The gates (`vp check` + `pnpm -r test`) run in the worktree after the provider c
 ::: tip Wire the hooks after install
 The hooks ship in the committed `.claude/settings.json`, so a repo that already ran `init` brings them to every contributor automatically. For a _fresh_ project that just added vow as a dependency, run `vow agent init` once after `vp install` — it is the documented setup step that wires the hooks (and scaffolds the team + skills + prompts). It is intentionally **not** a `postinstall` script: that would run during a dependency install (clobbering a consuming repo's files, failing under `--ignore-scripts`/CI). `init` is idempotent, so re-running it on an already-wired repo is a clean no-op.
 :::
+
+`init` also scaffolds the **engineering-discipline skill library** — six reusable technique files under `.claude/skills/`: `test-first` (write the failing test first), `verification-before-completion` (run the gates and include the evidence before reporting done), `systematic-debugging` (root-cause before fix), `condition-based-waiting` (poll a condition, never a blind sleep), `defense-in-depth` (validate at every layer boundary), and `how-to-write-a-vow-skill` (the meta-skill that teaches the pattern so the library self-extends). Each has a WHEN-to-use `description` that fires as a context-matching trigger; the body is the technique, not a workflow summary. They are sourced from `packages/agent/src/skills.ts` — add an entry there, and every future `vow agent init` scaffolds it.
 
 These prompts are the **single source of truth across every surface**: the `vow-develop` and `vow-audit` skills are POINTERS — they tell a session to read `.claude/prompts/develop.md` / `.claude/prompts/audit.md` rather than restating their own copy, and a host-orchestration script reads the same file through ONE shared reader (`readPrompt` from `@vow/cli/agent-prompts`, with the same built-in-default fallback). Edit one prompt file and the native agent, the skill, and the orchestration all change together.
 

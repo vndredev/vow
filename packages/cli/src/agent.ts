@@ -23,7 +23,13 @@ import {
   parseFindings,
   resolveCurrentPhase,
 } from "@vow/observability";
-import { buildPlan, promptTemplates, renderAuditPrompt, teamTemplates } from "@vow/agent";
+import {
+  buildPlan,
+  promptTemplates,
+  renderAuditPrompt,
+  skillTemplates,
+  teamTemplates,
+} from "@vow/agent";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { readPrompt } from "./agent-prompts.ts";
@@ -185,9 +191,11 @@ export function installHooks(cwd: string): string {
 }
 
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
- *  AGENTS.md contract + the develop/orchestrate/audit/brainstorm skills + the operative develop/audit/plan PROMPTS
- *  as editable provider templates (`.claude/prompts/<role>.md`, what the agent reads). Idempotent — re-running
- *  keeps every file, so a user-edited prompt is never clobbered. */
+ *  AGENTS.md contract + the develop/orchestrate/audit/brainstorm skills + the engineering-discipline skills
+ *  (the vow skill library — test-first, verification-before-completion, systematic-debugging,
+ *  condition-based-waiting, defense-in-depth, and how-to-write-a-vow-skill) + the operative
+ *  develop/audit/plan PROMPTS as editable provider templates (`.claude/prompts/<role>.md`, what the agent
+ *  reads). Idempotent — re-running keeps every file, so a user-edited prompt is never clobbered. */
 function init(cwd: string): number {
   const actions = [
     scaffold(path.join(cwd, "AGENTS.md"), agentsMd()),
@@ -201,6 +209,7 @@ function init(cwd: string): number {
       path.join(cwd, ".claude", "skills", "vow-brainstorm", "SKILL.md"),
       vowBrainstormSkill(),
     ),
+    ...skillTemplates().map((skill) => scaffold(path.join(cwd, skill.path), skill.content)),
     ...promptTemplates().map((template) =>
       scaffold(path.join(cwd, template.path), template.content),
     ),
@@ -324,7 +333,7 @@ export const AGENT_SUBCOMMANDS: readonly AgentSubcommand[] = [
     args: "",
     name: "init",
     summary:
-      "scaffold the agent integration (AGENTS.md + develop/orchestrate/audit/brainstorm skills + prompts)",
+      "scaffold the agent integration (AGENTS.md + develop/orchestrate/audit/brainstorm skills + engineering skills + prompts)",
   },
   { args: "<n>", name: "plan", summary: "print the verification-gated plan for issue <n>" },
   {

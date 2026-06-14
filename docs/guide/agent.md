@@ -49,6 +49,21 @@ sessionStartOutput(sessionBootstrap());
 // → { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "# Using vow …" } }
 ```
 
+## The skill library
+
+The team (who) and the gates (what is forbidden) answer two thirds of the question. The third third — **how** a specialist applies a technique — lives in the vow skill library: six engineering-discipline files under `.claude/skills/`, each with a WHEN-to-use `description` that fires as a context-matching trigger and a body that states the technique concisely.
+
+| Skill                            | When to use                                                                                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `test-first`                     | Adding new behaviour, fixing a bug, or implementing a spec promise — when you know what MUST be true before you know how to make it true. |
+| `verification-before-completion` | Before every "done" / "fixed" claim — run the gates and include the evidence in the same message.                                         |
+| `systematic-debugging`           | When a test fails, a lint rule fires, or behaviour diverges from the spec — before touching any code.                                     |
+| `condition-based-waiting`        | When waiting for CI, a server, a build, or any external process — whenever you would write a sleep.                                       |
+| `defense-in-depth`               | When data crosses a trust boundary (user input, HTTP body, DB row, MCP tool call, parsed file).                                           |
+| `how-to-write-a-vow-skill`       | When a technique is missing from the library — codify it before the third time becomes a fourth.                                          |
+
+The skills are sourced from `packages/agent/src/skills.ts` (the `SKILLS` array — the single source the scaffold and the tests both read). `vow agent init` writes each to `.claude/skills/<name>/SKILL.md` alongside the team and the prompts. Adding a technique is one entry in `SKILLS`; every future `init` scaffolds it. Where a technique is a rule every change must follow, it is promoted to a mechanical CI gate instead — a gate that CI runs on every push is stronger than a skill an agent must choose to consult.
+
 ## The seam
 
 A `Provider` turns a task into the **command** that runs it headlessly — _built, never run here_, so the mapping is pure and unit-testable (a runner execs it):
