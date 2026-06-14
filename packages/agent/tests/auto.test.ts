@@ -1,5 +1,13 @@
-// oxlint-disable-next-line consistent-type-specifier-style -- one import; separate type import trips no-duplicate-imports
-import { type AttemptCount, autoDecision, backlogOverCap, backlogWithinCap } from "../src/auto.ts";
+/* oxlint-disable consistent-type-specifier-style -- one import; separate type imports trip no-duplicate-imports */
+import {
+  type AttemptCount,
+  type IssueArea,
+  autoDecision,
+  backlogOverCap,
+  backlogWithinCap,
+  partitionByArea,
+} from "../src/auto.ts";
+/* oxlint-enable consistent-type-specifier-style */
 import { expect, test } from "vite-plus/test";
 
 const MAX = 8;
@@ -86,4 +94,44 @@ test("backlogOverCap is the complement — exactly the cap-dropped issues a huma
   expect(backlogOverCap(backlog, attempts, CAP)).toEqual([ISSUE_B]);
   expect(backlogOverCap(backlog, [[ISSUE_A, CAP + 1]], CAP)).toEqual([ISSUE_A]);
   expect(backlogOverCap(backlog, [], CAP)).toEqual([]);
+});
+
+test("partitionByArea picks AT MOST ONE issue per area — a backlog of 3 `agent` issues yields 1 (#681)", () => {
+  // Three issues all in `area: agent` — the concurrent batch must be ONE (same files, else fleet-conflict).
+  const sameArea: IssueArea[] = [
+    [ISSUE_A, "agent"],
+    [ISSUE_B, "agent"],
+    [ISSUE_C, "agent"],
+  ];
+  // Lowest-numbered area-representative wins (input order preserved); the rest wait for the next round.
+  expect(partitionByArea(sameArea)).toEqual([ISSUE_A]);
+});
+
+test("partitionByArea keeps one issue per DISTINCT area — disjoint areas all develop concurrently (#681)", () => {
+  const distinct: IssueArea[] = [
+    [ISSUE_A, "agent"],
+    [ISSUE_B, "mcp"],
+    [ISSUE_C, "docs"],
+  ];
+  // Three distinct areas touch disjoint files -> all three are in the batch.
+  expect(partitionByArea(distinct)).toEqual([ISSUE_A, ISSUE_B, ISSUE_C]);
+});
+
+test("partitionByArea collapses each area to its first, but NEVER collapses area-less issues (#681)", () => {
+  const mixed: IssueArea[] = [
+    [ISSUE_A, "agent"],
+    [ISSUE_B, ""],
+    [ISSUE_C, "agent"],
+  ];
+  // One `agent` representative (ISSUE_A); ISSUE_C waits; an area-LESS issue (unknown surface) is kept.
+  expect(partitionByArea(mixed)).toEqual([ISSUE_A, ISSUE_B]);
+  // Two area-less issues are BOTH kept — collapsing them would wrongly serialize unrelated work.
+  expect(
+    partitionByArea([
+      [ISSUE_A, ""],
+      [ISSUE_B, ""],
+    ]),
+  ).toEqual([ISSUE_A, ISSUE_B]);
+  // An empty backlog yields an empty batch.
+  expect(partitionByArea([])).toEqual([]);
 });

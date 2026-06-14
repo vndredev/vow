@@ -82,3 +82,31 @@ export function backlogOverCap(
   const counts = new Map(attempts);
   return backlog.filter((issue) => (counts.get(issue) ?? 0) >= cap);
 }
+
+/** One backlog issue paired with the vow `area` it touches (its `area:` label, or "" when none) — what the
+ *  per-round partition reads to keep concurrent develops on DISJOINT files. A readonly-array pair (not a
+ *  `Map`), matching `AttemptCount`, since the strict wall does not treat `ReadonlyMap` as a readonly param. */
+export type IssueArea = readonly [number, string];
+
+/** Partition the within-cap backlog so the CONCURRENT batch touches DISJOINT files — at most ONE issue per
+ *  `area:` label this round (#681). Two issues in the same area (`area: agent`, `area: mcp`) develop the same
+ *  package off one base, so when the per-PR settle rebases them onto the moved main they fleet-CONFLICT and
+ *  get drafted. Picking one area-representative per round (the rest wait for the next round, developed once
+ *  their area is free) trades a little parallelism for conflict-free merges — correctness over raw speed. The
+ *  input order is preserved (lowest-numbered issue per area wins), and area-LESS issues ("", no `area:` label)
+ *  are NOT collapsed: each touches an unknown surface, so each is kept (one-per-area would wrongly serialize
+ *  unrelated work). Pure — the CLI resolves each issue's area via `areaOf` and feeds the pairs here. */
+export function partitionByArea(issues: readonly IssueArea[]): number[] {
+  const seen = new Set<string>();
+  const batch: number[] = [];
+  for (const [issue, area] of issues) {
+    const collapsed = area !== "" && seen.has(area);
+    if (!collapsed) {
+      if (area !== "") {
+        seen.add(area);
+      }
+      batch.push(issue);
+    }
+  }
+  return batch;
+}

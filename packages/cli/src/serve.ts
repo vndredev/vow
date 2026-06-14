@@ -2,7 +2,7 @@
 import { type App, repoRoot, resolveApps } from "./apps.ts";
 /* oxlint-enable consistent-type-specifier-style */
 import { LOOP_IDLE, eventsSseServer, readLoopStatus, writeLoopStatus } from "@vow/observability";
-import { autoConfirmed, runAuto } from "./agent-auto.ts";
+import { autoConfirmed, pruneStaleWorktreesOnStartup, runAuto } from "./agent-auto.ts";
 import type { Server } from "node:http";
 import { boardLine } from "./agent-run.ts";
 import { setTimeout as delay } from "node:timers/promises";
@@ -199,6 +199,9 @@ async function reconcileLoop(cwd: string, stop: Readonly<AbortSignal>): Promise<
 function startLoops(watch: Watch, cwd: string, stop: Readonly<AbortSignal>): void {
   ignore(reconcileLoop(cwd, stop));
   if (watch === "run") {
+    // Prune a prior run's leftover `.vow-worktrees/feat-issue-N` BEFORE the first spiral (#681) — else the
+    // First round's `git worktree add -B feat/issue-N` hits "branch already used by worktree" on a leftover.
+    pruneStaleWorktreesOnStartup(cwd);
     markDaemonRunning(cwd);
     ignore(watchLoop(cwd, stop));
   }
