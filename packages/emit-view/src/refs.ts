@@ -1,6 +1,6 @@
-import type { EventLayout, IssueLayout, LoopLayout, ReadonlyVow } from "./types.ts";
+import type { EventLayout, IssueLayout, LoopLayout, McpLayout, ReadonlyVow } from "./types.ts";
 import { asRecord, defined } from "@vow/core";
-import { eventLayout, issueLayout, loopLayout } from "./layouts.ts";
+import { eventLayout, issueLayout, loopLayout, mcpLayout } from "./layouts.ts";
 import { str } from "./helpers.ts";
 
 /** A reference to a by-field composition (`stats`/`board`) — the entity slug + the select field. */
@@ -167,6 +167,20 @@ export function loopLayouts(view: ReadonlyVow): Set<LoopLayout> {
   walkNodes(view, (type, value) => {
     if (type === "loop") {
       found.add(loopLayout(value));
+    }
+  });
+  return found;
+}
+
+/**
+ * The MCP/channel-health layouts a `## view` renders — so the plugin materialises the matching VowMcp*
+ * components. Validated, so the set only ever holds real layouts.
+ */
+export function mcpLayouts(view: ReadonlyVow): Set<McpLayout> {
+  const found = new Set<McpLayout>();
+  walkNodes(view, (type, value) => {
+    if (type === "mcp") {
+      found.add(mcpLayout(value));
     }
   });
   return found;

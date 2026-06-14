@@ -3,9 +3,11 @@ import {
   EVENT_LAYOUTS,
   ISSUE_LAYOUTS,
   LOOP_LAYOUTS,
+  MCP_LAYOUTS,
   eventLayout,
   issueLayout,
   loopLayout,
+  mcpLayout,
 } from "./layouts.ts";
 import { asRecord, defined } from "@vow/core";
 import { assertAttrName, assertObjectKey, pascalCase } from "@vow/component";
@@ -127,6 +129,8 @@ const events: Handler = (value): UiNode => comp(EVENT_LAYOUTS[eventLayout(value)
 
 const loop: Handler = (value): UiNode => comp(LOOP_LAYOUTS[loopLayout(value)], [], []);
 
+const mcp: Handler = (value): UiNode => comp(MCP_LAYOUTS[mcpLayout(value)], [], []);
+
 const icon: Handler = (value): UiNode => {
   const obj = asRecord(value);
   return comp("Icon", [{ kind: "static", name: "name", value: str(obj["name"]) }], []);
@@ -162,6 +166,7 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   link,
   list,
   loop,
+  mcp,
   stats,
   timeline,
 };

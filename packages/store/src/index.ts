@@ -1,6 +1,7 @@
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
 import { type Collection, type CollectionState, ReactiveRows, type Row } from "./reactive-rows.ts";
 import { LOOP_STATUS_IDLE, type LoopStatusItem, parseLoopStatus } from "./loop-status.ts";
+import { type McpStatusItem, loadMcpStatus, mcpStatus, mcpStatusState } from "./mcp-status.ts";
 /* oxlint-enable consistent-type-specifier-style */
 import { VOW_API, dbPath } from "@vow/db/routes";
 import { isObject } from "./guards.ts";
@@ -8,7 +9,7 @@ import { parseEventFeed } from "./events.ts";
 import { parseIssuePlan } from "./issues.ts";
 import { reactive } from "vue";
 
-export type { Collection, CollectionState, LoopStatusItem };
+export type { Collection, CollectionState, LoopStatusItem, McpStatusItem };
 export { ReactiveRows };
 
 /**
@@ -175,16 +176,7 @@ let loopStatusLoaded = false;
  *  `loading` is on while a fetch is in flight, `error` latches on a non-ok response. */
 const loopStatusState = reactive({ error: false, loading: false });
 
-/** Read + parse the agent-loop status from `/__vow/agent-loop/status`, reporting `ok: false` (with the idle
- *  default) on any non-ok response or transport failure. Validated by `parseLoopStatus` (see
- *  `./loop-status.ts`), not blindly trusted. */
-async function fetchLoopStatus(): Promise<{ ok: boolean; status: LoopStatusItem }> {
-  try {
-    return { ok: true, status: parseLoopStatus(await okJson(VOW_API.agentLoop)) };
-  } catch {
-    return { ok: false, status: LOOP_STATUS_IDLE };
-  }
-}
+let mcpStatusLoaded = false;
 
 /** Pull the agent-loop status from `/__vow/agent-loop/status` and copy it into the shared reactive object,
  *  driving `loopStatusState` so the view can show a loading / error branch. Copies field-by-field (not a
@@ -194,12 +186,14 @@ async function loadLoopStatus(): Promise<void> {
     return;
   }
   loopStatusState.loading = true;
-  const result = await fetchLoopStatus();
-  loopStatusState.error = !result.ok;
-  loopStatusState.loading = false;
-  if (result.ok) {
-    Object.assign(loopStatus, LOOP_STATUS_IDLE, result.status);
+  try {
+    const status = parseLoopStatus(await okJson(VOW_API.agentLoop));
+    Object.assign(loopStatus, LOOP_STATUS_IDLE, status);
+    loopStatusState.error = false;
+  } catch {
+    loopStatusState.error = true;
   }
+  loopStatusState.loading = false;
 }
 
 /** Read + parse the issue plan from `/__vow/issues`, reporting `ok: false` (with an empty plan) on any
@@ -377,31 +371,34 @@ async function signalStartWork(issue: number): Promise<void> {
 }
 
 let freshness = false;
+
+function detachIfLoaded(loaded: boolean, loader: () => Promise<void>): void {
+  if (loaded) {
+    detach(loader);
+  }
+}
+
+function refresh(): void {
+  if (document.hidden) {
+    return;
+  }
+  for (const slug of collections.keys()) {
+    detach(async () => {
+      await load(slug);
+    });
+  }
+  detachIfLoaded(issuesLoaded, loadIssues);
+  detachIfLoaded(eventsLoaded, loadEvents);
+  detachIfLoaded(loopStatusLoaded, loadLoopStatus);
+  detachIfLoaded(mcpStatusLoaded, loadMcpStatus);
+}
+
 /** Refetch every loaded collection on focus + a light visible-tab interval, so an MCP write shows up. */
 function startFreshness(): void {
   if (freshness || !hasApi) {
     return;
   }
   freshness = true;
-  const refresh = (): void => {
-    if (document.hidden) {
-      return;
-    }
-    for (const slug of collections.keys()) {
-      detach(async () => {
-        await load(slug);
-      });
-    }
-    if (issuesLoaded) {
-      detach(loadIssues);
-    }
-    if (eventsLoaded) {
-      detach(loadEvents);
-    }
-    if (loopStatusLoaded) {
-      detach(loadLoopStatus);
-    }
-  };
   globalThis.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", refresh);
   setInterval(refresh, REFRESH_INTERVAL_MS);
@@ -565,6 +562,24 @@ export function useAgentLoopStatus(): {
     startFreshness();
   }
   return { state: loopStatusState, status: loopStatus };
+}
+
+/** The shared reactive MCP/channel health status, read live from `/__vow/mcp/status`. It exposes whether
+ *  the MCP/loop channel is connected (`connected`, derived from the freshness of the event feed — true when
+ *  the newest event's `ts` is within the 5-minute window), the `toolCount` the vow MCP server registers, and
+ *  the `lastEvent` from the feed (`ts` + `kind`). Polled on focus + the 5s interval like the other status
+ *  surfaces. `state` matches the `CollectionState` shape — its loading / error flags let a view show
+ *  "Loading…" or "Couldn't load the MCP status". Read-only: the status is derived, never written. */
+export function useMcpStatus(): {
+  status: McpStatusItem;
+  state: CollectionState;
+} {
+  if (!mcpStatusLoaded) {
+    mcpStatusLoaded = true;
+    detach(loadMcpStatus);
+    startFreshness();
+  }
+  return { state: mcpStatusState, status: mcpStatus };
 }
 
 /** Create a stand-alone reactive row list — the in-place reconciliation surface, exported for tests and

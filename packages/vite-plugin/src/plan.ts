@@ -13,6 +13,7 @@ import {
   issueLayouts,
   listedEntities,
   loopLayouts,
+  mcpLayouts,
   statsRefs,
   usesTimeline,
 } from "@vow/emit-view";
@@ -60,6 +61,7 @@ export interface Contribution {
   readonly eventViews: readonly string[];
   readonly issueViews: readonly string[];
   readonly loopViews: readonly string[];
+  readonly mcpViews: readonly string[];
   readonly pages: readonly Page[];
   readonly needsLayout: boolean;
   readonly needsTimeline: boolean;
@@ -74,6 +76,7 @@ const NOTHING: Contribution = {
   issueViews: [],
   listed: [],
   loopViews: [],
+  mcpViews: [],
   needsLayout: false,
   needsTimeline: false,
   pages: [],
@@ -135,6 +138,7 @@ function planView(vow: ReadonlyVow, outDir: string, entitySlugs: readonly string
     issueViews: [...issueLayouts(mutable(vow))],
     listed: listedEntities(mutable(vow)),
     loopViews: [...loopLayouts(mutable(vow))],
+    mcpViews: [...mcpLayouts(mutable(vow))],
     needsLayout: true,
     needsTimeline: usesTimeline(mutable(vow)),
     pages,

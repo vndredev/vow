@@ -28,6 +28,7 @@ import {
   composeLayout,
   composeLists,
   composeLoopViews,
+  composeMcpViews,
   composePrimitives,
   composeStats,
   composeTimeline,
@@ -84,6 +85,7 @@ interface Plan {
   readonly eventViews: readonly string[];
   readonly issueViews: readonly string[];
   readonly loopViews: readonly string[];
+  readonly mcpViews: readonly string[];
   readonly pages: readonly Page[];
   readonly needsLayout: boolean;
   readonly needsTimeline: boolean;
@@ -119,6 +121,7 @@ function foldPlan(contributions: readonly Contribution[]): Plan {
     issueViews: [...new Set(contributions.flatMap((part) => part.issueViews))],
     listed: dedupeLists(contributions.flatMap((part) => part.listed)),
     loopViews: [...new Set(contributions.flatMap((part) => part.loopViews))],
+    mcpViews: [...new Set(contributions.flatMap((part) => part.mcpViews))],
     needsLayout: contributions.some((part) => part.needsLayout),
     needsTimeline: contributions.some((part) => part.needsTimeline),
     pages: contributions.flatMap((part) => part.pages),
@@ -204,6 +207,7 @@ function composeAll(plan: Plan, entities: readonly ReadonlyVow[], dirs: Dirs): r
     composeIssueViews(plan.issueViews, outDir),
     composeEventViews(plan.eventViews, outDir),
     composeLoopViews(plan.loopViews, outDir),
+    composeMcpViews(plan.mcpViews, outDir),
   ];
   const primitives = [...plan.primitives, ...composed.flatMap((piece) => piece.primitives)];
   return [

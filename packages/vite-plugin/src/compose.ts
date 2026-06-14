@@ -13,6 +13,7 @@ import {
   emitIssueBoardSfc,
   emitIssueRoadmapSfc,
   emitIssueTableSfc,
+  emitMcpStatusSfc,
   emitTimelineSfc,
   statsComponentName,
   viewComponentName,
@@ -239,6 +240,20 @@ export function composeLoopViews(loopViews: readonly string[], outDir: string): 
     });
   }
   // The status composes a run-state Badge + the Stats/Stat stat-card grid for the round's metrics.
+  return { files, primitives: primitivesFor(files, ["Badge", "Stats", "Stat"]) };
+}
+
+/** The live MCP/channel-health views (`mcp: { as }`) — a fixed component reading `/__vow/mcp/status`. */
+export function composeMcpViews(mcpViews: readonly string[], outDir: string): Composed {
+  const wanted = new Set(mcpViews);
+  const files: Artifact[] = [];
+  if (wanted.has("status")) {
+    files.push({
+      path: path.join(outDir, "VowMcpStatus.vue"),
+      source: emitMcpStatusSfc(),
+    });
+  }
+  // The status composes a channel-state Badge + the Stats/Stat stat-card grid for health metrics.
   return { files, primitives: primitivesFor(files, ["Badge", "Stats", "Stat"]) };
 }
 
