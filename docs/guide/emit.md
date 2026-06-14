@@ -25,10 +25,10 @@ fulfills: emit entity
 
 → two files in `.generated/` — a **pure model**, no UI:
 
-- **`task.ts`** — a `Task` interface + a validating `createTask` factory (a missing required field throws). Every entity also gets a stable auto-`id` (the factory generates it) — the identity a `reference` points at.
+- **`task.ts`** — a `Task` type (`export type Task = z.infer<typeof TaskSchema>`, inferred from the entity's zod schema) + a validating `createTask` factory (a missing required field throws). Every entity also gets a stable auto-`id` (the factory generates it) — the identity a `reference` points at.
 - **`task.test.ts`** — a Vitest suite **derived from the fields** (a happy path + one reject per required field). No one writes it; the test names _are_ the proven scenarios (see [proof](/guide/proof)).
 
-**Field types:** `text` · `longtext` (multi-line — a `string`, rendered as a `<textarea>`) · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered as a `<select>`) · `reference(entity)` (the target entity's id, typed as `string`; in a view it's a **dropdown** of the target's items via the shared store, labelled by the target's first text field). For display, a reference resolves to its target's **name** — its first text field — shown in place of the id (see [emit view](#emit-view)).
+**Field types:** `text` · `longtext` (multi-line — a `string`, rendered as a `<textarea>`) · `number` · `boolean` · `date` (an ISO-8601 string, rendered as a native date input) · `select(a|b|c)` (a string-literal union, rendered through vow's [`<Select>`](/guide/primitives) primitive over the fixed options — not a native `<select>`) · `reference(entity)` (the target entity's id, typed as `string`; in a form it's the same [`<Select>`](/guide/primitives) primitive over the target's items via the shared store, labelled by the target's first text field). For display, a reference resolves to its target's **name** — its first text field — shown in place of the id (see [emit view](#emit-view)).
 
 An entity is **data, not a screen** — it never renders by itself. To put it on the page, a view lists it.
 
@@ -79,7 +79,7 @@ of: task
 submit: Add task
 ```
 
-→ a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. The form becomes its **own routed page** at `/<slug>`. (Standalone forms with inline `fields:` are on the [roadmap](/guide/changelog).)
+→ a `.vue` form: each field is wired (`<label for>`, `aria-invalid`, a `role="alert"` error region), a submit [`<Button>`](/guide/primitives/button), and a `submit()` that runs `createTask(draft)`. On a `ZodError` it maps each issue to `errors[field]`, so a missing required field shows its message in place; a valid submit appends to the shared store. The form becomes its **own routed page** at `/<slug>`. (A form binds to an entity with `of:`; standalone forms with an inline `fields:` list are **not yet supported**.)
 
 The error association is the same for **every** control: each field's error region is keyed `<field>Id-error`, and the control points its `aria-describedby` at it (with `aria-invalid` when the field errors). A boolean's [`<Checkbox>`](/guide/primitives/checkbox) is no exception — it forwards `described-by` + `invalid` onto its control, so a screen reader navigating to the checkbox finds the error text and the invalid state durably, not just the once-announced `role="alert"`.
 
