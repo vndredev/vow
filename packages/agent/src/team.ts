@@ -45,7 +45,16 @@ export const WALL =
   "NO non-null `!` — fix a type hole at its source with a real predicate, never widen to silence it. The " +
   "framework-neutrality + provider-neutrality gates, the layer-DAG / no-cycle / max-lines caps, and " +
   "has-a-doc / docs-drift are mechanical law, not pleas. Verify is machine-checked, never self-judged: " +
-  "`vp lint` = 0 AND `pnpm -r test` = 0 before the PR, and every new element earns its doc.";
+  "`vp lint` = 0 AND `pnpm -r test` = 0 before the PR, and every new element earns its doc.\n\n" +
+  "Violating the letter IS violating the spirit — the rule IS the intent; there is no reading of " +
+  "'the spirit' that overrides the letter. Finding a rationalization means finding a bug in your " +
+  "reasoning, not an exception.\n\n" +
+  "Rationalization table — known excuses and why each fails:\n" +
+  "- 'the ternary is simpler/cleaner' — the ban is unconditional; rewrite as if/else regardless of brevity\n" +
+  "- 'this `as` is safe, I checked' — a cast hides divergence; write a predicate that proves the type\n" +
+  "- 'just a tiny adjacent fix while here' — scope creep; open a separate issue\n" +
+  "- 'the type is too hard without `any`' — fix the hole at its source, the difficulty is in the design\n" +
+  "- 'the gate is red but the issue is minor' — red gate = draft; never merge";
 
 /** The team — one owner per vow concern. The builder (`vow-developer`) develops issues end-to-end; each
     guardian owns one area + the gate that enforces it. The orchestrator picks the builder for a feature
