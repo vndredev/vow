@@ -37,11 +37,14 @@ export interface Command {
 }
 
 /** A coding-CLI provider — the one seam every agent backend implements. `models` is its own per-role
- *  policy (its model IDs), so the loop resolves a role → this provider's model without naming a brain. */
+ *  policy (its model IDs), so the loop resolves a role → this provider's model without naming a brain.
+ *  `reviewCommand` is OPTIONAL: providers that support a headless read-only mode implement it; those that
+ *  do not simply omit it, and the loop skips the spec review for that provider. */
 export interface Provider {
   readonly command: (task: AgentTask) => Command;
   readonly models: ModelPolicy;
   readonly name: string;
+  readonly reviewCommand?: (model: string, prompt: string, auth?: Auth) => Command;
 }
 
 /** The issue a plan is built from — its number, title, and body (the element + the why). */
@@ -100,7 +103,15 @@ export type CiState = "fail" | "pass" | "pending";
 
 /** A step in one issue's run — emitted live so a fleet's orchestration is visible (the terminal now, the
  *  studio later) instead of a silent wait then a final dump. */
-export type Phase = "develop" | "done" | "fix" | "format" | "gates" | "publish" | "worktree";
+export type Phase =
+  | "develop"
+  | "done"
+  | "fix"
+  | "format"
+  | "gates"
+  | "publish"
+  | "review"
+  | "worktree";
 
 /** Everything one full loop over an issue needs — bundled so `runTask` takes a single argument. */
 export interface TaskRequest {
@@ -117,4 +128,10 @@ export interface TaskRequest {
 export interface TaskOutcome {
   readonly run: DispatchResult;
   readonly verdict: VerifyResult;
+}
+
+/** The result of a spec-compliance review — did the provider build exactly what the issue asked? */
+export interface SpecReviewResult {
+  readonly compliant: boolean;
+  readonly feedback: string;
 }

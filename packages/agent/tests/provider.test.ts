@@ -43,3 +43,17 @@ test("auditCommand builds the read-only, print-mode claude args at the given mod
 test("AUDIT_MODEL defaults to Opus — the audit role's brain since Fable's suspension", () => {
   expect(AUDIT_MODEL).toBe("claude-opus-4-8");
 });
+
+test("claudeCode has a reviewCommand that builds a read-only print-mode command", () => {
+  expect(claudeCode.reviewCommand).toBeDefined();
+  const command = claudeCode.reviewCommand?.("claude-opus-4-8", "check the spec");
+  expect(command?.bin).toBe("claude");
+  expect(command?.args[0]).toBe("--print");
+  expect([...(command?.args ?? [])]).toContain("check the spec");
+  expect([...(command?.args ?? [])]).toContain("--allowedTools");
+});
+
+test("codex and gemini have no reviewCommand — the review is skipped for providers without headless mode", () => {
+  expect(codex.reviewCommand).toBeUndefined();
+  expect(gemini.reviewCommand).toBeUndefined();
+});
