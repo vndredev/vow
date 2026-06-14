@@ -166,19 +166,30 @@ import Button from "./Button.vue";
 <template>
   <div class="vow-demo">
     <div class="vow-demo__row">
-      <Button label="Default" />
+      <Button label="Solid" />
+      <Button label="Soft" variant="soft" />
       <Button label="Outline" variant="outline" />
       <Button label="Ghost" variant="ghost" />
+      <Button label="Link" variant="link" />
     </div>
     <div class="vow-demo__row">
+      <Button label="Accent" tone="accent" />
+      <Button label="Success" tone="success" />
+      <Button label="Warning" tone="warning" />
+      <Button label="Danger" tone="danger" variant="outline" />
+    </div>
+    <div class="vow-demo__row">
+      <Button label="Extra small" size="xs" />
       <Button label="Small" size="sm" />
-      <Button label="Default" />
+      <Button label="Medium" />
       <Button label="Large" size="lg" />
+      <Button label="Extra large" size="xl" />
     </div>
     <div class="vow-demo__row">
       <Button label="Add task" icon="plus" />
       <Button label="Edit" icon="pencil" variant="outline" />
-      <Button label="Delete" icon="trash" variant="ghost" />
+      <Button label="Delete" icon="trash" tone="danger" variant="ghost" />
+      <Button label="Compact" density="compact" />
     </div>
   </div>
 </template>
@@ -240,10 +251,15 @@ import Badge from "./Badge.vue";
   <div class="vow-demo">
     <div class="vow-demo__row">
       <Badge label="Backlog" />
-      <Badge label="In review" variant="accent" />
-      <Badge label="Done" variant="success" icon="check" />
-      <Badge label="At risk" variant="warning" />
-      <Badge label="Blocked" variant="danger" icon="close" />
+      <Badge label="In review" tone="accent" />
+      <Badge label="Done" tone="success" icon="check" />
+      <Badge label="At risk" tone="warning" />
+      <Badge label="Blocked" tone="danger" icon="close" />
+    </div>
+    <div class="vow-demo__row">
+      <Badge label="Soft" tone="accent" />
+      <Badge label="Outline" tone="accent" variant="outline" />
+      <Badge label="Solid" tone="accent" variant="solid" />
     </div>
   </div>
 </template>
@@ -256,9 +272,9 @@ import TableHead from "./TableHead.vue";
 import TableCell from "./TableCell.vue";
 import Badge from "./Badge.vue";
 const rows = [
-  { task: "Fix the login flow", status: "blocked", variant: "warning" },
-  { task: "Ship the timeline", status: "done", variant: "success" },
-  { task: "Draft the board", status: "todo", variant: "neutral" },
+  { task: "Fix the login flow", status: "blocked", tone: "warning" },
+  { task: "Ship the timeline", status: "done", tone: "success" },
+  { task: "Draft the board", status: "todo", tone: "neutral" },
 ];
 </script>
 
@@ -274,7 +290,7 @@ const rows = [
       <tbody>
         <TableRow v-for="r in rows" :key="r.task">
           <TableCell>{{ r.task }}</TableCell>
-          <TableCell><Badge :label="r.status" :variant="r.variant" /></TableCell>
+          <TableCell><Badge :label="r.status" :tone="r.tone" /></TableCell>
         </TableRow>
       </tbody>
     </Table>
@@ -294,7 +310,7 @@ import Badge from "./Badge.vue";
     <Card>
       <CardHeader>
         Fix the login flow
-        <Badge label="blocked" variant="warning" />
+        <Badge label="blocked" tone="warning" />
       </CardHeader>
       <CardBody>A user can't sign in after the redirect — the session is dropped.</CardBody>
     </Card>

@@ -5,20 +5,24 @@ import { NONE, defined } from "./maybe.ts";
 import { comp, el, href, sattr, txt } from "./node.ts";
 
 const ICON = "icon";
-const VARIANT = /(?:^|[\s,])variant\s*=\s*([\w-]+)/u;
+const TONE = /(?:^|[\s,])(?:tone|variant)\s*=\s*([\w-]+)/u;
 const KIND_GROUP = 1;
 const LABEL_GROUP = 2;
 const OPTS_GROUP = 3;
 const OPEN = "_open";
 const CLOSE_SUFFIX = "_close";
 
-/** Build vow's own Icon / Badge component for one `:icon[…]` / `:badge[…]{variant=…}` match. */
+/**
+ * Build vow's own Icon / Badge component for one `:icon[…]` / `:badge[…]{tone=…}` match. The Badge
+ * attribute is `tone=` (the four-axis colour role); `variant=` is accepted as a legacy alias for the
+ * same `tone` prop, since `variant` is now Badge's treatment axis (soft/solid/outline/…).
+ */
 function inlinePrimitive(kind: string, label: string, opts: string): UiNode {
   if (kind === ICON) {
     return comp("Icon", [sattr("name", label)], []);
   }
   const attrs: Attr[] = [sattr("label", label)];
-  const tone: Maybe<string> = VARIANT.exec(opts)?.[1];
+  const tone: Maybe<string> = TONE.exec(opts)?.[1];
   if (defined(tone)) {
     attrs.push(sattr("tone", tone));
   }
@@ -37,7 +41,7 @@ function matchNodes(gap: string, match: readonly string[]): UiNode[] {
 }
 
 /**
- * Split a text run into inline UiNodes, expanding `:icon[name]` and `:badge[label]{variant=…}` into
+ * Split a text run into inline UiNodes, expanding `:icon[name]` and `:badge[label]{tone=…}` into
  * vow's own Icon / Badge components — the docs dogfooding their own primitives in prose.
  */
 const INLINE_RE = /:(icon|badge)\[([^\]]+)\](?:\{([^}]*)\})?/gu;
