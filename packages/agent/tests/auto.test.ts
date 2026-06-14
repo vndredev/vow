@@ -20,7 +20,9 @@ const ISSUE_B = 22;
 const ISSUE_C = 33;
 const ONE = 1;
 
-/** The default-empty state with the given overrides — every field present so the decision stays total. */
+/** The default-empty state with the given overrides — every field present so the decision stays total.
+ *  `headChanged: true` is the default: existing tests cover the "code landed, audit if needed" path; the
+ *  `headChanged: false` case (unchanged tree → skip the audit) has its own test below. */
 function state(
   over: Partial<Parameters<typeof autoDecision>[0]>,
 ): Parameters<typeof autoDecision>[0] {
@@ -28,6 +30,7 @@ function state(
     auditedClean: false,
     backlog: 0,
     capDropped: 0,
+    headChanged: true,
     maxRounds: MAX,
     openPrs: 0,
     round: 0,
@@ -60,6 +63,19 @@ test("autoDecision: cap-dropped issues with no settleable PR is STALLED, not a n
   expect(autoDecision(state({ backlog: 0, capDropped: SOME, openPrs: 0 }))).toBe("stalled");
   // Cap-dropped beats the audit/done branch: a stuck backlog is not "findings-free".
   expect(autoDecision(state({ auditedClean: true, capDropped: SOME }))).toBe("stalled");
+});
+
+test("autoDecision: unchanged HEAD skips the audit — no Fable spend on a clean, unchanged tree (#521)", () => {
+  // Backlog empty, nothing cap-dropped, not audited clean this session, HEAD equals the last clean-audit SHA.
+  // Re-running the audit would burn Fable for nothing — the prior result is still valid.
+  expect(autoDecision(state({ headChanged: false }))).toBe("done");
+  expect(autoDecision(state({ headChanged: false, round: MID }))).toBe("done");
+  // The round cap still fires first — exhausted beats the unchanged-HEAD skip.
+  expect(autoDecision(state({ headChanged: false, round: MAX }))).toBe("exhausted");
+  // Cap-dropped still beats HEAD-unchanged — a stuck backlog is not findings-free.
+  expect(autoDecision(state({ capDropped: SOME, headChanged: false }))).toBe("stalled");
+  // An open PR with unchanged HEAD still develops — settle can still make progress.
+  expect(autoDecision(state({ headChanged: false, openPrs: ONE }))).toBe("develop");
 });
 
 test("autoDecision: a genuinely empty backlog audits for new work, then powers down once clean", () => {
