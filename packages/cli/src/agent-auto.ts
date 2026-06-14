@@ -32,7 +32,7 @@ type TerminalOutcome = "audit-broken" | "done" | "exhausted" | "stalled";
 /** One round's inputs that carry across iterations — the round counter and the per-issue attempt counts (so
  *  a repeatedly-failing issue is dropped from the backlog while healthy issues keep progressing). The counts
  *  are a readonly-array of `[issue, attempts]` pairs (the strict wall rejects a `ReadonlyMap` param). */
-interface RoundState {
+export interface RoundState {
   readonly attempts: readonly AttemptCount[];
   readonly round: number;
 }
@@ -62,7 +62,7 @@ function numbersOf(out: string): number[] {
 }
 
 /** A validated `vow agent auto` invocation — the round cap, the resolved provider, and the auth choice. */
-interface AutoArgs {
+export interface AutoArgs {
   readonly auth: Auth;
   readonly maxRounds: number;
   readonly provider: Provider;
@@ -179,21 +179,33 @@ function settlePr(pr: number, cwd: string): number {
   return actOnPrForHead(pr, cwd, head);
 }
 
-/** Settle every settleable (open, non-draft) PR in the round — each is merged green, drafted red, or left
- *  pending. Each `settlePr` is wrapped in try/catch (mirroring the develop-lane isolation #412 gave the
- *  develop half): a `gh pr merge` that refuses an unmergeable PR — a fleet-overlap conflict, or `gh pr ready
- *  --undo` on an already-draft PR — exits 1 and THROWS; isolating it per-PR logs + continues, so one
- *  un-settleable PR never aborts the whole spiral (which would deterministically re-abort on restart). */
-function settleRound(cwd: string): void {
-  for (const pr of settleablePrs(cwd)) {
-    try {
-      settlePr(pr, cwd);
-    } catch (error) {
-      // A gh-exit-1 throw (not mergeable / already a draft / a permission hiccup) must fail only this PR.
-      // The next round re-reads + re-settles it; a persistently-stuck PR stays surfaced, never crashing.
-      process.stdout.write(`auto: pr #${pr} settle threw — continuing (${reasonOf(error)})\n`);
-    }
+/** Settle ONE settleable PR best-effort — `settlePr` (update branch → wait CI → merge green / draft red),
+ *  wrapped in try/catch (mirroring the develop-lane isolation #412 gave the develop half): a `gh pr merge`
+ *  that refuses an unmergeable PR — a fleet-overlap conflict, or `gh pr ready --undo` on an already-draft PR —
+ *  exits 1 and THROWS; isolating it per-PR logs + continues, so one un-settleable PR never aborts the whole
+ *  spiral (which would deterministically re-abort on restart). Yields to the event loop first, so a settle
+ *  sweep launched alongside the round's develops interleaves with them rather than blocking the whole tick. */
+async function settleOne(pr: number, cwd: string): Promise<void> {
+  await Promise.resolve();
+  try {
+    settlePr(pr, cwd);
+  } catch (error) {
+    // A gh-exit-1 throw (not mergeable / already a draft / a permission hiccup) must fail only this PR.
+    // The next round re-reads + re-settles it; a persistently-stuck PR stays surfaced, never crashing.
+    process.stdout.write(`auto: pr #${pr} settle threw — continuing (${reasonOf(error)})\n`);
   }
+}
+
+/** Settle every settleable (open, non-draft) PR — each merged green, drafted red, or left pending. DECOUPLED
+ *  from the round barrier (#676): this runs CONCURRENTLY with the round's develops (see `autoRound`), so a PR
+ *  that is already green (a prior round's converged work) settles + merges in minutes, never waiting on the
+ *  slowest sibling's fix-round to finish the whole round first. Each PR is settled independently + best-effort
+ *  (`settleOne`), so one un-settleable PR never aborts the sweep. The settleable set is re-read here (not the
+ *  round-start snapshot), so a PR that greened since the round began is picked up the same tick. */
+async function settleRound(cwd: string): Promise<void> {
+  await mapLimit(settleablePrs(cwd), DEFAULT_CONCURRENCY, async (pr) => {
+    await settleOne(pr, cwd);
+  });
 }
 
 /** The round's EFFECTIVE workload, computed once per iteration so the decision and the develop step agree:
@@ -222,7 +234,7 @@ function effectiveBacklog(cwd: string, attempts: readonly AttemptCount[]): Effec
 
 /** The spiral's invariants across every round — the validated args + the repo cwd. Bundled so the round /
  *  decision helpers take ONE context (the strict wall caps params at 3). */
-interface Spiral {
+export interface Spiral {
   readonly args: AutoArgs;
   readonly cwd: string;
 }
@@ -260,16 +272,95 @@ function bumpAttempts(
   return [...counts];
 }
 
-/** Run one round — develop the precomputed within-cap backlog, then settle every settleable PR; returns the
- *  next per-issue attempt counts (this round's attempts folded into the prior). */
-async function autoRound(
+/** The LIVE status payload for an advancing round (#673) — the advancing round number, the within-cap backlog
+ *  the round is developing, the open settleable-PR count right now, a fresh `lastRound` timestamp, and
+ *  `running: true`. Pure (the counts are passed in), so the per-advance status is unit-testable without gh —
+ *  the round number + live counts the cockpit reads while the loop works, not a frozen idle snapshot. */
+export function advanceStatus(round: Readonly<RoundState>, counts: RoundCounts): LoopStatus {
+  return {
+    backlog: counts.backlog,
+    lastRound: new Date().toISOString(),
+    openPrs: counts.openPrs,
+    round: round.round,
+    running: true,
+  };
+}
+
+/** The live counts an advancing round records — the within-cap backlog it is developing + the open
+ *  settleable-PR count read right now. Bundled so `advanceStatus` stays within the param cap. */
+export interface RoundCounts {
+  readonly backlog: number;
+  readonly openPrs: number;
+}
+
+/** The side-effecting operations one round drives — develop the backlog (each issue in its own worktree),
+ *  settle the open green PRs (concurrently, decoupled from the develop), read the live settleable-PR count
+ *  (for the per-advance status), and write the live status. Injectable so the round's concurrency + the
+ *  per-advance status writes are tested without shelling gh; `realRoundOps` is the live gh-backed default. */
+export interface RoundOps {
+  readonly developBacklog: (backlog: readonly number[]) => Promise<void>;
+  readonly settle: () => Promise<void>;
+  readonly settleableCount: () => number;
+  readonly writeStatus: (status: Readonly<LoopStatus>) => void;
+}
+
+/** The live gh-backed round operations for `spiral` — develop via the worktree loop, settle the open PRs, read
+ *  the live settleable-PR count, and record the status to `.vow/loop-status.json`. What `autoRound` runs
+ *  against; a test injects fakes to assert the concurrency + the per-advance status writes. */
+function realRoundOps(spiral: Spiral): RoundOps {
+  return {
+    developBacklog: async (backlog) => {
+      await developBacklog(spiral, backlog);
+    },
+    settle: async () => {
+      await settleRound(spiral.cwd);
+    },
+    settleableCount: () => settleablePrs(spiral.cwd).length,
+    writeStatus: (status) => {
+      writeLoopStatus(spiral.cwd, status);
+    },
+  };
+}
+
+/** Record the loop's LIVE status as the round advances (#673) — the advancing round number + the live counts
+ *  (the within-cap backlog + the open settleable PRs read NOW), with a fresh timestamp, so the cockpit tracks
+ *  the round being WORKED, not a frozen snapshot. Best-effort (`writeStatus` never throws). */
+function recordAdvance(
+  ops: RoundOps,
+  state: Readonly<RoundState>,
+  backlog: readonly number[],
+): void {
+  ops.writeStatus(
+    advanceStatus(state, { backlog: backlog.length, openPrs: ops.settleableCount() }),
+  );
+}
+
+/** Orchestrate one round against `ops` (#676 / #673) — record the LIVE status as the round ADVANCES (the
+ *  advancing round number + live counts), develop the within-cap backlog AND settle the open green PRs
+ *  CONCURRENTLY (the settle no longer waits for the whole round's develop, so already-green work merges in
+ *  minutes instead of blocking behind the slowest sibling's fix-round), then record the advance again with the
+ *  fresh open-PR count. Both halves are independently isolated, so neither aborts the other. Exported with the
+ *  `ops` seam so a test asserts the concurrency + the per-advance writes without shelling gh. */
+export async function orchestrateRound(
+  ops: RoundOps,
+  state: Readonly<RoundState>,
+  backlog: readonly number[],
+): Promise<void> {
+  recordAdvance(ops, state, backlog);
+  await Promise.all([ops.developBacklog(backlog), ops.settle()]);
+  recordAdvance(ops, state, backlog);
+}
+
+/** Run one round — orchestrate the develop + concurrent settle against the live gh-backed ops, then fold this
+ *  round's attempts into the running per-issue counts. The decoupled settle + the per-advance status writes
+ *  live in `orchestrateRound` (testable); this is the live wrapper. */
+export async function autoRound(
   spiral: Spiral,
   state: Readonly<RoundState>,
   backlog: readonly number[],
 ): Promise<AttemptCount[]> {
   process.stdout.write(`auto: round ${state.round}/${spiral.args.maxRounds}\n`);
-  await developBacklog(spiral, backlog);
-  settleRound(spiral.cwd);
+  await orchestrateRound(realRoundOps(spiral), state, backlog);
   return bumpAttempts(state.attempts, backlog);
 }
 

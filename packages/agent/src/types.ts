@@ -57,9 +57,14 @@ export interface IssueSpec {
 /** The repo facts a plan inlines: the gates to run + the commit the plan was written against, and (when the
  *  caller resolved one) the scaffolded `plan.md` TEMPLATE the live run is built from — so a user editing
  *  `.claude/prompts/plan.md` changes the agent's actual plan, not just the `vow agent plan` preview. Absent
- *  (the field unset) means use the built-in default plan template. */
+ *  (the field unset) means use the built-in default plan template.
+ *  `verify` is the FAST per-fix-round gate set (`vp lint` + the touched package's tests) the executor re-runs
+ *  to confirm each fix; `finalVerify` (when set) is the THOROUGH pre-PR gate set (`vp check` + `pnpm -r test`)
+ *  run ONCE after the fix rounds converge — so a per-fix iteration is bounded fast, but the published verdict
+ *  is the full wall. Absent `finalVerify` => the fast `verify` is also the final verdict. */
 export interface PlanContext {
   readonly commit: string;
+  readonly finalVerify?: readonly string[];
   readonly focus?: string;
   readonly planTemplate?: string;
   readonly verify: readonly string[];
