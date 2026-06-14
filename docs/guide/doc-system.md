@@ -63,7 +63,8 @@ vow distinguishes two layers:
 
 ## Styling & tokens
 
-Styling is layered, both halves built on **one set of tokens**:
+Styling is **three layers**, each built on the one below and all on **one set of tokens** —
+`@vow/theme` tokens → `@vow/shell` chrome → `@vow/docs` docs layer:
 
 ::: code-group
 
@@ -79,8 +80,15 @@ Styling is layered, both halves built on **one set of tokens**:
 }
 ```
 
+```css [@vow/shell/style.css — the app chrome]
+/* the dashboard Shell — the swappable chrome the generated *.layout.vue wraps every page in */
+.vow-shell {
+  /* sidebar + main layout, shared by any vow app that ships chrome */
+}
+```
+
 ```css [@vow/docs/style.css — the docs layer]
-/* the docs site's own stylesheet — chrome + prose + extensions, on the tokens above */
+/* the docs site's own stylesheet — prose + extensions, on the layers above */
 .vow-nav {
   /* … */
 }
@@ -94,5 +102,7 @@ Styling is layered, both halves built on **one set of tokens**:
 
 :::
 
-There are **no `<style>` blocks** in any component — every rule lives in one of the two stylesheets, and
-each consumer package (like `@vow/docs`) ships its own CSS on top of the shared `@vow/theme` tokens.
+There are **no `<style>` blocks** in any component — every rule lives in one of these three
+stylesheets, and each consumer package (`@vow/shell`, `@vow/docs`) ships its own CSS on top of the
+shared `@vow/theme` tokens. The generated `*.layout.vue` imports `@vow/shell/style.css` alongside the
+theme, so the chrome layer is loaded for any vow app with more than a home page — not just the docs.
