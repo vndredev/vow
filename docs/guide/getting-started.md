@@ -90,6 +90,8 @@ vp check        # format · lint · typecheck (tsgo)
 pnpm -r test    # tests per package (incl. the scenario-coverage gate)
 ```
 
+The scenario-coverage gate checks that every promise has a **named** test; `pnpm -r test` runs the bodies. For an `emit` vow (like this one) the generated test proves the behaviour outright; for a `bind` vow you own the assertion (see [proof](/guide/proof#how-the-gate-runs)).
+
 ## Where to go next
 
 - [The Vow primitive](/guide/vow) — the one node everything is made of
