@@ -11,6 +11,7 @@ import {
 import {
   agentsMd,
   vowAuditSkill,
+  vowBrainstormSkill,
   vowDevelopSkill,
   vowOrchestrateSkill,
 } from "./agent-templates.ts";
@@ -184,8 +185,8 @@ export function installHooks(cwd: string): string {
 }
 
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
- *  AGENTS.md contract + the develop/orchestrate/audit skills + the operative develop/audit/plan PROMPTS as
- *  editable provider templates (`.claude/prompts/<role>.md`, what the agent reads). Idempotent — re-running
+ *  AGENTS.md contract + the develop/orchestrate/audit/brainstorm skills + the operative develop/audit/plan PROMPTS
+ *  as editable provider templates (`.claude/prompts/<role>.md`, what the agent reads). Idempotent — re-running
  *  keeps every file, so a user-edited prompt is never clobbered. */
 function init(cwd: string): number {
   const actions = [
@@ -196,6 +197,10 @@ function init(cwd: string): number {
       vowOrchestrateSkill(),
     ),
     scaffold(path.join(cwd, ".claude", "skills", "vow-audit", "SKILL.md"), vowAuditSkill()),
+    scaffold(
+      path.join(cwd, ".claude", "skills", "vow-brainstorm", "SKILL.md"),
+      vowBrainstormSkill(),
+    ),
     ...promptTemplates().map((template) =>
       scaffold(path.join(cwd, template.path), template.content),
     ),
@@ -319,7 +324,7 @@ export const AGENT_SUBCOMMANDS: readonly AgentSubcommand[] = [
     args: "",
     name: "init",
     summary:
-      "scaffold the agent integration (AGENTS.md + develop/orchestrate/audit skills + prompts)",
+      "scaffold the agent integration (AGENTS.md + develop/orchestrate/audit/brainstorm skills + prompts)",
   },
   { args: "<n>", name: "plan", summary: "print the verification-gated plan for issue <n>" },
   {

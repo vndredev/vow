@@ -100,7 +100,7 @@ The hub records what it does to an append-only feed (`.vow/events.jsonl`): a dev
 `vow agent` scaffolds and drives the **agent-native layer** — autonomous agents developing issues through vow's verification gates, opening PRs, and merging when green. One per vow; the executor is an LLM (Claude, Codex, etc.), not the user.
 
 ```bash
-vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit skills + prompts + the agent team
+vow agent init                                          # scaffold AGENTS.md + the develop/orchestrate/audit/brainstorm skills + prompts + the agent team
 vow agent plan <n>                                      # print the verification-gated plan for issue <n>
 vow agent run <n>                                       # develop issue <n>, open a PR
 vow agent run <n> --dry-run                             # preview the run (branch, commands, gates)
@@ -116,6 +116,8 @@ vow agent audit --file <findings.json>                  # file audit findings as
 The gates (`vp check` + `pnpm -r test`) run in the worktree after the provider completes — a PR merges only when the gates pass. Dry-run shows the branch, commands, and expected gates without running them.
 
 `init` also scaffolds the operative agent **prompts** as editable templates under `.claude/prompts/` — `develop.md`, `audit.md`, and `plan.md`. These ARE the agent's behaviour: `vow agent plan` builds its plan from `plan.md`, and `vow agent audit` runs `audit.md` (with `{dimension}` filled in). The agent READS the scaffolded file, falling back to vow's built-in default when it is absent — so editing a prompt tunes the agent without touching vow's source. `init` is idempotent: it never clobbers a prompt you have edited.
+
+`/vow-brainstorm` is the Socratic front-door for the spec-first loop: one clarifying question at a time, a **hard gate** before any file is written, then a draft `.vow.md` spec + a `gh issue create` call after explicit approval. It turns a vague idea into a well-specified issue the loop can pick up without stalling on under-specification. The skill is part of the develop/orchestrate/audit/brainstorm skills `init` scaffolds.
 
 `init` further wires the **guardrail hooks** into `.claude/settings.json` (merged beside any hooks you already have): the **PreToolUse** guard (`vow hook` blocks a wrong Bash call — a direct push to `main`, a raw `gh pr create`, `vp check --fix` — with the vow alternative) and the **SessionStart** trigger (`vow hook session-start` injects the `using-vow` bootstrap as every session's first context, so vow's red line + gates + team auto-fire). The wired command is the **local bin** — `$CLAUDE_PROJECT_DIR/node_modules/.bin/vow hook` — so it resolves for a project with vow as a local dependency, with no global install on `PATH`. See [the agent layer](./agent.md#the-guardrail-hooks) for the full mechanism.
 
