@@ -27,12 +27,23 @@ const READ_TOOLS = "Read, Grep, Glob";
 
 /** The shared preamble every specialist gets — the one repo, the one law: work THROUGH vow, on the gated red
     line. Keeps each agent's own prompt to its area without re-teaching the house rules. */
-const PREAMBLE =
+export const PREAMBLE =
   "You are a specialist in the **vow** monorepo (a spec-driven, LLM-first Vue generator + its agent-native " +
   "self-healing machinery). Read AGENTS.md first — it is the contract: every change runs the red line " +
   "(plan→branch→develop→verify→document→PR→merge), main is PR-only, and the gates are mechanical law, not " +
   "pleas. Stay strictly within your concern below; defer anything else to its specialist. Report concrete " +
   "`file:line` evidence + a precise, in-scope fix — never speculation, style nits, or features.";
+
+/** Vow's strict wall, stated up front in a dispatched agent's brief — so a headless executor honours the red
+    line BEFORE acting instead of rediscovering each rule by failing a gate (90% mechanics, 10% LLM). The exact
+    oxlint bans + the type wall + the always-on gates, baked into the routed prompt by `teamFocus`. */
+export const WALL =
+  "Honour vow's wall BEFORE acting — never rediscover a rule by failing a gate (90% mechanics). " +
+  "oxlint runs `-D all`: NO ternary, NO negated condition, NO bare `undefined` literal, NO `as`, NO `any`, " +
+  "NO non-null `!` — fix a type hole at its source with a real predicate, never widen to silence it. The " +
+  "framework-neutrality + provider-neutrality gates, the layer-DAG / no-cycle / max-lines caps, and " +
+  "has-a-doc / docs-drift are mechanical law, not pleas. Verify is machine-checked, never self-judged: " +
+  "`vp lint` = 0 AND `pnpm -r test` = 0 before the PR, and every new element earns its doc.";
 
 /** The team — one owner per vow concern. The builder (`vow-developer`) develops issues end-to-end; each
     guardian owns one area + the gate that enforces it. The orchestrator picks the builder for a feature
@@ -136,9 +147,23 @@ export const TEAM: readonly TeamAgent[] = [
   },
 ];
 
+/** The team agent named `name`, or absent when none matches — the lookup the loop's routing resolves through,
+    so `team.ts` is the ONE source of agent definitions (no parallel roster to drift from). Pure. */
+export function teamByName(name: string): TeamAgent | undefined {
+  return TEAM.find((agent) => agent.name === name);
+}
+
+/** One specialist's COMPLETE system prompt — the shared preamble, vow's wall, then the agent's own role +
+    discipline, as one block. The single composer behind BOTH the scaffolded `.claude/agents/<name>.md` and
+    the focus the autonomous loop injects into the develop plan, so the dispatched agent and the committed
+    subagent are the same brief (no second copy to drift). Pure. */
+export function teamPrompt(agent: Readonly<TeamAgent>): string {
+  return [PREAMBLE, "", WALL, "", agent.prompt].join("\n");
+}
+
 /** One agent's `.claude/agents/<name>.md` content — Claude Code's custom-subagent format: frontmatter
-    (name · description · tools) then the system prompt (the shared preamble + the specialist's own). Pure.
-    No `model` is pinned — the agent inherits the session model (config lives in settings, not the template). */
+    (name · description · tools) then the system prompt (`teamPrompt` — preamble + wall + the specialist's own).
+    Pure. No `model` is pinned — the agent inherits the session model (config lives in settings, not the template). */
 export function renderTeamAgent(agent: Readonly<TeamAgent>): string {
   return [
     "---",
@@ -147,9 +172,7 @@ export function renderTeamAgent(agent: Readonly<TeamAgent>): string {
     `tools: ${agent.tools}`,
     "---",
     "",
-    PREAMBLE,
-    "",
-    agent.prompt,
+    teamPrompt(agent),
     "",
   ].join("\n");
 }

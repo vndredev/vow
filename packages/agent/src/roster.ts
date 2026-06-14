@@ -1,72 +1,65 @@
 /**
- * The agent roster — vow's own specialized agent per area, provider-neutral. One agent does one area well
- * (focused context, fewer drift surfaces); the orchestrator composes them across the audit -> plan ->
- * develop loop. The roster is DATA (an area + its focus), so a host (Claude Code's workflows, or another
- * runtime) fans them out — the substance is vow's, the runtime the host's.
+ * The loop's agent ROUTING — which TEAM specialist the autonomous loop dispatches per issue. There is ONE
+ * source of agent definitions (`team.ts`, the 12 elite specialists with their full system prompts); this
+ * module is the thin routing table that maps an issue's `area:` label to the matching team agent, so the
+ * loop injects that specialist's COMPLETE brief into the develop plan — never a second, thinner roster to
+ * drift from. The builder (`vow-developer`) is the default for general development; an area whose work is one
+ * guardian's concern routes to that guardian.
  */
 
-/** A specialized agent — the `area` it owns + a `focus` (a system-prompt fragment that narrows it to that
- *  concern, prepended to the gated plan so the executor stays in its lane). */
-export interface AgentSpec {
-  readonly area: string;
-  readonly focus: string;
-}
+import { TEAM, teamByName, teamPrompt } from "./team.ts";
+// oxlint-disable-next-line no-duplicate-imports -- the value import above; TeamAgent needs a top-level type import
+import type { TeamAgent } from "./team.ts";
 
-/** The roster — vow's areas mapped to their specialized agents. */
-export type Roster = readonly AgentSpec[];
+/** The team's general builder — the default specialist the loop dispatches when no area guardian owns the
+ *  work (a feature/fix spanning the whole red line). One name, resolved against `team.ts` (the source). */
+export const DEFAULT_AGENT = "vow-developer";
 
-/** The default roster — one agent per vow area, each focused by that area's invariant. */
-export const DEFAULT_ROSTER: Roster = [
-  {
-    area: "emit",
-    focus:
-      "You own code generation (the emitters). Generate THROUGH the canonical component model + the " +
-      "neutral adapters — never hand-write rendered output. It stays byte-stable, pinned by tests.",
-  },
-  {
-    area: "gate",
-    focus:
-      "You own the gates + guards. A gate is a mechanical rule that blocks drift, not a plea. When a " +
-      "check can be enforced, make it a gate AND a test that proves it fires.",
-  },
-  {
-    area: "studio",
-    focus:
-      "You own the studio app. Compose everything from vow primitives + tokens — no hardcoded values, " +
-      "no parallel UI. The studio reads the plan (the issues); it never hand-seeds it.",
-  },
-  {
-    area: "docs",
-    focus:
-      "You own the docs (a generated vow app). Keep them 1:1 with the real state — honest, no " +
-      "overselling, maintained with every feature.",
-  },
-  {
-    area: "core",
-    focus:
-      "You own the Vow primitive + the data layer. Status is NEVER stored (it is derived). One recursive " +
-      "node; the contract is the parser + loader. Keep the core minimal + invariant.",
-  },
-];
-
-/** The general agent — when no area specialist owns the work. */
-const GENERAL: AgentSpec = {
-  area: "general",
-  focus:
-    "Stay strictly inside the task's scope; touch only what it names; every gate must pass before the PR.",
+/** The routing table — an issue's `area:` label mapped to the TEAM specialist that owns it. An area absent
+ *  here (or no `area:` label) falls to the builder (`DEFAULT_AGENT`). The values are team-agent names, so the
+ *  table can never name an agent `team.ts` doesn't define (a startup check pins every value resolves). */
+export const AREA_AGENT: Readonly<Record<string, string>> = {
+  agent: "provider-neutrality-guard",
+  component: "framework-neutrality-guard",
+  core: "vow-developer",
+  docs: "docs-keeper",
+  emit: "framework-neutrality-guard",
+  gate: "type-sentinel",
+  github: "vow-developer",
+  mcp: "security-auditor",
+  observability: "vow-developer",
+  primitives: "a11y-keeper",
+  studio: "studio-dx",
 };
 
-/** The specialized agent for `area` in `roster`, or the general agent when none owns it. */
-export function agentFor(roster: Roster, area: string): AgentSpec {
-  const spec = roster.find((each) => each.area === area);
-  if (spec) {
-    return spec;
+/** The TEAM specialist the loop dispatches for `area` — the area's mapped guardian, or the builder
+ *  (`vow-developer`) when no guardian owns it. Always a defined `TeamAgent` (both the mapped name and the
+ *  default resolve against `team.ts`, the source of truth), so the caller never handles an absent agent. */
+export function teamAgentFor(area: string): TeamAgent {
+  const name = AREA_AGENT[area] ?? DEFAULT_AGENT;
+  const agent = teamByName(name) ?? teamByName(DEFAULT_AGENT);
+  if (agent) {
+    return agent;
   }
-  return GENERAL;
+  // Unreachable: `vow-developer` is always in TEAM (pinned by a test). The throw keeps the return type a
+  // Defined `TeamAgent` without an `as` or a `!`, so a future rename of the builder fails loud, not silent.
+  const [first] = TEAM;
+  if (first) {
+    return first;
+  }
+  throw new Error("the team is empty — no agent to route to");
+}
+
+/** The COMPLETE focus the loop injects into the develop plan for `area` — the matched TEAM specialist's full
+ *  system prompt (preamble + vow's wall + its role + discipline), the same brief its committed
+ *  `.claude/agents/<name>.md` carries. This is the upgrade from the old thin 2-line roster focus: the
+ *  headless executor now develops with the right owner's complete expertise, not a generalist sketch. */
+export function teamFocus(area: string): string {
+  return teamPrompt(teamAgentFor(area));
 }
 
 /** The vow area an issue's labels name — the first `area: <x>` label's `<x>`, or "" when none. So an issue
- *  labelled `area: emit` routes to the emit specialist. */
+ *  labelled `area: emit` routes (via `teamAgentFor`) to the emit area's specialist. */
 export function areaOf(labels: readonly string[]): string {
   const prefix = "area: ";
   for (const label of labels) {
