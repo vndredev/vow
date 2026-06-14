@@ -1,6 +1,7 @@
 import {
   agentsMd,
   vowAuditSkill,
+  vowBrainstormSkill,
   vowDevelopSkill,
   vowOrchestrateSkill,
 } from "../src/agent-templates.ts";
@@ -10,8 +11,8 @@ import { fileURLToPath } from "node:url";
 import { promptRelPath } from "@vow/agent";
 import { readFileSync } from "node:fs";
 
-// The three skills `vow agent init` scaffolds — the user-facing wording must name every one (1:1).
-const INIT_SKILLS = ["develop", "orchestrate", "audit"] as const;
+// The four skills `vow agent init` scaffolds — the user-facing wording must name every one (1:1).
+const INIT_SKILLS = ["develop", "orchestrate", "audit", "brainstorm"] as const;
 
 function source(relative: string): string {
   return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
@@ -50,6 +51,19 @@ test("the vow-audit skill files findings into vow issues, via the host workflow"
   expect(skill).toContain("/workflows");
 });
 
+test("the vow-brainstorm skill has a hard gate, the spec format, and provider-neutral issue filing", () => {
+  const skill = vowBrainstormSkill();
+  expect(skill).toContain("name: vow-brainstorm");
+  // The hard gate is the point — approval must be explicit before any file is written.
+  expect(skill).toContain("HARD GATE");
+  // The spec format teaches the agent what a .vow.md looks like.
+  expect(skill).toContain(".vow.md");
+  // Provider-neutral: the issue is filed via gh, never a provider CLI.
+  expect(skill).toContain("gh issue create");
+  // The Socratic constraint: one question at a time, never a list.
+  expect(skill).toContain("one question");
+});
+
 test("the vow-audit skill points at the scaffolded prompt as the operative instruction", () => {
   const skill = vowAuditSkill();
   // The per-dimension instruction is the single source of truth, not restated in the skill.
@@ -63,7 +77,7 @@ test("the CLI help string names every skill init scaffolds (no undercount)", () 
 
 test("the init doc comment names the skills + the operative prompts it scaffolds", () => {
   const comment = source("../src/agent.ts");
-  expect(comment).toContain("develop/orchestrate/audit skills");
+  expect(comment).toContain("develop/orchestrate/audit/brainstorm skills");
   expect(comment).toContain("develop/audit/plan PROMPTS");
 });
 
