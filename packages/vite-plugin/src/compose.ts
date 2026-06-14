@@ -5,6 +5,7 @@ import {
   boardComponentName,
   cardsComponentName,
   emitAgentLoopStatusSfc,
+  emitAgentPanelSfc,
   emitEntityBoard,
   emitEntityCards,
   emitEntityList,
@@ -229,18 +230,46 @@ export function composeEventViews(eventViews: readonly string[], outDir: string)
   return { files, primitives: primitivesFor(files, ["Table", "TableRow", "TableCell", "Badge"]) };
 }
 
-/** The live agent-loop-status views (`loop: { as }`) — a fixed component reading `/__vow/agent-loop/status`. */
+/** Append the loop-status SFC + its required primitives to the accumulating sets. */
+function addStatusView(files: Artifact[], needed: Set<string>, outDir: string): void {
+  files.push({
+    path: path.join(outDir, "VowAgentLoopStatus.vue"),
+    source: emitAgentLoopStatusSfc(),
+  });
+  for (const prim of ["Badge", "Stats", "Stat"]) {
+    needed.add(prim);
+  }
+}
+
+/** Append the agent-panel SFC + its required primitives to the accumulating sets. */
+function addAgentsView(files: Artifact[], needed: Set<string>, outDir: string): void {
+  files.push({ path: path.join(outDir, "VowAgentPanel.vue"), source: emitAgentPanelSfc() });
+  for (const prim of [
+    "Badge",
+    "Card",
+    "CardHeader",
+    "CardBody",
+    "Table",
+    "TableRow",
+    "TableCell",
+  ]) {
+    needed.add(prim);
+  }
+}
+
+/** The live agent-loop-status views (`loop: { as }`) — fixed components reading the loop status
+ *  (`/__vow/agent-loop/status`) or the active-agent panel (derived from `/__vow/events`). */
 export function composeLoopViews(loopViews: readonly string[], outDir: string): Composed {
   const wanted = new Set(loopViews);
   const files: Artifact[] = [];
+  const needed = new Set<string>();
   if (wanted.has("status")) {
-    files.push({
-      path: path.join(outDir, "VowAgentLoopStatus.vue"),
-      source: emitAgentLoopStatusSfc(),
-    });
+    addStatusView(files, needed, outDir);
   }
-  // The status composes a run-state Badge + the Stats/Stat stat-card grid for the round's metrics.
-  return { files, primitives: primitivesFor(files, ["Badge", "Stats", "Stat"]) };
+  if (wanted.has("agents")) {
+    addAgentsView(files, needed, outDir);
+  }
+  return { files, primitives: primitivesFor(files, [...needed]) };
 }
 
 /** The live MCP/channel-health views (`mcp: { as }`) — a fixed component reading `/__vow/mcp/status`. */

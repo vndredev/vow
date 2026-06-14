@@ -9,6 +9,7 @@
  * boot/routes/layout, the standalone `## form`, and the git/issue-plan SFCs the docs + app share.
  */
 
+export { emitAgentPanelSfc } from "./agents-sfc.ts";
 export { LAYOUT_EXPORT, LAYOUT_SUFFIX, ROUTES_EXPORT, ROUTES_SUFFIX } from "./boot-convention.ts";
 export { VOW_ENV_DTS, emitAppLayout, emitAppRoutes, emitBoot } from "./boot.ts";
 export type { RoutedPage, ShellSpec } from "./boot.ts";

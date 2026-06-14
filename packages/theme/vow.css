@@ -645,6 +645,49 @@ body {
 .vow-mcp .vow-stat__value {
   font-size: var(--vow-text-3xl);
 }
+/* the active-agents panel (`loop: { as: agents }`) — one Card per in-flight agent run, each with a
+   header row of Badges (issue · specialist · phase) and a scrolling tool-feed Table beneath it.
+   `.vow-agents` stacks the cards; `.vow-agent__tools` caps the feed height so a long run stays
+   contained. The column hooks mirror the trace: ts + name shrink to content, summary fills the rest. */
+.vow-agents {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-4);
+}
+.vow-agent__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vow-space-2);
+  flex-wrap: wrap;
+}
+.vow-agent__tools {
+  max-height: 40vh;
+  overflow-y: auto;
+  border-radius: var(--vow-radius-2);
+}
+.vow-agent__tools .vow-table {
+  border: none;
+}
+.vow-agent__waiting {
+  color: var(--vow-color-muted);
+  font-size: var(--vow-text-sm);
+  margin: 0;
+}
+.vow-agent-tool__ts {
+  font-family: var(--vow-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--vow-color-muted);
+  white-space: nowrap;
+  width: 1px;
+}
+.vow-agent-tool__name {
+  width: 1px;
+  white-space: nowrap;
+}
+/* the summary cell takes the row's remaining width, wrapping long tool summaries inside the column */
+.vow-agent-tool__summary {
+  width: auto;
+}
 /* the live event trace (`events: { as: trace }`) — a structured Table of aligned columns, newest-first.
    It composes the Table parts + a Badge per kind; `.vow-trace` caps the height + scrolls so a long run
    stays a contained, scannable feed, and the column hooks tune the time/issue/detail cells. */

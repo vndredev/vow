@@ -23,6 +23,13 @@ nav: { label: Cockpit, icon: monitor, group: Operations, order: 0 }
                   - p: "Read-only — the loop is observed here, not driven. Start/stop control over the same surface arrives with #623 (it needs a cross-process stop signal)."
       - card:
           children:
+            - cardHeader: { children: [{ text: Active agents }] }
+            - cardBody:
+                children:
+                  - p: One card per active run — the issue, the team specialist, the current phase, and the live tool-call feed.
+                  - loop: { as: agents }
+      - card:
+          children:
             - cardHeader: { children: [{ text: Trace }] }
             - cardBody:
                 children:

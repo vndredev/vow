@@ -1,6 +1,7 @@
 import {
   LOOP_LAYOUTS,
   emitAgentLoopStatusSfc,
+  emitAgentPanelSfc,
   emitView,
   loopLayout,
   loopLayouts,
@@ -32,6 +33,7 @@ test("loop: { as } renders the layout's component; a missing `as` defaults to st
     "<VowAgentLoopStatus",
   );
   expect(emitView(view([{ type: "loop", value: {} }]))).toContain("<VowAgentLoopStatus");
+  expect(emitView(view([{ type: "loop", value: { as: "agents" } }]))).toContain("<VowAgentPanel");
 });
 
 test("an unknown loop layout throws — no dangling import to a never-materialised component", () => {
@@ -49,8 +51,8 @@ test("loopLayouts collects the validated layouts a view uses (mapNode + plugin a
   expect([...loopLayouts(vow)].toSorted()).toEqual(["status"]);
 });
 
-test("LOOP_LAYOUTS maps each layout to its VowAgentLoop* component", () => {
-  expect(LOOP_LAYOUTS).toEqual({ status: "VowAgentLoopStatus" });
+test("LOOP_LAYOUTS maps each layout to its VowAgent* component", () => {
+  expect(LOOP_LAYOUTS).toEqual({ agents: "VowAgentPanel", status: "VowAgentLoopStatus" });
 });
 
 test("the loop-status SFC is a valid, store-bound SFC", () => {
@@ -112,4 +114,75 @@ test("the loop-status SFC carries the loading / failed messages, mutually exclus
   expect(sfc).toContain('v-if="state.error"');
   expect(sfc).toContain("Couldn’t load the loop status");
   expect(sfc).toContain('v-if="!state.loading && !state.error"');
+});
+
+test("the agent-panel SFC is a valid, store-bound SFC", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain('<script setup lang="ts">');
+  expect(sfc).toContain("useEvents");
+  expect(sfc).toContain("activeRunsFrom");
+  expect(sfc).toContain("@vow/store");
+  expect(sfc).toContain("</template>");
+});
+
+test("the agent-panel SFC derives active runs via computed()", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain("computed");
+  expect(sfc).toContain("activeRunsFrom(items)");
+  expect(sfc).toContain("const runs = computed(() => activeRunsFrom(items));");
+});
+
+test("the agent-panel SFC loops over runs with Card per active agent", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain("v-for");
+  expect(sfc).toContain("run in runs");
+  expect(sfc).toContain("<Card");
+  expect(sfc).toContain("<CardHeader");
+  expect(sfc).toContain("<CardBody");
+});
+
+test("the agent-panel SFC shows issue + specialist + phase as Badges in the card header", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain(':label="`#${run.issue}`"');
+  expect(sfc).toContain('v-if="run.specialist"');
+  expect(sfc).toContain(':label="run.specialist"');
+  expect(sfc).toContain('v-if="run.phase"');
+  expect(sfc).toContain(':label="run.phase"');
+});
+
+test("the agent-panel SFC shows the tool feed as a Table of tool rows", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain("<Table");
+  expect(sfc).toContain("<TableRow");
+  expect(sfc).toContain("<TableCell");
+  expect(sfc).toContain("tool in run.tools");
+  expect(sfc).toContain(':key="tool.ts"');
+  expect(sfc).toContain("time(tool.ts)");
+  expect(sfc).toContain(':label="tool.name"');
+  expect(sfc).toContain(':tone="toolTone(tool.name)"');
+  expect(sfc).toContain("tool.summary");
+});
+
+test("the agent-panel SFC shows the waiting message when no tool events exist", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain("Waiting for tool events");
+  expect(sfc).toContain('v-if="run.tools.length === 0"');
+});
+
+test("the agent-panel SFC carries the loading / failed / empty status messages", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain("Loading…");
+  expect(sfc).toContain("Couldn’t load agents");
+  expect(sfc).toContain("No active agents.");
+});
+
+test("the agent-panel SFC imports the Card + Table primitives it composes", () => {
+  const sfc = emitAgentPanelSfc();
+  expect(sfc).toContain('import Card from "./Card.vue";');
+  expect(sfc).toContain('import CardHeader from "./CardHeader.vue";');
+  expect(sfc).toContain('import CardBody from "./CardBody.vue";');
+  expect(sfc).toContain('import Table from "./Table.vue";');
+  expect(sfc).toContain('import TableRow from "./TableRow.vue";');
+  expect(sfc).toContain('import TableCell from "./TableCell.vue";');
+  expect(sfc).toContain('import Badge from "./Badge.vue";');
 });

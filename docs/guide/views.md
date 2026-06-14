@@ -67,6 +67,16 @@ The catalog of ready-made components — you name them, vow brings the markup:
   [`Stats`](/guide/primitives/stats) stat-card grid for the metrics. The
   [Cockpit](/guide/serve#the-operations-cockpit) composes it with the trace. Read-only — control is a
   follow-up (#623).
+- **`loop: { as: agents }`** — the **live active-agents panel**: one [`Card`](/guide/primitives/card) per
+  in-flight agent run, derived live from the same `/__vow/events` SSE feed as the trace (no baked data, no
+  separate endpoint). An issue is "active" from its `run.started` event until its `run.finished`. Each card
+  shows the issue number, the dispatched TEAM specialist (from `run.started.detail`), and the current phase
+  (from the latest `run.phase` event) as [`Badge`](/guide/primitives/badge)s in the header, then a scrolling
+  [`Table`](/guide/primitives/table) of tool-call rows — timestamp · tool name (coloured by type: Edit/Write
+  → accent, others → neutral) · summary — fed by `agent.tool` events. Until `agent.tool` events land (a
+  sibling issue), each card shows "Waiting for tool events…" as a clean zero state. The
+  [Cockpit](/guide/serve#the-operations-cockpit) places it in the Active agents card between the loop status
+  and the trace. `as: status` remains the default when `as:` is omitted.
 - **`mcp: { as: status }`** — the **live MCP/channel health indicator**: whether the channel is connected
   (`connected`), how many tools the vow MCP server registers (`toolCount`), and the newest event's kind +
   timestamp (`lastEvent`). Reads live from `/__vow/mcp/status` (no baked data). `connected` derives from

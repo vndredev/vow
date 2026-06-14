@@ -7,6 +7,7 @@ import { str } from "./helpers.ts";
  * render a component the plugin didn't write. One layout today (`status`) — the loop made observable.
  */
 export const LOOP_LAYOUTS = {
+  agents: "VowAgentPanel",
   status: "VowAgentLoopStatus",
 } as const;
 

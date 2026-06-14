@@ -9,6 +9,8 @@ import { parseEventFeed } from "./events.ts";
 import { parseIssuePlan } from "./issues.ts";
 import { reactive } from "vue";
 
+export type { ActiveRun, ActiveTool } from "./active-agents.ts";
+export { activeRunsFrom } from "./active-agents.ts";
 export type { Collection, CollectionState, LoopStatusItem, McpStatusItem };
 export { ReactiveRows };
 
