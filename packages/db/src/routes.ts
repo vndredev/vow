@@ -11,8 +11,9 @@
 /** The dev-API mount points, under `/__vow`. `db` is the data layer (`/__vow/db/<slug>[/<id>]`); `issues`
  *  is the gh-direct issue plan (`/__vow/issues`); `agent` is the start-work signal that dispatches an agent
  *  session for an issue (`/__vow/agent`); `events` is the append-only event feed (`/__vow/events`);
- *  `agentLoop` is the agent loop's live status (`/__vow/agent-loop/status`), the loop made observable. Both
- *  the client fetch and the server mount read these. */
+ *  `agentLoop` is the agent loop's live status (`/__vow/agent-loop/status`), the loop made observable;
+ *  `mcp` is the MCP/channel health status (`/__vow/mcp/status`), derived from the event feed. Both the
+ *  client fetch and the server mount read these. */
 export const VOW_API = {
   agent: "/__vow/agent",
   agentLoop: "/__vow/agent-loop/status",
@@ -20,6 +21,7 @@ export const VOW_API = {
   events: "/__vow/events",
   issue: "/__vow/issue",
   issues: "/__vow/issues",
+  mcp: "/__vow/mcp/status",
 } as const;
 
 /** The data-layer path for a slug, optionally a single record — `/__vow/db/<slug>` or

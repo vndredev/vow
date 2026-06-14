@@ -595,6 +595,9 @@ importers:
       '@vow/layout':
         specifier: workspace:*
         version: link:../layout
+      '@vow/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability

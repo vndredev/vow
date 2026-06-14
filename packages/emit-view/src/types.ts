@@ -11,3 +11,4 @@ export type { BadgeVariant, TimelineEntry } from "@vow/observability";
 export type { EventLayout } from "./event-layout.ts";
 export type { IssueLayout } from "./issue-layout.ts";
 export type { LoopLayout } from "./loop-layout.ts";
+export type { McpLayout } from "./mcp-layout.ts";

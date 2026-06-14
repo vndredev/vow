@@ -33,5 +33,5 @@ nav: { label: Cockpit, icon: monitor, group: Operations, order: 0 }
             - cardHeader: { children: [{ text: Health }] }
             - cardBody:
                 children:
-                  - p: "An MCP/channel health indicator (connected · tool count · last event) is the next element — tracked as #636."
+                  - mcp: { as: status }
 ```

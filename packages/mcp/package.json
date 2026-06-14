@@ -4,10 +4,24 @@
   "private": true,
   "description": "vow's MCP server — an agent operates the studio (structure via @vow/core, data via @vow/db) over stdio.",
   "type": "module",
+  "typesVersions": {
+    "*": {
+      "channel": [
+        "./src/channel.ts"
+      ],
+      "http": [
+        "./src/http.ts"
+      ],
+      "tools": [
+        "./src/tools.ts"
+      ]
+    }
+  },
   "exports": {
     ".": "./src/server.ts",
     "./channel": "./src/channel.ts",
-    "./http": "./src/http.ts"
+    "./http": "./src/http.ts",
+    "./tools": "./src/tools.ts"
   },
   "scripts": {
     "start": "node --experimental-strip-types src/server.ts",
