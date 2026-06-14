@@ -1,4 +1,4 @@
-import { TEAM, renderTeamAgent, teamTemplates } from "../src/index.ts";
+import { TEAM, renderTeamAgent, teamByName, teamPrompt, teamTemplates } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
 test("the team has a member for every concern — the builder + the guardians", () => {
@@ -47,6 +47,34 @@ test("renderTeamAgent emits Claude Code's custom-subagent md — frontmatter + t
   expect(md).toContain("Read AGENTS.md first");
   // No model is pinned — config lives in settings, not the template.
   expect(md.includes("\nmodel:")).toBe(false);
+});
+
+test("teamByName resolves a member by name, absent for an unknown one", () => {
+  expect(teamByName("vow-developer")?.name).toBe("vow-developer");
+  expect(teamByName("nope")).toBeUndefined();
+});
+
+test("teamPrompt is the COMPLETE brief — preamble + the wall + the specialist's own role", () => {
+  const sentinel = teamByName("type-sentinel");
+  if (!sentinel) {
+    throw new Error("test setup: type-sentinel is missing from the team");
+  }
+  const prompt = teamPrompt(sentinel);
+  expect(prompt).toContain("Read AGENTS.md first");
+  // The strict wall is baked in, so a dispatched agent honours it without rediscovering it by failing.
+  expect(prompt).toContain("oxlint");
+  expect(prompt).toContain("never widen to silence it");
+  // The specialist's own role is appended — the full brief, not just the house rules.
+  expect(prompt).toContain(sentinel.prompt);
+});
+
+test("renderTeamAgent reuses teamPrompt — the scaffolded md and the dispatched brief are one source", () => {
+  const [first] = TEAM;
+  if (!first) {
+    throw new Error("test setup: empty team");
+  }
+  // The committed .claude/agents/<name>.md carries exactly the brief the loop injects (no second copy).
+  expect(renderTeamAgent(first)).toContain(teamPrompt(first));
 });
 
 test("teamTemplates scaffolds each agent to .claude/agents/<name>.md", () => {

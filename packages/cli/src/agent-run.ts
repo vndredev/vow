@@ -1,8 +1,6 @@
 import {
   DEFAULT_PROVIDER,
-  DEFAULT_ROSTER,
   PROVIDERS,
-  agentFor,
   areaOf,
   draftArgs,
   dryRunReport,
@@ -13,6 +11,7 @@ import {
   realOps,
   runReport,
   runTask,
+  teamFocus,
 } from "@vow/agent";
 import {
   claimIssue,
@@ -160,8 +159,9 @@ export function phaseLine(issue: number, phase: string, json: boolean): string {
 async function developClaimed(input: DevInput): Promise<DevResult> {
   const { auth, cwd, issue, json, provider } = input;
   const spec = issueDetail(cwd, issue);
-  // Route to the area's specialist (the roster) — its focus narrows the executor to the issue's concern.
-  const { focus } = agentFor(DEFAULT_ROSTER, areaOf(issueLabels(cwd, issue)));
+  // Route the issue to its area's TEAM specialist and inject THAT agent's COMPLETE brief (its role +
+  // Discipline + vow's wall) into the develop plan — not a thin roster sketch. The builder is the default.
+  const focus = teamFocus(areaOf(issueLabels(cwd, issue)));
   const outcome = await runTask({
     auth,
     // Thread the scaffolded plan TEMPLATE into the LIVE run, so a user-edited `.claude/prompts/plan.md`
