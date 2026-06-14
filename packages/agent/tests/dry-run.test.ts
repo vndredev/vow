@@ -10,7 +10,9 @@ test("dryRunReport previews the claude-code command with the inlined plan elided
   expect(report).toContain("provider: claude-code");
   expect(report).toContain(`branch:   feat/issue-${NUM}`);
   expect(report).toContain("command:  claude -p <plan> --permission-mode acceptEdits");
-  expect(report).toContain("vp check · pnpm -r test");
+  // The local final verify is worktree-safe (`vp check` + the touched package); CI runs the full suite (#685).
+  expect(report).toContain("vp check · the touched package's tests");
+  expect(report).toContain("CI runs the full pnpm -r test");
 });
 
 test("dryRunReport swaps the command per provider (codex)", () => {

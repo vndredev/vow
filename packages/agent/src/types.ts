@@ -59,9 +59,11 @@ export interface IssueSpec {
  *  `.claude/prompts/plan.md` changes the agent's actual plan, not just the `vow agent plan` preview. Absent
  *  (the field unset) means use the built-in default plan template.
  *  `verify` is the FAST per-fix-round gate set (`vp lint` + the touched package's tests) the executor re-runs
- *  to confirm each fix; `finalVerify` (when set) is the THOROUGH pre-PR gate set (`vp check` + `pnpm -r test`)
- *  run ONCE after the fix rounds converge — so a per-fix iteration is bounded fast, but the published verdict
- *  is the full wall. Absent `finalVerify` => the fast `verify` is also the final verdict. */
+ *  to confirm each fix; `finalVerify` (when set) is the THOROUGH pre-PR gate set (`vp check` + the touched
+ *  package's tests) run ONCE after the fix rounds converge — so a per-fix iteration is bounded fast, but the
+ *  published verdict carries the full lint/type/format wall. Both are WORKTREE-SAFE: neither runs the
+ *  whole-repo `pnpm -r test`, which throws in a develop worktree (#685); CI runs the full suite as the
+ *  backstop. Absent `finalVerify` => the fast `verify` is also the final verdict. */
 export interface PlanContext {
   readonly commit: string;
   readonly finalVerify?: readonly string[];

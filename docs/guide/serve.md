@@ -62,7 +62,7 @@ Two pieces are **deliberately deferred**, noted in the cockpit doc itself so the
 
 ## Everything local
 
-The hub runs on **your machine**. The agent loop, the worktrees, `vp check`, `pnpm -r test`, the provider — all local. **GitHub Actions stay only as the PR gates** (CI · the PR-body check · branch-protection drift); they validate a PR, they never drive the loop. No GitHub runner runs the agent, and no Cloudflare is required.
+The hub runs on **your machine**. The agent loop, the worktrees, the provider, and the **worktree-safe** verify (`vp check` + the touched package's tests) — all local. The loop's final verify deliberately does **not** run the whole-repo `pnpm -r test`: it can't, inside a develop worktree (a worktree's `.git` is a file, not a directory, so the full suite throws `fatal: not a git repository` and drafted every run, [#685](/guide/agent#fast-fix-rounds-thorough-final-verify)). **GitHub Actions stay only as the PR gates** (CI runs the full `pnpm -r test` in a real-repo checkout · the PR-body check · branch-protection drift); they validate a PR — the full-suite backstop behind the worktree-local verify — they never drive the loop. No GitHub runner runs the agent, and no Cloudflare is required.
 
 ## Roadmap
 

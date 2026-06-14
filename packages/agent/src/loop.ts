@@ -154,11 +154,13 @@ async function iterate(
   return outcome;
 }
 
-/** Run the THOROUGH pre-PR verify ONCE after the fast fix rounds converged green — the full `vp check` +
- *  `pnpm -r test` (`context.finalVerify`), so the published verdict carries the whole wall while the per-fix
- *  loop stayed fast (#676). Skipped entirely when no distinct `finalVerify` was set (the fast verdict IS the
- *  final), or when the fast outcome isn't green (a still-red fast verdict drafts as-is — no point re-running
- *  the heavy suite on a known-red run); otherwise the thorough verdict decides merge vs. draft. */
+/** Run the THOROUGH pre-PR verify ONCE after the fast fix rounds converged green — `vp check` + the TOUCHED
+ *  package's tests (`context.finalVerify`), so the published verdict carries the full lint/type/format wall
+ *  while the per-fix loop stayed fast (#676). It is WORKTREE-SAFE: it does NOT run the whole-repo `pnpm -r test`,
+ *  which throws in a develop worktree and drafted every run (#685); CI runs the full suite as the backstop.
+ *  Skipped entirely when no distinct `finalVerify` was set (the fast verdict IS the final), or when the fast
+ *  outcome isn't green (a still-red fast verdict drafts as-is — no point re-running on a known-red run);
+ *  otherwise the thorough verdict decides merge vs. draft. */
 async function finalize(
   request: TaskRequest,
   task: AgentTask,
