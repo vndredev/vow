@@ -25,13 +25,35 @@ test("each specialist is distinct, kebab-named, and carries a tool set + a promp
   }
 });
 
-test("the builder carries the working tool set — it edits + verifies, not read-only", () => {
+test("the builder carries the working tool set — it creates + edits + verifies, not read-only", () => {
   const builder = TEAM.find((agent) => agent.name === "vow-developer");
   if (!builder) {
     throw new Error("test setup: the vow-developer builder is missing from the team");
   }
   expect(builder.tools).toContain("Edit");
+  // Write lets a builder CREATE the new file the work needs, not only edit an existing one.
+  expect(builder.tools).toContain("Write");
   expect(builder.tools).toContain("Bash");
+});
+
+test("the pure auditor stays read-only — it reports, the develop flow fixes (no Write)", () => {
+  const auditor = TEAM.find((agent) => agent.name === "perf-auditor");
+  if (!auditor) {
+    throw new Error("test setup: the perf-auditor is missing from the team");
+  }
+  // The read-only set never carries Edit/Write/Bash — it FINDS, the gated develop flow fixes.
+  expect(auditor.tools).toContain("Read");
+  expect(auditor.tools).not.toContain("Write");
+  expect(auditor.tools).not.toContain("Edit");
+});
+
+test("renderTeamAgent's tools header carries Write for an editing agent", () => {
+  const builder = teamByName("vow-developer");
+  if (!builder) {
+    throw new Error("test setup: the vow-developer builder is missing from the team");
+  }
+  const md = renderTeamAgent(builder);
+  expect(md).toContain("tools: Read, Grep, Glob, Edit, Write, Bash");
 });
 
 test("renderTeamAgent emits Claude Code's custom-subagent md — frontmatter + the system prompt", () => {

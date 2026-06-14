@@ -18,9 +18,11 @@ export interface TeamAgent {
   readonly tools: string;
 }
 
-/** The working tool set most specialists carry — read the code, edit in their domain, verify with the gates.
-    The fix still passes through the same CI wall; the hooks block the wrong shell call regardless. */
-const WORK_TOOLS = "Read, Grep, Glob, Edit, Bash";
+/** The working tool set most specialists carry — read the code, create + edit in their domain, verify with the
+    gates. Edit only changes existing files; Write lets a builder CREATE the new file the work needs (a new
+    `.vow.md` view, a module, a test). The fix still passes through the same CI wall; the hooks block the wrong
+    shell call regardless. */
+const WORK_TOOLS = "Read, Grep, Glob, Edit, Write, Bash";
 
 /** Read-only tool set for the pure auditors — they FIND + report; the develop flow fixes under the gate. */
 const READ_TOOLS = "Read, Grep, Glob";
