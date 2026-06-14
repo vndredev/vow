@@ -7,9 +7,11 @@
  * instead of guessing. Mirrors the LLM HOOK's spirit (`hook.ts`): the wall explains itself + how to comply.
  *
  * It maps the KNOWN vow-banned rules (the oxlint quality wall + the vow gates: framework-neutrality,
- * provider-neutrality, design-language coverage, layer/no-cycle/max-lines, has-a-doc) to a concrete
- * remedy; an UNKNOWN rule passes through verbatim, so the correction is never lossy. Pure + unit-tested,
- * like the hook's verdict — no IO, no provider name.
+ * provider-neutrality, design-language coverage, layer/no-cycle/max-lines, has-a-doc) AND the strict
+ * tsgo typecheck's resolution errors (TS2304/TS2552 `Cannot find name`, TS2307 / `Cannot find package`
+ * — the classes that stalled live develop rounds: an undeclared `@vow/*` import, a bare `sfc` in a test)
+ * to a concrete remedy; an UNKNOWN rule passes through verbatim, so the correction is never lossy. Pure +
+ * unit-tested, like the hook's verdict — no IO, no provider name.
  */
 
 import type { VerifyResult } from "./types.ts";
@@ -24,8 +26,9 @@ interface RemedyRule {
 
 /**
  * The KNOWN vow-banned rules, each mapped to its concrete rewrite — the oxlint quality wall first, then the
- * vow gates. Order is the report order. Each `remedy` names the exact in-system pattern to apply, so the
- * agent rewrites to comply instead of re-approaching. New banned rules join this list (one source of truth).
+ * tsgo resolution errors (`Cannot find name`/`Cannot find module`), then the vow gates. Order is the report
+ * order. Each `remedy` names the exact in-system pattern to apply, so the agent rewrites to comply instead of
+ * re-approaching. New banned rules join this list (one source of truth).
  */
 const REMEDIES: readonly RemedyRule[] = [
   {
@@ -65,6 +68,18 @@ const REMEDIES: readonly RemedyRule[] = [
       "remove the `as` cast — narrow with a type predicate (a `value is T` guard) so the static type can't diverge from the runtime shape. A cast hides the divergence; the guard proves it.",
   },
   {
+    id: "cannot-find-name",
+    match: /\bTS2304\b|\bTS2552\b|Cannot find name/u,
+    remedy:
+      "an identifier the code names isn't in scope (TS2304/TS2552 `Cannot find name`) — import it, declare it (`const`/`function`), or DESTRUCTURE it from the call that produces it. A test asserting on a generated SFC must capture it from the builder's return (`const { sfc } = buildView(view, entities)`), never reference a bare `sfc`/`v`. Never name a symbol you have not bound.",
+  },
+  {
+    id: "cannot-find-module",
+    match: /\bTS2307\b|Cannot find (?:module|package)/u,
+    remedy:
+      "an import doesn't resolve (TS2307 `Cannot find module` / `Cannot find package '@vow/...'`) — a cross-package import MUST be a declared dependency: add `\"@vow/<pkg>\": \"workspace:*\"` to THIS package's package.json `dependencies` (then `vp install` links it), or remove the import if it isn't needed. Never import a `@vow/*` package the manifest doesn't list.",
+  },
+  {
     id: "no-magic-numbers",
     match: /no-magic-numbers/u,
     remedy:
@@ -75,6 +90,18 @@ const REMEDIES: readonly RemedyRule[] = [
     match: /sort-keys|sort-imports/u,
     remedy:
       "order the keys/imports alphabetically (run `vp fmt` first; if it persists, the order is the rewrite the wall wants).",
+  },
+  {
+    id: "capitalized-comments",
+    match: /capitalized-comments/u,
+    remedy:
+      "a line comment must begin with a capital letter — rewrite `// fix the parser` as `// Fix the parser` (an `oxlint-disable`/`eslint-disable` directive is exempt).",
+  },
+  {
+    id: "no-inline-comments",
+    match: /no-inline-comments/u,
+    remedy:
+      "move the trailing same-line comment to its OWN line above the code — `const x = 1; // why` becomes a `// why` line then `const x = 1;`. The wall forbids inline (same-line) comments.",
   },
   {
     id: "max-lines",

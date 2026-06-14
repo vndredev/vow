@@ -21,6 +21,24 @@ test("each known banned rule maps to its named, concrete remedy", () => {
     ["design-language", "design-language: vow-x has no token in vow.css", "vow.css token"],
     ["no-cycle", "import cycle: no-cycle a -> b -> a", "clean DAG"],
     ["has-a-doc", "has-a-doc: element missing a doc page", "docs/"],
+    [
+      "cannot-find-name",
+      "x.ts:5:3: error typescript(TS2304): Cannot find name 'sfc'",
+      "DESTRUCTURE",
+    ],
+    ["cannot-find-name", "x.ts:5:3: error typescript(TS2552): Cannot find name 'v'", "DESTRUCTURE"],
+    [
+      "cannot-find-module",
+      "a.ts: error typescript(TS2307): Cannot find module '@vow/core'",
+      "workspace:*",
+    ],
+    [
+      "cannot-find-module",
+      "Cannot find package '@vow/core' imported from real-ops.ts",
+      "workspace:*",
+    ],
+    ["capitalized-comments", "f.ts:3: eslint(capitalized-comments)", "capital letter"],
+    ["no-inline-comments", "f.ts:3: eslint(no-inline-comments)", "OWN line"],
   ];
   for (const [rule, output, fragment] of cases) {
     const corrections = gateCorrections(redVerdict(output));
@@ -28,6 +46,22 @@ test("each known banned rule maps to its named, concrete remedy", () => {
     expect(match?.rule).toBe(rule);
     expect(match?.remedy).toContain(fragment);
   }
+});
+
+test("the two live-stall classes self-explain — an undeclared @vow import + a bare sfc in a test (#689)", () => {
+  // The exact failures that stalled real develop rounds: a bare emit-view field named in a test plus an undeclared cross-package import (before #689 the fix-rounds saw only the raw TS error, with no remedy).
+  const block = correctionBlock(
+    redVerdict(
+      [
+        "loop-views.test.ts:144:10: error typescript(TS2304): Cannot find name 'sfc'",
+        "Cannot find package '@vow/core' imported from packages/agent/src/real-ops.ts",
+      ].join("\n"),
+    ),
+  );
+  expect(block).toContain("- **cannot-find-name** —");
+  expect(block).toContain("const { sfc } = buildView");
+  expect(block).toContain("- **cannot-find-module** —");
+  expect(block).toContain('"@vow/<pkg>": "workspace:*"');
 });
 
 test("an unknown rule yields no correction — its verbatim output passes through (never lossy)", () => {
