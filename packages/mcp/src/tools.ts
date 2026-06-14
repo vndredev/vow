@@ -2,10 +2,11 @@
  * The MCP tool catalogue — every tool's name + one-line summary, in one place. This is the SINGLE
  * source: `server.ts` registers each tool with `summaryOf(name)`, and the docs (`docs/guide/mcp.md`)
  * list from it — a test guards that the docs name every tool, so the published list can't drift from
- * the server. Grouped read / structure (the vows) / data (the records) / github (the issue plan).
+ * the server. Grouped read / structure (the vows) / data (the records) / docs (the guide) / github (the
+ * issue plan).
  */
 export interface ToolDoc {
-  readonly group: "data" | "github" | "read" | "structure";
+  readonly group: "data" | "docs" | "github" | "read" | "structure";
   readonly name: string;
   readonly summary: string;
 }
@@ -78,6 +79,22 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     summary: "Patch one field of a record (e.g. move a task by setting its status).",
   },
   { group: "data", name: "remove_record", summary: "Delete a record by id." },
+
+  {
+    group: "docs",
+    name: "list_docs",
+    summary: "List the guide pages the site renders (slug, title, group).",
+  },
+  {
+    group: "docs",
+    name: "read_docs",
+    summary: "Read one guide page's markdown by slug (e.g. `mcp`, `primitives/button`).",
+  },
+  {
+    group: "docs",
+    name: "search_docs",
+    summary: "Search the guide pages by query — matching pages with a short excerpt.",
+  },
 
   {
     group: "github",

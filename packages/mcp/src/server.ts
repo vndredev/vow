@@ -12,8 +12,8 @@ import process from "node:process";
  * regenerates; a data write lands in `.vow/data.db` -> the studio refetches. The same tools run against
  * D1 on typed.build in prod. Each tool's description is `summaryOf(name)` from the single-source
  * `tools.ts` catalogue (which the docs list from). Launch via the `start` script or the project
- * `.mcp.json` (see docs/guide/mcp.md). The tool set is grouped read / structure / data / github — one
- * register module each, assembled by `composeTools`.
+ * `.mcp.json` (see docs/guide/mcp.md). The tool set is grouped read / structure / data / docs / github —
+ * one register module each, assembled by `composeTools`.
  */
 
 const appDir = resolveAppDir();
