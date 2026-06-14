@@ -31,6 +31,22 @@ A sprawling 28-package project can't be carried by one generalist juggling every
 
 The builder develops; the guardians keep each area honest. Together they let the autonomous loop develop _everything_ with the right owner, barrier-free.
 
+## The guardrail hooks
+
+The team (who) and the gates (the law) only help if an agent _consults them before acting_. A fresh headless session knows neither, so it rediscovers a rule by tripping a gate and failing. Two provider-neutral hooks close that gap mechanically — 90% mechanics, not a plea in a file the next session's model never reads. `vow agent init` wires both into `.claude/settings.json` (merged beside any hooks the user already has, idempotent), so the guardrails travel with the repo to every agent, not just the one who ran init.
+
+- **PreToolUse — the guardrail** (`vow hook`): every Bash tool-call is checked, and a wrong one is **blocked in the moment** with the vow alternative — a raw `gh pr create`, a direct push to `main`, `vp check --fix`. The rules + verdict are provider-neutral; the Claude Code deny shape is a thin adapter at the seam.
+- **SessionStart — the trigger** (`vow hook session-start`): at the start of _every_ session (startup, `/clear`, compact) it injects the **`using-vow` bootstrap** as the session's first context, so vow's red line, gates, and team **auto-fire** instead of being rediscovered the hard way. Modeled on the load-bearing-hook idea: force-feed the router and the rest auto-triggers.
+
+The bootstrap is a single, honest source — owned by `@vow/agent` (`sessionBootstrap()`), a tight summary of `AGENTS.md`, no overselling. It states **the rule** (_if there's even a small chance a vow discipline or skill applies, consult it BEFORE acting — including before clarifying questions_), the **red line** (plan → branch → develop → verify `vp lint` = 0 + tests → document → PR → merge-when-green), the **gates** that block drift (the quality wall, framework-neutrality, provider-neutrality, design-language coverage, the layer-DAG / no-cycle / max-lines caps, has-a-doc / docs-drift), the **team** of owners, and the skill library where the engineering-discipline techniques live.
+
+The bootstrap text is **provider-neutral** — a pure string, no harness shape, no provider name. Each harness wraps it in its own envelope at the seam; for Claude Code that is `sessionStartOutput(bootstrap)` → `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}` printed to stdout (exit 0). A second harness is a new adapter over the _same_ text, never a rewrite.
+
+```ts
+sessionStartOutput(sessionBootstrap());
+// → { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "# Using vow …" } }
+```
+
 ## The seam
 
 A `Provider` turns a task into the **command** that runs it headlessly — _built, never run here_, so the mapping is pure and unit-testable (a runner execs it):

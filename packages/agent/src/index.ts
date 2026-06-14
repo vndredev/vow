@@ -7,6 +7,7 @@
  */
 
 export * from "./auto.ts";
+export * from "./bootstrap.ts";
 export * from "./dispatch.ts";
 export * from "./dry-run.ts";
 export * from "./hook.ts";

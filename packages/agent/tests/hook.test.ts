@@ -1,4 +1,10 @@
-import { checkToolCall, claudeDenyOutput, claudeToolCall } from "../src/index.ts";
+import {
+  checkToolCall,
+  claudeDenyOutput,
+  claudeToolCall,
+  sessionBootstrap,
+  sessionStartOutput,
+} from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
 test("checkToolCall blocks each wrong tool-call with the vow alternative", () => {
@@ -44,4 +50,51 @@ test("claudeDenyOutput formats Claude Code's PreToolUse deny JSON", () => {
   expect(out.hookSpecificOutput.hookEventName).toBe("PreToolUse");
   expect(out.hookSpecificOutput.permissionDecision).toBe("deny");
   expect(out.hookSpecificOutput.permissionDecisionReason).toBe("use vow agent merge");
+});
+
+test("the using-vow bootstrap carries the consult-first rule + the red line", () => {
+  const text = sessionBootstrap();
+  // The RULE: consult a discipline/skill before acting, even before clarifying questions.
+  expect(text).toContain("CONSULT it BEFORE acting");
+  expect(text).toContain("clarifying questions");
+  // The red line — the gated sequence every change runs.
+  for (const step of ["The red line", "Branch", "Verify", "PR", "Merge"]) {
+    expect(text).toContain(step);
+  }
+});
+
+test("the using-vow bootstrap NAMES the gates + surfaces the team and skill library", () => {
+  const text = sessionBootstrap();
+  // It NAMES the gates that block drift.
+  for (const gate of [
+    "quality wall",
+    "framework-neutrality",
+    "provider-neutrality",
+    "design-language",
+  ]) {
+    expect(text).toContain(gate);
+  }
+  // The team + the skill library are surfaced as where the techniques live.
+  expect(text).toContain("vow-developer");
+  expect(text).toContain("skill library");
+});
+
+test("the using-vow bootstrap is provider-neutral — it names no provider CLI bin", () => {
+  // The bootstrap TEXT is shared by every harness; a provider bin name belongs only at the seam.
+  const text = sessionBootstrap().toLowerCase();
+  expect(text).not.toContain("claude code");
+  expect(text).not.toContain("codex");
+  expect(text).not.toContain("gemini");
+});
+
+test("sessionBootstrap is pure — every call returns the same text (no IO, no provider)", () => {
+  expect(sessionBootstrap()).toBe(sessionBootstrap());
+});
+
+test("sessionStartOutput wraps the bootstrap as Claude Code's SessionStart additionalContext", () => {
+  const bootstrap = sessionBootstrap();
+  const out = sessionStartOutput(bootstrap);
+  expect(out.hookSpecificOutput.hookEventName).toBe("SessionStart");
+  // The injection IS the bootstrap, verbatim — the envelope adds shape, never edits the text.
+  expect(out.hookSpecificOutput.additionalContext).toBe(bootstrap);
 });
