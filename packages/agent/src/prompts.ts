@@ -57,7 +57,14 @@ export const DEFAULT_DEVELOP_PROMPT = `Develop the issue through vow's red line 
 4. Open a PR with \`Closes #<n>\`, filling the template (Summary / What / Proof / Next).
 5. When CI's gate is green, merge; a red run becomes a draft — never merge off a red gate.
 
-The plan is the GitHub issues — never a side-file. Stay strictly in the task's scope.`;
+The plan is the GitHub issues — never a side-file. Stay strictly in the task's scope.
+
+Red flags — STOP immediately if any apply:
+- About to write \`a ? b : c\` → rewrite as if/else first
+- About to write \`as T\`, \`any\`, or \`!x\` → write a type predicate first
+- About to touch a file out of scope → open a separate issue instead
+- Rationalising an exception with "just this once" → that rationalization is the bug
+- Gate is red and considering a merge → make it a draft, never merge`;
 
 /** The default PLAN prompt — the self-contained, verification-gated plan SKELETON an autonomous run is built
  *  from. The placeholders (`{title}`, `{number}`, `{commit}`, `{focus}`, `{body}`, `{gates}`) are filled at
