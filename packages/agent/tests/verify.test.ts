@@ -70,6 +70,7 @@ test("pushArgs publishes the branch; prBody checks a passed gate", () => {
   expect(pushArgs("feat/issue-98")).toEqual([
     "push",
     "--force-with-lease",
+    "--no-verify",
     "-u",
     "origin",
     "feat/issue-98",

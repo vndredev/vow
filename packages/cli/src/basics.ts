@@ -44,6 +44,19 @@ export function test(args: readonly string[]): number {
   return run("pnpm", ["-r", "test", ...args]);
 }
 
+/** `vow gate` — the LOCAL CI gate: `vp check` (fmt + lint + typecheck) then `pnpm -r test`, the SAME commands
+    CI's `gate` job runs the SAME way (per-package), so a green `vow gate` means a green CI gate. Stops at the
+    first failure and returns its exit code. The pre-push hook (`vow agent init` installs it) runs this, so a
+    red gate BLOCKS the push — you can't open a PR for a red branch. Running `pnpm -r test` (not `vp test
+    <file>` from the root) is the whole point: it catches the per-package-cwd failures CI catches. */
+export function gate(): number {
+  const checked = check([]);
+  if (checked !== 0) {
+    return checked;
+  }
+  return test([]);
+}
+
 /** The lines to print for a PR body's problems — a one-line OK, or each problem + the template pointer.
     Pure, so the verdict output is unit-testable. */
 export function verdictLines(problems: readonly string[]): string[] {
