@@ -1,14 +1,8 @@
-import type { GitHubIssue, Maybe } from "./types.ts";
-import { NONE } from "./none.ts";
-
 /**
  * The throughline — vow's north-star decomposed into the four enduring PILLARS it builds toward. A pillar
- * is orthogonal to a phase: a milestone is WHEN (the dated roadmap), a pillar is WHAT, toward the
- * north-star. Every issue carries one, so the plan steers by capability, not only by date. `resolvePillar`
- * is a heuristic router (a sensible default by theme, like `currentPhase` defaults a milestone); a caller
- * may set an explicit `pillar:` label to override, and the reconcile gate flags any that route nowhere.
- * The pillar is purely text-derived (no I/O), so `ensurePillar` runs inside `createIssue` — every issue
- * vow opens carries a pillar by construction.
+ * is the WHAT axis, toward the north-star. The plan steers by capability: the local `@vow/plan` carries a
+ * pillar per item (the `pillar:` label is the migration source the sync reads), and the studio's Map view
+ * groups by it via `NORTH_STAR`. The pillar is purely text-derived (no I/O).
  */
 
 /** The `pillar:` label prefix — the throughline's namespace on an issue's labels. */
@@ -108,45 +102,3 @@ export const NORTH_STAR: readonly Pillar[] = [
     title: "Mechanical integrity",
   },
 ];
-
-/** Every pillar label — the throughline's GitHub label set (for label creation + validation). */
-export const PILLAR_LABELS: readonly string[] = NORTH_STAR.map((pillar) => pillar.label);
-
-/** The pillar a piece of work advances — the first north-star pillar whose signal appears in `text` (an
-    issue's title + body, lower-cased). `NONE` when nothing matches, so the caller flags it rather than
-    mis-route. The `NORTH_STAR` order is the precedence. Pure. */
-export function resolvePillar(text: string): Maybe<string> {
-  const haystack = text.toLowerCase();
-  for (const pillar of NORTH_STAR) {
-    if (pillar.signals.some((signal) => haystack.includes(signal))) {
-      return pillar.label;
-    }
-  }
-  return NONE;
-}
-
-/** The labels a new issue carries, with a pillar guaranteed: the given labels unchanged when one already
-    carries a `pillar:` label (an explicit override), else the routed pillar appended — or unchanged when
-    nothing routes (the reconcile gate then flags the issue). Pure. */
-export function ensurePillar(labels: readonly string[], text: string): readonly string[] {
-  if (labels.some((label) => label.startsWith(PILLAR_PREFIX))) {
-    return labels;
-  }
-  const pillar = resolvePillar(text);
-  if (typeof pillar === "string") {
-    return [...labels, pillar];
-  }
-  return labels;
-}
-
-/** Whether an issue carries any `pillar:` label — its throughline is set. */
-function hasPillar(issue: Readonly<GitHubIssue>): boolean {
-  return issue.labels.some((label) => label.startsWith(PILLAR_PREFIX));
-}
-
-/** The OPEN issues carrying no pillar — the throughline drift the plan must not hold. The `createIssue`
-    router defaults one at the front door; this is the safety net `vow reconcile` surfaces (an issue that
-    routed nowhere, or predates the router). Pure — mirrors `phaselessIssues`. */
-export function pillarlessIssues(issues: readonly GitHubIssue[]): GitHubIssue[] {
-  return issues.filter((issue) => issue.state === "open" && !hasPillar(issue));
-}

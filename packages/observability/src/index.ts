@@ -250,7 +250,7 @@ export function gitTimeline(cwd: string, ref = "main"): TimelineEntry[] {
   }
 }
 
-// The GitHub side — issues, PRs, the derived issue plan, the Project sync, and the branch protection vow owns.
+// The GitHub side — issues, PRs, the derived issue plan, and the branch protection vow owns.
 export * from "./audit.ts";
 export * from "./ci.ts";
 export * from "./events.ts";
@@ -259,8 +259,5 @@ export * from "./loop-status.ts";
 export { prBodyProblems, prBodyScaffold } from "./pr-body.ts";
 export * from "./github.ts";
 export * from "./issue-body.ts";
-export * from "./phase.ts";
 export * from "./pillar.ts";
-export * from "./project.ts";
-export * from "./project-view.ts";
 export * from "./protection.ts";

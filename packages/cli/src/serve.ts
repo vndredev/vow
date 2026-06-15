@@ -4,7 +4,6 @@ import { type App, EVENTS_PORT, MCP_PORT, repoRoot, resolveApps } from "./apps.t
 import { LOOP_IDLE, eventsSseServer, readLoopStatus, writeLoopStatus } from "@vow/observability";
 import { autoConfirmed, pruneStaleWorktreesOnStartup, runAuto } from "./agent-auto.ts";
 import type { Server } from "node:http";
-import { boardLine } from "./agent-run.ts";
 import { setTimeout as delay } from "node:timers/promises";
 import { mcpHttpServer } from "@vow/mcp/http";
 import { once } from "node:events";
@@ -158,42 +157,10 @@ async function watchLoop(cwd: string, stop: Readonly<AbortSignal>): Promise<void
 }
 /* oxlint-enable no-await-in-loop */
 
-/** Reconcile the Project board once, best-effort — a `gh` hiccup logs and is swallowed, never tearing the
-    hub down. A no-op (empty line) when no Project is configured. */
-function reconcileOnce(cwd: string): void {
-  try {
-    const line = boardLine(cwd);
-    if (line !== "") {
-      process.stdout.write(`vow serve: ${line}\n`);
-    }
-  } catch (error) {
-    process.stderr.write(`vow serve: board reconcile skipped: ${String(error)}\n`);
-  }
-}
-
-/** The board-status invariant: reconcile the GitHub Project's Status to the studio's derived truth every
-    interval — independent of the agent loop, so ANY drift (a raw merge, a manual close, a flaky GitHub
-    workflow) is auto-corrected within a tick, never needing a manual `sync_project`. No-op without a
-    configured Project; the wait is abortable so shutdown is prompt. */
-/* oxlint-disable no-await-in-loop -- a serial reconcile, wait, repeat loop */
-async function reconcileLoop(cwd: string, stop: Readonly<AbortSignal>): Promise<void> {
-  while (!stop.aborted) {
-    reconcileOnce(cwd);
-    try {
-      await delay(WATCH_INTERVAL_MS, true, { signal: stop });
-    } catch {
-      return;
-    }
-  }
-}
-/* oxlint-enable no-await-in-loop */
-
-/** Start the hub's background loops: the board-status reconcile (ALWAYS — the board invariant), and the
-    agent watch-loop when opted in. Marks the loop running at the repo root the instant the daemon starts
-    (so the studio shows it on before the first spiral computes counts). Kept out of `runServe` so it stays
-    under the statement cap. */
+/** Start the hub's background loops: the agent watch-loop when opted in. Marks the loop running at the repo
+    root the instant the daemon starts (so the studio shows it on before the first spiral computes counts).
+    Kept out of `runServe` so it stays under the statement cap. */
 function startLoops(watch: Watch, cwd: string, stop: Readonly<AbortSignal>): void {
-  ignore(reconcileLoop(cwd, stop));
   if (watch === "run") {
     // Prune a prior run's leftover `.vow-worktrees/feat-issue-N` BEFORE the first spiral (#681) — else the
     // First round's `git worktree add -B feat/issue-N` hits "branch already used by worktree" on a leftover.

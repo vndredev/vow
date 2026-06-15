@@ -21,7 +21,6 @@ import {
   headCommit,
   issueDetail,
   parseFindings,
-  resolveCurrentPhase,
 } from "@vow/observability";
 import {
   buildPlan,
@@ -309,14 +308,13 @@ function runMerge(rest: readonly string[]): number {
   return actOnPr(pr, process.cwd());
 }
 
-/** File each finding from a findings JSON file as a labelled, milestoned vow issue; prints each URL + a
- *  count (the audit -> plan step — findings become issues, never a side-file). */
+/** File each finding from a findings JSON file as a labelled vow issue; prints each URL + a count (the
+ *  audit -> plan step — findings become issues, never a side-file). */
 function runAuditFile(file: string): number {
   const cwd = process.cwd();
-  const phase = resolveCurrentPhase(cwd);
   const findings = parseFindings(readFileSync(file, "utf8"));
   for (const finding of findings) {
-    process.stdout.write(`${createIssue(cwd, auditIssue(finding, phase))}\n`);
+    process.stdout.write(`${createIssue(cwd, auditIssue(finding))}\n`);
   }
   process.stdout.write(`filed ${findings.length} issue(s)\n`);
   return 0;

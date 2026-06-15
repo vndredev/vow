@@ -9,7 +9,7 @@ vow's plan lives in **GitHub Issues**; this page is the **history** — every ch
 
 ## The plan is GitHub Issues
 
-Every unit of work is a GitHub issue with a **derived status** — **planned** (open) → **doing** (a PR closes it) → **done** (merged/closed). The studio mirrors the issues **1:1, gh-direct** (no local copy to drift), in the same three views GitHub Projects has: **Table · Board · Roadmap**. The agent operates them over the MCP; `sync_project` writes the derived status onto the Project's Status field, so both sides stay 1:1. The plan is never hand-maintained — it _is_ the issues.
+Every unit of work is a GitHub issue with a **derived status** — **planned** (open) → **doing** (a PR closes it) → **done** (merged/closed). GitHub issues are the **external skin**; vow's own **local plan** (a SQLite DAG — `@vow/plan`, the studio's Now + Next · Backlog · Map views) is the structure built on them, synced via the MCP's `sync_plan` (open → `backlog`, closed → `done`). The plan is never hand-maintained — it _is_ the issues plus the local DAG.
 
 ## The changelog is git
 

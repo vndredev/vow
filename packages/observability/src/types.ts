@@ -61,16 +61,3 @@ export interface PlanItem {
   readonly session?: AgentSession;
   readonly status: IssueStatus;
 }
-
-/** One item whose Project Status was corrected to match the studio. */
-export interface StatusChange {
-  readonly from: string;
-  readonly number: number;
-  readonly to: string;
-}
-
-/** What a project sync changed: the corrected items + how many already matched. */
-export interface SyncResult {
-  readonly changed: readonly StatusChange[];
-  readonly matched: number;
-}

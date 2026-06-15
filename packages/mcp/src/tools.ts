@@ -105,7 +105,7 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     group: "github",
     name: "add_issue",
     summary:
-      "Open a GitHub issue (feature template + labels) — assigned, phased (the current milestone), added to the Project.",
+      "Open a GitHub issue (feature template + labels) — assigned; its pillar lives on the local plan (sync_plan).",
   },
   { group: "github", name: "close_issue", summary: "Close a GitHub issue (marks it done)." },
   {
@@ -114,11 +114,6 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     summary: "Reopen a closed GitHub issue (marks it planned/doing again).",
   },
   { group: "github", name: "assign_issue", summary: "Assign a user to a GitHub issue." },
-  {
-    group: "github",
-    name: "sync_project",
-    summary: "Sync the GitHub Project's Status field to the studio's derived status (1:1).",
-  },
 
   {
     group: "code",

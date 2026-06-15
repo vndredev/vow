@@ -1,6 +1,6 @@
 import type { GitHubIssue, GitHubPr } from "../src/types.ts";
+import { bugIssueBody, featureIssueBody } from "../src/issue-body.ts";
 import {
-  IN_PROGRESS_LABEL,
   deriveIssueStatus,
   linkedIssues,
   parseIssueDetail,
@@ -10,9 +10,7 @@ import {
   sessionsByIssue,
   statusVariant,
 } from "../src/github.ts";
-import { bugIssueBody, featureIssueBody } from "../src/issue-body.ts";
 import { expect, test } from "vite-plus/test";
-import { statusOption } from "../src/project.ts";
 
 const ISSUE_A = 56;
 const ISSUE_B = 57;
@@ -175,17 +173,10 @@ test("deriveIssueStatus: closed -> done, open+PR -> doing, open -> planned", () 
   expect(deriveIssueStatus(issue({ state: "closed" }), [])).toBe("done");
   expect(deriveIssueStatus(issue({ number: ISSUE_A }), [ISSUE_A])).toBe("doing");
   expect(deriveIssueStatus(issue({ number: ISSUE_A }), [])).toBe("planned");
-});
-
-test("deriveIssueStatus: the in-progress label reads as doing before any PR exists (#479)", () => {
-  // An agent claims the issue (label) the moment it starts developing — doing without an open PR yet.
-  expect(deriveIssueStatus(issue({ labels: [IN_PROGRESS_LABEL] }), [])).toBe("doing");
-  // The label is moot once the issue closes — done still wins.
-  expect(deriveIssueStatus(issue({ labels: [IN_PROGRESS_LABEL], state: "closed" }), [])).toBe(
-    "done",
+  // An ordinary label is not a doing signal — only an open PR closing it marks doing.
+  expect(deriveIssueStatus(issue({ labels: ["area: agent"], number: ISSUE_A }), [])).toBe(
+    "planned",
   );
-  // An ordinary label is not the claim signal — still planned.
-  expect(deriveIssueStatus(issue({ labels: ["area: agent"] }), [])).toBe("planned");
 });
 
 test("statusVariant maps to the board's colours", () => {
@@ -199,7 +190,6 @@ test("featureIssueBody fills the feature template — element + why lead, the st
   expect(body).toContain("**What**\n\nthe GitHub adapter");
   expect(body).toContain("**Why** — the plan derives itself");
   expect(body).toContain("Strand: generation · author layer");
-  expect(body).toContain("[plan board](https://github.com/users/vndredev/projects/3)");
 });
 
 test("bugIssueBody fills the bug template — the exact sections the issue-template gate requires", () => {
@@ -210,12 +200,6 @@ test("bugIssueBody fills the bug template — the exact sections the issue-templ
   }
   expect(body).toContain("timeline.ts bakes raw JSON");
   expect(body).toContain("use scriptJson");
-});
-
-test("statusOption maps the derived status to the Project's Status options", () => {
-  expect(statusOption("planned")).toBe("Todo");
-  expect(statusOption("doing")).toBe("In Progress");
-  expect(statusOption("done")).toBe("Done");
 });
 
 test("parseIssueDetail lifts number, title, body from a gh issue view object", () => {

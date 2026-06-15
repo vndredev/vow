@@ -1,17 +1,16 @@
 /* oxlint-disable consistent-type-specifier-style -- one mixed import per module; separate trips no-duplicate-imports */
 import { type Maybe, isRecord } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
-import { createIssue, githubIssues, resolveCurrentPhase } from "@vow/observability";
+import { createIssue, githubIssues } from "@vow/observability";
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { NONE } from "./none.ts";
 import path from "node:path";
 
 /**
  * The in-app reporter's server side — parse a posted report + file it as a real vow issue. An issue is a
- * **bug** OR a **feature** (the overlay's two menu choices); each maps to its label, and the issue is
- * phased by the milestone gate (`resolveCurrentPhase`) so it lands on the roadmap, not in "No milestone".
- * The body names the bug/feature AREA — the vow source the picker resolved, the route, the element hint —
- * so the agent knows which `.vow.md` / view to touch.
+ * **bug** OR a **feature** (the overlay's two menu choices); each maps to its label. The body names the
+ * bug/feature AREA — the vow source the picker resolved, the route, the element hint — so the agent knows
+ * which `.vow.md` / view to touch. The issue's pillar lives on the local plan once it syncs in.
  */
 
 /** An issue is a bug or a feature; each kind carries the label `gh issue create` applies. */
@@ -182,16 +181,7 @@ export function reportBody(report: Readonly<ReportInput>): string {
   return featureBody(report);
 }
 
-/** The milestone fragment — the current phase when one resolves, so the issue is filed phased (else bare). */
-function phasePart(cwd: string): { readonly milestone?: string } {
-  const phase = resolveCurrentPhase(cwd);
-  if (typeof phase === "string" && phase !== "") {
-    return { milestone: phase };
-  }
-  return {};
-}
-
-/** File a report as a real vow issue (phased, labelled by kind), save its screenshot to `.vow/issues/<n>.png`
+/** File a report as a real vow issue (labelled by kind), save its screenshot to `.vow/issues/<n>.png`
     (keyed by the new issue number), and prune the screenshots of any closed/deleted issues. Returns the
     issue URL. Throws on a `gh` create error. */
 export function reportIssue(cwd: string, report: Readonly<ReportInput>): string {
@@ -199,7 +189,6 @@ export function reportIssue(cwd: string, report: Readonly<ReportInput>): string 
     body: reportBody(report),
     labels: [KIND_LABEL[report.kind]],
     title: report.title,
-    ...phasePart(cwd),
   });
   const number = issueNumber(url);
   if (typeof number === "number") {
