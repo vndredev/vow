@@ -3,9 +3,16 @@ import {
   PILLAR_LABELS,
   PILLAR_PREFIX,
   ensurePillar,
+  pillarlessIssues,
   resolvePillar,
 } from "../src/pillar.ts";
 import { expect, test } from "vite-plus/test";
+import type { GitHubIssue } from "../src/types.ts";
+
+/** A throwaway issue — open, no labels — overridable per test. */
+function issue(over: Partial<GitHubIssue>): GitHubIssue {
+  return { assignees: [], labels: [], number: 1, state: "open", title: "t", ...over };
+}
 
 test("resolvePillar routes each pillar by one of its signals", () => {
   expect(resolvePillar("emit a themed primitive")).toBe("pillar:describe-to-app");
@@ -49,4 +56,17 @@ test("every NORTH_STAR label is in the pillar namespace; PILLAR_LABELS lists all
   for (const label of PILLAR_LABELS) {
     expect(label.startsWith(PILLAR_PREFIX)).toBe(true);
   }
+});
+
+test("pillarlessIssues flags an OPEN issue with no pillar label — the throughline gate's red path", () => {
+  const pillarless = pillarlessIssues([
+    issue({ labels: ["enhancement"], number: 1 }),
+    issue({ labels: ["pillar:self-building"], number: 2 }),
+    issue({ labels: [], number: 3, state: "closed" }),
+  ]);
+  expect(pillarless.map((found) => found.number)).toEqual([1]);
+});
+
+test("pillarlessIssues is empty when every open issue carries a pillar — the green path", () => {
+  expect(pillarlessIssues([issue({ labels: ["pillar:describe-to-app"] })])).toEqual([]);
 });

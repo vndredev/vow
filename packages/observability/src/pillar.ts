@@ -1,4 +1,4 @@
-import type { Maybe } from "./types.ts";
+import type { GitHubIssue, Maybe } from "./types.ts";
 import { NONE } from "./none.ts";
 
 /**
@@ -137,4 +137,16 @@ export function ensurePillar(labels: readonly string[], text: string): readonly 
     return [...labels, pillar];
   }
   return labels;
+}
+
+/** Whether an issue carries any `pillar:` label — its throughline is set. */
+function hasPillar(issue: Readonly<GitHubIssue>): boolean {
+  return issue.labels.some((label) => label.startsWith(PILLAR_PREFIX));
+}
+
+/** The OPEN issues carrying no pillar — the throughline drift the plan must not hold. The `createIssue`
+    router defaults one at the front door; this is the safety net `vow reconcile` surfaces (an issue that
+    routed nowhere, or predates the router). Pure — mirrors `phaselessIssues`. */
+export function pillarlessIssues(issues: readonly GitHubIssue[]): GitHubIssue[] {
+  return issues.filter((issue) => issue.state === "open" && !hasPillar(issue));
 }
