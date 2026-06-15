@@ -14,6 +14,15 @@ export const APPS: readonly App[] = [
   { port: 5175, slug: "starter" },
 ];
 
+/** The serve hub's own ports beside the apps — the persistent MCP channel + the events SSE stream. Shaped
+    as `App`s so `stopApps` frees them the same way it frees the app ports. */
+export const MCP_PORT = 5176;
+export const EVENTS_PORT = 5177;
+export const HUB_APPS: readonly App[] = [
+  { port: MCP_PORT, slug: "mcp" },
+  { port: EVENTS_PORT, slug: "events" },
+];
+
 /** The default set for a bare `vow dev` — the two surfaces worked on day to day. `vow dev all` = every app. */
 export const DEFAULT_DEV: readonly string[] = ["studio", "docs"];
 
@@ -47,6 +56,12 @@ export function resolveApps(names: readonly string[]): readonly App[] {
       return true;
     })
     .map((name) => appBySlug(name));
+}
+
+/** Whether `names` is a full command — a bare invocation (no app) or an explicit `all`, the case where a
+    `vow stop` also tears the serve hub down. Mirrors `resolveApps`'s empty/`all` handling. */
+export function isFullStop(names: readonly string[]): boolean {
+  return names.length === 0 || names.includes("all");
 }
 
 /** The repo root — walk up from this file to the directory holding `pnpm-workspace.yaml`. */

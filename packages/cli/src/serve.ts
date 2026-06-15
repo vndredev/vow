@@ -1,5 +1,5 @@
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
-import { type App, repoRoot, resolveApps } from "./apps.ts";
+import { type App, EVENTS_PORT, MCP_PORT, repoRoot, resolveApps } from "./apps.ts";
 /* oxlint-enable consistent-type-specifier-style */
 import { LOOP_IDLE, eventsSseServer, readLoopStatus, writeLoopStatus } from "@vow/observability";
 import { autoConfirmed, pruneStaleWorktreesOnStartup, runAuto } from "./agent-auto.ts";
@@ -20,10 +20,6 @@ import { runDev } from "./dev.ts";
  * the PR gates (#490).
  */
 
-// The port the persistent MCP channel listens on — beside the apps (studio 5173 · docs 5174 · starter 5175).
-const MCP_PORT = 5176;
-// The port the provider-neutral event channel (SSE) streams the observability feed on.
-const EVENTS_PORT = 5177;
 // The width the slug column is padded to in the banner.
 const SLUG_PAD = 8;
 // How often the watch loop re-runs an auto spiral (it develops new work as it appears, idling between).

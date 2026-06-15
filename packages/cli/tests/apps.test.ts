@@ -1,5 +1,13 @@
 // @vitest-environment node
-import { APPS, DEFAULT_DEV, appBySlug, repoRoot, resolveApps } from "../src/apps.ts";
+import {
+  APPS,
+  DEFAULT_DEV,
+  HUB_APPS,
+  appBySlug,
+  isFullStop,
+  repoRoot,
+  resolveApps,
+} from "../src/apps.ts";
 import { expect, test } from "vite-plus/test";
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -32,6 +40,21 @@ test("appBySlug: an unknown slug throws a clear error naming the valid apps", ()
 test("every app has a unique, fixed port", () => {
   const ports = APPS.map((app) => app.port);
   expect(new Set(ports).size).toBe(ports.length);
+});
+
+test("isFullStop: a bare command or 'all' is a full stop; a named app is not (#729)", () => {
+  expect(isFullStop([])).toBe(true);
+  expect(isFullStop(["all"])).toBe(true);
+  expect(isFullStop(["docs"])).toBe(false);
+  expect(isFullStop(["studio", "docs"])).toBe(false);
+});
+
+test("HUB_APPS carries the serve hub's own ports, distinct from the app ports (a full stop frees them)", () => {
+  expect(HUB_APPS.map((hub) => hub.slug)).toEqual(["mcp", "events"]);
+  const appPorts = new Set(APPS.map((app) => app.port));
+  for (const hub of HUB_APPS) {
+    expect(appPorts.has(hub.port)).toBe(false);
+  }
 });
 
 test("repoRoot: resolves to the directory holding pnpm-workspace.yaml", () => {

@@ -25,8 +25,8 @@ vow dev              # run studio + docs (the default set), streaming
 vow dev all          # run every app (studio · docs · starter)
 vow dev studio       # run one
 vow status           # which app ports are responding
-vow stop             # stop every app — frees their ports
-vow stop docs        # stop one
+vow stop             # stop every app + the serve hub (MCP + events) — frees their ports
+vow stop docs        # stop one app (the hub stays up for the others)
 ```
 
 | App       | URL                     |
