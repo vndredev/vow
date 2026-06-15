@@ -11,6 +11,7 @@ import {
   emitEntityStats,
   emitEventTraceSfc,
   emitIssueBoardSfc,
+  emitIssueCompassSfc,
   emitIssueRoadmapSfc,
   emitIssueTableSfc,
   emitMcpStatusSfc,
@@ -202,18 +203,20 @@ export function composeTimeline(needsTimeline: boolean, srcDir: string, outDir: 
 }
 
 /** The live GitHub issue views (`issues: { as }`) — fixed components reading `/__vow/issues`. */
+/** Each issue layout → its component name + emitter, the one list `composeIssueViews` walks. */
+const ISSUE_VIEWS = [
+  { emit: emitIssueTableSfc, layout: "table", name: "VowIssueTable" },
+  { emit: emitIssueBoardSfc, layout: "board", name: "VowIssueBoard" },
+  { emit: emitIssueRoadmapSfc, layout: "roadmap", name: "VowIssueRoadmap" },
+  { emit: emitIssueCompassSfc, layout: "compass", name: "VowIssueCompass" },
+] as const;
+
 export function composeIssueViews(issueViews: readonly string[], outDir: string): Composed {
   const wanted = new Set(issueViews);
-  const files: Artifact[] = [];
-  if (wanted.has("table")) {
-    files.push({ path: path.join(outDir, "VowIssueTable.vue"), source: emitIssueTableSfc() });
-  }
-  if (wanted.has("board")) {
-    files.push({ path: path.join(outDir, "VowIssueBoard.vue"), source: emitIssueBoardSfc() });
-  }
-  if (wanted.has("roadmap")) {
-    files.push({ path: path.join(outDir, "VowIssueRoadmap.vue"), source: emitIssueRoadmapSfc() });
-  }
+  const files: Artifact[] = ISSUE_VIEWS.filter((view) => wanted.has(view.layout)).map((view) => ({
+    path: path.join(outDir, `${view.name}.vue`),
+    source: view.emit(),
+  }));
   // Each issue view composes Badge (status + labels) + Button (the close/reopen action).
   return { files, primitives: primitivesFor(files, ["Badge", "Button"]) };
 }

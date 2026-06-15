@@ -8,6 +8,7 @@ import { str } from "./helpers.ts";
  */
 export const ISSUE_LAYOUTS = {
   board: "VowIssueBoard",
+  compass: "VowIssueCompass",
   roadmap: "VowIssueRoadmap",
   table: "VowIssueTable",
 } as const;

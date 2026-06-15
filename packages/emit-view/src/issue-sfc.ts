@@ -15,13 +15,13 @@ import { renderVueSfc } from "@vow/component";
  * STATUS_VARIANT; the SFCs run in the browser, so they inline it rather than import the node helper).
  * One source — change the mapping here, all three layouts follow.
  */
-const ISSUE_VARIANT_LINES = [
+export const ISSUE_VARIANT_LINES = [
   `const tone = (s: string): "neutral" | "accent" | "success" =>`,
   `  s === "done" ? "success" : s === "doing" ? "accent" : "neutral";`,
 ];
 
 /** The shared setup line every issue SFC opens with — the live plan, its fetch state, and the actions. */
-const ISSUE_SETUP_LINE = `const { items, state, closeIssue, reopenIssue, startWork } = useIssues();`;
+export const ISSUE_SETUP_LINE = `const { items, state, closeIssue, reopenIssue, startWork } = useIssues();`;
 
 /** The three empty-state messages every issue layout shares — only one shows, keyed off `state`/`items`.
  *  "Loading the plan…" while the first fetch is in flight, "Couldn't reach GitHub" when it failed, and the
@@ -48,7 +48,7 @@ function guardedLayout(layout: UiNode): UiNode {
 
 /** Wrap a layout's view tree in a `<section>` that shows the layout only when the plan has items, else one
  *  of the shared status messages — so the studio's first screen is never a bare header. */
-function withEmptyStates(layout: UiNode): UiNode {
+export function withEmptyStates(layout: UiNode): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: "vow-issues" }],
     children: [guardedLayout(layout), ...issueEmptyStates()],
@@ -129,7 +129,7 @@ function statusBadge(statusExpr: string): UiNode {
 }
 
 /** A static-class element node with the given tag and children. */
-function classed(tag: string, cls: string, children: readonly UiNode[]): UiNode {
+export function classed(tag: string, cls: string, children: readonly UiNode[]): UiNode {
   return {
     attrs: [{ kind: "static", name: "class", value: cls }],
     children: [...children],
@@ -399,7 +399,7 @@ function roadmapItem(each: string): UiNode {
 }
 
 /** A phase's open work — the `<ul>` of cards that lead the phase, shown only when it has open items. */
-function roadmapOpen(): UiNode {
+export function roadmapOpen(): UiNode {
   return {
     attrs: [
       { kind: "static", name: "class", value: "vow-roadmap__items" },
@@ -414,7 +414,7 @@ function roadmapOpen(): UiNode {
 /** A phase's shipped work — a native `<details>` that collapses the done cards behind a "✓ N shipped"
  *  disclosure (green = proof), shown only when the phase has done items. So a completed phase reads as one
  *  compact line, a mixed phase leads with its open cards and tucks the rest away. */
-function roadmapShipped(): UiNode {
+export function roadmapShipped(): UiNode {
   return {
     attrs: [
       { kind: "static", name: "class", value: "vow-roadmap__shipped" },

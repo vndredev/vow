@@ -21,6 +21,7 @@ export { emitEventTraceSfc } from "./event-sfc.ts";
 export { fieldControl } from "./field-control.ts";
 export { emitForm } from "./form.ts";
 export { ISSUE_LAYOUTS, type IssueLayout, issueLayout } from "./issue-layout.ts";
+export { emitIssueCompassSfc } from "./issue-compass-sfc.ts";
 export { emitIssueBoardSfc, emitIssueRoadmapSfc, emitIssueTableSfc } from "./issue-sfc.ts";
 export { LOOP_LAYOUTS, type LoopLayout, loopLayout } from "./loop-layout.ts";
 export { emitAgentLoopStatusSfc } from "./loop-sfc.ts";
