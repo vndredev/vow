@@ -65,30 +65,17 @@ vow pr-body --new 649 > body.md
 vow pr-body --check < body.md && gh pr create --body-file body.md
 ```
 
-## Guardrails — the plan + the Project
+## Guardrails — the plan
 
 ```bash
 vow guard            # enforce main's protection (PR-only · gate · no bypass · 0 reviews); --check reports only
-vow reconcile        # plan drift — retire candidates + issues with no phase or no pillar
-vow doctor           # check the GitHub Project's Roadmap view against vow's invariant
+vow reconcile        # plan drift — retire candidates (open issues a merged PR already closed)
 vow plan [sync]      # read the local plan (.vow/plan.db); `sync` pulls the GitHub issues in (open → backlog)
 vow plan snapshot    # write the committed snapshot (.vow/plan.jsonl) from the local db
 vow plan restore     # regenerate the local db from .vow/plan.jsonl (the fresh-clone bootstrap)
 ```
 
-`vow reconcile` and `vow doctor` are **read-only diagnostics** — they report drift, never mutate. `reconcile` surfaces issues a merged PR already closed (the retire candidates), any open issue with no phase (the "No milestone" drift the milestone gate otherwise prevents), and any with no **pillar** (off the throughline — see below).
-
-`vow doctor` checks the upstream **GitHub Project Roadmap view** against vow's declared invariant — grouped by, dated by, and marked with **Milestone**. A [spike](https://github.com/vndredev/vow/issues/539) found the Projects v2 API can _set_ no view config (it is UI-only) and reads back only the layout + group-by, so doctor gives a real verdict on what's readable and lists the rest:
-
-```
-vow doctor — the GitHub Project Roadmap view (its config is UI-only):
-  ✓ the Roadmap view exists (ROADMAP_LAYOUT)
-  ✗ grouped by Status — set Group by → Milestone
-  □ Date field → Milestone (UI-only: Roadmap toolbar → Date fields)
-  □ Markers → Milestones (UI-only: Roadmap toolbar → Markers)
-```
-
-`✓` holds · `✗` is fixable drift doctor detected · `□` is a UI-only step to apply in the Roadmap toolbar. vow's **own** studio roadmap needs none of this — it derives the phased timeline straight from the milestones (gh-direct); this only configures the upstream GitHub Project view.
+`vow reconcile` is a **read-only diagnostic** — it reports drift, never mutates. It surfaces the **retire candidates**: open issues a merged PR already closed (e.g. the second of a `Closes #a, #b` list GitHub's auto-close missed).
 
 `vow plan` reads vow's **own local plan** — the SQLite DAG at `.vow/plan.db` the studio's Plan views (Now + Next · Backlog · Map) render. `vow plan sync` pulls the GitHub issues into it (an open issue with no item yet → a `backlog` item, a closed issue's item → `done`) — the CLI front-door for the MCP's `sync_plan`. The rich structure — lifecycle, the dependency DAG, the ready-queue — lives locally; GitHub stays the thin external skin.
 
@@ -96,7 +83,7 @@ The `.db` is the **per-machine runtime index** — gitignored, rebuildable. The 
 
 ## The throughline — pillars
 
-A milestone is a phase on the timeline (**when**); a **pillar** is the enduring capability a piece of work advances (**what**, toward the north-star). The four pillars are vow's north-star, decomposed:
+A **pillar** is the enduring capability a piece of work advances (**what**, toward the north-star). The four pillars are vow's north-star, decomposed:
 
 | Pillar                   | Toward                                                            |
 | ------------------------ | ----------------------------------------------------------------- |
@@ -105,7 +92,7 @@ A milestone is a phase on the timeline (**when**); a **pillar** is the enduring 
 | **Self-planning**        | issues, roadmap, audit, cockpit — vow steers its own work         |
 | **Mechanical integrity** | the wall — gates, hooks, the externalized picture, durable memory |
 
-Every issue vow opens carries a `pillar:` label — `createIssue` routes one from the title + body (a theme heuristic), unless you set one explicitly. Work routes by **capability**, not the nearest date, so the plan reads as a forward compass, not only a calendar. The studio's **Map** view (under Plan) renders the local plan grouped per pillar, each toward its horizon; `vow reconcile` flags any open issue carrying no pillar.
+The pillar lives on the **local plan** — each `@vow/plan` item carries one (`add_plan_item`), so work steers by **capability**, not the nearest date, and the plan reads as a forward compass. The studio's **Map** view (under Plan) renders the local plan grouped per pillar, each toward its horizon (the four pillars come from `NORTH_STAR`).
 
 ## Realtime observability
 

@@ -14,7 +14,6 @@ import {
   teamFocus,
 } from "@vow/agent";
 import {
-  claimIssue,
   headCommit,
   issueDetail,
   issueLabels,
@@ -22,9 +21,6 @@ import {
   prCiStateForHead,
   prMerged,
   recordEvent,
-  releaseIssue,
-  resolveProjectId,
-  syncProjectStatus,
 } from "@vow/observability";
 // oxlint-disable-next-line no-duplicate-imports -- the @vow/observability value import above; PrCi needs a top-level type import
 import type { PrCi } from "@vow/observability";
@@ -234,10 +230,6 @@ async function developClaimed(input: DevInput): Promise<DevResult> {
   return { ok, report: runReport(spec, outcome) };
 }
 
-/** Develop one issue, bracketing the live run with the board claim: apply `in-progress` so the board reads
- *  `doing` from the moment the agent starts (not only once a PR exists, #479), and release it when the run
- *  ends — a merged/open PR then carries the status, a failed run drops back to `planned`. Both halves are
- *  best-effort (they never throw), so a board hiccup can't fail the develop. */
 /** The `detail` an `run.finished` event carries — the run's verdict as a word for the trace. */
 function runOutcome(ok: boolean): string {
   if (ok) {
@@ -246,16 +238,14 @@ function runOutcome(ok: boolean): string {
   return "failed";
 }
 
+/** Develop one issue via the live loop, bracketed by the run-started / run-finished trace events. The
+ *  in-flight `doing` claim now lives on the local `@vow/plan` session (`plan-ops.ts`), reconciled against
+ *  the live PRs each round — vow owns the claim, never a GitHub label that orphans (#623). */
 export async function develop(input: DevInput): Promise<DevResult> {
   recordEvent(input.cwd, "run.started", { issue: input.issue });
-  claimIssue(input.cwd, input.issue);
-  try {
-    const result = await developClaimed(input);
-    recordEvent(input.cwd, "run.finished", { detail: runOutcome(result.ok), issue: input.issue });
-    return result;
-  } finally {
-    releaseIssue(input.cwd, input.issue);
-  }
+  const result = await developClaimed(input);
+  recordEvent(input.cwd, "run.finished", { detail: runOutcome(result.ok), issue: input.issue });
+  return result;
 }
 
 /** `vow agent run <n> [--provider <name>]` (live) — develop the issue, print its report, exit on the
@@ -377,26 +367,10 @@ export async function runAll(rest: readonly string[]): Promise<number> {
   return exitFor(done.every((each) => each.ok));
 }
 
-/** Reconcile the GitHub Project's Status to the studio's derived status right after a merge (the moment an
- *  issue closes), so the board never drifts — and return the line to print. The Project node id comes from
- *  `VOW_PROJECT_ID` or, when that is unset, the studio config's `project:` URL — so the sync runs without a
- *  shell env var instead of silently skipping. Empty (no line) only when neither is configured; local gh
- *  auth, no PAT. May throw if `gh project` hiccups — the caller treats that best-effort
- *  (`reconcileAfterMerge`), since the merge, not the reconcile, is load-bearing. */
-export function boardLine(cwd: string): string {
-  // oxlint-disable-next-line no-process-env -- the configured Project node id; absent = fall back to config
-  const pid = resolveProjectId(cwd, process.env["VOW_PROJECT_ID"]);
-  if (typeof pid !== "string") {
-    return "";
-  }
-  const { changed, matched } = syncProjectStatus(cwd, pid);
-  return `board: ${changed.length} reconciled, ${matched} matched`;
-}
-
-/** Run the post-merge board reconcile BEST-EFFORT: the merge is the load-bearing effect, the reconcile is
- *  advisory (`vow sync-project` / the MCP can re-run it), so a `gh project` hiccup must NEVER report a
- *  succeeded merge as failed. Returns the board line on success, or a `merged — board sync skipped: <why>`
- *  warning when `sync` throws — either way a string the caller prints, never a propagated throw. */
+/** Run a post-merge best-effort step: the merge is the load-bearing effect, anything advisory after it must
+ *  NEVER report a succeeded merge as failed. Returns `sync`'s line on success, or a `merged — board sync
+ *  skipped: <why>` warning when it throws — either way a string the caller prints, never a propagated
+ *  throw. */
 export function reconcileAfterMerge(pr: number, sync: () => string): string {
   try {
     return sync();
@@ -432,22 +406,16 @@ function execMerge(pr: number, cwd: string, expectedHead: string): void {
   }
 }
 
-/** Squash-merge a green PR via gh — the agent closing the loop on a passing run — then reconcile the board
- *  best-effort (the merge closed the issue, so its derived status just became Done; the built-ins don't
- *  catch this). A non-empty `expectedHead` pins the merge to that SHA (`--match-head-commit`), closing the
- *  TOCTOU window between the pinned-green CI read and this call (#471); empty = the unpinned front door. Two
- *  post-merge false-negatives are guarded: a `gh pr merge` non-zero exit whose merge actually landed is
- *  judged by the PR's MERGED state, not the exit code (#468); a board-sync hiccup is swallowed + warned
- *  (#466). Neither reports a merge that happened as failed WHEN THE PR STATE IS READABLE; an unreadable state
- *  fail-closes and re-raises (safe — the auto loop drops a merged PR from the next round). */
+/** Squash-merge a green PR via gh — the agent closing the loop on a passing run. A non-empty `expectedHead`
+ *  pins the merge to that SHA (`--match-head-commit`), closing the TOCTOU window between the pinned-green CI
+ *  read and this call (#471); empty = the unpinned front door. A `gh pr merge` non-zero exit whose merge
+ *  actually landed is judged by the PR's MERGED state, not the exit code (#468), so a merge that happened is
+ *  never reported as failed WHEN THE PR STATE IS READABLE; an unreadable state fail-closes and re-raises
+ *  (safe — the auto loop drops a merged PR from the next round). */
 export function mergePr(pr: number, cwd: string, expectedHead: string): number {
   execMerge(pr, cwd, expectedHead);
   process.stdout.write(`pr #${pr}: merged (green CI)\n`);
   recordEvent(cwd, "pr.merged", { pr });
-  const line = reconcileAfterMerge(pr, () => boardLine(cwd));
-  if (line !== "") {
-    process.stdout.write(`${line}\n`);
-  }
   return 0;
 }
 

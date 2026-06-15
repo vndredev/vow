@@ -42,7 +42,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Thirty-eight tools, in seven groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Thirty-seven tools, in seven groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -93,14 +93,13 @@ These read the **same** `docs/guide/*.md` the site renders ([the doc system](/gu
 
 ### GitHub — the issue plan
 
-| Tool           |                                                                                                                   |
-| -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `list_issues`  | List GitHub issues with their derived status (planned/doing/done).                                                |
-| `add_issue`    | Open a GitHub issue (feature template + labels) — assigned, phased (the current milestone), added to the Project. |
-| `close_issue`  | Close a GitHub issue (marks it done).                                                                             |
-| `reopen_issue` | Reopen a closed GitHub issue (marks it planned/doing again).                                                      |
-| `assign_issue` | Assign a user to a GitHub issue.                                                                                  |
-| `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).                                      |
+| Tool           |                                                                                                             |
+| -------------- | ----------------------------------------------------------------------------------------------------------- |
+| `list_issues`  | List GitHub issues with their derived status (planned/doing/done).                                          |
+| `add_issue`    | Open a GitHub issue (feature template + labels) — assigned; its pillar lives on the local plan (sync_plan). |
+| `close_issue`  | Close a GitHub issue (marks it done).                                                                       |
+| `reopen_issue` | Reopen a closed GitHub issue (marks it planned/doing again).                                                |
+| `assign_issue` | Assign a user to a GitHub issue.                                                                            |
 
 ### Code — code intelligence
 

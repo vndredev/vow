@@ -75,10 +75,10 @@ issuePlan(cwd)           ->  [{ issue, status }]      status: planned | doing | 
 ```
 
 - **done** — the issue is closed.
-- **doing** — open, and either an open PR closes it (`Closes #N` · `Fixes #N` · `Resolves #N`) **or** it carries the `in-progress` label (an agent is developing it right now). The agent applies the label the moment it claims the issue and removes it when the run ends, so the board shows `doing` across the whole **develop → PR → merge** arc, not only once the PR exists.
-- **planned** — open, no PR and not being developed.
+- **doing** — open, and an open PR closes it (`Closes #N` · `Fixes #N` · `Resolves #N`) — a develop run is in flight. The in-flight claim itself lives on the **local plan** (a `plan_session`, reconciled against the live PRs each round), not a GitHub label.
+- **planned** — open, no PR closing it.
 
-`statusVariant` colours each — planned → :badge[planned]{tone=neutral} · doing → :badge[doing]{tone=accent} · done → :badge[done]{tone=success}. Like `gitTimeline`, the reads are **graceful**: no `gh`, no auth, no network ⇒ `[]`, so a build without GitHub simply has no issue plan. This is the read foundation the MCP's `list_issues` and the GitHub Project's status sync build on.
+`statusVariant` colours each — planned → :badge[planned]{tone=neutral} · doing → :badge[doing]{tone=accent} · done → :badge[done]{tone=success}. Like `gitTimeline`, the reads are **graceful**: no `gh`, no auth, no network ⇒ `[]`, so a build without GitHub simply has no issue plan. This is the read foundation the MCP's `list_issues` builds on.
 
 The studio, though, no longer renders this GitHub plan directly. The issue plan is the **external skin**; the studio's plan surface (Now + Next · Backlog · Map) is vow's **own local plan** — a SQLite DAG of work read over `/__vow/plan`. GitHub issues bind to it: a plan item carries the `issue` it mirrors, and the MCP's `sync_plan` pulls the live issues in (an open issue with no item yet → a `backlog` item; a closed issue's item → `done`). So a person filing an issue still reaches the plan, but the rich structure GitHub can't model — the lifecycle, the dependency DAG, the ready-queue — lives locally.
 

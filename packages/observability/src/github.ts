@@ -10,8 +10,6 @@ import type {
   PlanItem,
 } from "./types.ts";
 import { NONE } from "./none.ts";
-import { PLAN_BOARD } from "./issue-body.ts";
-import { ensurePillar } from "./pillar.ts";
 import { execFileSync } from "node:child_process";
 
 /**
@@ -257,14 +255,9 @@ export function linkedIssues(body: string): number[] {
   return out;
 }
 
-/** The label an agent applies to an issue while it is actively developing it — so the board shows the issue
-    as `doing` from the moment the agent claims it (opens its worktree), not only once its PR exists. The
-    agent removes it when the run ends; an open PR's `Closes #N` then carries the `doing` signal onward. */
-export const IN_PROGRESS_LABEL = "in-progress";
-
-/** An issue's status: closed -> `done`; open with an open PR that closes it OR the `in-progress` label (an
-    agent is developing it right now) -> `doing`; else `planned`. The `inProgress` numbers are the issues an
-    open PR closes — so the board shows `doing` across the whole develop -> PR -> merge arc. Pure. */
+/** An issue's status: closed -> `done`; open with an open PR that closes it (an agent is developing it
+    right now) -> `doing`; else `planned`. The `inProgress` numbers are the issues an open PR closes — so the
+    board shows `doing` across the whole develop -> PR -> merge arc. Pure. */
 export function deriveIssueStatus(
   issue: Readonly<GitHubIssue>,
   inProgress: readonly number[],
@@ -272,7 +265,7 @@ export function deriveIssueStatus(
   if (issue.state === "closed") {
     return "done";
   }
-  if (inProgress.includes(issue.number) || issue.labels.includes(IN_PROGRESS_LABEL)) {
+  if (inProgress.includes(issue.number)) {
     return "doing";
   }
   return "planned";
@@ -445,10 +438,10 @@ export function createIssueOptions(input: Readonly<CreateIssueInput>): readonly 
 }
 
 /** Open an issue via `gh` (title + body + labels + assignee + milestone) -> its URL. Throws on failure.
-    A north-star pillar is ensured on the labels (`ensurePillar`) from the title + body — every issue vow
-    opens carries its throughline by construction, the chokepoint all issue-creation paths share. */
+    The labels are applied as given — the throughline pillar now lives on the local `@vow/plan` item, not a
+    routed GitHub label. */
 export function createIssue(cwd: string, input: Readonly<CreateIssueInput>): string {
-  const labels = ensurePillar(input.labels ?? [], `${input.title} ${input.body}`);
+  const labels = input.labels ?? [];
   const args = [
     "issue",
     "create",
@@ -459,26 +452,6 @@ export function createIssue(cwd: string, input: Readonly<CreateIssueInput>): str
     ...createIssueOptions({ ...input, labels }),
   ];
   return execFileSync("gh", args, { cwd, encoding: "utf8" }).trim();
-}
-
-/** Add an issue `url` to the plan board (the configured Project), so a programmatically-created issue lands
-    under Todo instead of orphaned off the board — the gap that left audit-filed issues invisible. The board's
-    number + owner come from `PLAN_BOARD` (no env needed). Best-effort: a `gh`/auth/network failure is
-    swallowed — the issue still exists; `sync_project` can add it later. */
-export function addToPlanBoard(cwd: string, url: string): void {
-  const number = /\/projects\/(\d+)/u.exec(PLAN_BOARD)?.[1] ?? "";
-  const owner = /\/users\/([^/]+)/u.exec(PLAN_BOARD)?.[1] ?? "";
-  if (number === "" || owner === "") {
-    return;
-  }
-  try {
-    execFileSync("gh", ["project", "item-add", number, "--owner", owner, "--url", url], {
-      cwd,
-      encoding: "utf8",
-    });
-  } catch {
-    // Best-effort: the issue exists; a reconcile / sync_project can add it to the board later.
-  }
 }
 
 /** Close an issue via `gh` (-> `done`). Throws on failure. */
@@ -497,34 +470,4 @@ export function assignIssue(cwd: string, issue: number, login: string): void {
     cwd,
     encoding: "utf8",
   });
-}
-
-/** Claim an issue for the agent by applying the `in-progress` label (-> the board reads `doing` from the
-    moment develop starts). BEST-EFFORT: a gh/label hiccup must never fail the develop — the signal is
-    advisory — so it returns whether it applied rather than throwing. */
-export function claimIssue(cwd: string, issue: number): boolean {
-  try {
-    execFileSync("gh", ["issue", "edit", String(issue), "--add-label", IN_PROGRESS_LABEL], {
-      cwd,
-      encoding: "utf8",
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Release an issue's `in-progress` label when the run ends — a merged PR (issue closed -> `done`) or an
-    open PR (`Closes #N` -> `doing`) carries the status onward; a failed run drops back to `planned` instead
-    of falsely lingering as `doing`. BEST-EFFORT, same as `claimIssue` — returns whether it removed it. */
-export function releaseIssue(cwd: string, issue: number): boolean {
-  try {
-    execFileSync("gh", ["issue", "edit", String(issue), "--remove-label", IN_PROGRESS_LABEL], {
-      cwd,
-      encoding: "utf8",
-    });
-    return true;
-  } catch {
-    return false;
-  }
 }

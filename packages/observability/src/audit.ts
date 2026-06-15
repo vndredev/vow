@@ -1,5 +1,4 @@
 import type { CreateIssueInput } from "./github.ts";
-import type { Maybe } from "./types.ts";
 import { bugIssueBody } from "./issue-body.ts";
 
 /** The `area:` labels the repo actually carries. `gh issue create` does NOT auto-create a label, so an
@@ -26,28 +25,17 @@ export interface Finding {
   readonly title: string;
 }
 
-/** The milestone fragment for a resolved `phase` — present only when a phase exists (a milestone-less repo
- *  files bare, and `phaselessIssues` then surfaces it). Keeps `exactOptionalPropertyTypes` happy. */
-function phaseMilestone(phase: Maybe<string>): { readonly milestone?: string } {
-  if (typeof phase === "string" && phase !== "") {
-    return { milestone: phase };
-  }
-  return {};
-}
-
 /** Map a confirmed finding to a `gh issue create` input — the audit → plan step, so a finding lands in
- *  vow's plan as a labelled, phased issue and never a side file. It is stamped with the resolved current
- *  `phase` (the caller resolves it once), so an audit finding never drifts in phase-less — the same
- *  invariant `add_issue` enforces. The `area:` label is attached only for a known area (see `KNOWN_AREAS`);
- *  an unknown / empty area files without it (`gh` would otherwise reject the unknown label and drop the
- *  whole finding) — the title + phase still land. Pure (the phase is passed in). */
-export function auditIssue(finding: Readonly<Finding>, phase: Maybe<string>): CreateIssueInput {
+ *  vow's plan as a labelled issue and never a side file. The `area:` label is attached only for a known
+ *  area (see `KNOWN_AREAS`); an unknown / empty area files without it (`gh` would otherwise reject the
+ *  unknown label and drop the whole finding) — the title still lands. Pure. */
+export function auditIssue(finding: Readonly<Finding>): CreateIssueInput {
   const body = bugIssueBody({ evidence: finding.evidence, fix: finding.fix });
   const labels = ["bug"];
   if (KNOWN_AREAS.has(finding.area)) {
     labels.push(`area: ${finding.area}`);
   }
-  return { body, labels, title: finding.title, ...phaseMilestone(phase) };
+  return { body, labels, title: finding.title };
 }
 
 /** Whether a value is a non-null object — the entry to read an untrusted findings payload. */

@@ -7,15 +7,7 @@ import {
   renderDeepAuditPrompt,
 } from "@vow/agent";
 /* oxlint-disable consistent-type-specifier-style -- one import; a separate type import trips no-duplicate-imports */
-import {
-  type Finding,
-  type Maybe,
-  addToPlanBoard,
-  auditIssue,
-  createIssue,
-  parseFindings,
-  resolveCurrentPhase,
-} from "@vow/observability";
+import { type Finding, auditIssue, createIssue, parseFindings } from "@vow/observability";
 /* oxlint-enable consistent-type-specifier-style */
 import {
   existsSync,
@@ -34,8 +26,8 @@ import { readPrompt } from "./agent-prompts.ts";
 /**
  * The audit half of `vow agent auto` — when the backlog empties, run a full read-only audit pass so the
  * loop generates its own next work (the self-healing spiral). Each dimension is a headless `claude` audit
- * at the audit model; its findings are parsed (`parseFindings`) and filed as labelled, milestoned vow
- * issues (`auditIssue` + `createIssue`) — the audit -> plan step, never a side-file. The pure pieces
+ * at the audit model; its findings are parsed (`parseFindings`) and filed as labelled vow issues
+ * (`auditIssue` + `createIssue`) — the audit -> plan step, never a side-file. The pure pieces
  * (`auditCommand`, `parseFindings`, `auditIssue`) are tested; this is the thin shell + file glue.
  */
 
@@ -98,26 +90,23 @@ interface DimensionResult {
   readonly filed: number;
 }
 
-/** A pass's shared context — the auth, the cwd, and the phase every filed finding is stamped with
- *  (resolved once per pass, so the audit → plan step never re-resolves it per dimension). */
+/** A pass's shared context — the auth + the cwd. */
 interface AuditContext {
   readonly auth: Auth;
   readonly cwd: string;
-  readonly phase: Maybe<string>;
 }
 
-/** File one finding as a vow issue AND add it to the plan board — so an audit finding lands under Todo, not
- *  orphaned off the board (the gap that left the audit's OWN issues invisible). */
-function fileFinding(cwd: string, finding: Readonly<Finding>, phase: Maybe<string>): void {
-  const url = createIssue(cwd, auditIssue(finding, phase));
+/** File one finding as a vow issue — a thin external skin; `vow plan sync` ingests it into the local plan
+ *  (the structure lives there now, not on a GitHub Project board). */
+function fileFinding(cwd: string, finding: Readonly<Finding>): void {
+  const url = createIssue(cwd, auditIssue(finding));
   process.stdout.write(`${url}\n`);
-  addToPlanBoard(cwd, url);
 }
 
 /** Run + file one dimension's audit. A broken shell-out files nothing and flags `broke`; a genuine empty
  *  array files nothing with `broke=false` (a real findings-free dimension). */
 function fileDimension(dimension: string, context: AuditContext): DimensionResult {
-  const { auth, cwd, phase } = context;
+  const { auth, cwd } = context;
   const run = runDimensionAudit(dimension, auth, cwd);
   if (!run.ran) {
     process.stdout.write(`auto: ${dimension} audit failed — pass is broken, not findings-free\n`);
@@ -125,7 +114,7 @@ function fileDimension(dimension: string, context: AuditContext): DimensionResul
   }
   const findings = parseFindings(run.raw);
   for (const finding of findings) {
-    fileFinding(cwd, finding, phase);
+    fileFinding(cwd, finding);
   }
   return { broke: false, filed: findings.length };
 }
@@ -157,7 +146,7 @@ function fileAll(context: AuditContext): AuditPassResult {
 
 export function runAuditPass(auth: Auth, cwd: string): AuditPassResult {
   process.stdout.write("auto: backlog empty — auditing for new work\n");
-  const context: AuditContext = { auth, cwd, phase: resolveCurrentPhase(cwd) };
+  const context: AuditContext = { auth, cwd };
   const result = fileAll(context);
   process.stdout.write(`auto: audit filed ${result.filed} issue(s)\n`);
   return result;
@@ -215,7 +204,7 @@ function fileSliceDimension(
   slice: string,
   context: AuditContext,
 ): DimensionResult {
-  const { cwd, phase } = context;
+  const { cwd } = context;
   const run = runSliceAudit(dimension, slice, context);
   if (!run.ran) {
     const sliceName = path.relative(cwd, slice);
@@ -226,7 +215,7 @@ function fileSliceDimension(
   }
   const findings = parseFindings(run.raw);
   for (const finding of findings) {
-    fileFinding(cwd, finding, phase);
+    fileFinding(cwd, finding);
   }
   return { broke: false, filed: findings.length };
 }
@@ -279,7 +268,7 @@ function sweepSlices(slices: readonly string[], context: AuditContext): SliceSwe
  *  read as findings-free if a slice was never actually audited. */
 export function runDeepAuditPass(auth: Auth, cwd: string): AuditPassResult {
   process.stdout.write("auto: deep audit — sweeping every package + docs/ slice by slice\n");
-  const context: AuditContext = { auth, cwd, phase: resolveCurrentPhase(cwd) };
+  const context: AuditContext = { auth, cwd };
   const slices = discoverSlices(cwd);
   process.stdout.write(`auto: ${slices.length} slice(s) to audit\n`);
   const sweep = sweepSlices(slices, context);

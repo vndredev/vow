@@ -2,7 +2,7 @@
 import { APPS, HUB_APPS, isFullStop, resolveApps } from "./apps.ts";
 import { agent, agentHelp } from "./agent.ts";
 import { build, check, gate, hook, prBody, test } from "./basics.ts";
-import { doctor, plan, reconcile } from "./reconcile.ts";
+import { plan, reconcile } from "./reconcile.ts";
 import { runDev, status, stopApps } from "./dev.ts";
 import { guard } from "./guard.ts";
 import { runChannelServer } from "./channel.ts";
@@ -42,10 +42,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow pr-body --check   validate a piped PR body against the template (same rule as CI)
   vow hook [provider]  the PreToolUse guardrail — blocks a wrong tool-call (raw gh, push to main, vp check
                        --fix) with the vow alternative; \`vow agent init\` wires it into .claude/settings.json
-  vow reconcile        report plan drift — open issues a merged PR already closed (retire candidates) +
-                       open issues carrying no phase (the "No milestone" drift the roadmap can't place)
-  vow doctor           check the GitHub Project's Roadmap view against vow's invariant (grouped by
-                       Milestone, dated by Milestone) — ✓ holds · ✗ fixable drift · □ a UI-only step
+  vow reconcile        report plan drift — open issues a merged PR already closed (retire candidates)
   vow plan             print the local plan (.vow/plan.db) — items, status, pillar (writes via the MCP)
   vow plan sync        pull the GitHub issues into the local plan (open -> backlog, closed -> done)
   vow plan snapshot    write the committed plan snapshot (.vow/plan.jsonl) from the local db
@@ -128,7 +125,6 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   channel: runChannelServer,
   check,
   dev,
-  doctor,
   events: runEvents,
   gate,
   guard,
