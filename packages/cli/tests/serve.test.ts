@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { appNames, serveBanner, watchDecision } from "../src/serve.ts";
+import { appNames, resetsIdleOnStartup, serveBanner, watchDecision } from "../src/serve.ts";
 import { expect, test } from "vite-plus/test";
 
 const STUDIO_PORT = 5173;
@@ -38,6 +38,13 @@ test("watchDecision: --watch + opt-in runs, --watch alone refuses, no --watch is
   expect(watchDecision(true, false)).toBe("refuse");
   expect(watchDecision(false, true)).toBe("off");
   expect(watchDecision(false, false)).toBe("off");
+});
+
+test("resetsIdleOnStartup clears a stale loop status when the watch loop is off, never when it runs (#727)", () => {
+  // The loop owns its status while running; off/refused, bring-up resets idle so no phantom round shows.
+  expect(resetsIdleOnStartup("run")).toBe(false);
+  expect(resetsIdleOnStartup("refuse")).toBe(true);
+  expect(resetsIdleOnStartup("off")).toBe(true);
 });
 
 test("appNames keeps the positional app slugs and drops the --flags", () => {

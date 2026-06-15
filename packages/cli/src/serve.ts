@@ -230,10 +230,22 @@ function resolveHub(rest: readonly string[]): Hub {
   };
 }
 
-/** Print the hub banner + start its background loops — the one bring-up step. */
+/** Whether bring-up should reset the loop status to idle — true when the watch loop is OFF, so a stale
+    round a prior (perhaps killed) loop left is cleared and the studio shows idle, not a phantom mid-run.
+    When the loop runs it owns its status, so bring-up leaves it alone. */
+export function resetsIdleOnStartup(watch: Watch): boolean {
+  return watch !== "run";
+}
+
+/** Print the hub banner + start its background loops — the one bring-up step. A stale loop status (a prior,
+    perhaps killed, watch run that never recorded idle) is cleared here when the loop is off, so the cockpit
+    never shows a phantom mid-run. */
 // oxlint-disable-next-line prefer-readonly-parameter-types -- Hub holds the mutable AbortController + Servers
 function bringUp(hub: Readonly<Hub>): void {
   process.stdout.write(serveBanner(hub.apps, { events: EVENTS_PORT, mcp: MCP_PORT }, hub.watch));
+  if (resetsIdleOnStartup(hub.watch)) {
+    writeLoopStatus(hub.root, LOOP_IDLE);
+  }
   startLoops(hub.watch, hub.root, hub.stop.signal);
 }
 
