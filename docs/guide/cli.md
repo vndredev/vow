@@ -69,11 +69,11 @@ vow pr-body --check < body.md && gh pr create --body-file body.md
 
 ```bash
 vow guard            # enforce main's protection (PR-only · gate · no bypass · 0 reviews); --check reports only
-vow reconcile        # plan drift — retire candidates + open issues carrying no phase
+vow reconcile        # plan drift — retire candidates + issues with no phase or no pillar
 vow doctor           # check the GitHub Project's Roadmap view against vow's invariant
 ```
 
-`vow reconcile` and `vow doctor` are **read-only diagnostics** — they report drift, never mutate. `reconcile` surfaces issues a merged PR already closed (the retire candidates) and any open issue with no phase (the "No milestone" drift the milestone gate otherwise prevents).
+`vow reconcile` and `vow doctor` are **read-only diagnostics** — they report drift, never mutate. `reconcile` surfaces issues a merged PR already closed (the retire candidates), any open issue with no phase (the "No milestone" drift the milestone gate otherwise prevents), and any with no **pillar** (off the throughline — see below).
 
 `vow doctor` checks the upstream **GitHub Project Roadmap view** against vow's declared invariant — grouped by, dated by, and marked with **Milestone**. A [spike](https://github.com/vndredev/vow/issues/539) found the Projects v2 API can _set_ no view config (it is UI-only) and reads back only the layout + group-by, so doctor gives a real verdict on what's readable and lists the rest:
 

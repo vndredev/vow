@@ -5,6 +5,7 @@ import {
   githubIssues,
   mergedPrs,
   phaselessIssues,
+  pillarlessIssues,
   readRoadmapView,
   resolveProjectId,
   roadmapViewChecks,
@@ -45,10 +46,27 @@ function reportPhaseless(phaseless: readonly GitHubIssue[]): void {
   }
 }
 
+/** Report the pillar-less drift — open issues with no `pillar:` label, off the throughline (the capability
+ *  axis). The createIssue router defaults one for new work; this surfaces any that routed nowhere or
+ *  predate the router. */
+function reportPillarless(pillarless: readonly GitHubIssue[]): void {
+  if (pillarless.length === 0) {
+    process.stdout.write("plan aligned — every open issue carries a pillar (a throughline)\n");
+    return;
+  }
+  process.stdout.write(
+    "pillar-less — these open issues have no pillar, so they drift off the throughline:\n",
+  );
+  for (const issue of pillarless) {
+    process.stdout.write(`  #${issue.number} ${issue.title}\n`);
+  }
+}
+
 /**
  * `vow reconcile` — report plan drift: open issues a merged PR already closes (retire candidates, e.g. the
- * second of a `Closes #a, #b` list GitHub's auto-close missed), and open issues carrying no phase (the
- * "No milestone" drift the roadmap can't place). Read-only — it reports, it never mutates.
+ * second of a `Closes #a, #b` list GitHub's auto-close missed), open issues carrying no phase (the "No
+ * milestone" drift the roadmap can't place), and open issues carrying no pillar (off the throughline).
+ * Read-only — it reports, it never mutates.
  */
 export function reconcile(): number {
   const cwd = process.cwd();
@@ -56,6 +74,7 @@ export function reconcile(): number {
   const open = all.filter((issue) => issue.state === "open");
   reportStale(staleIssues(open, mergedPrs(cwd)));
   reportPhaseless(phaselessIssues(all));
+  reportPillarless(pillarlessIssues(all));
   return 0;
 }
 
