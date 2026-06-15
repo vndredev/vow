@@ -42,7 +42,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Twenty-nine tools, in five groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Thirty-two tools, in six groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -101,6 +101,16 @@ These read the **same** `docs/guide/*.md` the site renders ([the doc system](/gu
 | `reopen_issue` | Reopen a closed GitHub issue (marks it planned/doing again).                                                      |
 | `assign_issue` | Assign a user to a GitHub issue.                                                                                  |
 | `sync_project` | Sync the GitHub Project's Status field to the studio's derived status (1:1).                                      |
+
+### Code — code intelligence
+
+Semantic lookups over the workspace via the bundled LSP server (`typescript-language-server`, shipped as a dependency) — provider-neutral, so any MCP-capable agent gets them (not a Claude-only plugin). The server is spawned once and reused; it waits for the project to build (the diagnostics signal) so `find_references` is complete across files, never a text match.
+
+| Tool               |                                                                                                                                        |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `find_references`  | Find every semantic reference to the symbol at file:line:character (via the LSP server) — who uses it, across files, not a text match. |
+| `document_symbols` | List the symbols a file declares (functions, classes, constants) with each one's line.                                                 |
+| `hover`            | The type signature + doc of the symbol at file:line:character.                                                                         |
 
 This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
 
