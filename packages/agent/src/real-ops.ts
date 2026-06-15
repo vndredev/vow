@@ -1,6 +1,6 @@
+/* oxlint-disable consistent-type-specifier-style -- node:events is imported as both a value (`once`) and a type (`EventEmitter`); a separate top-level type import would trip no-duplicate-imports */
 import type { AgentOps, Command, RunResult } from "./types.ts";
-import type { EventEmitter } from "node:events";
-import { once } from "node:events";
+import { type EventEmitter, once } from "node:events";
 import { execFileSync, spawn } from "node:child_process";
 import { worktreeAddArgs, worktreeRemoveArgs } from "./dispatch.ts";
 
@@ -61,14 +61,14 @@ function removeWorktree(path: string): void {
 }
 
 /** Extract the exit-code field from an unknown close-event args array — the first element when it is a
- *  number, else undefined (the process was killed by a signal). `events.once("close")` resolves with
- *  `unknown[]`; this narrows it without an unsafe cast. */
-function closeCode(args: readonly unknown[]): number | undefined {
+ *  number, else 1 (a signal-killed process has no numeric exit code; report it as a non-zero failure).
+ *  `events.once("close")` resolves with `unknown[]`; this narrows it without an unsafe cast. */
+function closeCode(args: readonly unknown[]): number {
   const [first] = args;
   if (typeof first === "number") {
     return first;
   }
-  return undefined;
+  return 1;
 }
 
 /** Extract an error message from an unknown thrown value — the `.message` of an Error, else "unknown error".
@@ -87,6 +87,7 @@ interface StreamedChild {
 }
 
 /** Attach data-event listeners to stdout/stderr, returning the chunk arrays for later concatenation. */
+// oxlint-disable-next-line prefer-readonly-parameter-types -- a Node child's stdout/stderr streams are mutable by nature; the param is only read here (boundary adapter)
 function setupChunks(child: Readonly<StreamedChild>): [Buffer[], Buffer[]] {
   const stdoutChunks: Buffer[] = [];
   const stderrChunks: Buffer[] = [];
@@ -118,7 +119,9 @@ async function awaitClose(
 /** Build a RunResult from an exit code and captured stdout/stderr chunk arrays. */
 function buildRunResult(
   code: number | undefined,
+  // oxlint-disable-next-line prefer-readonly-parameter-types -- Buffer is a mutable Node type; concat only reads (boundary adapter)
   stdoutChunks: readonly Buffer[],
+  // oxlint-disable-next-line prefer-readonly-parameter-types -- Buffer is a mutable Node type; concat only reads (boundary adapter)
   stderrChunks: readonly Buffer[],
 ): RunResult {
   const out = Buffer.concat(stdoutChunks).toString("utf8");
@@ -165,7 +168,7 @@ async function execText(command: Command, cwd: string): Promise<RunResult> {
  */
 export function realOps(): AgentOps {
   return {
-    run: (command, cwd) => execText(command, cwd),
+    run: execText,
     worktreeAdd: async (path, branch) => {
       await Promise.resolve();
       // `git worktree add` establishes OWNERSHIP of `path`: it throws when the path already exists (a
