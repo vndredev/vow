@@ -9,6 +9,7 @@ import {
 } from "./issue-sfc.ts";
 import { NORTH_STAR } from "@vow/observability";
 import { renderVueSfc } from "@vow/component";
+import { txt } from "./helpers.ts";
 
 /**
  * The issue-compass SFC — the live issue plan grouped by north-star PILLAR (the throughline) instead of
@@ -51,7 +52,18 @@ function compassPillar(): UiNode {
       {
         attrs: [{ kind: "static", name: "class", value: "vow-compass__head" }],
         children: [
-          classed("h3", "vow-compass__title", [{ expr: "p.title", kind: "interp" }]),
+          {
+            attrs: [{ kind: "static", name: "class", value: "vow-compass__heading" }],
+            children: [
+              classed("h3", "vow-compass__title", [{ expr: "p.title", kind: "interp" }]),
+              classed("span", "vow-compass__count", [
+                { expr: "p.open.length", kind: "interp" },
+                txt(" open"),
+              ]),
+            ],
+            kind: "element",
+            tag: "div",
+          },
           classed("p", "vow-compass__horizon", [{ expr: "p.horizon", kind: "interp" }]),
         ],
         kind: "element",
