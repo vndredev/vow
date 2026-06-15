@@ -24,17 +24,48 @@ test("parseMilestones returns [] on malformed JSON or a non-array", () => {
   expect(parseMilestones('{"title":"x"}')).toEqual([]);
 });
 
-test("currentPhase picks the milestone with the earliest due date — the next phase in flight", () => {
-  expect(currentPhase(parseMilestones(MILESTONES), NONE)).toBe("Phase G — hardening");
+// A fixed today, so the date-guarded resolution is deterministic (the clock is injected, never read here).
+const TODAY = "2026-06-15";
+
+// A stale never-closed early milestone (the #718 sink) next to a genuine upcoming one.
+const STALE_AND_AHEAD =
+  '[{"title":"Phase A — the spec-driven generator","dueOn":"2026-05-07T00:00:00Z"},' +
+  '{"title":"Phase K — the autonomy cockpit","dueOn":"2026-06-26T00:00:00Z"}]';
+
+test("currentPhase picks the earliest milestone still ahead — the next phase in flight", () => {
+  // Today before all three: the earliest-due (G) is the next in flight.
+  expect(currentPhase(parseMilestones(MILESTONES), NONE, "2026-06-01")).toBe("Phase G — hardening");
 });
 
-test("currentPhase honours the VOW_PHASE override over the earliest-due milestone", () => {
-  expect(currentPhase(parseMilestones(MILESTONES), "Phase Z — pinned")).toBe("Phase Z — pinned");
+test("currentPhase skips a stale never-closed milestone, picks the next ahead (#718 — no sink)", () => {
+  // The overdue "Phase A" must NOT capture new work while a later phase is still ahead.
+  expect(currentPhase(parseMilestones(STALE_AND_AHEAD), NONE, TODAY)).toBe(
+    "Phase K — the autonomy cockpit",
+  );
+});
+
+test("currentPhase counts a milestone due today as in flight, not already past", () => {
+  const dueToday =
+    '[{"title":"Phase X","dueOn":"2026-06-15T00:00:00Z"},{"title":"Phase W","dueOn":"2026-05-01T00:00:00Z"}]';
+  expect(currentPhase(parseMilestones(dueToday), NONE, TODAY)).toBe("Phase X");
+});
+
+test("currentPhase falls back to the most-recent past milestone when none lie ahead — never phase-less", () => {
+  // Every milestone overdue: the latest past one (I, due 06-16) still phases the issue.
+  expect(currentPhase(parseMilestones(MILESTONES), NONE, "2026-07-01")).toBe(
+    "Phase I — the UI framework",
+  );
+});
+
+test("currentPhase honours the VOW_PHASE override over the date-guarded milestone", () => {
+  expect(currentPhase(parseMilestones(MILESTONES), "Phase Z — pinned", TODAY)).toBe(
+    "Phase Z — pinned",
+  );
 });
 
 test("currentPhase is NONE when no dated milestone exists (a milestone-less repo)", () => {
-  expect(currentPhase([], NONE)).toBeUndefined();
-  expect(currentPhase([{ title: "undated" }], NONE)).toBeUndefined();
+  expect(currentPhase([], NONE, TODAY)).toBeUndefined();
+  expect(currentPhase([{ title: "undated" }], NONE, TODAY)).toBeUndefined();
 });
 
 test("milestoneFor keeps an explicit milestone, else falls back to the resolved phase", () => {
