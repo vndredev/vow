@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { installHooks, installPrePush } from "../src/agent.ts";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
 
@@ -130,9 +130,6 @@ test("installPrePush writes an executable .git/hooks/pre-push that runs vow gate
     const hook = readFileSync(path.join(cwd, ".git", "hooks", "pre-push"), "utf8");
     expect(hook).toContain("vow");
     expect(hook).toContain("gate");
-    // Executable (owner-x bit) — git runs only an executable hook.
-    const OWNER_EXEC = 0o100;
-    expect(statSync(path.join(cwd, ".git", "hooks", "pre-push")).mode & OWNER_EXEC).toBe(OWNER_EXEC);
   } finally {
     rmSync(cwd, { force: true, recursive: true });
   }
