@@ -1,5 +1,5 @@
 #!/usr/bin/env -S node --experimental-strip-types
-import { APPS, resolveApps } from "./apps.ts";
+import { APPS, HUB_APPS, isFullStop, resolveApps } from "./apps.ts";
 import { agent, agentHelp } from "./agent.ts";
 import { build, check, gate, hook, prBody, test } from "./basics.ts";
 import { doctor, reconcile } from "./reconcile.ts";
@@ -79,13 +79,21 @@ function stopNames(names: readonly string[]): readonly string[] {
   return names;
 }
 
+/** The hub channels also freed on a full stop (`vow stop` / `all`) — none for a single named app. */
+function hubStop(names: readonly string[]): readonly string[] {
+  if (isFullStop(names)) {
+    return stopApps(HUB_APPS);
+  }
+  return [];
+}
+
 function stop(names: readonly string[]): number {
-  const stopped = stopApps(resolveApps(stopNames(names)));
-  if (stopped.length === 0) {
+  const all = [...stopApps(resolveApps(stopNames(names))), ...hubStop(names)];
+  if (all.length === 0) {
     process.stdout.write("nothing was running\n");
     return 0;
   }
-  process.stdout.write(`stopped ${stopped.join(", ")}\n`);
+  process.stdout.write(`stopped ${all.join(", ")}\n`);
   return 0;
 }
 
