@@ -9,7 +9,7 @@
 /** The 4 layers, lowest first: L0 foundation → L1 emit → L2 composition → L3 orchestration. A package may
  *  depend on its own layer or a lower one. A package missing here is a violation — a new one must declare. */
 const LAYERS: readonly (readonly string[])[] = [
-  ["component", "core", "db", "headless", "icons", "observability", "theme"],
+  ["component", "core", "db", "headless", "icons", "observability", "plan", "theme"],
   ["emit-bind", "emit-entity", "emit-primitive", "emit-view", "layout"],
   ["docs", "markdown", "router", "shell", "store"],
   ["agent", "cli", "gate", "mcp", "vite-plugin"],
