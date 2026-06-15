@@ -1,6 +1,5 @@
 import { documentSymbols, findReferences } from "../src/lsp.ts";
 import { expect, test } from "vite-plus/test";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 // An integration smoke test spawning the bundled typescript-language-server against real source files.
@@ -10,8 +9,7 @@ import path from "node:path";
 const SLOW = 60_000;
 const FETCH_PRUNE_LINE = 36;
 const FETCH_PRUNE_CHAR = 17;
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const VERIFY = path.resolve(HERE, "../../agent/src/verify.ts");
+const VERIFY = path.resolve(import.meta.dirname, "../../agent/src/verify.ts");
 
 test(
   "documentSymbols returns a file's real symbol tree (the spawned LSP server)",
