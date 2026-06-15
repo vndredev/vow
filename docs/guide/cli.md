@@ -71,6 +71,7 @@ vow pr-body --check < body.md && gh pr create --body-file body.md
 vow guard            # enforce main's protection (PR-only · gate · no bypass · 0 reviews); --check reports only
 vow reconcile        # plan drift — retire candidates + issues with no phase or no pillar
 vow doctor           # check the GitHub Project's Roadmap view against vow's invariant
+vow plan [sync]      # read the local plan (.vow/plan.db); `sync` pulls the GitHub issues in (open → backlog)
 ```
 
 `vow reconcile` and `vow doctor` are **read-only diagnostics** — they report drift, never mutate. `reconcile` surfaces issues a merged PR already closed (the retire candidates), any open issue with no phase (the "No milestone" drift the milestone gate otherwise prevents), and any with no **pillar** (off the throughline — see below).
@@ -86,6 +87,8 @@ vow doctor — the GitHub Project Roadmap view (its config is UI-only):
 ```
 
 `✓` holds · `✗` is fixable drift doctor detected · `□` is a UI-only step to apply in the Roadmap toolbar. vow's **own** studio roadmap needs none of this — it derives the phased timeline straight from the milestones (gh-direct); this only configures the upstream GitHub Project view.
+
+`vow plan` reads vow's **own local plan** — the SQLite DAG at `.vow/plan.db` the studio's Plan views (Now + Next · Backlog · Map) render. `vow plan sync` pulls the GitHub issues into it (an open issue with no item yet → a `backlog` item, a closed issue's item → `done`) — the CLI front-door for the MCP's `sync_plan`. The rich structure — lifecycle, the dependency DAG, the ready-queue — lives locally; GitHub stays the thin external skin.
 
 ## The throughline — pillars
 

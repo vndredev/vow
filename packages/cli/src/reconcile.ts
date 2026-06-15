@@ -2,6 +2,7 @@
 import {
   type CheckStatus,
   type GitHubIssue,
+  PILLAR_PREFIX,
   githubIssues,
   mergedPrs,
   phaselessIssues,
@@ -11,7 +12,7 @@ import {
   roadmapViewChecks,
   staleIssues,
 } from "@vow/observability";
-import { type PlanItem, listItems, openPlan } from "@vow/plan";
+import { type IssueRef, type PlanItem, applySync, listItems, openPlan } from "@vow/plan";
 import { defined } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
 
@@ -124,19 +125,63 @@ function itemRef(item: PlanItem): string {
   return item.id.slice(0, ID_SHORT);
 }
 
+/** The `{ pillar }` fragment from an issue's labels, or empty — carried onto the synced item (the spread
+ *  keeps the absent case free of an `undefined` literal). */
+function pillarFrag(issue: Readonly<GitHubIssue>): { pillar?: string } {
+  for (const label of issue.labels) {
+    if (label.startsWith(PILLAR_PREFIX)) {
+      return { pillar: label };
+    }
+  }
+  return {};
+}
+
+/** Map a GitHub issue to the minimal `IssueRef` the sync reads — its pillar resolved from the labels. */
+function toRef(issue: Readonly<GitHubIssue>): IssueRef {
+  return { number: issue.number, state: issue.state, title: issue.title, ...pillarFrag(issue) };
+}
+
 /**
- * `vow plan` — print the local plan (read-only) from `.vow/plan.db`: every item by position, its
- * reference, status, and title. The rich plan lives locally; this is the operator's quick read (the MCP
- * `list_plan` tool is the agent's). Writes go through the MCP tools / the studio, never here.
+ * `vow plan sync` — pull the GitHub issues into the local plan: a new open issue with no item yet is
+ * ingested as a `backlog` item (bound by number, its pillar carried), a closed issue's item is marked
+ * `done`. The CLI front-door for the MCP's `sync_plan` — the one place GitHub feeds the local plan.
  */
-export function plan(): number {
+function planSync(): number {
+  const cwd = process.cwd();
+  const db = openPlan(cwd);
+  const actions = applySync(
+    db,
+    listItems(db),
+    githubIssues(cwd).map((issue) => toRef(issue)),
+  );
+  process.stdout.write(
+    `synced — ingested ${actions.ingest.length}, closed ${actions.close.length}\n`,
+  );
+  return 0;
+}
+
+/** Print the local plan (read-only) — every item by position, its reference, status, and title. */
+function planPrint(): number {
   const items = listItems(openPlan(process.cwd()));
   if (items.length === 0) {
-    process.stdout.write("the plan is empty — add an item with the add_plan_item MCP tool\n");
+    process.stdout.write("the plan is empty — run `vow plan sync` or add an item via the MCP\n");
     return 0;
   }
   for (const item of items) {
     process.stdout.write(`${itemRef(item)}  [${item.status}]  ${item.title}\n`);
   }
   return 0;
+}
+
+/**
+ * `vow plan` — read the local plan from `.vow/plan.db` (every item by position); `vow plan sync` pulls the
+ * GitHub issues into it (open → `backlog`, closed → `done`). The rich plan lives locally; other writes go
+ * through the MCP tools / the studio.
+ */
+export function plan(rest: readonly string[]): number {
+  const [sub] = rest;
+  if (sub === "sync") {
+    return planSync();
+  }
+  return planPrint();
 }
