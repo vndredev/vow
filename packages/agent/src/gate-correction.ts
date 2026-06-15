@@ -47,7 +47,7 @@ const REMEDIES: readonly RemedyRule[] = [
     id: "no-undefined",
     match: /no-undefined/u,
     remedy:
-      "never write the `undefined` literal — use the vow `Maybe<T>` seam: return `NONE` for absence and narrow with `defined(x)` (from @vow/core) instead of comparing to `undefined`.",
+      "never write the `undefined` literal — and `null` is also banned (`unicorn/no-null`), so neither is a fallback for 'absent'. FIRST restructure to avoid the absent value: return a DEFINITE value (a non-zero exit code for a signal-killed process, `''` for no output). Only if absence is genuinely required, use the vow `Maybe<T>` seam — return `NONE`, narrow with `defined(x)` — which lives in `@vow/core`, so THIS package must declare it as a dependency first.",
   },
   {
     id: "no-non-null-assertion",

@@ -103,6 +103,13 @@ test("the OS-boundary traps self-explain — the sanctioned disable patterns, no
   expect(block).toContain("import { type X, value }");
 });
 
+test("the no-undefined remedy offers a restructure fallback — Maybe unreachable + null also banned (#702)", () => {
+  const corrections = gateCorrections(redVerdict("real-ops.ts:71: error eslint(no-undefined)"));
+  const noUndefined = corrections.find((correction) => correction.rule === "no-undefined");
+  expect(noUndefined?.remedy).toContain("DEFINITE value");
+  expect(noUndefined?.remedy).toContain("unicorn/no-null");
+});
+
 test("an unknown rule yields no correction — its verbatim output passes through (never lossy)", () => {
   const corrections = gateCorrections(redVerdict("x.ts: some-rule-vow-never-banned exploded"));
   expect(corrections).toEqual([]);
