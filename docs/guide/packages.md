@@ -34,14 +34,14 @@ vow is a pnpm monorepo of small, focused packages, split by **kind** (see [Archi
 
 ## Runtime & look
 
-| Package       | Role                                                                                          | Learn it                                        |
-| ------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `@vow/store`  | the shared in-memory collection per entity (the data adapter)                                 | [Data](/guide/data)                             |
-| `@vow/db`     | the local SQLite data layer (`node:sqlite`); D1 in prod                                       | [Data](/guide/data)                             |
-| `@vow/plan`   | the local plan — a SQLite DAG of work (items · deps · sessions · events) bound to thin issues | [The plan](/guide/cli)                          |
-| `@vow/router` | the tiny client router every generated boot wires in                                          | [Data](/guide/data) · [App shell](/guide/shell) |
-| `@vow/theme`  | the swappable design tokens + the base CSS over the hooks                                     | [Theming](/guide/theming)                       |
-| `@vow/icons`  | a semantic icon set behind swappable library adapters (Lucide)                                | [Button · Icon](/guide/primitives/button#icon)  |
+| Package       | Role                                                                                                | Learn it                                        |
+| ------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `@vow/store`  | the shared in-memory collection per entity (the data adapter)                                       | [Data](/guide/data)                             |
+| `@vow/db`     | the local SQLite data layer (`node:sqlite`); D1 in prod                                             | [Data](/guide/data)                             |
+| `@vow/plan`   | the local plan — a SQLite DAG of work (items · deps · sessions · events), committed as `plan.jsonl` | [The plan](/guide/cli)                          |
+| `@vow/router` | the tiny client router every generated boot wires in                                                | [Data](/guide/data) · [App shell](/guide/shell) |
+| `@vow/theme`  | the swappable design tokens + the base CSS over the hooks                                           | [Theming](/guide/theming)                       |
+| `@vow/icons`  | a semantic icon set behind swappable library adapters (Lucide)                                      | [Button · Icon](/guide/primitives/button#icon)  |
 
 ## Chrome (hand-written Vue) & orchestration
 
