@@ -1,0 +1,22 @@
+{
+  "name": "@vow/plan",
+  "version": "0.0.0",
+  "private": true,
+  "description": "vow's local plan — a SQLite-backed DAG of work (items · deps · sessions · events) bound to thin GitHub issues.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@vow/core": "workspace:*",
+    "@vow/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
