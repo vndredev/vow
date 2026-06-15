@@ -164,6 +164,12 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     name: "set_plan_priority",
     summary: "Re-rank a plan item (higher priority sorts first in the ready-queue).",
   },
+  {
+    group: "plan",
+    name: "sync_plan",
+    summary:
+      "Pull GitHub issues in — a new open issue becomes a backlog item, a closed issue's item done.",
+  },
 ];
 
 /** The summary for a tool name — the description `server.ts` registers (empty if the name is unknown). */

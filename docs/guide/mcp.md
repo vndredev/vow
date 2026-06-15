@@ -42,7 +42,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Thirty-seven tools, in seven groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Thirty-eight tools, in seven groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -114,15 +114,16 @@ Semantic lookups over the workspace via the bundled LSP server (`typescript-lang
 
 ### Plan — the local plan
 
-vow's own plan — a SQLite DAG of work (`.vow/plan.db`), the rich structure GitHub issues can't model. The agent drives it the same way it drives issues: add items, transition them through the vow-owned lifecycle, declare dependencies, re-rank, list. Content stays on a thin issue; structure lives here.
+vow's own plan — a SQLite DAG of work (`.vow/plan.db`), the rich structure GitHub issues can't model. The agent drives it the same way it drives issues: add items, transition them through the vow-owned lifecycle, declare dependencies, re-rank, list, and sync (pull GitHub issues in). Content stays on a thin issue; structure lives here.
 
-| Tool                |                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| `add_plan_item`     | Add an item to the local plan (title + optional pillar, priority, bound issue).             |
-| `list_plan`         | List the local plan — every item, its status + pillar.                                      |
-| `set_plan_status`   | Transition a plan item through the lifecycle (backlog to ready to doing to review to done). |
-| `add_plan_dep`      | Add a dependency — `item` is blocked by `dependsOn` (an edge of the plan DAG).              |
-| `set_plan_priority` | Re-rank a plan item (higher priority sorts first in the ready-queue).                       |
+| Tool                |                                                                                              |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `add_plan_item`     | Add an item to the local plan (title + optional pillar, priority, bound issue).              |
+| `list_plan`         | List the local plan — every item, its status + pillar.                                       |
+| `set_plan_status`   | Transition a plan item through the lifecycle (backlog to ready to doing to review to done).  |
+| `add_plan_dep`      | Add a dependency — `item` is blocked by `dependsOn` (an edge of the plan DAG).               |
+| `set_plan_priority` | Re-rank a plan item (higher priority sorts first in the ready-queue).                        |
+| `sync_plan`         | Pull GitHub issues in — a new open issue becomes a backlog item, a closed issue's item done. |
 
 This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
 

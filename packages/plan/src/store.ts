@@ -274,6 +274,17 @@ export function setStatus(db: Db, id: string, status: PlanStatus): Maybe<PlanIte
   return getItem(db, id);
 }
 
+/** Mark an item done directly — the external-close path (its bound GitHub issue closed, so the work IS
+ *  done): the external truth wins, so this skips the lifecycle check `setStatus` enforces. Stamps both
+ *  `updatedAt` and `closedAt`. Returns the stored item, or `NONE`. */
+export function setItemDone(db: Db, id: string): Maybe<PlanItem> {
+  const now = nowIso();
+  db.prepare(
+    `UPDATE "plan_item" SET "status" = ?, "updatedAt" = ?, "closedAt" = ? WHERE "id" = ?`,
+  ).run("done", now, now, id);
+  return getItem(db, id);
+}
+
 /** Remove an item — true when a row was deleted. */
 export function removeItem(db: Db, id: string): boolean {
   return db.prepare(`DELETE FROM "plan_item" WHERE "id" = ?`).run(id).changes > 0;
