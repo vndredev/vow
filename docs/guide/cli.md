@@ -87,6 +87,19 @@ vow doctor — the GitHub Project Roadmap view (its config is UI-only):
 
 `✓` holds · `✗` is fixable drift doctor detected · `□` is a UI-only step to apply in the Roadmap toolbar. vow's **own** studio roadmap needs none of this — it derives the phased timeline straight from the milestones (gh-direct); this only configures the upstream GitHub Project view.
 
+## The throughline — pillars
+
+A milestone is a phase on the timeline (**when**); a **pillar** is the enduring capability a piece of work advances (**what**, toward the north-star). The four pillars are vow's north-star, decomposed:
+
+| Pillar                   | Toward                                                            |
+| ------------------------ | ----------------------------------------------------------------- |
+| **Describe → App**       | spec to UI — emit, primitives, the design language, the DSL       |
+| **Self-building**        | the provider-neutral self-healing agent loop + the team           |
+| **Self-planning**        | issues, roadmap, audit, cockpit — vow steers its own work         |
+| **Mechanical integrity** | the wall — gates, hooks, the externalized picture, durable memory |
+
+Every issue vow opens carries a `pillar:` label — `createIssue` routes one from the title + body (a theme heuristic), unless you set one explicitly. Work routes by **capability**, not the nearest date, so the plan reads as a forward compass, not only a calendar.
+
 ## Realtime observability
 
 ```bash

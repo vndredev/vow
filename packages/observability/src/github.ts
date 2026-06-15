@@ -11,6 +11,7 @@ import type {
 } from "./types.ts";
 import { NONE } from "./none.ts";
 import { PLAN_BOARD } from "./issue-body.ts";
+import { ensurePillar } from "./pillar.ts";
 import { execFileSync } from "node:child_process";
 
 /**
@@ -443,8 +444,11 @@ export function createIssueOptions(input: Readonly<CreateIssueInput>): readonly 
   ];
 }
 
-/** Open an issue via `gh` (title + body + labels + assignee + milestone) -> its URL. Throws on failure. */
+/** Open an issue via `gh` (title + body + labels + assignee + milestone) -> its URL. Throws on failure.
+    A north-star pillar is ensured on the labels (`ensurePillar`) from the title + body — every issue vow
+    opens carries its throughline by construction, the chokepoint all issue-creation paths share. */
 export function createIssue(cwd: string, input: Readonly<CreateIssueInput>): string {
+  const labels = ensurePillar(input.labels ?? [], `${input.title} ${input.body}`);
   const args = [
     "issue",
     "create",
@@ -452,7 +456,7 @@ export function createIssue(cwd: string, input: Readonly<CreateIssueInput>): str
     input.title,
     "--body",
     input.body,
-    ...createIssueOptions(input),
+    ...createIssueOptions({ ...input, labels }),
   ];
   return execFileSync("gh", args, { cwd, encoding: "utf8" }).trim();
 }
