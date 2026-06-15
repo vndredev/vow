@@ -1,15 +1,18 @@
 /* oxlint-disable consistent-type-specifier-style -- a separate type import from the same module trips no-duplicate-imports */
-import { type Maybe, defined } from "@vow/core";
-import type { Names, Registrar, Studio, TextResult } from "./types.ts";
+import { type GitHubIssue, PILLAR_PREFIX, githubIssues } from "@vow/observability";
 import {
+  type IssueRef,
   type PlanItem,
   addDep,
   addItem,
+  applySync,
   listItems,
   openPlan,
   setPriority,
   setStatus,
 } from "@vow/plan";
+import { type Maybe, defined } from "@vow/core";
+import type { Names, Registrar, Studio, TextResult } from "./types.ts";
 import path from "node:path";
 import { text } from "./studio.ts";
 import { z } from "zod";
@@ -150,10 +153,50 @@ function registerPriority(server: Registrar, names: Names, root: string): void {
   );
 }
 
+/** The `{ pillar }` fragment when a label carries one — the spread keeps `IssueRef.pillar` absent
+ *  otherwise, so no `undefined` literal is written. */
+function pillarFrag(labels: readonly string[]): { pillar?: string } {
+  for (const label of labels) {
+    if (label.startsWith(PILLAR_PREFIX)) {
+      return { pillar: label };
+    }
+  }
+  return {};
+}
+
+/** Map a GitHub issue to the minimal `IssueRef` the sync reads — its pillar resolved from the labels. */
+function toIssueRef(issue: GitHubIssue): IssueRef {
+  return {
+    number: issue.number,
+    state: issue.state,
+    title: issue.title,
+    ...pillarFrag(issue.labels),
+  };
+}
+
+/** Register `sync_plan` — the inbound sync: GitHub issues are pulled in, a new open one ingested as a
+ *  backlog item, an item whose issue closed marked done. The one place GitHub feeds the local plan. */
+function registerSync(server: Registrar, names: Names, root: string): void {
+  const tool = names.at("sync_plan");
+  server.registerTool(
+    tool.name,
+    { description: tool.description, inputSchema: {} },
+    (): TextResult => {
+      const db = openPlan(root);
+      const actions = applySync(
+        db,
+        listItems(db),
+        githubIssues(root).map((issue) => toIssueRef(issue)),
+      );
+      return text(`synced — ingested ${actions.ingest.length}, closed ${actions.close.length}`);
+    },
+  );
+}
+
 /**
  * Register the local-plan tools — vow's own plan (a SQLite DAG bound to thin issues) driven the same way
  * issues are. The agent + operator add items, transition them through the vow-owned lifecycle, declare
- * dependencies, re-rank, and list — never via the GitHub API.
+ * dependencies, re-rank, list, and sync (pull GitHub issues in) — never via the GitHub API directly.
  */
 export function registerPlan(server: Registrar, names: Names, studio: Studio): void {
   const root = path.dirname(studio.appDir);
@@ -162,4 +205,5 @@ export function registerPlan(server: Registrar, names: Names, studio: Studio): v
   registerStatus(server, names, root);
   registerDep(server, names, root);
   registerPriority(server, names, root);
+  registerSync(server, names, root);
 }
