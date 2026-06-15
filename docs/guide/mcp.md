@@ -42,7 +42,7 @@ Then run `claude` — the tools below are available. On first use of a project s
 
 ## The tools
 
-Thirty-two tools, in six groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
+Thirty-seven tools, in seven groups. Structure mutations **validate** (the zod schema + reference integrity) _before_ writing — a bad mutation never reaches disk.
 
 ### Read
 
@@ -111,6 +111,18 @@ Semantic lookups over the workspace via the bundled LSP server (`typescript-lang
 | `find_references`  | Find every semantic reference to the symbol at file:line:character (via the LSP server) — who uses it, across files, not a text match. |
 | `document_symbols` | List the symbols a file declares (functions, classes, constants) with each one's line.                                                 |
 | `hover`            | The type signature + doc of the symbol at file:line:character.                                                                         |
+
+### Plan — the local plan
+
+vow's own plan — a SQLite DAG of work (`.vow/plan.db`), the rich structure GitHub issues can't model. The agent drives it the same way it drives issues: add items, transition them through the vow-owned lifecycle, declare dependencies, re-rank, list. Content stays on a thin issue; structure lives here.
+
+| Tool                |                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| `add_plan_item`     | Add an item to the local plan (title + optional pillar, priority, bound issue).             |
+| `list_plan`         | List the local plan — every item, its status + pillar.                                      |
+| `set_plan_status`   | Transition a plan item through the lifecycle (backlog to ready to doing to review to done). |
+| `add_plan_dep`      | Add a dependency — `item` is blocked by `dependsOn` (an edge of the plan DAG).              |
+| `set_plan_priority` | Re-rank a plan item (higher priority sorts first in the ready-queue).                       |
 
 This list mirrors `@vow/mcp`'s tool catalogue (`tools.ts`) — a test keeps the docs and the server in lock-step, so it can't drift.
 

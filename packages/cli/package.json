@@ -17,8 +17,10 @@
   },
   "dependencies": {
     "@vow/agent": "workspace:*",
+    "@vow/core": "workspace:*",
     "@vow/mcp": "workspace:*",
-    "@vow/observability": "workspace:*"
+    "@vow/observability": "workspace:*",
+    "@vow/plan": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

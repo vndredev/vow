@@ -4,6 +4,7 @@ import { registerCode } from "./register-code.ts";
 import { registerData } from "./register-data.ts";
 import { registerDocs } from "./register-docs.ts";
 import { registerGithub } from "./register-github.ts";
+import { registerPlan } from "./register-plan.ts";
 import { registerRead } from "./register-read.ts";
 import { registerStructure } from "./register-structure.ts";
 
@@ -20,6 +21,7 @@ export function composeTools(server: Registrar, studio: Studio): readonly string
   registerData(server, recorder, studio);
   registerDocs(server, recorder, studio);
   registerGithub(server, recorder, studio);
+  registerPlan(server, recorder, studio);
   registerCode(server, recorder);
   return recorder.all;
 }

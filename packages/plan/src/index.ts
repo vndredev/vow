@@ -6,6 +6,7 @@
 export type { PlanDep, PlanEvent, PlanItem, PlanOrigin, PlanSession, PlanStatus } from "./types.ts";
 export type { PlanEventInput, PlanItemInput } from "./store.ts";
 export { canTransition, isTerminal, nextStatuses } from "./lifecycle.ts";
+export { openPlan, planDbPath } from "./location.ts";
 export { migratePlan } from "./schema.ts";
 export {
   addDep,

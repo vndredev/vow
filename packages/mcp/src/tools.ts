@@ -6,7 +6,7 @@
  * issue plan).
  */
 export interface ToolDoc {
-  readonly group: "code" | "data" | "docs" | "github" | "read" | "structure";
+  readonly group: "code" | "data" | "docs" | "github" | "plan" | "read" | "structure";
   readonly name: string;
   readonly summary: string;
 }
@@ -136,6 +136,33 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     group: "code",
     name: "hover",
     summary: "The type signature + doc of the symbol at file:line:character.",
+  },
+
+  {
+    group: "plan",
+    name: "add_plan_item",
+    summary: "Add an item to the local plan (title + optional pillar, priority, bound issue).",
+  },
+  {
+    group: "plan",
+    name: "list_plan",
+    summary: "List the local plan — every item, its status + pillar.",
+  },
+  {
+    group: "plan",
+    name: "set_plan_status",
+    summary:
+      "Transition a plan item through the lifecycle (backlog to ready to doing to review to done).",
+  },
+  {
+    group: "plan",
+    name: "add_plan_dep",
+    summary: "Add a dependency — `item` is blocked by `dependsOn` (an edge of the plan DAG).",
+  },
+  {
+    group: "plan",
+    name: "set_plan_priority",
+    summary: "Re-rank a plan item (higher priority sorts first in the ready-queue).",
   },
 ];
 

@@ -34,6 +34,7 @@
     "@vow/db": "workspace:*",
     "@vow/emit-view": "workspace:*",
     "@vow/observability": "workspace:*",
+    "@vow/plan": "workspace:*",
     "typescript": "catalog:",
     "typescript-language-server": "catalog:",
     "vscode-jsonrpc": "catalog:",
