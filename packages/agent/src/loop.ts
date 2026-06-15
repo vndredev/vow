@@ -2,6 +2,7 @@ import type { AgentOps, AgentTask, TaskOutcome, TaskRequest, VerifyResult } from
 import { branchFor, buildPlan } from "./plan.ts";
 import {
   commitArgs,
+  fetchPruneArgs,
   fixPrompt,
   prBody,
   prCreateArgs,
@@ -27,6 +28,8 @@ async function publish(
   const body = prBody(issue, verdict);
   await ops.run({ args: stageArgs(), bin: "git" }, at);
   await ops.run({ args: commitArgs(title), bin: "git" }, at);
+  // Refresh remote-tracking refs first, so the force-with-lease push has accurate info (#703).
+  await ops.run({ args: fetchPruneArgs(), bin: "git" }, at);
   await ops.run({ args: pushArgs(task.branch), bin: "git" }, at);
   await ops.run({ args: prCreateArgs(title, body, verdict.ok), bin: "gh" }, at);
 }

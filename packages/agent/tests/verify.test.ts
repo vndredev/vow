@@ -1,5 +1,6 @@
 import {
   commitArgs,
+  fetchPruneArgs,
   fixPrompt,
   prBody,
   prCreateArgs,
@@ -97,6 +98,10 @@ test("prBody always emits the 3 canonical Proof rows the body gate names, even f
   expect(body).toContain("`pnpm -r test`");
   expect(body).toContain("the doc page");
   expect(body.match(/- \[[ x]\]/gu)?.length).toBe(PROOF_CHECKBOXES);
+});
+
+test("fetchPruneArgs refreshes remote-tracking refs before the force-with-lease push (#703)", () => {
+  expect(fetchPruneArgs()).toEqual(["fetch", "--prune", "origin"]);
 });
 
 test("prTitle is a conventional-commit subject — defaulted to feat, lower-cased, capped at 72", () => {
