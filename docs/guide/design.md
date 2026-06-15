@@ -67,7 +67,7 @@ language owns the mapping. This is where "where does which size belong" is **ans
 | `toolbar`     | a compact action in a header/toolbar     | `ghost` · `sm` · `neutral`  |
 | `destructive` | a confirmed destructive action           | `outline` · `md` · `danger` |
 
-> A "Start work" button in a plan table is a `row` → `ghost · sm` automatically: compact, quiet,
+> A row-action button in a table is a `row` → `ghost · sm` automatically: compact, quiet,
 > never a heavy fill. A form-footer submit is a `primary` → `solid · md`. One surface has exactly one
 > `primary`. Consistency is structural, not a matter of taste applied per button.
 

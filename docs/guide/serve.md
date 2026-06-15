@@ -19,7 +19,7 @@ vow serve all          # every app (studio · docs · starter) + the MCP channel
 vow serve --watch --yes  # also run the agent watch-loop (the always-on self-heal engine)
 ```
 
-- **studio** (<http://localhost:5173>) — the dashboard: operate vow, see the issue board, the data.
+- **studio** (<http://localhost:5173>) — the dashboard: operate vow, see the plan, the data.
 - **docs** (<http://localhost:5174>) — these docs, the generated vow app.
 - **the MCP channel** (<http://localhost:5176/mcp>) — the persistent agent channel: any number of agents/clients POST to one always-on server, replacing the stdio-per-editor-session launch (see [the MCP](/guide/mcp)).
 - **the event channel** (<http://localhost:5177/events>) — the **provider-neutral** realtime-observability feed over SSE: any client (the studio's browser, a generic agent, an orchestrator, a `curl`) subscribes to one always-on endpoint and receives the backlog, then each new event live. Same feed as the tailable `.vow/events.jsonl` + [`vow events`](/guide/cli#realtime-observability).
