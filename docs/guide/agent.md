@@ -44,6 +44,8 @@ The bootstrap is a single, honest source — owned by `@vow/agent` (`sessionBoot
 
 The bootstrap text is **provider-neutral** — a pure string, no harness shape, no provider name. Each harness wraps it in its own envelope at the seam; for Claude Code that is `sessionStartOutput(bootstrap)` → `{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"…"}}` printed to stdout (exit 0). A second harness is a new adapter over the _same_ text, never a rewrite.
 
+`vow agent init` also installs a third, LOCAL guardrail — a **`.git/hooks/pre-push`** that runs **`vow gate`** (the local CI gate: `vp check` + `pnpm -r test`, the SAME commands CI runs the SAME way) before every push. A red gate **blocks the push**, so a failing branch can't even reach a PR — "local green = CI green", mechanically, instead of discovering the red first in CI. Unlike the committed `.claude/settings.json` hooks, a git hook is per-clone, so init writes it; the loop's own pushes skip it (`--no-verify`) since they self-verify and CI is the backstop. Emergency override: `git push --no-verify`.
+
 ```ts
 sessionStartOutput(sessionBootstrap());
 // → { hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: "# Using vow …" } }

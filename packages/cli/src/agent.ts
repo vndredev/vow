@@ -30,7 +30,7 @@ import {
   skillTemplates,
   teamTemplates,
 } from "@vow/agent";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { readPrompt } from "./agent-prompts.ts";
 import { runAuto } from "./agent-auto.ts";
@@ -190,6 +190,47 @@ export function installHooks(cwd: string): string {
   return "wrote .claude/settings.json (vow hook)";
 }
 
+/** The file mode that makes the hook executable (rwx owner, rx group/other) — git runs only an executable. */
+const HOOK_MODE = 0o755;
+
+/** The pre-push hook script — runs `vow gate` (the local CI gate) before a push, so a red gate BLOCKS it and
+    no PR is opened for a failing branch. `git rev-parse --show-toplevel` anchors the local-bin `vow` to the
+    working-tree root (git runs hooks there), so it resolves without a global install. Emergency: `git push
+    --no-verify`. */
+const PRE_PUSH_SCRIPT = `#!/bin/sh
+# vow pre-push gate — block a push when the local CI gate (vp check + pnpm -r test) would fail, so no PR is
+# opened for a red branch. Emergency override: git push --no-verify
+exec "$(git rev-parse --show-toplevel)/node_modules/.bin/vow" gate
+`;
+
+/** Whether `file` exists and already runs `vow gate` — keeps the install idempotent + never clobbers a user's
+    own pre-push hook. */
+function hasGateHook(file: string): boolean {
+  if (!existsSync(file)) {
+    return false;
+  }
+  const content = readFileSync(file, "utf8");
+  return content.includes("vow") && content.includes("gate");
+}
+
+/** Install the `vow gate` pre-push hook into `.git/hooks/pre-push` (idempotent + executable) — git runs it
+    before every push, so a red gate blocks the push (no PR for a red branch). Unlike `.claude/settings.json`
+    (committed), a git hook is LOCAL, so `vow agent init` installs it per clone. The agent loop's own pushes
+    skip it (`--no-verify`) — they self-verify and CI is the backstop; this guards MANUAL pushes. */
+export function installPrePush(cwd: string): string {
+  const dir = path.join(cwd, ".git", "hooks");
+  if (!existsSync(dir)) {
+    return "skipped .git/hooks/pre-push (no .git/hooks)";
+  }
+  const file = path.join(dir, "pre-push");
+  if (hasGateHook(file)) {
+    return "kept  .git/hooks/pre-push (vow gate)";
+  }
+  writeFileSync(file, PRE_PUSH_SCRIPT);
+  chmodSync(file, HOOK_MODE);
+  return "wrote .git/hooks/pre-push (vow gate)";
+}
+
 /** `vow agent init` — scaffold the repo's agent integration so any coding agent works THROUGH vow: the
  *  AGENTS.md contract + the develop/orchestrate/audit/brainstorm skills + the engineering-discipline skills
  *  (the vow skill library — test-first, verification-before-completion, systematic-debugging,
@@ -216,6 +257,7 @@ function init(cwd: string): number {
     ...teamTemplates().map((member) => scaffold(path.join(cwd, member.path), member.content)),
     installChannel(cwd),
     installHooks(cwd),
+    installPrePush(cwd),
   ];
   for (const action of actions) {
     process.stdout.write(`  ${action}\n`);

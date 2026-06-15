@@ -39,9 +39,11 @@ export function fetchPruneArgs(): readonly string[] {
 
 /** The `git push` args that publish the task's branch upstream. Force-with-lease so a re-run over a STALE
  *  remote `feat/issue-N` left by a prior attempt publishes instead of being rejected (non-fast-forward) — the
- *  branch is vow-owned (one issue = one branch), and the lease still refuses to clobber an unexpected remote. */
+ *  branch is vow-owned. `--no-verify` skips the local `vow gate` pre-push hook: the agent already ran its
+ *  finalVerify, `pnpm -r test` fails in a worktree anyway (#685), and CI is the real gate — the hook guards
+ *  MANUAL pushes, not the loop's. */
 export function pushArgs(branch: string): readonly string[] {
-  return ["push", "--force-with-lease", "-u", "origin", branch];
+  return ["push", "--force-with-lease", "--no-verify", "-u", "origin", branch];
 }
 
 /** The `gh pr create` args — title + body; a DRAFT when the gates didn't all pass (a red run is surfaced

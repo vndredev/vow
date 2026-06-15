@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --experimental-strip-types
 import { APPS, resolveApps } from "./apps.ts";
 import { agent, agentHelp } from "./agent.ts";
-import { build, check, hook, prBody, test } from "./basics.ts";
+import { build, check, gate, hook, prBody, test } from "./basics.ts";
 import { doctor, reconcile } from "./reconcile.ts";
 import { runDev, status, stopApps } from "./dev.ts";
 import { guard } from "./guard.ts";
@@ -34,6 +34,8 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow check            vp check — fmt + lint + typecheck (forwards flags, e.g. --fix)
   vow build [app...]   vp build (default: every app)
   vow test             pnpm -r test
+  vow gate             the LOCAL CI gate — vp check + pnpm -r test, the SAME commands CI runs; the pre-push
+                       hook runs it, so a red gate blocks the push (no PR for a red branch)
   vow smoke [app]      boot the dev server + assert the client bundle is browser-safe (default: studio)
   vow guard [--check]  enforce main's protection (PR-only · gate · no bypass); --check reports drift only
   vow pr-body --new <n>  scaffold the PR body for issue <n> (title + Closes #N) — fill the substance, then --check
@@ -116,6 +118,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   dev,
   doctor,
   events: runEvents,
+  gate,
   guard,
   help: showHelp,
   hook,

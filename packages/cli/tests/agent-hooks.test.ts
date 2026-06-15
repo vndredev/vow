@@ -1,8 +1,15 @@
 import { expect, test } from "vite-plus/test";
+import { installHooks, installPrePush } from "../src/agent.ts";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { installHooks } from "../src/agent.ts";
 import path from "node:path";
 import { tmpdir } from "node:os";
+
+/** A throwaway repo root WITH a `.git/hooks` dir — install the pre-push hook here, then tear it down. */
+function tempGitRepo(): string {
+  const cwd = mkdtempSync(path.join(tmpdir(), "vow-prepush-"));
+  mkdirSync(path.join(cwd, ".git", "hooks"), { recursive: true });
+  return cwd;
+}
 
 /** A throwaway repo root for the settings-merge tests — install hooks here, then tear it down. */
 function tempRepo(): string {
@@ -111,6 +118,37 @@ test("hasVowHooks is idempotent against the local-bin command strings (#651) —
     });
     // Re-running init recognises the new strings as already-present and touches nothing.
     expect(installHooks(cwd)).toContain("kept");
+  } finally {
+    rmSync(cwd, { force: true, recursive: true });
+  }
+});
+
+test("installPrePush writes an executable .git/hooks/pre-push that runs vow gate (#711)", () => {
+  const cwd = tempGitRepo();
+  try {
+    expect(installPrePush(cwd)).toContain("wrote");
+    const hook = readFileSync(path.join(cwd, ".git", "hooks", "pre-push"), "utf8");
+    expect(hook).toContain("vow");
+    expect(hook).toContain("gate");
+  } finally {
+    rmSync(cwd, { force: true, recursive: true });
+  }
+});
+
+test("installPrePush skips gracefully when there is no .git/hooks (not a git repo)", () => {
+  const cwd = mkdtempSync(path.join(tmpdir(), "vow-nogit-"));
+  try {
+    expect(installPrePush(cwd)).toContain("skipped");
+  } finally {
+    rmSync(cwd, { force: true, recursive: true });
+  }
+});
+
+test("installPrePush is idempotent — a re-run that finds the vow-gate hook touches nothing", () => {
+  const cwd = tempGitRepo();
+  try {
+    expect(installPrePush(cwd)).toContain("wrote");
+    expect(installPrePush(cwd)).toContain("kept");
   } finally {
     rmSync(cwd, { force: true, recursive: true });
   }
