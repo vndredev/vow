@@ -495,6 +495,17 @@ body {
   color: var(--vow-color-muted);
   line-height: 1.4;
 }
+/* the pillar's heading row — its title beside the open-work count (the steering number per capability) */
+.vow-compass__heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vow-space-2);
+}
+.vow-compass__count {
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+  font-variant-numeric: tabular-nums;
+}
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {
   font-weight: var(--vow-weight-semibold);

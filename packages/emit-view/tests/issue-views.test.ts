@@ -217,4 +217,7 @@ test("the compass groups the plan by north-star pillar, each with its horizon (t
   expect(sfc).toContain('class="vow-compass__pillar"');
   expect(sfc).toContain('class="vow-compass__horizon"');
   expect(sfc).toContain('v-for="p in groups"');
+  // The heading shows the open-work count per pillar — the steering number at a glance.
+  expect(sfc).toContain('class="vow-compass__count"');
+  expect(sfc).toContain("p.open.length");
 });
