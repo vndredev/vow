@@ -464,6 +464,37 @@ body {
 .vow-roadmap__shipped > .vow-roadmap__items {
   opacity: 0.7;
 }
+/* the compass — the issue plan grouped by north-star pillar (the throughline), each with its horizon.
+   The cards reuse the roadmap's item grid; only the per-pillar head (title + horizon) is compass-specific */
+.vow-compass {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-5);
+}
+.vow-compass__pillar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-3);
+}
+.vow-compass__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vow-space-1);
+  padding-bottom: var(--vow-space-2);
+  border-bottom: var(--vow-border) solid var(--vow-color-border);
+}
+.vow-compass__title {
+  margin: 0;
+  font-size: var(--vow-text-lg);
+  font-weight: var(--vow-weight-semibold);
+  color: var(--vow-color-text);
+}
+.vow-compass__horizon {
+  margin: 0;
+  font-size: var(--vow-text-sm);
+  color: var(--vow-color-muted);
+  line-height: 1.4;
+}
 /* a group-by header row (`list: { of, group }`) — a labelled band spanning the table */
 .vow-table__group {
   font-weight: var(--vow-weight-semibold);

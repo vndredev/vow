@@ -98,7 +98,7 @@ A milestone is a phase on the timeline (**when**); a **pillar** is the enduring 
 | **Self-planning**        | issues, roadmap, audit, cockpit — vow steers its own work         |
 | **Mechanical integrity** | the wall — gates, hooks, the externalized picture, durable memory |
 
-Every issue vow opens carries a `pillar:` label — `createIssue` routes one from the title + body (a theme heuristic), unless you set one explicitly. Work routes by **capability**, not the nearest date, so the plan reads as a forward compass, not only a calendar.
+Every issue vow opens carries a `pillar:` label — `createIssue` routes one from the title + body (a theme heuristic), unless you set one explicitly. Work routes by **capability**, not the nearest date, so the plan reads as a forward compass, not only a calendar. The studio's **Compass** view (under Plan) renders it — the open work grouped per pillar, each toward its horizon; `vow reconcile` flags any open issue carrying no pillar.
 
 ## Realtime observability
 

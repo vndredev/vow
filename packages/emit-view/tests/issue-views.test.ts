@@ -1,6 +1,7 @@
 import {
   ISSUE_LAYOUTS,
   emitIssueBoardSfc,
+  emitIssueCompassSfc,
   emitIssueRoadmapSfc,
   emitIssueTableSfc,
   emitTimelineSfc,
@@ -28,6 +29,9 @@ test("issues: { as } renders the layout's component; a missing `as` defaults to 
   expect(emitView(view([{ type: "issues", value: { as: "roadmap" } }]))).toContain(
     "<VowIssueRoadmap",
   );
+  expect(emitView(view([{ type: "issues", value: { as: "compass" } }]))).toContain(
+    "<VowIssueCompass",
+  );
   expect(emitView(view([{ type: "issues", value: {} }]))).toContain("<VowIssueTable");
 });
 
@@ -49,13 +53,19 @@ test("issueLayouts collects the validated layouts a view uses (mapNode + plugin 
 test("ISSUE_LAYOUTS maps each layout to its VowIssue* component", () => {
   expect(ISSUE_LAYOUTS).toEqual({
     board: "VowIssueBoard",
+    compass: "VowIssueCompass",
     roadmap: "VowIssueRoadmap",
     table: "VowIssueTable",
   });
 });
 
 test("each issue SFC emitter produces a valid, store-bound SFC", () => {
-  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+  for (const sfc of [
+    emitIssueTableSfc(),
+    emitIssueBoardSfc(),
+    emitIssueRoadmapSfc(),
+    emitIssueCompassSfc(),
+  ]) {
     expect(sfc).toContain('<script setup lang="ts">');
     expect(sfc).toContain("useIssues");
     expect(sfc).toContain("@vow/store");
@@ -64,7 +74,12 @@ test("each issue SFC emitter produces a valid, store-bound SFC", () => {
 });
 
 test("each issue SFC emits the close/reopen action button on the shared store seam", () => {
-  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+  for (const sfc of [
+    emitIssueTableSfc(),
+    emitIssueBoardSfc(),
+    emitIssueRoadmapSfc(),
+    emitIssueCompassSfc(),
+  ]) {
     expect(sfc).toContain('import Button from "./Button.vue";');
     expect(sfc).toContain(
       "const { items, state, closeIssue, reopenIssue, startWork } = useIssues();",
@@ -76,7 +91,12 @@ test("each issue SFC emits the close/reopen action button on the shared store se
 });
 
 test("each issue SFC emits the start-work button — the human's signal to the agent — on open issues", () => {
-  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+  for (const sfc of [
+    emitIssueTableSfc(),
+    emitIssueBoardSfc(),
+    emitIssueRoadmapSfc(),
+    emitIssueCompassSfc(),
+  ]) {
     // The board action POSTs the start-work signal through the store's `startWork` (-> /__vow/agent).
     expect(sfc).toContain("startWork(it.issue.number)");
     expect(sfc).toContain('label="Start work"');
@@ -87,13 +107,23 @@ test("each issue SFC emits the start-work button — the human's signal to the a
 });
 
 test("each issue SFC shows the layout only when the plan has items (no bare header when empty)", () => {
-  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+  for (const sfc of [
+    emitIssueTableSfc(),
+    emitIssueBoardSfc(),
+    emitIssueRoadmapSfc(),
+    emitIssueCompassSfc(),
+  ]) {
     expect(sfc).toContain('v-if="items.length > 0"');
   }
 });
 
 test("each issue SFC carries the loading / error / empty status messages, mutually exclusive", () => {
-  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+  for (const sfc of [
+    emitIssueTableSfc(),
+    emitIssueBoardSfc(),
+    emitIssueRoadmapSfc(),
+    emitIssueCompassSfc(),
+  ]) {
     expect(sfc).toContain('v-if="state.loading && !state.error && items.length === 0"');
     expect(sfc).toContain("Loading the plan");
     expect(sfc).toContain('v-if="state.error && items.length === 0"');
@@ -107,7 +137,12 @@ test("each issue SFC carries the loading / error / empty status messages, mutual
 test("each issue SFC's status messages are live regions — the swap is announced (WCAG 4.1.3)", () => {
   // Loading/empty are polite (role=status, aria-live=polite); the failure is assertive (role=alert).
   // A screen-reader user hears the load errored instead of being left on a silently-empty plan.
-  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+  for (const sfc of [
+    emitIssueTableSfc(),
+    emitIssueBoardSfc(),
+    emitIssueRoadmapSfc(),
+    emitIssueCompassSfc(),
+  ]) {
     expect(sfc).toContain(
       '<p class="vow-empty" role="status" aria-live="polite" v-if="state.loading && !state.error && items.length === 0">Loading the plan…</p>',
     );
@@ -121,7 +156,12 @@ test("each issue SFC's status messages are live regions — the swap is announce
 });
 
 test("each issue SFC links the agent session (the open PR) when a doing item carries one", () => {
-  for (const sfc of [emitIssueTableSfc(), emitIssueBoardSfc(), emitIssueRoadmapSfc()]) {
+  for (const sfc of [
+    emitIssueTableSfc(),
+    emitIssueBoardSfc(),
+    emitIssueRoadmapSfc(),
+    emitIssueCompassSfc(),
+  ]) {
     expect(sfc).toContain('v-if="it.session"');
     expect(sfc).toContain(':href="it.session.url"');
     expect(sfc).toContain("Watch run #{{ it.session.number }}");
@@ -165,4 +205,16 @@ test("the changelog timeline groups entries under their version", () => {
   const sfc = emitTimelineSfc([{ date: "2026-06-09", title: "the cli", version: "v0.0.1" }], "");
   expect(sfc).toContain("v0.0.1");
   expect(sfc).toContain("the cli");
+});
+
+test("the compass groups the plan by north-star pillar, each with its horizon (the forward lens)", () => {
+  const sfc = emitIssueCompassSfc();
+  // The four pillars are baked in from the single source (@vow/observability), matched by issue label.
+  expect(sfc).toContain('"label":"pillar:describe-to-app"');
+  expect(sfc).toContain('"label":"pillar:mechanical-integrity"');
+  expect(sfc).toContain("it.issue.labels.includes(p.label)");
+  // Each pillar section leads with its title + horizon (a capability toward its end-state, not a date).
+  expect(sfc).toContain('class="vow-compass__pillar"');
+  expect(sfc).toContain('class="vow-compass__horizon"');
+  expect(sfc).toContain('v-for="p in groups"');
 });

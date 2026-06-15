@@ -74,10 +74,11 @@ The catalog of ready-made components — you name them, vow brings the markup:
   [`Badge`](/guide/primitives/badge) (connected / disconnected by tone) and a
   [`Stats`](/guide/primitives/stats) grid for the health metrics. The
   [Cockpit](/guide/serve#the-operations-cockpit) uses it in the Health card.
-- **`issues: { as: table | roadmap | board }`** — the studio's **live GitHub issues**, read over the
-  `/__vow/issues` dev API: a [`Table`](/guide/primitives/table) feed (`as: table`), the milestoned
-  [`timeline`](#) roadmap (`as: roadmap`), or a drag-to-restatus [`board`](#) (`as: board`). The plan IS
-  GitHub — never baked data.
+- **`issues: { as: table | roadmap | board | compass }`** — the studio's **live GitHub issues**, read over
+  the `/__vow/issues` dev API: a [`Table`](/guide/primitives/table) feed (`as: table`), the milestoned
+  roadmap (`as: roadmap`), a drag-to-restatus [`board`](#) (`as: board`), or the north-star **compass**
+  (`as: compass`) — the open work grouped by pillar (the throughline), each toward its horizon. The plan
+  IS GitHub — never baked data.
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
   `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radioGroup` · `select` · `field` ·
   `callout` · `collapsible` · `tabs` · `dialog` · `contextMenu`. The node name is the primitive's PascalCase name with a
