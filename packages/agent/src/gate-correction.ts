@@ -68,6 +68,12 @@ const REMEDIES: readonly RemedyRule[] = [
       "remove the `as` cast — narrow with a type predicate (a `value is T` guard) so the static type can't diverge from the runtime shape. A cast hides the divergence; the guard proves it.",
   },
   {
+    id: "prefer-readonly-parameter-types",
+    match: /prefer-readonly-parameter-types/u,
+    remedy:
+      "make the parameter deeply readonly (`Readonly<T>` / `readonly T[]`). EXCEPTION at an OS-adapter boundary (a `*-ops.ts` file): an inherently-mutable Node type (a stream, `EventEmitter`, `Buffer`, `ChildProcess`) can't be made readonly — apply a TARGETED `// oxlint-disable-next-line prefer-readonly-parameter-types -- <why it's read-only in use>` on that param's line, never a broad disable.",
+  },
+  {
     id: "cannot-find-name",
     match: /\bTS2304\b|\bTS2552\b|Cannot find name/u,
     remedy:
@@ -102,6 +108,18 @@ const REMEDIES: readonly RemedyRule[] = [
     match: /sort-imports/u,
     remedy:
       "reorder the imports by hand — multiple-specifier imports (`import { a, b }`) before single-specifier (`import x`), then alphabetical. `vp fmt` does NOT sort imports, so this is a manual rewrite.",
+  },
+  {
+    id: "no-duplicate-imports",
+    match: /no-duplicate-imports/u,
+    remedy:
+      "merge the duplicate imports from one module into a single statement. When one is a value and one is a TYPE, use the sanctioned inline pattern: `import { type X, value } from 'm'` plus a file-top `/* oxlint-disable consistent-type-specifier-style -- value+type import */` (a separate top-level type import would re-trip this rule).",
+  },
+  {
+    id: "consistent-type-specifier-style",
+    match: /consistent-type-specifier-style/u,
+    remedy:
+      "use a top-level `import type { X } from 'm'`, not an inline `type` specifier. EXCEPTION: when the same module is imported as BOTH a value and a type, a separate type import trips `no-duplicate-imports` — use the sanctioned pattern (see `mcp/channel.ts`): inline `import { type X, value } from 'm'` plus a file-top `/* oxlint-disable consistent-type-specifier-style -- value+type import */`.",
   },
   {
     id: "capitalized-comments",
