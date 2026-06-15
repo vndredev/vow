@@ -2,7 +2,6 @@
 import {
   type CheckStatus,
   type GitHubIssue,
-  PILLAR_PREFIX,
   githubIssues,
   mergedPrs,
   phaselessIssues,
@@ -12,9 +11,10 @@ import {
   roadmapViewChecks,
   staleIssues,
 } from "@vow/observability";
-import { type IssueRef, type PlanItem, applySync, listItems, openPlan } from "@vow/plan";
+import { type PlanItem, listItems, openPlan } from "@vow/plan";
 import { defined } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
+import { syncPlanCwd } from "./plan-ops.ts";
 
 /*
  * The read-only diagnostics — they report drift, never mutate. `reconcile` checks the issue PLAN (retire
@@ -125,35 +125,14 @@ function itemRef(item: PlanItem): string {
   return item.id.slice(0, ID_SHORT);
 }
 
-/** The `{ pillar }` fragment from an issue's labels, or empty — carried onto the synced item (the spread
- *  keeps the absent case free of an `undefined` literal). */
-function pillarFrag(issue: Readonly<GitHubIssue>): { pillar?: string } {
-  for (const label of issue.labels) {
-    if (label.startsWith(PILLAR_PREFIX)) {
-      return { pillar: label };
-    }
-  }
-  return {};
-}
-
-/** Map a GitHub issue to the minimal `IssueRef` the sync reads — its pillar resolved from the labels. */
-function toRef(issue: Readonly<GitHubIssue>): IssueRef {
-  return { number: issue.number, state: issue.state, title: issue.title, ...pillarFrag(issue) };
-}
-
 /**
  * `vow plan sync` — pull the GitHub issues into the local plan: a new open issue with no item yet is
  * ingested as a `backlog` item (bound by number, its pillar carried), a closed issue's item is marked
- * `done`. The CLI front-door for the MCP's `sync_plan` — the one place GitHub feeds the local plan.
+ * `done`. The CLI front-door for the MCP's `sync_plan`; `syncPlanCwd` (the loop's per-round sync) is the
+ * one place GitHub feeds the local plan.
  */
 function planSync(): number {
-  const cwd = process.cwd();
-  const db = openPlan(cwd);
-  const actions = applySync(
-    db,
-    listItems(db),
-    githubIssues(cwd).map((issue) => toRef(issue)),
-  );
+  const actions = syncPlanCwd(process.cwd());
   process.stdout.write(
     `synced — ingested ${actions.ingest.length}, closed ${actions.close.length}\n`,
   );
