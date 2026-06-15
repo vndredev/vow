@@ -23,6 +23,7 @@
     "@vow/layout": "workspace:*",
     "@vow/mcp": "workspace:*",
     "@vow/observability": "workspace:*",
+    "@vow/plan": "workspace:*",
     "html-to-image": "^1.11.13"
   },
   "devDependencies": {

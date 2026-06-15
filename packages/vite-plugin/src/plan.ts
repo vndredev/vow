@@ -10,10 +10,10 @@ import {
   emitFormTest,
   emitViewTest,
   eventLayouts,
-  issueLayouts,
   listedEntities,
   loopLayouts,
   mcpLayouts,
+  planLayouts,
   statsRefs,
   usesTimeline,
 } from "@vow/emit-view";
@@ -59,9 +59,9 @@ export interface Contribution {
   readonly boards: readonly GroupRef[];
   readonly primitives: readonly string[];
   readonly eventViews: readonly string[];
-  readonly issueViews: readonly string[];
   readonly loopViews: readonly string[];
   readonly mcpViews: readonly string[];
+  readonly planViews: readonly string[];
   readonly pages: readonly Page[];
   readonly needsLayout: boolean;
   readonly needsTimeline: boolean;
@@ -73,13 +73,13 @@ const NOTHING: Contribution = {
   cards: [],
   eventViews: [],
   files: [],
-  issueViews: [],
   listed: [],
   loopViews: [],
   mcpViews: [],
   needsLayout: false,
   needsTimeline: false,
   pages: [],
+  planViews: [],
   primitives: [],
   stats: [],
 };
@@ -135,13 +135,13 @@ function planView(vow: ReadonlyVow, outDir: string, entitySlugs: readonly string
       { path: path.join(outDir, `${vow.slug}.vue`), source: built.sfc },
       { path: path.join(outDir, `${vow.slug}.render.test.ts`), source: emitViewTest(mutable(vow)) },
     ],
-    issueViews: [...issueLayouts(mutable(vow))],
     listed: listedEntities(mutable(vow)),
     loopViews: [...loopLayouts(mutable(vow))],
     mcpViews: [...mcpLayouts(mutable(vow))],
     needsLayout: true,
     needsTimeline: usesTimeline(mutable(vow)),
     pages,
+    planViews: [...planLayouts(mutable(vow))],
     primitives: built.primitives,
     stats: statsRefs(mutable(vow)),
   });

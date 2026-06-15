@@ -1,13 +1,13 @@
 import type { Attr, UiNode } from "./types.ts";
 import {
   EVENT_LAYOUTS,
-  ISSUE_LAYOUTS,
   LOOP_LAYOUTS,
   MCP_LAYOUTS,
+  PLAN_LAYOUTS,
   eventLayout,
-  issueLayout,
   loopLayout,
   mcpLayout,
+  planLayout,
 } from "./layouts.ts";
 import { asRecord, defined } from "@vow/core";
 import { assertAttrName, assertObjectKey, pascalCase } from "@vow/component";
@@ -123,13 +123,13 @@ const board: Handler = (value, entities): UiNode => {
 
 const timeline: Handler = (): UiNode => comp("VowTimeline", [], []);
 
-const issues: Handler = (value): UiNode => comp(ISSUE_LAYOUTS[issueLayout(value)], [], []);
-
 const events: Handler = (value): UiNode => comp(EVENT_LAYOUTS[eventLayout(value)], [], []);
 
 const loop: Handler = (value): UiNode => comp(LOOP_LAYOUTS[loopLayout(value)], [], []);
 
 const mcp: Handler = (value): UiNode => comp(MCP_LAYOUTS[mcpLayout(value)], [], []);
+
+const plan: Handler = (value): UiNode => comp(PLAN_LAYOUTS[planLayout(value)], [], []);
 
 const icon: Handler = (value): UiNode => {
   const obj = asRecord(value);
@@ -162,11 +162,11 @@ const HANDLERS: Readonly<Record<string, Handler>> = {
   features,
   hero,
   icon,
-  issues,
   link,
   list,
   loop,
   mcp,
+  plan,
   stats,
   timeline,
 };

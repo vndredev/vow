@@ -4,7 +4,7 @@
 import { type Db, insert, migrate, openDb } from "@vow/db";
 // oxlint-disable-next-line consistent-type-specifier-style -- one import; separate trips no-duplicate-imports
 import { type Server, createServer } from "node:http";
-import { agentApi, dataApi, issuesApi, runAgentRun, vowBin } from "../src/dev-api.ts";
+import { agentApi, dataApi, runAgentRun, vowBin } from "../src/dev-api.ts";
 import { expect, test } from "vite-plus/test";
 import type { AddressInfo } from "node:net";
 import type { IssueDetail } from "@vow/observability";
@@ -13,8 +13,8 @@ import { existsSync } from "node:fs";
 import { once } from "node:events";
 import path from "node:path";
 
-/** A dev middleware — the shape `issuesApi`/`agentApi` return; resolved here so the test imports no type. */
-type Middleware = ReturnType<typeof issuesApi>;
+/** A dev middleware — the shape `agentApi`/`dataApi` return; resolved here so the test imports no type. */
+type Middleware = ReturnType<typeof agentApi>;
 
 const BAD_REQUEST = 400;
 const ACCEPTED = 202;
@@ -66,19 +66,6 @@ function recordingDispatch(): {
     },
   };
 }
-
-test("a malformed issue-write body returns 400, not 500 (a client error, not a server crash)", async () => {
-  const server = await listening(issuesApi(process.cwd()));
-  try {
-    // `{}` is valid JSON but fails the issue-write shape — the distinct validation branch, never the catch.
-    const { status, text } = await post(server, "{}");
-    expect(status).toBe(BAD_REQUEST);
-    expect(text).toContain("expected");
-  } finally {
-    server.close();
-    await once(server, "close");
-  }
-});
 
 test("a start-work signal dispatches the agent for the issue and replies 202 with the dispatched issue", async () => {
   const { calls, dispatch } = recordingDispatch();

@@ -20,13 +20,13 @@ export { EVENT_LAYOUTS, type EventLayout, eventLayout } from "./event-layout.ts"
 export { emitEventTraceSfc } from "./event-sfc.ts";
 export { fieldControl } from "./field-control.ts";
 export { emitForm } from "./form.ts";
-export { ISSUE_LAYOUTS, type IssueLayout, issueLayout } from "./issue-layout.ts";
-export { emitIssueCompassSfc } from "./issue-compass-sfc.ts";
-export { emitIssueBoardSfc, emitIssueRoadmapSfc, emitIssueTableSfc } from "./issue-sfc.ts";
 export { LOOP_LAYOUTS, type LoopLayout, loopLayout } from "./loop-layout.ts";
 export { emitAgentLoopStatusSfc } from "./loop-sfc.ts";
 export { MCP_LAYOUTS, type McpLayout, mcpLayout } from "./mcp-layout.ts";
 export { emitMcpStatusSfc } from "./mcp-sfc.ts";
+export { emitPlanMapSfc } from "./plan-compass-sfc.ts";
+export { PLAN_LAYOUTS, type PlanLayout, planLayout } from "./plan-layout.ts";
+export { emitPlanBacklogSfc, emitPlanNowNextSfc } from "./plan-sfc.ts";
 export {
   VIEW_NODE_TYPES,
   assertKnownViewType,
@@ -45,10 +45,10 @@ export {
   boardRefs,
   cardsRefs,
   eventLayouts,
-  issueLayouts,
   listedEntities,
   loopLayouts,
   mcpLayouts,
+  planLayouts,
   statsRefs,
   usesTimeline,
 } from "./refs.ts";

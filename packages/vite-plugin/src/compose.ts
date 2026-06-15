@@ -10,11 +10,10 @@ import {
   emitEntityList,
   emitEntityStats,
   emitEventTraceSfc,
-  emitIssueBoardSfc,
-  emitIssueCompassSfc,
-  emitIssueRoadmapSfc,
-  emitIssueTableSfc,
   emitMcpStatusSfc,
+  emitPlanBacklogSfc,
+  emitPlanMapSfc,
+  emitPlanNowNextSfc,
   emitTimelineSfc,
   statsComponentName,
   viewComponentName,
@@ -202,23 +201,23 @@ export function composeTimeline(needsTimeline: boolean, srcDir: string, outDir: 
   };
 }
 
-/** The live GitHub issue views (`issues: { as }`) — fixed components reading `/__vow/issues`. */
-/** Each issue layout → its component name + emitter, the one list `composeIssueViews` walks. */
-const ISSUE_VIEWS = [
-  { emit: emitIssueTableSfc, layout: "table", name: "VowIssueTable" },
-  { emit: emitIssueBoardSfc, layout: "board", name: "VowIssueBoard" },
-  { emit: emitIssueRoadmapSfc, layout: "roadmap", name: "VowIssueRoadmap" },
-  { emit: emitIssueCompassSfc, layout: "compass", name: "VowIssueCompass" },
+/** The live local-plan views (`plan: { as }`) — fixed read-only components reading `/__vow/plan` (the SQLite
+ *  DAG). The agent-driven sibling of the issue views; no action buttons (the plan is never browser-written). */
+/** Each plan layout → its component name + emitter, the one list `composePlanViews` walks. */
+const PLAN_VIEWS = [
+  { emit: emitPlanNowNextSfc, layout: "now-next", name: "VowPlanNowNext" },
+  { emit: emitPlanBacklogSfc, layout: "backlog", name: "VowPlanBacklog" },
+  { emit: emitPlanMapSfc, layout: "map", name: "VowPlanMap" },
 ] as const;
 
-export function composeIssueViews(issueViews: readonly string[], outDir: string): Composed {
-  const wanted = new Set(issueViews);
-  const files: Artifact[] = ISSUE_VIEWS.filter((view) => wanted.has(view.layout)).map((view) => ({
+export function composePlanViews(planViews: readonly string[], outDir: string): Composed {
+  const wanted = new Set(planViews);
+  const files: Artifact[] = PLAN_VIEWS.filter((view) => wanted.has(view.layout)).map((view) => ({
     path: path.join(outDir, `${view.name}.vue`),
     source: view.emit(),
   }));
-  // Each issue view composes Badge (status + labels) + Button (the close/reopen action).
-  return { files, primitives: primitivesFor(files, ["Badge", "Button"]) };
+  // Each plan view composes Badge (status + pillar chips) — read-only, so no Button.
+  return { files, primitives: primitivesFor(files, ["Badge"]) };
 }
 
 /** The live event-feed views (`events: { as }`) — fixed components reading `/__vow/events`. */

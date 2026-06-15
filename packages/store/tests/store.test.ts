@@ -1,25 +1,7 @@
 import { VOW_API, dbPath } from "@vow/db/routes";
-import {
-  createList,
-  eventKey,
-  mergeEvent,
-  parseEventFrame,
-  useCollection,
-  useIssues,
-} from "../src/index.ts";
+import { createList, eventKey, mergeEvent, parseEventFrame, useCollection } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 import type { EventItem } from "../src/events.ts";
-import type { PlanItem } from "@vow/observability";
-import { parseIssuePlan } from "../src/issues.ts";
-
-/** The parser's element type — what `parseIssuePlan` actually yields, pinned to the producer below. */
-type Parsed = ReturnType<typeof parseIssuePlan>[number];
-
-/** The wire shape is pinned to the producer: a parsed entry IS `@vow/observability`'s `PlanItem` (the type
- *  the `/__vow/issues` endpoint writes), so a field/status added on the producer fails the consumer's
- *  typecheck here instead of being silently downgraded. The two `extends` arms assert mutual assignability. */
-type Mutual<Left, Right> = Left extends Right ? (Right extends Left ? true : false) : false;
-const WIRE_TYPE_PINNED: Mutual<Parsed, PlanItem> = true;
 
 /**
  * The store is DB-backed via fetch; with no dev server the fetch rejects and the optimistic local array
@@ -30,9 +12,6 @@ const mockFetch: typeof fetch = async (): Promise<Response> => {
   throw new Error("no dev server");
 };
 globalThis.fetch = mockFetch;
-
-/** An arbitrary issue number for the start-work signal test (a named constant, not a magic literal). */
-const SOME_ISSUE = 42;
 
 test("useCollection shares one reactive array per slug; different slugs are separate", () => {
   const first = useCollection<{ id: string }>("widget");
@@ -145,41 +124,6 @@ test("getSnapshot rises on each mutation and equals version — the snapshot tok
   expect(list.getSnapshot()).toBe(list.version);
 });
 
-test("parseIssuePlan carries a doing item's agent session (the open PR + url); omits a malformed one", () => {
-  const plan = parseIssuePlan([
-    {
-      issue: { assignees: [], labels: [], number: 99, state: "open", title: "the loop" },
-      session: { number: 175, url: "https://github.com/o/r/pull/175" },
-      status: "doing",
-    },
-    {
-      issue: { assignees: [], labels: [], number: 5, state: "open", title: "planned" },
-      session: { url: "no number" },
-      status: "planned",
-    },
-  ]);
-  expect(plan[0]?.session).toEqual({ number: 175, url: "https://github.com/o/r/pull/175" });
-  // A malformed session (no numeric `number`) is dropped, not carried.
-  expect(plan[1]).not.toHaveProperty("session");
-});
-
-test("the parsed plan IS the producer's PlanItem shape — the wire type is single-sourced", () => {
-  // `WIRE_TYPE_PINNED` is `true` only when the parsed entry stays mutually assignable with `PlanItem`.
-  expect(WIRE_TYPE_PINNED).toBe(true);
-  const [item] = parseIssuePlan([
-    { issue: { assignees: [], labels: [], number: 1, state: "open", title: "t" }, status: "done" },
-  ]);
-  // The parsed entry is consumable as a `PlanItem` — the round-trip the endpoint guarantees.
-  const asPlanItem: PlanItem | undefined = item;
-  expect(asPlanItem?.status).toBe("done");
-});
-
-test("useIssues exposes a reactive state with loading + error flags the views branch on", () => {
-  const { state } = useIssues();
-  expect(typeof state.loading).toBe("boolean");
-  expect(typeof state.error).toBe("boolean");
-});
-
 test("useCollection exposes a reactive state — the list tells loading apart from genuinely empty", () => {
   // The generated entity list reads this to gate "Nothing here yet." behind !loading && !error, so the
   // First /__vow/db fetch no longer reads as empty. Two readers of one slug share the same state instance.
@@ -187,16 +131,6 @@ test("useCollection exposes a reactive state — the list tells loading apart fr
   expect(typeof state.loading).toBe("boolean");
   expect(typeof state.error).toBe("boolean");
   expect(useCollection<{ id: string }>("project").state).toBe(state);
-});
-
-test("useIssues exposes startWork — the board action's signal to the agent — a safe no-op without a server", () => {
-  const { startWork } = useIssues();
-  expect(typeof startWork).toBe("function");
-  // No DOM / dev server here, so the POST is skipped and the call must not throw. The dev-API test drives
-  // The live POST end to end (signal -> /__vow/agent -> dispatch the run).
-  expect(() => {
-    startWork(SOME_ISSUE);
-  }).not.toThrow();
 });
 
 test("the store builds its data URLs under the server's mount prefix — the shared contract holds", () => {

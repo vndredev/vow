@@ -6,7 +6,7 @@ import { expect, test } from "vite-plus/test";
 import { mkdtempSync, rmSync } from "node:fs";
 import type { AddressInfo } from "node:net";
 import { isRecord } from "@vow/core";
-import { mcpStatusApi } from "../src/mcp-status-handler.ts";
+import { mcpStatusApi } from "../src/dev-handlers.ts";
 import { once } from "node:events";
 import os from "node:os";
 import path from "node:path";

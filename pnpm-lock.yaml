@@ -601,6 +601,9 @@ importers:
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability
+      '@vow/plan':
+        specifier: workspace:*
+        version: link:../plan
       vue:
         specifier: ^3.5.13
         version: 3.5.35(typescript@6.0.3)
@@ -650,6 +653,9 @@ importers:
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability
+      '@vow/plan':
+        specifier: workspace:*
+        version: link:../plan
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13

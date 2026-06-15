@@ -74,11 +74,13 @@ The catalog of ready-made components — you name them, vow brings the markup:
   [`Badge`](/guide/primitives/badge) (connected / disconnected by tone) and a
   [`Stats`](/guide/primitives/stats) grid for the health metrics. The
   [Cockpit](/guide/serve#the-operations-cockpit) uses it in the Health card.
-- **`issues: { as: table | roadmap | board | compass }`** — the studio's **live GitHub issues**, read over
-  the `/__vow/issues` dev API: a [`Table`](/guide/primitives/table) feed (`as: table`), the milestoned
-  roadmap (`as: roadmap`), a drag-to-restatus [`board`](#) (`as: board`), or the north-star **compass**
-  (`as: compass`) — the open work grouped by pillar (the throughline), each toward its horizon. The plan
-  IS GitHub — never baked data.
+- **`plan: { as: now-next | backlog | map }`** — the studio's **live local plan**, read over the
+  `/__vow/plan` dev API (the local SQLite DAG of work the agent / MCP / loop drive — no baked data): the
+  **now-next** lens (`as: now-next`, the default) — what is in flight now and the priority-ordered ready-queue
+  to pick up next; the **backlog** pool (`as: backlog`) — the unstarted items still in backlog, blocked, or
+  parked; or the north-star **map** (`as: map`) — the open work grouped by pillar (the throughline), each
+  toward its horizon. Each row reuses the roadmap card grid, with a status [`Badge`](/guide/primitives/badge)
+  and the pillar tag. Read-only — the plan is agent-driven, never written from the browser.
 - **UI primitives** — place a [primitive](/guide/primitives) directly: `- button: { label: Save, variant: outline }`,
   `- checkbox: { label: Subscribe, model: subscribed }`, likewise `badge` · `switch` · `radioGroup` · `select` · `field` ·
   `callout` · `collapsible` · `tabs` · `dialog` · `contextMenu`. The node name is the primitive's PascalCase name with a

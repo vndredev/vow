@@ -12,6 +12,6 @@ shell: { nav: sidebar-left, width: full, variant: seamless }
 
 ```yaml
 - h1: The plan
-- p: Every unit of work is a GitHub issue — planned, in progress, done. The studio mirrors it 1:1, gh-direct; the agent operates it over the MCP.
-- issues: { as: table }
+- p: vow's own plan — a local SQLite DAG of work the agent and loop drive. Here is what's in flight now and what the ready-queue says to pick up next.
+- plan: { as: now-next }
 ```

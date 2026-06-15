@@ -4,9 +4,10 @@ import { LOOP_STATUS_IDLE, type LoopStatusItem, parseLoopStatus } from "./loop-s
 import { type McpStatusItem, loadMcpStatus, mcpStatus, mcpStatusState } from "./mcp-status.ts";
 /* oxlint-enable consistent-type-specifier-style */
 import { VOW_API, dbPath } from "@vow/db/routes";
+import { detach, hasApi, okJson } from "./net.ts";
+import { loadPlan, planBlocked, planItems, planReady, planState } from "./plan.ts";
 import { isObject } from "./guards.ts";
 import { parseEventFeed } from "./events.ts";
-import { parseIssuePlan } from "./issues.ts";
 import { reactive } from "vue";
 
 export type { Collection, CollectionState, LoopStatusItem, McpStatusItem };
@@ -21,40 +22,15 @@ export { ReactiveRows };
  * unchanged — only what's behind it (it was pure in-memory). Outside a browser (SSR / jsdom) it degrades
  * to a plain in-memory array (fetch is a no-op), so non-DOM imports stay safe.
  *
- * The issue-plan concern (the `IssueItem` shape + its runtime parser) lives in `./issues.ts`; shared
+ * The local-plan concern (the `PlanSnapshot` parser + its reactive arrays) lives in `./plan.ts`; shared
  * runtime guards live in `./guards.ts`.
  */
-
-/** The validated issue-plan item (the public `@vow/store` type generated views bind to), derived from the
- *  parser in `./issues.ts` so the type tracks the runtime shape exactly. */
-export type IssueItem = ReturnType<typeof parseIssuePlan>[number];
 
 /** The validated event-feed item (the public `@vow/store` type generated views bind to), derived from the
  *  parser in `./events.ts` so the type tracks the runtime shape exactly. */
 export type EventItem = ReturnType<typeof parseEventFeed>[number];
 
 const REFRESH_INTERVAL_MS = 5000;
-const hasApi = "window" in globalThis && typeof fetch === "function";
-
-/** One promise per in-flight dev-API call, held so it is never a floating promise; each removes itself on
- *  settle, so the set stays bounded by the number of concurrent calls. */
-const inFlight = new Set<Promise<void>>();
-
-/** Run an async task off the caller's path — without a floating promise or the `void` operator. The task
- *  owns its errors; its promise is held in `inFlight` and removes itself once it settles. */
-function detach(make: () => Promise<void>): void {
-  let marker: Promise<void> = Promise.resolve();
-  marker = (async (): Promise<void> => {
-    try {
-      await make();
-    } catch {
-      // The task owns its errors; detaching only runs it to completion off the caller's path.
-    } finally {
-      inFlight.delete(marker);
-    }
-  })();
-  inFlight.add(marker);
-}
 
 /** Validate one parsed JSON value into a single-element `Row[]` (when it has a string `id`) or an empty
  *  array (when it is not a row). Returning a list keeps the absent case free of an `undefined` literal. */
@@ -83,20 +59,10 @@ const collections = new Map<string, ReactiveRows>();
 
 /** The outcome of one dev-API fetch — `ok` is false on a non-ok response or transport failure, so the
  *  caller latches a reactive `error` flag rather than swallow it (the old `[]` hid a failure as empty, so a
- *  failed fetch read as "Nothing here yet."). One shape for both the rows fetch and the issue-plan fetch. */
+ *  failed fetch read as "Nothing here yet."). One shape for both the rows fetch and the event-feed fetch. */
 interface FetchResult<T> {
   readonly items: readonly T[];
   readonly ok: boolean;
-}
-
-/** GET `url` and parse its JSON, THROWING on a non-ok response so the caller's `catch` latches the failure
- *  (instead of a non-ok body being read as data) — the one place the `ok` check lives for both fetches. */
-async function okJson(url: string): Promise<unknown> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`fetch ${url} failed: ${res.status}`);
-  }
-  return res.json();
 }
 
 /** Read a slug's rows from the dev API, reporting `ok: false` (with no items) on any non-ok response or
@@ -147,20 +113,15 @@ async function write(url: string, method: WriteMethod, body = ""): Promise<void>
   }
 }
 
-const issues = reactive<IssueItem[]>([]) as IssueItem[];
-let issuesLoaded = false;
-
-/** The fetch state the issue views read to tell apart loading / failed / genuinely-empty — so the studio's
- *  first screen shows "Loading the plan…", "Couldn't reach GitHub", or "Nothing here yet." rather than a
- *  bare header. `loading` is on while a fetch is in flight; `error` latches when a fetch fails (non-ok /
- *  transport) and clears on the next success. */
-const issuesState = reactive({ error: false, loading: false });
+/** Whether the plan hook has kicked off its first fetch — the loaded-flag the freshness poll reads. The
+ *  plan's reactive arrays + loader live in `./plan.ts` (the concern module); this owns only the hook. */
+let planLoaded = false;
 
 const events = reactive<EventItem[]>([]) as EventItem[];
 let eventsLoaded = false;
 
 /** The fetch state the event trace reads to distinguish loading / failed / genuinely-empty. Parallel to
- *  `issuesState`; `loading` is on while a fetch is in flight, `error` latches on a non-ok response. */
+ *  `planState`; `loading` is on while a fetch is in flight, `error` latches on a non-ok response. */
 const eventsState = reactive({ error: false, loading: false });
 
 /** True once a live SSE connection has been established at least once — once realtime is delivering, the
@@ -172,7 +133,7 @@ let eventStreamLive = false;
 const loopStatus = reactive<LoopStatusItem>({ ...LOOP_STATUS_IDLE });
 let loopStatusLoaded = false;
 
-/** The fetch state the loop-status view reads to distinguish loading / failed. Parallel to `issuesState`;
+/** The fetch state the loop-status view reads to distinguish loading / failed. Parallel to `planState`;
  *  `loading` is on while a fetch is in flight, `error` latches on a non-ok response. */
 const loopStatusState = reactive({ error: false, loading: false });
 
@@ -194,17 +155,6 @@ async function loadLoopStatus(): Promise<void> {
     loopStatusState.error = true;
   }
   loopStatusState.loading = false;
-}
-
-/** Read + parse the issue plan from `/__vow/issues`, reporting `ok: false` (with an empty plan) on any
- *  non-ok response or transport failure. Entries are validated by `parseIssuePlan` (see `./issues.ts`),
- *  not blindly trusted. The same `{ ok, items }` shape the rows fetch uses. */
-async function fetchIssues(): Promise<FetchResult<IssueItem>> {
-  try {
-    return { items: parseIssuePlan(await okJson(VOW_API.issues)), ok: true };
-  } catch {
-    return { items: [], ok: false };
-  }
 }
 
 /** Read the event feed from `/__vow/events`, reporting `ok: false` on any non-ok response or failure. */
@@ -317,59 +267,6 @@ function subscribeEvents(): void {
   });
 }
 
-/** Pull the issue plan from `/__vow/issues` (gh-direct) and replace the shared array (small, read-only),
- *  driving `issuesState` so the views can show a loading / error / empty branch. */
-async function loadIssues(): Promise<void> {
-  if (!hasApi) {
-    return;
-  }
-  issuesState.loading = true;
-  const result = await fetchIssues();
-  issuesState.error = !result.ok;
-  issuesState.loading = false;
-  if (result.ok) {
-    issues.splice(0, issues.length, ...result.items);
-  }
-}
-
-/** Close or reopen an issue via `POST /__vow/issues` (the dev server shells the same `gh` the MCP does),
- *  then replace the shared plan with the fresh response. A failed write is swallowed; the poll reconciles. */
-async function writeIssue(action: "close" | "reopen", issue: number): Promise<void> {
-  if (!hasApi) {
-    return;
-  }
-  try {
-    const res = await fetch(VOW_API.issues, {
-      body: JSON.stringify({ action, number: issue }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-    if (res.ok) {
-      issues.splice(0, issues.length, ...parseIssuePlan(await res.json()));
-    }
-  } catch {
-    // Optimistic: the next freshness poll reconciles from /__vow/issues.
-  }
-}
-
-/** Signal the agent to begin an issue via `POST /__vow/agent` (the dev server dispatches `vow agent run`).
- *  Status stays derived — the signal only kicks off the run; the resulting PR is what makes the issue read
- *  `doing` on the next poll, so nothing is spliced here. A failed signal is swallowed. */
-async function signalStartWork(issue: number): Promise<void> {
-  if (!hasApi) {
-    return;
-  }
-  try {
-    await fetch(VOW_API.agent, {
-      body: JSON.stringify({ action: "start", number: issue }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
-  } catch {
-    // The agent run is fire-and-forget; the human watches it via the session link once the PR opens.
-  }
-}
-
 let freshness = false;
 
 function detachIfLoaded(loaded: boolean, loader: () => Promise<void>): void {
@@ -387,7 +284,7 @@ function refresh(): void {
       await load(slug);
     });
   }
-  detachIfLoaded(issuesLoaded, loadIssues);
+  detachIfLoaded(planLoaded, loadPlan);
   detachIfLoaded(eventsLoaded, loadEvents);
   detachIfLoaded(loopStatusLoaded, loadLoopStatus);
   detachIfLoaded(mcpStatusLoaded, loadMcpStatus);
@@ -487,43 +384,23 @@ export function useCollection<T>(slug: string): Collection<T> {
   };
 }
 
-/** The shared reactive issue plan, read live from `/__vow/issues` (gh-direct) + polled on focus + the
- *  interval. `state` is the same `CollectionState` shape a collection exposes — its loading / error flags
- *  let a view show "Loading the plan…" or "Couldn't reach GitHub" instead of a bare header. `closeIssue`/
- *  `reopenIssue` POST back through the same dev seam the MCP uses — so the studio's action buttons and the
- *  agent share one path to GitHub. `startWork` POSTs the start-work signal to `/__vow/agent`, dispatching an
- *  agent session for the issue — the human's one trigger to begin. GitHub stays the source; the reply re-syncs. */
-export function useIssues(): {
-  closeIssue: (issue: number) => void;
-  items: IssueItem[];
-  reopenIssue: (issue: number) => void;
-  startWork: (issue: number) => void;
+/** The shared reactive local plan, read live from `/__vow/plan` (the local SQLite DAG `@vow/plan` owns).
+ *  `items` is every plan item; `ready` the ordered ready-queue ids (the work the loop pulls next); `blocked`
+ *  the ready items held by an unfinished dependency. Polled on focus + the interval like the others. `state`
+ *  matches the `CollectionState` shape — its loading / error flags let a view show "Loading…" / "Couldn't
+ *  load the plan". Read-only: the plan is driven by the MCP / agent / loop, never the browser. */
+export function usePlan(): {
+  blocked: typeof planBlocked;
+  items: typeof planItems;
+  ready: typeof planReady;
   state: CollectionState;
 } {
-  if (!issuesLoaded) {
-    issuesLoaded = true;
-    detach(loadIssues);
+  if (!planLoaded) {
+    planLoaded = true;
+    detach(loadPlan);
     startFreshness();
   }
-  return {
-    closeIssue: (issue): void => {
-      detach(async () => {
-        await writeIssue("close", issue);
-      });
-    },
-    items: issues,
-    reopenIssue: (issue): void => {
-      detach(async () => {
-        await writeIssue("reopen", issue);
-      });
-    },
-    startWork: (issue): void => {
-      detach(async () => {
-        await signalStartWork(issue);
-      });
-    },
-    state: issuesState,
-  };
+  return { blocked: planBlocked, items: planItems, ready: planReady, state: planState };
 }
 
 /** The shared reactive event feed, read live from `/__vow/events`. It subscribes to the SSE stream (an
