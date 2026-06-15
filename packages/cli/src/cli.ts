@@ -47,6 +47,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
   vow doctor           check the GitHub Project's Roadmap view against vow's invariant (grouped by
                        Milestone, dated by Milestone) — ✓ holds · ✗ fixable drift · □ a UI-only step
   vow plan             print the local plan (.vow/plan.db) — items, status, pillar (writes via the MCP)
+  vow plan sync        pull the GitHub issues into the local plan (open -> backlog, closed -> done)
 
   the agent loop (autonomous issue -> PR through vow's gates):
 ${agentHelp()}
