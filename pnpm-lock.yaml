@@ -251,12 +251,18 @@ importers:
       '@vow/agent':
         specifier: workspace:*
         version: link:../agent
+      '@vow/core':
+        specifier: workspace:*
+        version: link:../core
       '@vow/mcp':
         specifier: workspace:*
         version: link:../mcp
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability
+      '@vow/plan':
+        specifier: workspace:*
+        version: link:../plan
     devDependencies:
       '@types/node':
         specifier: ^24
@@ -497,6 +503,9 @@ importers:
       '@vow/observability':
         specifier: workspace:*
         version: link:../observability
+      '@vow/plan':
+        specifier: workspace:*
+        version: link:../plan
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

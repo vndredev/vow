@@ -31,10 +31,10 @@ const ONE = 1;
 /** The fields a caller supplies to open a plan item — the rest (id, status, position, timestamps) are
  *  filled by `addItem`. */
 export interface PlanItemInput {
-  readonly issue?: number;
-  readonly origin?: PlanOrigin;
-  readonly pillar?: string;
-  readonly priority?: number;
+  readonly issue?: Maybe<number>;
+  readonly origin?: Maybe<PlanOrigin>;
+  readonly pillar?: Maybe<string>;
+  readonly priority?: Maybe<number>;
   readonly title: string;
 }
 

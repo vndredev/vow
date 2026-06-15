@@ -11,6 +11,8 @@ import {
   roadmapViewChecks,
   staleIssues,
 } from "@vow/observability";
+import { type PlanItem, listItems, openPlan } from "@vow/plan";
+import { defined } from "@vow/core";
 /* oxlint-enable consistent-type-specifier-style */
 
 /*
@@ -107,6 +109,34 @@ export function doctor(): number {
   process.stdout.write("vow doctor — the GitHub Project Roadmap view (its config is UI-only):\n");
   for (const check of roadmapViewChecks(readRoadmapView(cwd, projectId))) {
     process.stdout.write(`  ${glyph(check.status)} ${check.text}\n`);
+  }
+  return 0;
+}
+
+/** The short prefix of a local plan item's id, shown when it carries no GitHub issue number. */
+const ID_SHORT = 8;
+
+/** A plan item's reference — its `#issue` when bound, else a short local id. */
+function itemRef(item: PlanItem): string {
+  if (defined(item.issue)) {
+    return `#${item.issue}`;
+  }
+  return item.id.slice(0, ID_SHORT);
+}
+
+/**
+ * `vow plan` — print the local plan (read-only) from `.vow/plan.db`: every item by position, its
+ * reference, status, and title. The rich plan lives locally; this is the operator's quick read (the MCP
+ * `list_plan` tool is the agent's). Writes go through the MCP tools / the studio, never here.
+ */
+export function plan(): number {
+  const items = listItems(openPlan(process.cwd()));
+  if (items.length === 0) {
+    process.stdout.write("the plan is empty — add an item with the add_plan_item MCP tool\n");
+    return 0;
+  }
+  for (const item of items) {
+    process.stdout.write(`${itemRef(item)}  [${item.status}]  ${item.title}\n`);
   }
   return 0;
 }

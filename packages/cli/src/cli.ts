@@ -2,7 +2,7 @@
 import { APPS, HUB_APPS, isFullStop, resolveApps } from "./apps.ts";
 import { agent, agentHelp } from "./agent.ts";
 import { build, check, gate, hook, prBody, test } from "./basics.ts";
-import { doctor, reconcile } from "./reconcile.ts";
+import { doctor, plan, reconcile } from "./reconcile.ts";
 import { runDev, status, stopApps } from "./dev.ts";
 import { guard } from "./guard.ts";
 import { runChannelServer } from "./channel.ts";
@@ -46,6 +46,7 @@ const HELP = `vow — run the apps + the basics. (The MCP is for LLMs; this is f
                        open issues carrying no phase (the "No milestone" drift the roadmap can't place)
   vow doctor           check the GitHub Project's Roadmap view against vow's invariant (grouped by
                        Milestone, dated by Milestone) — ✓ holds · ✗ fixable drift · □ a UI-only step
+  vow plan             print the local plan (.vow/plan.db) — items, status, pillar (writes via the MCP)
 
   the agent loop (autonomous issue -> PR through vow's gates):
 ${agentHelp()}
@@ -130,6 +131,7 @@ const COMMANDS: Readonly<Record<string, Handler>> = {
   guard,
   help: showHelp,
   hook,
+  plan,
   "pr-body": prBody,
   reconcile,
   serve: runServe,
