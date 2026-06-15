@@ -43,6 +43,19 @@ export function readyQueue(items: readonly PlanItem[], deps: readonly PlanDep[])
     .toSorted((first, second) => byRank(first, second));
 }
 
+/**
+ * The promotable set — the ids of `backlog` items whose every dependency is done (unblocked), so the loop
+ * can auto-promote them to `ready` before pulling the ready-queue. The complement to `readyQueue` one
+ * status down: a backlog item with no unfinished dependency is ready to be queued. Pure — the caller
+ * transitions them.
+ */
+export function promotable(items: readonly PlanItem[], deps: readonly PlanDep[]): string[] {
+  const done = doneIds(items);
+  return items
+    .filter((item) => item.status === "backlog" && unsatisfied(item.id, deps, done).length === 0)
+    .map((item) => item.id);
+}
+
 /** A ready item held back by unfinished dependencies — what's waiting on what. */
 export interface BlockedItem {
   readonly blockers: readonly string[];

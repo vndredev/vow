@@ -25,6 +25,7 @@ import {
 } from "./agent-run.ts";
 import { type LoopStatus, prHeadOid, writeLoopStatus } from "@vow/observability";
 /* oxlint-enable consistent-type-specifier-style */
+import { claimIssues, planBacklog } from "./plan-ops.ts";
 import { headSha, resolveHeadChanged, runAuditPass, writeCleanAuditSha } from "./agent-audit.ts";
 import { cleanStaleWorktrees } from "./agent-worktrees.ts";
 import { execFileSync } from "node:child_process";
@@ -85,16 +86,6 @@ function parseAuto(rest: readonly string[]): AutoArgs | string {
     return "vow agent auto: unknown provider";
   }
   return { auth: authArg(rest), maxRounds: maxRoundsOf(rest), provider };
-}
-
-/** The open issue numbers via `gh issue list --json number --jq .[].number` (no double quotes in the jq). */
-function openIssues(cwd: string): number[] {
-  const out = execFileSync(
-    "gh",
-    ["issue", "list", "--state", "open", "--json", "number", "--jq", ".[].number"],
-    { cwd, encoding: "utf8" },
-  );
-  return numbersOf(out);
 }
 
 /** The jq for the batched area read — one TAB-separated line per open issue: `<number>` then each label name
@@ -275,7 +266,7 @@ interface Effective {
  *  fleet-conflicting on the per-PR rebase and drafting. */
 function effectiveBacklog(cwd: string, attempts: readonly AttemptCount[]): Effective {
   const flight = inFlight(cwd);
-  const open = openIssues(cwd).filter((issue) => !flight.has(issue));
+  const open = planBacklog(cwd, [...flight]).filter((issue) => !flight.has(issue));
   const within = backlogWithinCap(open, attempts, DEFAULT_ATTEMPT_CAP);
   return {
     dropped: backlogOverCap(open, attempts, DEFAULT_ATTEMPT_CAP),
@@ -297,6 +288,7 @@ export interface Spiral {
  *  lane never rejects the `Promise.all` and tears down the whole spiral. */
 async function developBacklog(spiral: Spiral, backlog: readonly number[]): Promise<void> {
   const { args, cwd } = spiral;
+  claimIssues(cwd, backlog);
   await mapLimit(backlog, DEFAULT_CONCURRENCY, async (issue) => {
     try {
       await develop({ auth: args.auth, cwd, issue, json: false, provider: args.provider });

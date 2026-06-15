@@ -10,8 +10,9 @@ export type { IssueRef, SyncActions } from "./sync.ts";
 export type { BlockedRef, PlanSnapshot } from "./snapshot.ts";
 export { canTransition, isTerminal, nextStatuses } from "./lifecycle.ts";
 export { openPlan, planDbPath } from "./location.ts";
-export { blockedItems, readyQueue, unblocksMost } from "./queue.ts";
+export { blockedItems, promotable, readyQueue, unblocksMost } from "./queue.ts";
 export { migratePlan } from "./schema.ts";
+export { staleSessions } from "./sessions.ts";
 export { planSnapshot } from "./snapshot.ts";
 export {
   addDep,

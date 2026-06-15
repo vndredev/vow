@@ -1,5 +1,5 @@
 import type { PlanDep, PlanItem } from "../src/types.ts";
-import { blockedItems, readyQueue, unblocksMost } from "../src/index.ts";
+import { blockedItems, promotable, readyQueue, unblocksMost } from "../src/index.ts";
 import { expect, test } from "vite-plus/test";
 
 const HIGH = 5;
@@ -36,6 +36,16 @@ test("readyQueue: only `ready` items qualify — backlog/doing/done are not next
     item({ id: "c", status: "ready" }),
   ];
   expect(readyQueue(items, []).map((each) => each.id)).toEqual(["c"]);
+});
+
+test("promotable: backlog items with every dependency done — the unblocked set to auto-ready", () => {
+  const items = [
+    item({ id: "a", status: "backlog" }),
+    item({ id: "b", status: "backlog" }),
+    item({ id: "c", status: "ready" }),
+  ];
+  const deps: PlanDep[] = [{ dependsOn: "c", item: "b" }];
+  expect(promotable(items, deps)).toEqual(["a"]);
 });
 
 test("readyQueue: a dep that isn't done holds an item back; a done dep unblocks it", () => {
