@@ -194,13 +194,21 @@ function itemValues(item: PlanItem): readonly Storable[] {
   ];
 }
 
-/** Insert a fully-formed item (the write half of `addItem`). */
-function insertItem(db: Db, item: PlanItem): void {
+/** Insert a fully-formed item (the write half of `addItem`; also the snapshot restore, which carries each
+ *  item's stored id rather than minting a new one). */
+export function insertItem(db: Db, item: PlanItem): void {
   const quoted = ITEM_COLS.map((col) => `"${col}"`).join(", ");
   const placeholders = ITEM_COLS.map(() => "?").join(", ");
   db.prepare(`INSERT INTO "plan_item" (${quoted}) VALUES (${placeholders})`).run(
     ...itemValues(item),
   );
+}
+
+/** Clear the plan's items + dependency edges — the write half of a snapshot restore (it replaces the
+ *  whole plan from `plan.jsonl`). Sessions + events (per-machine runtime state) are left untouched. */
+export function clearPlan(db: Db): void {
+  db.prepare(`DELETE FROM "plan_dep"`).run();
+  db.prepare(`DELETE FROM "plan_item"`).run();
 }
 
 /** Open a new plan item — minted id, `backlog` status, next position, stamped — and store it. */

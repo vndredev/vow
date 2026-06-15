@@ -9,17 +9,20 @@ export type { PlanEventInput, PlanItemInput } from "./store.ts";
 export type { IssueRef, SyncActions } from "./sync.ts";
 export type { BlockedRef, PlanSnapshot } from "./snapshot.ts";
 export { canTransition, isTerminal, nextStatuses } from "./lifecycle.ts";
-export { openPlan, planDbPath } from "./location.ts";
+export { openPlan, planDbPath, planJsonlPath } from "./location.ts";
 export { blockedItems, promotable, readyQueue, unblocksMost } from "./queue.ts";
 export { migratePlan } from "./schema.ts";
 export { staleSessions } from "./sessions.ts";
 export { planSnapshot } from "./snapshot.ts";
+export { loadSnapshot, planSnapshotJsonl, restoreFromJsonl, writeSnapshot } from "./snapshot-io.ts";
 export {
   addDep,
   addItem,
+  clearPlan,
   closeSession,
   getItem,
   getSession,
+  insertItem,
   listDeps,
   listEvents,
   listItems,

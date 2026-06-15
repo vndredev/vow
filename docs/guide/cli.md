@@ -72,6 +72,8 @@ vow guard            # enforce main's protection (PR-only · gate · no bypass �
 vow reconcile        # plan drift — retire candidates + issues with no phase or no pillar
 vow doctor           # check the GitHub Project's Roadmap view against vow's invariant
 vow plan [sync]      # read the local plan (.vow/plan.db); `sync` pulls the GitHub issues in (open → backlog)
+vow plan snapshot    # write the committed snapshot (.vow/plan.jsonl) from the local db
+vow plan restore     # regenerate the local db from .vow/plan.jsonl (the fresh-clone bootstrap)
 ```
 
 `vow reconcile` and `vow doctor` are **read-only diagnostics** — they report drift, never mutate. `reconcile` surfaces issues a merged PR already closed (the retire candidates), any open issue with no phase (the "No milestone" drift the milestone gate otherwise prevents), and any with no **pillar** (off the throughline — see below).
@@ -89,6 +91,8 @@ vow doctor — the GitHub Project Roadmap view (its config is UI-only):
 `✓` holds · `✗` is fixable drift doctor detected · `□` is a UI-only step to apply in the Roadmap toolbar. vow's **own** studio roadmap needs none of this — it derives the phased timeline straight from the milestones (gh-direct); this only configures the upstream GitHub Project view.
 
 `vow plan` reads vow's **own local plan** — the SQLite DAG at `.vow/plan.db` the studio's Plan views (Now + Next · Backlog · Map) render. `vow plan sync` pulls the GitHub issues into it (an open issue with no item yet → a `backlog` item, a closed issue's item → `done`) — the CLI front-door for the MCP's `sync_plan`. The rich structure — lifecycle, the dependency DAG, the ready-queue — lives locally; GitHub stays the thin external skin.
+
+The `.db` is the **per-machine runtime index** — gitignored, rebuildable. The plan itself lives in `.vow/plan.jsonl`: a **git-tracked** snapshot of the items + dependency edges (sessions and events stay local runtime state), versioned and PR-reviewed like code. `vow plan snapshot` writes it from the db — deterministic NDJSON (rows and keys sorted) so a byte-identical plan gives a byte-identical file (a clean diff); `vow plan restore` rebuilds the db from it. On a **fresh clone** the db doesn't exist yet, so `vow plan sync` first regenerates it from the committed `.vow/plan.jsonl`, then the live issues sync on top — the bootstrap is automatic.
 
 ## The throughline — pillars
 

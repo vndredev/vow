@@ -12,8 +12,13 @@ dist
 dist-ssr
 *.local
 
-# vow local data — the SQLite DB + its WAL sidecars
+# vow local data — the SQLite DB + its WAL sidecars (gitignored; the runtime index).
+# plan.jsonl is the committed plan snapshot — git-tracked, the .db regenerates from it.
+# Every nested .vow/ (the apps' runtime dirs) stays ignored; only the ROOT .vow/plan.jsonl is tracked.
 .vow/
+!/.vow/
+/.vow/*
+!/.vow/plan.jsonl
 
 # Editor directories and files
 .vscode/*
