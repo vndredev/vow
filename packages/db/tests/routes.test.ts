@@ -9,7 +9,7 @@ import { expect, test } from "vite-plus/test";
 
 test("VOW_API holds the dev-API mount points under /__vow", () => {
   expect(VOW_API.db).toBe("/__vow/db");
-  expect(VOW_API.issues).toBe("/__vow/issues");
+  expect(VOW_API.plan).toBe("/__vow/plan");
   expect(VOW_API.agent).toBe("/__vow/agent");
 });
 

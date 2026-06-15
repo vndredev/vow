@@ -8,20 +8,21 @@
  * the rest of `@vow/db`). It is exposed under the `@vow/db/routes` subpath, away from the node barrel.
  */
 
-/** The dev-API mount points, under `/__vow`. `db` is the data layer (`/__vow/db/<slug>[/<id>]`); `issues`
- *  is the gh-direct issue plan (`/__vow/issues`); `agent` is the start-work signal that dispatches an agent
- *  session for an issue (`/__vow/agent`); `events` is the append-only event feed (`/__vow/events`);
- *  `agentLoop` is the agent loop's live status (`/__vow/agent-loop/status`), the loop made observable;
- *  `mcp` is the MCP/channel health status (`/__vow/mcp/status`), derived from the event feed. Both the
- *  client fetch and the server mount read these. */
+/** The dev-API mount points, under `/__vow`. `db` is the data layer (`/__vow/db/<slug>[/<id>]`); `plan`
+ *  is the local plan snapshot (`/__vow/plan`, the SQLite DAG); `agent` is the start-work signal that
+ *  dispatches an agent session for an issue (`/__vow/agent`); `issue` is the in-app bug/feature reporter
+ *  (`/__vow/issue`); `events` is the append-only event feed (`/__vow/events`); `agentLoop` is the agent
+ *  loop's live status (`/__vow/agent-loop/status`), the loop made observable; `mcp` is the MCP/channel
+ *  health status (`/__vow/mcp/status`), derived from the event feed. Both the client fetch and the server
+ *  mount read these. */
 export const VOW_API = {
   agent: "/__vow/agent",
   agentLoop: "/__vow/agent-loop/status",
   db: "/__vow/db",
   events: "/__vow/events",
   issue: "/__vow/issue",
-  issues: "/__vow/issues",
   mcp: "/__vow/mcp/status",
+  plan: "/__vow/plan",
 } as const;
 
 /** The data-layer path for a slug, optionally a single record — `/__vow/db/<slug>` or

@@ -9,15 +9,14 @@ import {
   dataApi,
   eventsApi,
   issueApi,
-  issuesApi,
   loopStatusApi,
   repoRootOf,
 } from "./dev-api.ts";
 import type { Plugin, ViteDevServer } from "vite-plus";
 import { devOverlayTags, loadVowModule, resolveVowId } from "./virtual.ts";
+import { mcpStatusApi, planApi } from "./dev-handlers.ts";
 import type { VowOptions } from "./vows.ts";
 import { generateFiles } from "./generate.ts";
-import { mcpStatusApi } from "./mcp-status-handler.ts";
 import path from "node:path";
 import { rmSync } from "node:fs";
 
@@ -27,7 +26,7 @@ import { rmSync } from "node:fs";
  * Source of truth = the visible `app/` folder-tree of `vow.md` ("here lives your app, as MDs"). The plugin
  * loads it and writes real `.vue` files into the hidden `.generated/` (gitignored, regenerated) — so
  * vue-tsc, Volar and plugin-vue see them (the hard gate + inspectability), but they're never the source and
- * can't drift. Plus `virtual:vow/tree` exposes the vows as data, and `/__vow` serves the dev data + issues.
+ * can't drift. Plus `virtual:vow/tree` exposes the vows as data, and `/__vow` serves the dev data + plan.
  */
 
 export { allVows } from "./vows.ts";
@@ -121,7 +120,7 @@ export function openDevDbGuarded(state: State, logError: (message: string) => vo
   }
 }
 
-/** Mount every `/__vow` API on the dev server's middleware chain — the data layer, the issue plan + the
+/** Mount every `/__vow` API on the dev server's middleware chain — the data layer, the local plan + the
  *  in-app reporter, the event feed, the start-work signal, and the agent-loop status. */
 // oxlint-disable-next-line prefer-readonly-parameter-types -- a plugin must mutate the dev server
 function mountApis(server: ViteDevServer, state: State): void {
@@ -132,8 +131,7 @@ function mountApis(server: ViteDevServer, state: State): void {
       () => state.entities,
     ),
   );
-  // The GitHub issue plan, gh-direct.
-  server.middlewares.use(VOW_API.issues, issuesApi(state.root));
+  server.middlewares.use(VOW_API.plan, planApi(repoRootOf(state.root) ?? state.root));
   // The append-only event feed (JSON snapshot + SSE), read from the REPO-ROOT `.vow/events.jsonl`.
   // The loop records there, not to the app-local `state.root`, so the trace shows its live events.
   // `repoRootOf` walks up from the studio's app dir to the workspace root — the SAME resolution below.

@@ -1,6 +1,6 @@
-import type { EventLayout, IssueLayout, LoopLayout, McpLayout, ReadonlyVow } from "./types.ts";
+import type { EventLayout, LoopLayout, McpLayout, PlanLayout, ReadonlyVow } from "./types.ts";
 import { asRecord, defined } from "@vow/core";
-import { eventLayout, issueLayout, loopLayout, mcpLayout } from "./layouts.ts";
+import { eventLayout, loopLayout, mcpLayout, planLayout } from "./layouts.ts";
 import { str } from "./helpers.ts";
 
 /** A reference to a by-field composition (`stats`/`board`) — the entity slug + the select field. */
@@ -131,20 +131,6 @@ export function usesTimeline(view: ReadonlyVow): boolean {
 }
 
 /**
- * The issue-plan layouts a `## view` renders — so the plugin materialises the matching VowIssue*
- * components. Validated, so the set only ever holds real layouts.
- */
-export function issueLayouts(view: ReadonlyVow): Set<IssueLayout> {
-  const found = new Set<IssueLayout>();
-  walkNodes(view, (type, value) => {
-    if (type === "issues") {
-      found.add(issueLayout(value));
-    }
-  });
-  return found;
-}
-
-/**
  * The event-feed layouts a `## view` renders — so the plugin materialises the matching VowEvent*
  * components. Validated, so the set only ever holds real layouts.
  */
@@ -181,6 +167,20 @@ export function mcpLayouts(view: ReadonlyVow): Set<McpLayout> {
   walkNodes(view, (type, value) => {
     if (type === "mcp") {
       found.add(mcpLayout(value));
+    }
+  });
+  return found;
+}
+
+/**
+ * The local-plan layouts a `## view` renders — so the plugin materialises the matching VowPlan* components.
+ * Validated, so the set only ever holds real layouts.
+ */
+export function planLayouts(view: ReadonlyVow): Set<PlanLayout> {
+  const found = new Set<PlanLayout>();
+  walkNodes(view, (type, value) => {
+    if (type === "plan") {
+      found.add(planLayout(value));
     }
   });
   return found;

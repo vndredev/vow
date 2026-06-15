@@ -24,11 +24,11 @@ import {
   composeBoards,
   composeCards,
   composeEventViews,
-  composeIssueViews,
   composeLayout,
   composeLists,
   composeLoopViews,
   composeMcpViews,
+  composePlanViews,
   composePrimitives,
   composeStats,
   composeTimeline,
@@ -83,9 +83,9 @@ interface Plan {
   readonly boards: readonly GroupRef[];
   readonly primitives: readonly string[];
   readonly eventViews: readonly string[];
-  readonly issueViews: readonly string[];
   readonly loopViews: readonly string[];
   readonly mcpViews: readonly string[];
+  readonly planViews: readonly string[];
   readonly pages: readonly Page[];
   readonly needsLayout: boolean;
   readonly needsTimeline: boolean;
@@ -118,13 +118,13 @@ function foldPlan(contributions: readonly Contribution[]): Plan {
     cards: [...new Set(contributions.flatMap((part) => part.cards))],
     eventViews: [...new Set(contributions.flatMap((part) => part.eventViews))],
     files: contributions.flatMap((part) => part.files),
-    issueViews: [...new Set(contributions.flatMap((part) => part.issueViews))],
     listed: dedupeLists(contributions.flatMap((part) => part.listed)),
     loopViews: [...new Set(contributions.flatMap((part) => part.loopViews))],
     mcpViews: [...new Set(contributions.flatMap((part) => part.mcpViews))],
     needsLayout: contributions.some((part) => part.needsLayout),
     needsTimeline: contributions.some((part) => part.needsTimeline),
     pages: contributions.flatMap((part) => part.pages),
+    planViews: [...new Set(contributions.flatMap((part) => part.planViews))],
     primitives: [...new Set(contributions.flatMap((part) => part.primitives))],
     stats: dedupeGroups(contributions.flatMap((part) => part.stats)),
   };
@@ -204,10 +204,10 @@ function composeAll(plan: Plan, entities: readonly ReadonlyVow[], dirs: Dirs): r
     composeCards(plan.cards, entities, outDir),
     composeBoards(plan.boards, entities, outDir),
     composeTimeline(plan.needsTimeline, srcDir, outDir),
-    composeIssueViews(plan.issueViews, outDir),
     composeEventViews(plan.eventViews, outDir),
     composeLoopViews(plan.loopViews, outDir),
     composeMcpViews(plan.mcpViews, outDir),
+    composePlanViews(plan.planViews, outDir),
   ];
   const primitives = [...plan.primitives, ...composed.flatMap((piece) => piece.primitives)];
   return [

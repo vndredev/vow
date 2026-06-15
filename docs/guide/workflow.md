@@ -11,20 +11,20 @@ vow's whole reason is that **the board mirrors reality, 1:1** — and that holds
 
 A **✅** means a gate enforces it — it can't be skipped. A **❌** (or **◑**, partial) means it's still on discipline: the work that's left before "perfect" is mechanical.
 
-| #   | Step             | Anchor                       | The check that secures it                                                                                                                   | Status |
-| --- | ---------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| 1   | **Plan**         | an Issue (element + why)     | the issue template, enforced in CI                                                                                                          | ✅     |
-| 2   | **Pick up**      | Issue → `doing`              | the agent claims it (`in-progress` label) the moment it starts — via the board's **Start work** action (→ `/__vow/agent` → `vow agent run`) | ◑      |
-| 3   | **Spec**         | a gated, self-contained plan | `buildPlan` — STOP conditions + commit stamp                                                                                                | ✅     |
-| 4   | **Branch**       | never `main`                 | branch protection (PR-only, no admin bypass), **owned by vow**                                                                              | ✅     |
-| 5   | **Develop**      | an isolated worktree         | the framework-neutrality + layer-DAG gates                                                                                                  | ✅     |
-| 6   | **Verify**       | local green                  | `vp check` · `pnpm -r test` · coverage · smoke                                                                                              | ✅     |
-| 7   | **Document**     | a doc page, 1:1              | the docs-drift gate; a "has-a-doc" gate is still missing                                                                                    | ◑      |
-| 8   | **PR**           | a PR (`Closes #N`)           | CI gates on `vp lint` (no silent-green typecheck)                                                                                           | ✅     |
-| 9   | **Board: doing** | the open PR + a watch link   | `deriveIssueStatus` (open + the `in-progress` label or a PR → doing); the issue links its PR (the run)                                      | ✅     |
-| 10  | **Merge**        | green → the **agent** merges | `vow agent merge` — polls CI's `gate`, merges a green PR (squash + delete-branch), drafts a red run, never merged                           | ✅     |
-| 11  | **Board: done**  | merged / closed              | `deriveIssueStatus` (closed → done)                                                                                                         | ✅     |
-| 12  | **Reconcile**    | the backlog stays true       | the hub reconciles the board's Status to the derived truth every tick (`vow serve`)                                                         | ✅     |
+| #   | Step             | Anchor                       | The check that secures it                                                                                                         | Status |
+| --- | ---------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1   | **Plan**         | an Issue (element + why)     | the issue template, enforced in CI                                                                                                | ✅     |
+| 2   | **Pick up**      | Issue → `doing`              | the agent claims it (`in-progress` label) the moment it starts — dispatched by the loop or `vow agent run <n>` (→ `/__vow/agent`) | ◑      |
+| 3   | **Spec**         | a gated, self-contained plan | `buildPlan` — STOP conditions + commit stamp                                                                                      | ✅     |
+| 4   | **Branch**       | never `main`                 | branch protection (PR-only, no admin bypass), **owned by vow**                                                                    | ✅     |
+| 5   | **Develop**      | an isolated worktree         | the framework-neutrality + layer-DAG gates                                                                                        | ✅     |
+| 6   | **Verify**       | local green                  | `vp check` · `pnpm -r test` · coverage · smoke                                                                                    | ✅     |
+| 7   | **Document**     | a doc page, 1:1              | the docs-drift gate; a "has-a-doc" gate is still missing                                                                          | ◑      |
+| 8   | **PR**           | a PR (`Closes #N`)           | CI gates on `vp lint` (no silent-green typecheck)                                                                                 | ✅     |
+| 9   | **Board: doing** | the open PR + a watch link   | `deriveIssueStatus` (open + the `in-progress` label or a PR → doing); the issue links its PR (the run)                            | ✅     |
+| 10  | **Merge**        | green → the **agent** merges | `vow agent merge` — polls CI's `gate`, merges a green PR (squash + delete-branch), drafts a red run, never merged                 | ✅     |
+| 11  | **Board: done**  | merged / closed              | `deriveIssueStatus` (closed → done)                                                                                               | ✅     |
+| 12  | **Reconcile**    | the backlog stays true       | the hub reconciles the board's Status to the derived truth every tick (`vow serve`)                                               | ✅     |
 
 ## Secured vs missing
 

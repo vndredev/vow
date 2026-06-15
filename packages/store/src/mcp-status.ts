@@ -1,4 +1,5 @@
 import { asNumber, isObject } from "./guards.ts";
+import { hasApi, okJson } from "./net.ts";
 import { VOW_API } from "@vow/db/routes";
 import { reactive } from "vue";
 
@@ -61,16 +62,6 @@ export function parseMcpStatus(value: unknown): McpStatusItem {
     toolCount: toolCount(value["toolCount"]),
   } as const;
   return withLastEvent(base, value["lastEvent"]);
-}
-
-const hasApi = "window" in globalThis && typeof fetch === "function";
-
-async function okJson(url: string): Promise<unknown> {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`fetch ${url} failed: ${res.status}`);
-  }
-  return res.json();
 }
 
 /** The shared reactive MCP/channel health status — one object the studio binds to, assigned field-by-field

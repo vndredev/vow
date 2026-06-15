@@ -7,10 +7,12 @@ export type { PlanDep, PlanEvent, PlanItem, PlanOrigin, PlanSession, PlanStatus 
 export type { BlockedItem, Leverage } from "./queue.ts";
 export type { PlanEventInput, PlanItemInput } from "./store.ts";
 export type { IssueRef, SyncActions } from "./sync.ts";
+export type { BlockedRef, PlanSnapshot } from "./snapshot.ts";
 export { canTransition, isTerminal, nextStatuses } from "./lifecycle.ts";
 export { openPlan, planDbPath } from "./location.ts";
 export { blockedItems, readyQueue, unblocksMost } from "./queue.ts";
 export { migratePlan } from "./schema.ts";
+export { planSnapshot } from "./snapshot.ts";
 export {
   addDep,
   addItem,
