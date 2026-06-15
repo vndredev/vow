@@ -6,7 +6,7 @@
  * issue plan).
  */
 export interface ToolDoc {
-  readonly group: "data" | "docs" | "github" | "read" | "structure";
+  readonly group: "code" | "data" | "docs" | "github" | "read" | "structure";
   readonly name: string;
   readonly summary: string;
 }
@@ -118,6 +118,24 @@ export const TOOL_DOCS: readonly ToolDoc[] = [
     group: "github",
     name: "sync_project",
     summary: "Sync the GitHub Project's Status field to the studio's derived status (1:1).",
+  },
+
+  {
+    group: "code",
+    name: "find_references",
+    summary:
+      "Find every semantic reference to the symbol at file:line:character (via the LSP server) — who uses it, across files, not a text match.",
+  },
+  {
+    group: "code",
+    name: "document_symbols",
+    summary:
+      "List the symbols a file declares (functions, classes, constants) with each one's line.",
+  },
+  {
+    group: "code",
+    name: "hover",
+    summary: "The type signature + doc of the symbol at file:line:character.",
   },
 ];
 
