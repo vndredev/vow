@@ -30,6 +30,13 @@ export async function verify(
   return { ok: results.every((result) => result.ok), results };
 }
 
+/** The `git fetch --prune` args — refresh the remote-tracking refs (dropping ones whose remote branch was
+ *  deleted) BEFORE the force-with-lease push, so the lease has accurate info and doesn't reject with `stale
+ *  info` when a prior `feat/issue-N` was deleted or changed without a fetch (#703). */
+export function fetchPruneArgs(): readonly string[] {
+  return ["fetch", "--prune", "origin"];
+}
+
 /** The `git push` args that publish the task's branch upstream. Force-with-lease so a re-run over a STALE
  *  remote `feat/issue-N` left by a prior attempt publishes instead of being rejected (non-fast-forward) — the
  *  branch is vow-owned (one issue = one branch), and the lease still refuses to clobber an unexpected remote. */
