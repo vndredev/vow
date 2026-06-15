@@ -54,7 +54,16 @@ export const WALL =
   "- 'this `as` is safe, I checked' — a cast hides divergence; write a predicate that proves the type\n" +
   "- 'just a tiny adjacent fix while here' — scope creep; open a separate issue\n" +
   "- 'the type is too hard without `any`' — fix the hole at its source, the difficulty is in the design\n" +
-  "- 'the gate is red but the issue is minor' — red gate = draft; never merge";
+  "- 'the gate is red but the issue is minor' — red gate = draft; never merge\n\n" +
+  "OS-adapter boundary — a `*-ops.ts` side-effecting adapter is the ONE place Node's inherently-mutable APIs " +
+  "live (streams, `EventEmitter`, `Buffer`, `ChildProcess`, `process`), and they collide with the strictest " +
+  "rules. The SANCTIONED escapes (used by `mcp/channel.ts`), not a license to disable elsewhere:\n" +
+  "- a param of a mutable Node type trips `prefer-readonly-parameter-types` (it can't be made readonly): add a " +
+  "TARGETED `// oxlint-disable-next-line prefer-readonly-parameter-types -- <read-only in use>` on that param line\n" +
+  "- a module imported as BOTH a value and a type trips `no-duplicate-imports`: use inline " +
+  "`import { type X, value } from 'm'` plus a file-top `/* oxlint-disable consistent-type-specifier-style -- value+type import */`\n" +
+  "- an absent value can be neither `undefined` (banned) nor `null` (`unicorn/no-null`): restructure to a " +
+  "definite value (e.g. a non-zero exit code for a signal-killed process)";
 
 /** The team — one owner per vow concern. The builder (`vow-developer`) develops issues end-to-end; each
     guardian owns one area + the gate that enforces it. The orchestrator picks the builder for a feature
